@@ -1,0 +1,575 @@
+import "~/Documents/ADCO/act/globals.act";
+import "~/Documents/ADCO/act/channel.act";
+
+/* ================================ BUFFERS ================================ */
+
+defproc delaybuf (bool in, out)
+{
+  bool _x;
+  prs
+  {
+     in => _x-
+     _x => out-
+  }
+}
+
+template<pint D>
+defproc delay (bool in, out)
+{
+  delaybuf d[D];
+  (i:D-1:d[i].out=d[i+1].in;)
+  d[0].in = in;
+  d[D-1].out = out;
+}
+
+/* ========================= EXPRESSION EVALUATION ========================= */
+
+/* SINGLE-BIT VARIABLE */
+defproc bundled_expr_var (dualrail v; bool out)
+{
+  v.t = out;
+}
+
+/* MULTI-BIT VARIABLE */
+template<pint N>
+defproc bundled_expr_vararray (dualrail v[N]; bool out[N])
+{
+  bundled_expr_var ev[N];
+  (i:N: ev[i].v = v[i];
+        ev[i].out = out[i];)
+}
+
+/* ============================ CIRCUIT ELEMENTS ============================ */
+
+/* AND GATE */
+defproc bundled_expr_and (bool in1, in2; bool out)
+{
+  bool _out;
+  prs
+  {
+    in1 & in2 => _out-
+    _out => out-
+  }
+}
+
+/* OR GATE */
+defproc bundled_expr_or (bool in1, in2; bool out)
+{
+  bool _out;
+  prs
+  {
+    in1 | in2 => _out-
+    _out => out-
+  }
+}
+
+/* NOT GATE */
+defproc bundled_expr_not (bool in; bool out)
+{
+  prs
+  {
+    in => out-
+  }
+}
+
+/* NAND GATE */
+defproc bundled_expr_nand (bool in1, in2; bool out)
+{
+  prs
+  {
+    in1 & in2 => out-
+  }
+}
+
+/* NOR GATE */
+defproc bundled_expr_nor (bool in1, in2; bool out)
+{
+  prs
+  {
+    in1 | in2 => out-
+  }
+}
+
+/* XOR GATE */
+defproc bundled_expr_xor (bool in1, in2; bool out)
+{
+  bool _and, _or, or, _out;
+  prs
+  {
+    in1 & in2 => _and-
+    in1 | in2 => _or-
+    _and & or => _out-
+    _or => or-
+    _out => out-
+  }
+}
+
+/* FULL ADDER */
+defproc bundled_full_adder (bool a, b, c; bool s, c_out)
+{
+  bundled_expr_xor xor1 (a, b);
+  bundled_expr_xor xor2 (xor1.out, c, s);
+  bundled_expr_and and1 (a, b);
+  bundled_expr_and and2 (b, c);
+  bundled_expr_and and3 (a, c);
+  bundled_expr_or or1 (and1.out, and2.out);
+  bundled_expr_or or2 (or1.out, and3.out, c_out);
+
+  /*
+  bool _a, _b, _c;
+  prs
+  {
+    (_a & _b & _c) | (a & b & _c) | (_a & b & c) | (a & _b & c) => s-
+  	(_a & _b) | (_a & _c) | (_b & _c) => c_out-
+  	a => _a-
+    b => _b-
+    c => _c-
+  }
+
+  prs
+  {
+    _a & _b & _c -> s-
+    a & b & _c -> s-
+    a & _b & c -> s-
+    _a & b & c -> s-
+    ~_a & ~_b & ~_c -> s+
+    ~a & ~b & ~_c -> s+
+    ~a & ~_b & ~c -> s+
+    ~_a & ~b & ~c -> s+
+  	_a & _b & c -> c_out-
+    _a & b & _c -> c_out-
+    a & _b & _c -> c_out-
+    _a & _b & _c -> c_out-
+    ~_a & ~_b & ~c -> c_out+
+    ~_a & ~b & ~_c -> c_out+
+    ~a & ~_b & ~_c -> c_out+
+    ~_a & ~_b & ~_c -> c_out+
+  	a => _a-
+    b => _b-
+    c => _c-
+  }
+  */
+}
+
+/* MULTIPLICATION CELL */
+template<pint N>
+defproc bundled_mul_cell (bool in1[N], in2; bool out[N])
+{
+  bundled_expr_and and[N];
+  (i:N: and[i].in1 = in1[i];
+        and[i].in2 = in2;
+        and[i].out = out[i];)
+}
+
+/* MUX CELL */
+defproc bundled_mux (bool a, b, s; bool o)
+{
+  bool _b, _s, _o;
+  prs
+  {
+    a & _s -> _o-
+    ~a & ~s -> _o+
+    b & s -> _o-
+    ~b & ~_s -> _o+
+
+    b => _b-
+    s => _s-
+    _o => o-
+  }
+}
+
+/* 2:1 MUX */
+template<pint N>
+defproc bundled_2_to_1_mux (bool a[N], b[N], s; bool o[N])
+{
+  bundled_mux mux[N];
+  (i:N: mux[i].a = a[i];
+        mux[i].b = b[i];
+        mux[i].s = s;
+        mux[i].o = o[i];)
+}
+
+/* ========================== MISCELLANEOUS BLOCKS ========================== */
+
+/* CARRY-SAVE ADDER */
+template<pint N>
+defproc bundled_carry_save_adder (bool in1[N], in2[N], in3[N]; bool out1[N], out2[N])
+{
+  syn_var_init_false const_0;
+  bundled_full_adder add[N];
+  (i:N: add[i].a = in1[i];
+        add[i].b = in2[i];
+        add[i].c = in3[i];
+        add[i].s = out1[i];)
+  out2[0] = const_0.v.t;
+  (i:N-1: add[i].c_out = out2[i+1];)
+}
+
+/* 4:2 COMPRESSOR */
+template<pint N>
+defproc bundled_4_to_2_compressor (bool in1[N], in2[N], in3[N], in4[N]; bool out1[N], out2[N])
+{
+  bool csa_out1[N], csa_out2[N];
+  bundled_carry_save_adder<N> csa1 (in1, in2, in3, csa_out1, csa_out2);
+  bundled_carry_save_adder<N> csa2 (in4, csa_out1, csa_out2, out1, out2);
+}
+
+/* ================================= TREES ================================= */
+
+/* LINEAR CSA CASCADE */
+template<pint M, N>
+defproc bundled_linear_csa_cascade (bool in[M][N]; bool out1[N], out2[N])
+{
+  [  M > 3 ->
+       bool next[M-1][N];
+       bundled_carry_save_adder<N> cs (in[0][0..N-1], in[1][0..N-1], in[2][0..N-1], next[0][0..N-1], next[1][0..N-1]);
+       (i:M-3: next[i+2][0..N-1] = in[i+3][0..N-1];)
+       bundled_linear_csa_cascade<M-1, N> csac (next, out1, out2);
+  [] M = 1 ->
+       syn_var_init_false const_0;
+       out1 = in[0][0..N-1];
+       (i:N: out2[i] = const_0.v.t;)
+  [] M = 2 ->
+       out1 = in[0][0..N-1];
+       out2 = in[1][0..N-1];
+  [] else ->
+       bundled_carry_save_adder<N> cs_3 (in[0][0..N-1], in[1][0..N-1], in[2][0..N-1], out1, out2);
+  ]
+}
+
+/* WALLACE TREE */
+template<pint M, N>
+defproc bundled_wallace_tree (bool in[M][N]; bool out1[N], out2[N])
+{
+  [  M > 4 ->
+       bundled_wallace_tree<M/2, N> l(in[0..M/2-1][0..N-1]);
+       bundled_wallace_tree<M-M/2, N> r(in[M/2..M-1][0..N-1]);
+       bundled_4_to_2_compressor<N> comp (l.out1, l.out2, r.out1, r.out2, out1, out2);
+  [] M = 0 ->
+       syn_var_init_false const_0;
+       (i:N: out1[i] = const_0.v.t;
+             out2[i] = const_0.v.t;)
+  [] M = 1 ->
+       out1 = in[0][0..N-1];
+       (i:N: out2[i] = const_0.v.t;)
+  [] M = 2 ->
+       out1 = in[0][0..N-1];
+       out2 = in[1][0..N-1];
+  [] M = 3 ->
+       bundled_carry_save_adder<N> cs_3 (in[0][0..N-1], in[1][0..N-1], in[2][0..N-1], out1, out2);
+  [] else ->
+       bundled_4_to_2_compressor<N> comp_4 (in[0][0..N-1], in[1][0..N-1], in[2][0..N-1], in[3][0..N-1], out1, out2);
+  ]
+}
+
+/* =========================== BOOLEAN OPERATIONS =========================== */
+
+/* BITWISE AND */
+template<pint N>
+defproc bundled_and (bool in1[N], in2[N]; bool out[N])
+{
+  bundled_expr_and and[N];
+  (i:N: and[i].in1 = in1[i];
+        and[i].in2 = in2[i];
+        and[i].out = out[i];)
+}
+
+/* BITWISE OR */
+template<pint N>
+defproc bundled_or (bool in1[N], in2[N]; bool out[N])
+{
+  bundled_expr_or or[N];
+  (i:N: or[i].in1 = in1[i];
+        or[i].in2 = in2[i];
+        or[i].out = out[i];)
+}
+
+/* BITWISE COMPLEMENT */
+template<pint N>
+defproc bundled_not (bool in[N]; bool out[N])
+{
+  bundled_expr_not not[N];
+  (i:N: not[i].in = in[i];
+        not[i].out = out[i];)
+}
+
+/* BITWISE XOR */
+template<pint N>
+defproc bundled_xor (bool in1[N], in2[N]; bool out[N])
+{
+  bundled_expr_xor xor[N];
+  (i:N: xor[i].in1 = in1[i];
+        xor[i].in2 = in2[i];
+        xor[i].out = out[i];)
+}
+
+/* BITWISE NAND */
+template<pint N>
+defproc bundled_nand (bool in1[N], in2[N]; bool out[N])
+{
+  bundled_expr_nand nand[N];
+  (i:N: nand[i].in1 = in1[i];
+        nand[i].in2 = in2[i];
+        nand[i].out = out[i];)
+}
+
+/* BITWISE NOR */
+template<pint N>
+defproc bundled_nor (bool in1[N], in2[N]; bool out[N])
+{
+  bundled_expr_nor nor[N];
+  (i:N: nor[i].in1 = in1[i];
+        nor[i].in2 = in2[i];
+        nor[i].out = out[i];)
+}
+
+/* ========================= ARITHMETIC OPERATIONS ========================= */
+
+/* RIPPLE-CARRY ADDITION */
+template<pint N>
+defproc bundled_ripple_carry_add (bool in1[N], in2[N], c_in; bool out[N], overflow)
+{
+  bundled_full_adder add[N];
+  (i:N: add[i].a = in1[i];
+        add[i].b = in2[i];
+        add[i].s = out[i];)
+  add[0].c = c_in;
+  overflow = add[N-1].c_out;
+  (i:N-1: add[i+1].c = add[i].c_out;)
+}
+
+/* CARRY-LOOKAHEAD ADDITION */
+template<pint N>
+defproc bundled_cla_add (bool in1[N], in2[N], c_in; bool out[N], overflow)
+{
+  bundled_full_adder add[N];
+  overflow = add[N-1].c_out;
+
+  bundled_or<N> p (in1, in2);
+  bundled_and<N> g (in1, in2);
+
+  bool _c_in[N];
+
+  (i:N: add[i].a = in1[i];
+        add[i].b = in2[i];
+        add[i].s = out[i];)
+
+  prs
+  {
+    c_in => _c_in[0]-
+    ((c_in & p.out[0]) | g.out[0]) => _c_in[1]-
+    (i:N-2: ((c_in & (&j:i+2: p.out[j])) | (|j:i+1: (g.out[j] & (&k:i-j+1: p.out[k+j+1]))) | g.out[i+1]) => _c_in[i+2]-)
+    (i:N: _c_in[i] => add[i].c-)
+  }
+}
+
+/* ADDITION */
+template<pint N>
+defproc bundled_add (bool in1[N], in2[N]; bool out[N], overflow)
+{
+  syn_var_init_false const_0;
+  bundled_ripple_carry_add<N> add (in1, in2, const_0.v.t, out, overflow);
+}
+
+/* UNARY MINUS */
+template<pint N>
+defproc bundled_uminus (bool in[N]; bool out[N])
+{
+  bool _in[N];
+  bundled_not<N> n (in, _in);
+
+  syn_var_init_false const_0;
+  bool zero[N];
+  (i:N: zero[i] = const_0.v.t;)
+
+  bundled_ripple_carry_add<N> r (_in, zero, const_0.v.f, out);
+}
+
+/* SUBTRACTION */
+template<pint N>
+defproc bundled_sub (bool in1[N], in2[N]; bool out[N], overflow)
+{
+  bool _in2[N];
+  bundled_uminus<N> u (in2, _in2);
+  bundled_add<N> s (in1, _in2, out, overflow);
+}
+
+/* UNSIGNED MULTIPLICATION */
+template<pint N>
+defproc bundled_unsigned_mul (bool in1[N], in2[N]; bool out[N], overflow)
+{
+  syn_var_init_false const_0;
+  bool partial_products[N][N];
+
+  bundled_mul_cell<N> mul[N];
+  (i:N: mul[i].in1 = in1;
+        mul[i].in2 = in2[i];
+        (j:i: partial_products[i][j] = const_0.v.t;)
+        (j:N-i: partial_products[i][j+i] = mul[i].out[j];))
+
+  bundled_wallace_tree<N, N> wal (partial_products);
+
+  bundled_add<N> add (wal.out1, wal.out2, out, overflow);
+}
+
+/* SIGNED MULTIPLICATION*/
+template<pint N>
+defproc bundled_mul (bool in1[N], in2[N]; bool out[N], overflow)
+{
+  bool _in1[N], _in2[N], _out[N];
+  bool s1, s2, so, _s1, _s2;
+
+  bundled_uminus<N> u1 (in1, _in1);
+  bundled_uminus<N> u2 (in2, _in2);
+
+  bundled_unsigned_mul<N> mul;
+  mul.overflow = overflow;
+
+  bundled_2_to_1_mux<N> mux1 (in1, _in1, s1, mul.in1);
+  bundled_2_to_1_mux<N> mux2 (in2, _in2, s2, mul.in2);
+
+  bundled_uminus<N> uo (mul.out, _out);
+
+  bundled_2_to_1_mux<N> muxo (mul.out, _out, so, out);
+
+  prs
+  {
+    in1[N-1] => _s1-
+    in2[N-1] => _s2-
+    (in1[N-1] & in2[N-1]) | (_s1 & _s2) => so-
+
+    _s1 => s1-
+    _s2 => s2-
+  }
+}
+
+/* ========================== COMPARISON OPERATORS ========================== */
+
+/* EQUALITY */
+template<pint N>
+defproc bundled_eq (bool in1[N], in2[N]; bool out)
+{
+  bool _in1[N], _in2[N];
+  prs
+  {
+    (|i:N: ((in1[i] & _in2[i]) | (_in1[i] & in2[i]))) => out-
+    (i:N: in1[i] => _in1[i]-
+          in2[i] => _in2[i]-)
+  }
+}
+
+/* INEQUALITY */
+template<pint N>
+defproc bundled_ne (bool in1[N], in2[N]; bool out)
+{
+  bool _in1[N], _in2[N];
+  prs
+  {
+    (&i:N: ((in1[i] & in2[i]) | (_in1[i] & _in2[i]))) => out-
+    (i:N: in1[i] => _in1[i]-
+          in2[i] => _in2[i]-)
+  }
+}
+
+/* LESS THAN OR EQUALS */
+template<pint N>
+defproc bundled_le (bool in1[N], in2[N]; bool out)
+{
+  bundled_sub<N> sub (in1, in2);
+  bundled_eq<N> eq (in1, in2);
+
+  bool _out;
+  prs
+  {
+    sub.out[N-1] | eq.out => _out-
+    _out => out-
+  }
+}
+
+/* GREATER THAN OR EQUALS */
+template<pint N>
+defproc bundled_ge (bool in1[N], in2[N]; bool out)
+{
+  bundled_sub<N> sub (in1, in2);
+
+  prs
+  {
+    sub.out[N-1] => out-
+  }
+}
+
+/* LESS THAN */
+template<pint N>
+defproc bundled_lt (bool in1[N], in2[N]; bool out)
+{
+  bundled_sub<N> sub (in1, in2);
+
+  bool _out;
+  prs
+  {
+    sub.out[N-1] => _out-
+    _out => out-
+  }
+}
+
+/* GREATER THAN */
+template<pint N>
+defproc bundled_gt (bool in1[N], in2[N]; bool out)
+{
+  bundled_sub<N> sub (in1, in2);
+  bundled_eq<N> eq (in1, in2);
+
+  prs
+  {
+    sub.out[N-1] | eq.out => out-
+  }
+}
+
+/* ============================= COMMUNICATION ============================= */
+
+/* BUNDLED RECV */
+template<pint N>
+defproc bundled_recv (a1of1 go; dualrail v[N]; aN1of2<N> in)
+{
+  delay<N> d;
+  d.in = go.r;
+
+  syn_recv rec[N];
+  (i:N: rec[i].go.r = go.r;
+        rec[i].v = v[i];
+        rec[i].in.t = in.d[i].t;
+        rec[i].in.f = in.d[i].f;)
+
+  bool _go_a, _in_a;
+  prs
+  {
+    rec[0].go.a & d.out => _go_a-
+    rec[0].in.a & d.out => _in_a-
+    _go_a => go.a-
+    _in_a => in.a-
+  }
+}
+
+defproc bundled_var_to_dualrail (bool d; bool in; dualrail out)
+{
+  bool _in;
+  _dualrail _out;
+  prs
+  {
+    in & d => _out.t-
+    _in & d => _out.f-
+
+    in => _in-
+    _out.t => out.t-
+    _out.f => out.f-
+  }
+}
+
+template<pint N>
+defproc bundled_vararray_to_dualrail (bool d; bool in[N]; dualrail out[N])
+{
+  bundled_var_to_dualrail vtd[N];
+  (i:N: vtd[i].d = d;
+        vtd[i].in = in[i];
+        vtd[i].out = out[i];)
+}
