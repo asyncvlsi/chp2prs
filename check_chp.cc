@@ -280,5 +280,5 @@ void check (act_chp_lang_t *c)
 void check_chp(Process *p)
 {
   P = p;
-  check(p->getchp()->c);
+  check(p->lang->getchp()->c);
 }

@@ -1132,7 +1132,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
 
 void generate_act(Process *p, const char *output_file, bool bundled, int opt)
 {
-  struct act_chp *chp = p->getchp();
+  struct act_chp *chp = p->lang->getchp();
 
   /* set global variables */
   P = p;
