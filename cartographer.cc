@@ -1,9 +1,43 @@
+/*************************************************************************
+ *
+ *  This file is part of chp2prs
+ *
+ *  Copyright (c) 2018 Rajit Manohar
+ *  Copyright (c) 2018-2019 Zeb Mehring
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <act/types.h>
 #include "cartographer.h"
+
+
+/*
+ *
+ *  Core syntax-directed translation code written by Rajit Manohar
+ *
+ *  Extensions to full expressions, optimizations, and direct use of
+ *  the ACT library  by Zeb Mehring
+ *
+ */
 
 static Process *P;
 
@@ -134,7 +168,7 @@ int get_max_bits(const char *s, int lbits, int rbits)
   }
   else
   {
-    fprintf(stderr, "chp2act: unsupported binary operation\n");
+    fprintf(stderr, "chp2prs: unsupported binary operation\n");
     return -1;
   }
 }
@@ -171,7 +205,7 @@ int get_bundle_delay(int n, int type)
   case E_INT:
     return 0;
   default:
-    fprintf(stderr, "chp2act: unsupported bundled operation: %d\n", type);
+    fprintf(stderr, "chp2prs: unsupported bundled operation: %d\n", type);
     return -1;
   }
 }
@@ -657,7 +691,7 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
     }
     break;
     default:
-      fprintf(stderr, "chp2act: unknown type %d\n", e->type);
+      fprintf(stderr, "chp2prs: unknown type %d\n", e->type);
       break;
   }
   return ret;
@@ -1124,7 +1158,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       ret = print_gc((c->type == ACT_CHP_LOOP) ? true : false, c->u.gc, bitwidth, base_var);
       break;
     default:
-      fprintf(stderr, "chp2act: unsupported token: %d\n", c->type);
+      fprintf(stderr, "chp2prs: unsupported token: %d\n", c->type);
       exit(1);
   }
   return ret;

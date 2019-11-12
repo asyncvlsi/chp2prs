@@ -34,3 +34,8 @@ using the libraries provided.
 ### Notes
 
 This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act), please see the installation instructions [here](http://avlsi.csl.yale.edu/act/doku.php?id=install).
+
+### License
+
+The source code for this tool is released under the GNU GPLv2. The ACT files
+that provide supporting library functions (the lib/ directory) are released under GNU LGPLv2.1.
