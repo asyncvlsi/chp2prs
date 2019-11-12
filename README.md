@@ -9,7 +9,7 @@ Note that `process` should be of the form `"[procname]<>"` to ensure correct exe
 
 ### Overview
 
-A continuation of a project with Rajit Manohar's AVLSI group (see [the original](https://github.com/zebmehring/ADCO)). A program which takes in an `.act` file of the form:
+A continuation of a project with Rajit Manohar's AVLSI group (see [the original](https://github.com/zebmehring/ADCO), which was developed by Zeb Mehring as part of his senior project at Yale). A program which takes in an `.act` file of the form:
 ```
 defproc foo() {
   /* variable delcarations */
@@ -30,6 +30,8 @@ defproc toplevel(a1of1 go) {
 toplevel t;
 ```
 using the libraries provided.
+
+The conversion is accomplished using syntax-directed translation, which is jusfitied using direct process decomposition.
 
 ### Notes
 
