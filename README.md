@@ -1,4 +1,4 @@
-# chp2act
+# chp2prs
 
 ### Usage
 
