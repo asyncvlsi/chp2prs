@@ -1,0 +1,6 @@
+import syn;
+
+syn::expr_and a;
+syn::expr_or o;
+
+a.out = o.in1;

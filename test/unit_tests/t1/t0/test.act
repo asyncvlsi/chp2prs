@@ -1,0 +1,8 @@
+import "syn.act";
+import "globals.act";
+import "channel.act";
+
+syn_expr_and a;
+syn_expr_or o;
+
+a.out = o.in1;

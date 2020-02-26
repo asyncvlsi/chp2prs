@@ -1,0 +1,6 @@
+import "syn.act";
+import "globals.act";
+import "channel.act";
+
+syn_expr_and a;
+

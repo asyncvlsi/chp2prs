@@ -1,0 +1,13 @@
+	         0 a.out.t : 0
+	         0 a.in2.f : 1
+	         0 a.in2.t : 0
+	         0 a.in1.f : 0
+	         0 a.in1.t : 1
+	         0 o.in2.f : 1
+	         0 o.in2.t : 0
+	         0 a.out.f : 1
+	        20 o.out.f : 1  [by o._out.f:=0]
+	        20 a.in2.t : 1
+	        20 a.in2.f : 0
+	        40 a.out.t : 1  [by a._out.t:=0]
+	        60 o.out.t : 1  [by o._out.t:=0]
