@@ -1,6 +1,13 @@
-import syn;
+defproc add_8() {
+  int<8> x;
+  int<8> y;
+  int<8> z;
 
-syn::expr_and a;
-syn::expr_or o;
+  chp {
+    x := 60 ;  // [00111100]
+    y := 17 ;  // [00010001]
+    z := y + x // [01001101] 77
+  }
+}
 
-a.out = o.in1;
+add_8 a;

@@ -53,7 +53,8 @@ static int optimization = 0;
 
 static struct Hashtable *evaluated_exprs;
 
-#define ACT_LIB_PATH "lib/"
+//#define ACT_LIB_PATH "lib/"
+#define ACT_LIB_PATH ""
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 
@@ -1166,7 +1167,11 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
 
 void generate_act(Process *p, const char *output_file, bool bundled, int opt)
 {
-  struct act_chp *chp = p->lang->getchp();
+  printf("........ CHP IS NULL? %d %d, outfile is: %s\n", p->lang != NULL, p->lang != NULL && p->lang->getchp() != NULL, output_file); // amanda
+    
+  struct act_chp *chp = NULL;
+  if (p->lang != NULL && p->lang->getchp() != NULL)
+    chp = p->lang->getchp();
 
   /* set global variables */
   P = p;
@@ -1194,18 +1199,24 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   fprintf(output_stream, "\n");
   fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");
   
-  /* TODO - initialize all variables and channels */ 
-  // initialize_vars(chp);
+  /* TODO - initialize all variables and channels */
+  // if (chp != NULL)
+  //   initialize_vars(chp);
 
   int *bitwidth = (int *) calloc(1, sizeof(int));
   int *base_var = (int *) calloc(1, sizeof(int));
   if (optimization > 0) evaluated_exprs = hash_new(INITIAL_HASH_SIZE);
   
   /* translate the CHP */
-  int i = print_chp_stmt(chp->c, bitwidth, base_var);
+  int i = 0;
+  if (chp != NULL && chp->c != NULL)
+    print_chp_stmt(chp->c, bitwidth, base_var);
   
-  free(bitwidth);
-  free(base_var);
+  if (bitwidth != NULL)
+    free(bitwidth);
+  if (base_var != NULL)
+    free(base_var);
+  
   if (optimization > 0)
   {
     /* free allocated memory for buckets still remaining in the table */

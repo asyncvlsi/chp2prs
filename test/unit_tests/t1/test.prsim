@@ -1,44 +1,231 @@
 initialize
+watch Reset
+watch _Reset
+watch t.c_0.r
+watch t.c_0.a
+watch var_x[0].v.t
+watch var_x[0].v.f
+watch var_x[1].v.t
+watch var_x[1].v.f
+watch var_x[2].v.t
+watch var_x[2].v.f
+watch var_x[3].v.t
+watch var_x[3].v.f
+watch var_x[4].v.t
+watch var_x[4].v.f
+watch var_x[5].v.t
+watch var_x[5].v.f
+watch var_x[6].v.t
+watch var_x[6].v.f
+watch var_x[7].v.t
+watch var_x[7].v.f
+watch var_y[0].v.t
+watch var_y[0].v.f
+watch var_y[1].v.t
+watch var_y[1].v.f
+watch var_y[2].v.t
+watch var_y[2].v.f
+watch var_y[3].v.t
+watch var_y[3].v.f
+watch var_y[4].v.t
+watch var_y[4].v.f
+watch var_y[5].v.t
+watch var_y[5].v.f
+watch var_y[6].v.t
+watch var_y[6].v.f
+watch var_y[7].v.t
+watch var_y[7].v.f
+watch var_z[0].v.t
+watch var_z[0].v.f
+watch var_z[1].v.t
+watch var_z[1].v.f
+watch var_z[2].v.t
+watch var_z[2].v.f
+watch var_z[3].v.t
+watch var_z[3].v.f
+watch var_z[4].v.t
+watch var_z[4].v.f
+watch var_z[5].v.t
+watch var_z[5].v.f
+watch var_z[6].v.t
+watch var_z[6].v.f
+watch var_z[7].v.t
+watch var_z[7].v.f
+set_principal t.c_0.r
+set_principal t.c_0.a
+set_principal var_x[0].v.t
+set_principal var_x[0].v.f
+set_principal var_x[1].v.t
+set_principal var_x[1].v.f
+set_principal var_x[2].v.t
+set_principal var_x[2].v.f
+set_principal var_x[3].v.t
+set_principal var_x[3].v.f
+set_principal var_x[4].v.t
+set_principal var_x[4].v.f
+set_principal var_x[5].v.t
+set_principal var_x[5].v.f
+set_principal var_x[6].v.t
+set_principal var_x[6].v.f
+set_principal var_x[7].v.t
+set_principal var_x[7].v.f
+set_principal var_y[0].v.t
+set_principal var_y[0].v.f
+set_principal var_y[1].v.t
+set_principal var_y[1].v.f
+set_principal var_y[2].v.t
+set_principal var_y[2].v.f
+set_principal var_y[3].v.t
+set_principal var_y[3].v.f
+set_principal var_y[4].v.t
+set_principal var_y[4].v.f
+set_principal var_y[5].v.t
+set_principal var_y[5].v.f
+set_principal var_y[6].v.t
+set_principal var_y[6].v.f
+set_principal var_y[7].v.t
+set_principal var_y[7].v.f
+set_principal var_z[0].v.t
+set_principal var_z[0].v.f
+set_principal var_z[1].v.t
+set_principal var_z[1].v.f
+set_principal var_z[2].v.t
+set_principal var_z[2].v.f
+set_principal var_z[3].v.t
+set_principal var_z[3].v.f
+set_principal var_z[4].v.t
+set_principal var_z[4].v.f
+set_principal var_z[5].v.t
+set_principal var_z[5].v.f
+set_principal var_z[6].v.t
+set_principal var_z[6].v.f
+set_principal var_z[7].v.t
+set_principal var_z[7].v.f
 
-watch a.in1.t
-watch a.in1.f
-watch a.in2.t
-watch a.in2.f
-watch o.in1.t
-watch o.in1.f
-watch o.in2.t
-watch o.in2.f
-watch o.out.t
-watch o.out.f
+mode reset
+set Reset 1
+set _Reset 0
+cycle
+set Reset 0
+set _Reset 1
+cycle
+mode run
+cycle
 
+assert var_x[0].v.t 0
+assert var_x[0].v.f 1
+assert var_x[1].v.t 0
+assert var_x[1].v.f 1
+assert var_x[2].v.t 0
+assert var_x[2].v.f 1
+assert var_x[3].v.t 0
+assert var_x[3].v.f 1
+assert var_x[4].v.t 0
+assert var_x[4].v.f 1
+assert var_x[5].v.t 0
+assert var_x[5].v.f 1
+assert var_x[6].v.t 0
+assert var_x[6].v.f 1
+assert var_x[7].v.t 0
+assert var_x[7].v.f 1
+assert var_y[0].v.t 0
+assert var_y[0].v.f 1
+assert var_y[1].v.t 0
+assert var_y[1].v.f 1
+assert var_y[2].v.t 0
+assert var_y[2].v.f 1
+assert var_y[3].v.t 0
+assert var_y[3].v.f 1
+assert var_y[4].v.t 0
+assert var_y[4].v.f 1
+assert var_y[5].v.t 0
+assert var_y[5].v.f 1
+assert var_y[6].v.t 0
+assert var_y[6].v.f 1
+assert var_y[7].v.t 0
+assert var_y[7].v.f 1
+assert var_z[0].v.t 0
+assert var_z[0].v.f 1
+assert var_z[1].v.t 0
+assert var_z[1].v.f 1
+assert var_z[2].v.t 0
+assert var_z[2].v.f 1
+assert var_z[3].v.t 0
+assert var_z[3].v.f 1
+assert var_z[4].v.t 0
+assert var_z[4].v.f 1
+assert var_z[5].v.t 0
+assert var_z[5].v.f 1
+assert var_z[6].v.t 0
+assert var_z[6].v.f 1
+assert var_z[7].v.t 0
+assert var_z[7].v.f 1
+set t.c_0.r 1
+set var_x[0].v.t 0
+set var_x[0].v.f 1
+set var_x[1].v.t 0
+set var_x[1].v.f 1
+set var_x[2].v.t 1
+set var_x[2].v.f 0
+set var_x[3].v.t 1
+set var_x[3].v.f 0
+set var_x[4].v.t 1
+set var_x[4].v.f 0
+set var_x[5].v.t 1
+set var_x[5].v.f 0
+set var_x[6].v.t 0
+set var_x[6].v.f 1
+set var_x[7].v.t 0
+set var_x[7].v.f 1
+set var_y[0].v.t 0
+set var_y[0].v.f 1
+set var_y[1].v.t 0
+set var_y[1].v.f 1
+set var_y[2].v.t 0
+set var_y[2].v.f 1
+set var_y[3].v.t 1
+set var_y[3].v.f 0
+set var_y[4].v.t 0
+set var_y[4].v.f 1
+set var_y[5].v.t 0
+set var_y[5].v.f 1
+set var_y[6].v.t 0
+set var_y[6].v.f 1
+set var_y[7].v.t 1
+set var_y[7].v.f 0
+cycle
 
-set o.in1.t 0
-set o.in1.f 1
-set o.in2.t 0
-set o.in2.f 1
-set a.in1.t 1
-set a.in1.f 0
-set a.in2.t 0
-set a.in2.f 1
-
-step
-assert a.out.f 1
-step
-assert o.out.f 1
-
-set o.in1.t 0
-set o.in1.f 1
-set o.in2.t 0
-set o.in2.f 1
-set a.in1.t 1
-set a.in1.f 0
-set a.in2.t 1
-set a.in2.f 0
-
-step
-step
-assert a.out.t 1
-step
-step
-assert o.out.t 0
-
+assert t.c_0.r 1
+assert t.c_0.a 0
+assert var_x[0].v.t 0
+assert var_x[0].v.f 1
+assert var_x[1].v.t 0
+assert var_x[1].v.f 1
+assert var_x[2].v.t 1
+assert var_x[2].v.f 0
+assert var_x[3].v.t 1
+assert var_x[3].v.f 0
+assert var_x[4].v.t 1
+assert var_x[4].v.f 0
+assert var_x[5].v.t 1
+assert var_x[5].v.f 0
+assert var_x[6].v.t 0
+assert var_x[6].v.f 1
+assert var_x[7].v.t 0
+assert var_x[7].v.f 1
+assert var_y[0].v.t 0
+assert var_y[0].v.f 1
+assert var_y[1].v.t 0
+assert var_y[1].v.f 1
+assert var_y[2].v.t 0
+assert var_y[2].v.f 1
+assert var_y[3].v.t 1
+assert var_y[3].v.f 0
+assert var_y[4].v.t 0
+assert var_y[4].v.f 1
+assert var_y[5].v.t 0
+assert var_y[5].v.f 1
+assert var_y[6].v.t 0
+assert var_y[6].v.f 1
+assert var_y[7].v.t 1
+assert var_y[7].v.f 0

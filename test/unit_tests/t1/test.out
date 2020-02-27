@@ -1,14 +1,66 @@
-	         0 a.out.t : 0
-	         0 a.in2.f : 1
-	         0 a.in2.t : 0
-	         0 a.in1.f : 0
-	         0 a.in1.t : 1
-	         0 o.in2.f : 1
-	         0 o.in2.t : 0
-	         0 a.out.f : 1
-	        20 o.out.f : 1  [by o._out.f:=0]
-	        20 a.in2.t : 1
-	        20 a.in2.f : 0
-	        40 a.out.t : 1  [by a._out.t:=0]
-	        60 o.out.t : 1  [by o._out.t:=0]
-WRONG ASSERT:	"o.out.t" has value 1 and not 0.
+	         0 Reset : 1
+	         0 _Reset : 0
+	        10 var_z[1].v.t : 0  [by Reset:=1]
+	        10 var_z[5].v.t : 0  [by Reset:=1]
+	        10 var_z[4].v.t : 0  [by Reset:=1]
+	        10 var_x[7].v.t : 0  [by Reset:=1]
+	        10 var_x[6].v.t : 0  [by Reset:=1]
+	        10 var_x[5].v.t : 0  [by Reset:=1]
+	        10 var_x[4].v.t : 0  [by Reset:=1]
+	        10 var_x[3].v.t : 0  [by Reset:=1]
+	        10 var_z[0].v.t : 0  [by Reset:=1]
+	        10 var_z[3].v.t : 0  [by Reset:=1]
+	        10 var_x[2].v.t : 0  [by Reset:=1]
+	        10 var_x[1].v.t : 0  [by Reset:=1]
+	        10 var_x[0].v.t : 0  [by Reset:=1]
+	        10 var_y[7].v.t : 0  [by Reset:=1]
+	        10 var_y[6].v.t : 0  [by Reset:=1]
+	        10 var_y[5].v.t : 0  [by Reset:=1]
+	        10 var_y[4].v.t : 0  [by Reset:=1]
+	        10 var_y[3].v.t : 0  [by Reset:=1]
+	        10 var_z[2].v.t : 0  [by Reset:=1]
+	        10 var_z[7].v.t : 0  [by Reset:=1]
+	        10 var_y[2].v.t : 0  [by Reset:=1]
+	        10 var_y[1].v.t : 0  [by Reset:=1]
+	        10 var_y[0].v.t : 0  [by Reset:=1]
+	        10 var_z[6].v.t : 0  [by Reset:=1]
+	        30 var_x[1].v.f : 1  [by var_x[1].v.t:=0]
+	        30 var_z[0].v.f : 1  [by var_z[0].v.t:=0]
+	        30 var_x[0].v.f : 1  [by var_x[0].v.t:=0]
+	        30 var_y[7].v.f : 1  [by var_y[7].v.t:=0]
+	        30 var_x[3].v.f : 1  [by var_x[3].v.t:=0]
+	        30 var_x[6].v.f : 1  [by var_x[6].v.t:=0]
+	        30 var_y[5].v.f : 1  [by var_y[5].v.t:=0]
+	        30 var_y[4].v.f : 1  [by var_y[4].v.t:=0]
+	        30 var_y[3].v.f : 1  [by var_y[3].v.t:=0]
+	        30 var_z[2].v.f : 1  [by var_z[2].v.t:=0]
+	        30 var_z[7].v.f : 1  [by var_z[7].v.t:=0]
+	        30 var_y[1].v.f : 1  [by var_y[1].v.t:=0]
+	        30 var_y[0].v.f : 1  [by var_y[0].v.t:=0]
+	        30 var_x[7].v.f : 1  [by var_x[7].v.t:=0]
+	        30 var_x[4].v.f : 1  [by var_x[4].v.t:=0]
+	        30 var_z[6].v.f : 1  [by var_z[6].v.t:=0]
+	        30 var_z[1].v.f : 1  [by var_z[1].v.t:=0]
+	        30 var_z[5].v.f : 1  [by var_z[5].v.t:=0]
+	        30 var_x[5].v.f : 1  [by var_x[5].v.t:=0]
+	        30 var_z[4].v.f : 1  [by var_z[4].v.t:=0]
+	        30 var_x[2].v.f : 1  [by var_x[2].v.t:=0]
+	        30 var_y[6].v.f : 1  [by var_y[6].v.t:=0]
+	        30 var_y[2].v.f : 1  [by var_y[2].v.t:=0]
+	        30 var_z[3].v.f : 1  [by var_z[3].v.t:=0]
+	        50 t.c_0.a : 0  [by t.ct_6.r._out:=1]
+	       120 Reset : 0
+	       120 _Reset : 1
+	       250 t.c_0.r : 1
+	       250 var_y[7].v.f : 0
+	       250 var_x[2].v.f : 0
+	       250 var_x[4].v.f : 0
+	       250 var_x[4].v.t : 1
+	       250 var_y[7].v.t : 1
+	       250 var_x[2].v.t : 1
+	       250 var_x[3].v.f : 0
+	       250 var_y[3].v.f : 0
+	       250 var_y[3].v.t : 1
+	       250 var_x[3].v.t : 1
+	       250 var_x[5].v.f : 0
+	       250 var_x[5].v.t : 1

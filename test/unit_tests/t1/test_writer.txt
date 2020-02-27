@@ -1,0 +1,5 @@
+bool t.c_0.r n,n, 1,1
+bool t.c_0.a n,n, n,0
+syn_var var_x[8] nnnnnnnn,00000000 00111100,00111100
+syn_var var_y[8] nnnnnnnn,00000000 00010001,00010001
+syn_var var_z[8] nnnnnnnn,00000000 nnnnnnnn,nnnnnnnn, 
