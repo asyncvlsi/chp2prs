@@ -8,10 +8,10 @@ runtest:
 	fi
 
 prsimunit:
-	echo $(unit)
-	@if [ -x $ACT_HOME/bin/test_writer -a -d unit_tests/$unit ] ; \
+	@if [ -x $(ACT_HOME)/bin/test_writer -a -d unit_tests/$unit -a -f unit_tests/$unit/test_writer.txt ] ; \
 	then \
-		($ACT_HOME/bin/test_writer unit_tests/$unit/test_writer.txt unit_tests/$unit/test.prsim --prsim --reset --_reset)
+		($(ACT_HOME)/bin/test_writer unit_tests/$unit/test_writer.txt unit_tests/$unit/test.prsim --prsim --reset --_reset); \
+	fi
 	
 
 #	ls

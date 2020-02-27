@@ -303,5 +303,8 @@ void check (act_chp_lang_t *c)
 void check_chp(Process *p)
 {
   P = p;
-  check(p->lang->getchp()->c);
+  if (p->lang != NULL && p->lang->getchp() != NULL)
+  {
+    check(p->lang->getchp()->c);
+  }
 }
