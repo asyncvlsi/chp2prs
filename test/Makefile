@@ -1,21 +1,19 @@
-
-runtest:
-	@if [ -x run.sh ] ; \
+testchp:
+	@if [ -d test -a -x test/run.sh ] ; \
 	then \
-		(./run.sh);\
+		(cd test/; ./run.sh);\
 	else \
 		(echo "Error: no run.sh file") \
 	fi
-
-prsimunit:
-	@if [ -x $(ACT_HOME)/bin/test_writer -a -d unit_tests/$unit -a -f unit_tests/$unit/test_writer.txt ] ; \
-	then \
-		($(ACT_HOME)/bin/test_writer unit_tests/$unit/test_writer.txt unit_tests/$unit/test.prsim --prsim --reset --_reset); \
-	fi
 	
-
-#	ls
-#	./aflat "test.act" > "test2.prs"
-#    ./prsim "test2.prs"
-#    source "test2.prsim"
-#    echo "test 2 complete"
+prsimscr:
+	@if [ -x ${ACT_HOME}/bin/test_writer -a -d test -a -d test/unit_tests -a -d test/unit_tests/${unit} ] ; \
+	then \
+		if [ -f test/unit_tests/${unit}/test_writer.txt ] ; \
+		then \
+			(echo "Creating ${unit} prsim script..."); \
+			(${ACT_HOME}/bin/test_writer test/unit_tests/${unit}/test_writer.txt test/unit_tests/${unit}/test.prsim --prsim --reset --_reset); \
+		fi \
+	else \
+		(echo "ERROR: no test writer executable or correct unit folder"); \
+	fi

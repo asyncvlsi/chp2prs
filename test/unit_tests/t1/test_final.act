@@ -1,4 +1,5 @@
-import "syn.act";
+import syn;
+
 syn::var_init_false var_x[8];
 syn::var_init_false var_y[8];
 syn::var_init_false var_z[8];

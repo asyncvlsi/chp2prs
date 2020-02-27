@@ -1,4 +1,5 @@
-import "syn.act";
+import syn;
+
 a1of1 c_0;
 defproc toplevel (a1of1 go)
 {

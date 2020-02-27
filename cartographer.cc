@@ -1194,7 +1194,7 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   }
 
   /* TODO - print import statements and wrapper process declaration */
-  fprintf(output_stream, "import \"%ssyn.act\";\n", ACT_LIB_PATH);
+  fprintf(output_stream, "import \"%ssyn\";\n", ACT_LIB_PATH);
   if (bundle_data) fprintf(output_stream, "import \"%sbundled.act\";\n", ACT_LIB_PATH);
   fprintf(output_stream, "\n");
   fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");

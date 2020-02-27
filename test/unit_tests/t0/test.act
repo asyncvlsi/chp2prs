@@ -1,6 +1,4 @@
-import "syn.act";
-import "globals.act";
-import "channel.act";
+import syn;
 
 syn::expr_and a;
 
