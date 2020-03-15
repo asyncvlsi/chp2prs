@@ -33,9 +33,13 @@ using the libraries provided.
 
 The conversion is accomplished using syntax-directed translation, which is jusfitied using direct process decomposition.
 
-### Notes
+### Notes and Installation
 
-This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act), please see the installation instructions [here](http://avlsi.csl.yale.edu/act/doku.php?id=install).
+This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act).
+
+   * Please install the ACT toolkit first; installation instructions are [here](https://github.com/asyncvlsi/act/README.md).
+   * Build this program using the standard ACT tool install instructions [here](https://github.com/asyncvlsi/act/README_tool.md).
+
 
 ### License
 
