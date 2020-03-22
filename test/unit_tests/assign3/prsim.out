@@ -1,0 +1,28 @@
+	         0 Reset : 1
+	         0 var_y.v.f : 0
+WARNING: unstable `var_x.v.f'-
+>> cause: var_x.v.t (val: 0)
+>> time:          0
+	         0 var_x.v.t : 0
+	         0 _Reset : 0
+	         0 var_y.v.t : 0
+	         0 var_x.v.f : X  [by var_x.v.t:=0]
+	        20 var_y.v.f : 1  [by var_y.v.t:=0]
+	        80 Reset : 0
+	        80 _Reset : 1
+	       230 var_x.v.f : 1
+	       230 var_y.v.t : 1
+WARNING: unstable `var_y.v.t'-
+>> cause: var_y.v.f (val: 0)
+>> time:        230
+	       230 var_y.v.f : 0
+	       240 var_y.v.t : X  [by var_y.v.f:=0]
+WRONG ASSERT:	"var_y.v.t" has value X and not 1.
+	       240 var_x.v.t : 1
+	       240 var_y.v.t : 1
+WARNING: unstable `var_x.v.t'-
+>> cause: var_x.v.f (val: 0)
+>> time:        240
+	       240 var_x.v.f : 0
+	       250 var_x.v.t : X  [by var_x.v.f:=0]
+WRONG ASSERT:	"var_x.v.t" has value X and not 1.

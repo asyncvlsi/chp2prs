@@ -18,6 +18,7 @@ then
     cd "unit_tests"
     
     # loop through tests
+    # each test MUST have: test.act, test.prsim, proc.txt in order to run
     for i in *
     do
         echo "========================="
@@ -29,10 +30,10 @@ then
                 echo "... creating test.prs"
                 touch "$i/test.prs"
             fi
-            if [ ! -f $i/"test.out" ];
+            if [ ! -f $i/"prsim.out" ];
             then
-                echo "... creating test.out"
-                touch "$i/test.out"
+                echo "... creating prsim.out"
+                touch "$i/prsim.out"
             fi
             if [ ! -f $i/"test_out.act" ];
             then
@@ -72,16 +73,16 @@ then
                     # check aflat
                     if ($ACT_HOME/bin/aflat "$i/test_final.act" > "$i/test.prs");
                     then
-                        echo "... aflat passes, checking prsim"
+                        echo "... aflat complete, checking in prsim"
                         
                       # run prsim on prs
-                        (($ACT_HOME/bin/prsim "$i/test.prs" < "$i/test.prsim") > "$i/test.out");
-                        if (cat "$i/test.out" | grep -e "WRONG ASSERT" -e "FATAL" -e "not found")
+                        (($ACT_HOME/bin/prsim "$i/test.prs" < "$i/test.prsim") > "$i/prsim.out");
+                        if (cat "$i/prsim.out" | grep -e "WRONG ASSERT" -e "FATAL" -e "not found")
                         then
                             echo ""
                             echo "==> test ${und}FAILED${normal} prsim running aflat prs."
                             fail=`expr $fail + 1`
-                            faildirs="$i $faildirs"
+                            faildirs="$faildirs $i"
                         else
                             echo ""
                             echo "==> test ${und}~PASSED~${normal} prsim running chp2prs prs!!!"
@@ -90,30 +91,32 @@ then
                         echo ""
                         echo "==> test ${und}FAILED${normal} in aflat conversion."
                         fail=`expr $fail + 1`
-                        faildirs="$i $faildirs"
+                        faildirs="$faildirs $i"
                     fi
                 else
                     echo ""
                     echo "==> test ${und}FAILED${normal} in chp2prs conversion."
                     fail=`expr $fail + 1`
-                    faildirs="$i $faildirs"
+                    faildirs="$faildirs $i"
                 fi
             else
                 echo "${und}ERROR${normal}: no test.prsim"
+                fail=`expr $fail + 1`
+                faildirs="$faildirs $i"
             fi
         else
-            echo ""
-            echo "==> ${und}ERROR${normal}: missing .act or proc.txt in test folder $i"
+#            echo ""
+            echo "${und}ERROR${normal}: missing test.act or proc.txt in test folder $i"
             fail=`expr $fail + 1`
-            faildirs="$i $faildirs"
+            faildirs="$faildirs $i"
         fi
     done
     (cd "..");
     
     echo ""
     echo "*******************************"
-    echo "* ${bold}Number of directories that failed:${normal} $fail"
-    echo "* ${bold}Directories:${normal} $faildirs"
+    echo "* ${bold}# FAILED DIRECTORS:${normal} $fail"
+    echo "* ${bold}FAILED DIRECTORIES:${normal}$faildirs"
     echo "*******************************"
 else
     echo "Error: no unit_tests directory."

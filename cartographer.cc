@@ -1167,8 +1167,6 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
 
 void generate_act(Process *p, const char *output_file, bool bundled, int opt)
 {
-  printf("........ CHP IS NULL? %d %d, outfile is: %s\n", p->lang != NULL, p->lang != NULL && p->lang->getchp() != NULL, output_file); // amanda
-    
   struct act_chp *chp = NULL;
   if (p->lang != NULL && p->lang->getchp() != NULL)
     chp = p->lang->getchp();
@@ -1194,8 +1192,8 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   }
 
   /* TODO - print import statements and wrapper process declaration */
-  fprintf(output_stream, "import \"%ssyn\";\n", ACT_LIB_PATH);
-  if (bundle_data) fprintf(output_stream, "import \"%sbundled.act\";\n", ACT_LIB_PATH);
+  fprintf(output_stream, "import syn;\n");
+  if (bundle_data) fprintf(output_stream, "import bundled.act;\n");
   fprintf(output_stream, "\n");
   fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");
   

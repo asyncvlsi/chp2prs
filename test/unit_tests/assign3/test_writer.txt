@@ -1,0 +1,2 @@
+syn_var var_x 0,0 0,0 1,1
+syn_var var_y 0,0 1,1 1,1

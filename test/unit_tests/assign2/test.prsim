@@ -1,0 +1,38 @@
+initialize
+watch Reset
+watch _Reset
+watch t.c_0.r
+watch t.c_0.a
+watch var_x.v.t
+watch var_x.v.f
+set_principal t.c_0.r
+set_principal t.c_0.a
+set_principal var_x.v.t
+set_principal var_x.v.f
+
+mode reset
+set Reset 1
+set _Reset 0
+cycle
+set t.c_0.r 0
+cycle
+assert t.c_0.r 0
+set Reset 0
+set _Reset 1
+cycle
+
+mode run
+assert t.c_0.a 0
+assert var_x.v.t 0
+assert var_x.v.f 1
+set t.c_0.r 1
+cycle
+
+assert t.c_0.r 1
+assert var_x.v.t 0
+assert var_x.v.f 1
+cycle
+
+assert t.c_0.a 1
+assert var_x.v.t 1
+assert var_x.v.f 0

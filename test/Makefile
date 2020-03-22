@@ -6,6 +6,7 @@ testchp:
 		(echo "Error: no run.sh file") \
 	fi
 	
+# set unit as test directory when running... EG: `make prsim unit=test0`
 prsimscr:
 	@if [ -x ${ACT_HOME}/bin/test_writer -a -d test -a -d test/unit_tests -a -d test/unit_tests/${unit} ] ; \
 	then \

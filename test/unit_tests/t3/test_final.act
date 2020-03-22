@@ -1,9 +1,0 @@
-import syn;
-
-a1of1 c_0;
-defproc toplevel (a1of1 go)
-{
-  go = c_0;
-}
-
-toplevel t;

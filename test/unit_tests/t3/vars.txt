@@ -1,3 +1,0 @@
-import syn;
-
-a1of1 c_0;

@@ -1,0 +1,64 @@
+import syn;
+
+syn::var_init_false var_x;
+syn::var_init_false var_y;
+defproc toplevel (a1of1 go)
+{
+  /* semicolon */
+  a1of1 c_0;
+
+  /* assign */
+  syn::var_init_true const_1;
+  syn::expr_var e_1;
+  e_1.v = const_1.v;
+  a1of1 c_1;
+  syn::fullseq s_1;
+  c_1.r = s_1.go.r;
+  syn::recv rtv_1;
+  syn::expr_var e_2;
+  syn::var_init_false tv_1;
+  tv_1.v = rtv_1.v;
+  e_2.v = tv_1.v;
+  s_1.r.r = e_1.go_r;
+  s_1.r = rtv_1.go;
+  e_1.out.t = rtv_1.in.t;
+  e_1.out.f = rtv_1.in.f;
+  s_1.go.a = e_2.go_r;
+  syn::recv s_0;
+  s_0.go = c_1;
+  s_0.in.t = e_2.out.t;
+  s_0.in.f = e_2.out.f;
+  s_0.v = var_y.v;
+
+  syn::seq s_2;
+  s_2.go = c_0;
+  s_2.s1 = c_1;
+
+  /* assign */
+  syn::expr_var e_3;
+  e_3.v = var_y.v;
+  a1of1 c_2;
+  syn::fullseq s_4;
+  c_2.r = s_4.go.r;
+  syn::recv rtv_4;
+  syn::expr_var e_4;
+  syn::var_init_false tv_4;
+  tv_4.v = rtv_4.v;
+  e_4.v = tv_4.v;
+  s_4.r.r = e_3.go_r;
+  s_4.r = rtv_4.go;
+  e_3.out.t = rtv_4.in.t;
+  e_3.out.f = rtv_4.in.f;
+  s_4.go.a = e_4.go_r;
+  syn::recv s_3;
+  s_3.go = c_2;
+  s_3.in.t = e_4.out.t;
+  s_3.in.f = e_4.out.f;
+  s_3.v = var_x.v;
+
+  s_2.s2 = c_2;
+
+  go = c_0;
+}
+
+toplevel t;

@@ -1,0 +1,19 @@
+
+
+defproc assignment5 () {
+  /* vars
+   int<1> x;
+   int<1> y;
+   int<1> z;
+  */
+
+  chp {
+    x:=0; 
+    y:=1;
+    z:=y;
+    x:=(y & z);
+  }
+
+}
+
+assignment5 a;

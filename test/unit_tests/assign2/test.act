@@ -1,0 +1,11 @@
+
+
+defproc assignment2 () {
+  int<1> x;
+  
+  chp {
+    x:=1
+  }
+}
+
+assignment2 a;
