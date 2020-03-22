@@ -57,56 +57,50 @@ then
                     ($ACT_HOME/bin/test_writer "$i/test_writer.txt" "$i/test.prsim" --prsim --reset --_reset);
                 fi
             fi
-            if [ -f $i/"test.prsim" ];
+
+            # run chp2prs
+            proc=$(cat "$i/proc.txt")
+            echo "... checking chp2prs for proc $proc"
+            if (../../chp2prs.i386_darwin19_2_0 "$i/test.act" $proc "$i/test_out.act");
             then
-                # run chp2prs
-                proc=$(cat "$i/proc.txt")
-                echo "... checking chp2prs for proc $proc"
-                if (../../chp2prs.i386_darwin19_2_0 "$i/test.act" $proc "$i/test_out.act");
+                echo "... chp2prs complete, adding vars"
+#                (grep -e "import" "$i/test_out.act" > "$i/test_final.act"); # syn.act line
+                (cat "$i/vars.txt" > "$i/test_final.act");
+                (tail -n +3 "$i/test_out.act" >> "$i/test_final.act");
+                echo "... vars complete, checking aflat"
+                
+                # check aflat
+                if ($ACT_HOME/bin/aflat "$i/test_final.act" > "$i/test.prs");
                 then
-                    echo "... chp2prs complete, adding vars"
-    #                (grep -e "import" "$i/test_out.act" > "$i/test_final.act"); # syn.act line
-                    (cat "$i/vars.txt" > "$i/test_final.act");
-                    (tail -n +3 "$i/test_out.act" >> "$i/test_final.act");
-                    echo "... vars complete, checking aflat"
+                    echo "... aflat complete, checking in prsim"
                     
-                    # check aflat
-                    if ($ACT_HOME/bin/aflat "$i/test_final.act" > "$i/test.prs");
+                  # run prsim on prs
+                    (($ACT_HOME/bin/prsim "$i/test.prs" < "$i/test.prsim") > "$i/prsim.out");
+                    if (cat "$i/prsim.out" | grep -e "WRONG ASSERT" -e "FATAL" -e "not found")
                     then
-                        echo "... aflat complete, checking in prsim"
-                        
-                      # run prsim on prs
-                        (($ACT_HOME/bin/prsim "$i/test.prs" < "$i/test.prsim") > "$i/prsim.out");
-                        if (cat "$i/prsim.out" | grep -e "WRONG ASSERT" -e "FATAL" -e "not found")
-                        then
-                            echo ""
-                            echo "==> test ${und}FAILED${normal} prsim running aflat prs."
-                            fail=`expr $fail + 1`
-                            faildirs="$faildirs $i"
-                        else
-                            echo ""
-                            echo "==> test ${und}~PASSED~${normal} prsim running chp2prs prs!!!"
-                        fi
-                    else
                         echo ""
-                        echo "==> test ${und}FAILED${normal} in aflat conversion."
+                        echo "==> test ${und}FAILED${normal} prsim running aflat prs."
                         fail=`expr $fail + 1`
                         faildirs="$faildirs $i"
+                    else
+                        echo ""
+                        echo "==> test ${und}~PASSED~${normal} prsim running chp2prs prs!!!"
                     fi
                 else
                     echo ""
-                    echo "==> test ${und}FAILED${normal} in chp2prs conversion."
+                    echo "==> test ${und}FAILED${normal} in aflat conversion."
                     fail=`expr $fail + 1`
                     faildirs="$faildirs $i"
                 fi
             else
-                echo "${und}ERROR${normal}: no test.prsim"
+                echo ""
+                echo "==> test ${und}FAILED${normal} in chp2prs conversion."
                 fail=`expr $fail + 1`
                 faildirs="$faildirs $i"
             fi
         else
 #            echo ""
-            echo "${und}ERROR${normal}: missing test.act or proc.txt in test folder $i"
+            echo "${und}ERROR${normal}: missing test.act, test.prsim, or proc.txt in test folder $i"
             fail=`expr $fail + 1`
             faildirs="$faildirs $i"
         fi

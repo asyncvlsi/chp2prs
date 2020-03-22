@@ -1,0 +1,16 @@
+Unit Test Structure
+-------------------
+Each test has a dedicated directory.
+In each directory, there are the following files:
+[ Necessary Inputs ]
+  - test.act = the file to be conerted via the chp2prs executable into prs
+  - proc.txt = a file with the name of the component to be converted by the chp2prs executable
+  - test.prsim = the prsim file to test the output of the chp2prs prs
+  - vars.txt = the temporary way to add the necessary variable initializations for test_final.act
+[ Outputted Files ]
+  - test_out.act = the raw .act outputted by the chp2prs executable
+  - test_final.act = the test_out.act file with vars.txt prepended to the file
+  - test.prs = the production rules created from aflat of test_final.act
+  - prsim.out = the stdout from running the prsim test
+[ Optional Files ]
+  - test_writer.txt = a file used to create the test.prsim for the unit test
