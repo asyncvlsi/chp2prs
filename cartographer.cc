@@ -28,6 +28,8 @@
 #include <ctype.h>
 #include <act/types.h>
 #include "cartographer.h"
+#include <act/iter.h>
+#include <act/value.h>
 
 
 /*
@@ -72,7 +74,7 @@ void initialize_vars(struct act_chp *c)
   int i;
   symbol *sym;
 
-  if (!c || !c->sym)
+  if (c == NULL || c->sym == NULL)
     return;
   if (c->sym->n == 0)
     return;
@@ -483,7 +485,8 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         /* otherwise, the current expression is connected to the base go signal */
         else
         {
-          fprintf(output_stream, "  e_%d.go_r = e_%d.go.r;\n", expr_count, *base_var);
+          fprintf(output_stream, "  /* testpoint 8 */\n");
+          fprintf(output_stream, "  e_%d.go_r = e_%d.go_r;\n", expr_count, *base_var); // replaced go.r with go_r 4/8
         }
       }
       /* recieve variable into a mult-bit bundled latch */
@@ -543,7 +546,8 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         /* otherwise, the current expression is connected to the base go signal */
         else
         {
-          fprintf(output_stream, "  e_%d.go_r = e_%d.go.r;\n", expr_count, *base_var);
+          fprintf(output_stream, "  /* testpoint 9 */\n");
+          fprintf(output_stream, "  e_%d.go_r = e_%d.go_r;\n", expr_count, *base_var); // replaced go.r with go_r 4/8
         }
       }
       /* initialize a multi-bit bundled latch */
@@ -686,6 +690,7 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       /* otherwise, the current expression is connected to the base go signal */
       else
       {
+        fprintf(output_stream, "  /* testpoint 10 */\n");
         fprintf(output_stream, "  e_%d.go_r = e_%d.go.r;\n", expr_count, *base_var);
       }
       ret = expr_count++;
@@ -710,6 +715,7 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
   int seq = stmt_count++;
   int evar = expr_count++;
 
+  fprintf(output_stream, "  /* testpoint 1 */\n");
   fprintf(output_stream, "  syn::fullseq s_%d;\n", seq);
   fprintf(output_stream, "  %s = s_%d.go.r;\n", req, seq);
 
@@ -732,6 +738,7 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
     fprintf(output_stream, "  syn::var_init_false tv_%d[%d];\n", seq, bits);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = tv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = brtv_%d.v[i];)\n", bits, evar, seq);
+    fprintf(output_stream, "  /* testpoint 2 */\n");
     fprintf(output_stream, "  s_%d.r.r = brtv_%d.go.r;\n", seq, seq);
     fprintf(output_stream, "  s_%d.r.a = brtv_%d.go.a;\n", seq, seq);
     fprintf(output_stream, "  (i:%d: e_%d.out[i].t = brtv_%d.in.d[i].t;\n", bits, eout, seq);
@@ -745,6 +752,7 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = tv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = rtv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
+    fprintf(output_stream, "  /* testpoint 3 */\n");
     fprintf(output_stream, "  (i:%d: s_%d.r.r = rtv_%d[i].go.r;)\n", bits, seq, seq);
     fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", bits, seq);
     fprintf(output_stream, "  (i:%d: ct_%d.in[i] = rtv_%d[i].go.a;)\n", bits, seq, seq);
@@ -973,6 +981,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       else if (bundle_data)
       {
         fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), b);
+        fprintf(output_stream, "  /* testpoint 4 */\n");
         fprintf(output_stream, "  s_%d.go.r = e_%d.go_r;\n", b, a);
         fprintf(output_stream, "  s_%d.go.a = c_%d.a;\n", b, ret);
         fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
@@ -982,6 +991,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       else
       {
         fprintf(output_stream, "  syn::recv s_%d[%d];\n", b, TypeFactory::bitWidth(v));
+        fprintf(output_stream, "  /* testpoint 5 */\n");
         fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), b, ret);
         fprintf(output_stream, "  (i:%d: s_%d[i].in.t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
         fprintf(output_stream, "       %*cs_%d[i].in.f = e_%d.out[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, a);
@@ -1073,6 +1083,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         else if (bundle_data)
         {
           fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), a);
+          fprintf(output_stream, "  /* testpoint 6 */\n");
           fprintf(output_stream, "  s_%d.go.r = c_%d.r;\n", a, ret);
           fprintf(output_stream, "  s_%d.go.a = c_%d.a; c_%d.a = chan_%s.a;\n", a, ret, ret, c->u.comm.chan->getName());
           fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = chan_%s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
@@ -1082,6 +1093,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         else
         {
           fprintf(output_stream, "  syn::recv s_%d[%d];\n", a, TypeFactory::bitWidth(v));
+          fprintf(output_stream, "  /* testpoint 7 */\n");
           fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), a, ret);
           fprintf(output_stream, "  (i:%d: s_%d[i].in.t = chan_%s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
           fprintf(output_stream, "       %*cs_%d[i].in.f = chan_%s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
@@ -1190,16 +1202,39 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   {
     output_stream = stdout;
   }
-
+  
   /* TODO - print import statements and wrapper process declaration */
   fprintf(output_stream, "import syn;\n");
   if (bundle_data) fprintf(output_stream, "import bundled.act;\n");
   fprintf(output_stream, "\n");
   fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");
   
-  /* TODO - initialize all variables and channels */
-  // if (chp != NULL)
-  //   initialize_vars(chp);
+  /* initialize all variables and channels */
+  ActInstiter iter(p->CurScope());
+  int bw = 0;
+  
+  fprintf(output_stream, "/* Initialize chp vars */\n");
+
+  /* iterate through Scope Hashtable to find all chp variables */
+  for (iter = iter.begin(); iter != iter.end(); iter++) {
+    ValueIdx *vx = *iter;
+    if (TypeFactory::isChanType (vx->t)) {
+      bw = TypeFactory::bitWidth(vx->t);
+      if (bw == 1) {
+        fprintf(output_stream, "  aN1of2 chan_%s;\n", vx->getName());
+      } else if (bw > 1) {
+        fprintf(output_stream, "  aN1of2<%d> chan_%s;\n", bw, vx->getName());
+      }
+    } else if (TypeFactory::isIntType (vx->t)) {
+      bw = TypeFactory::bitWidth(vx->t);
+      if (bw == 1) {
+        fprintf(output_stream, "  syn::var_init_false var_%s;\n", vx->getName());
+      } else if (bw > 1) {
+        fprintf(output_stream, "  syn::var_init_false var_%s[%d];\n", vx->getName(), bw);
+      }
+    }
+  }
+  fprintf(output_stream, "\n");
 
   int *bitwidth = (int *) calloc(1, sizeof(int));
   int *base_var = (int *) calloc(1, sizeof(int));
