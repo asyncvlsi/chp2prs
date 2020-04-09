@@ -28,6 +28,8 @@
 #include <ctype.h>
 #include <act/types.h>
 #include "cartographer.h"
+#include <act/iter.h>
+#include <act/value.h>
 
 
 /*
@@ -53,7 +55,8 @@ static int optimization = 0;
 
 static struct Hashtable *evaluated_exprs;
 
-#define ACT_LIB_PATH "lib/"
+//#define ACT_LIB_PATH "lib/"
+#define ACT_LIB_PATH ""
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 
@@ -71,7 +74,7 @@ void initialize_vars(struct act_chp *c)
   int i;
   symbol *sym;
 
-  if (!c || !c->sym)
+  if (c == NULL || c->sym == NULL)
     return;
   if (c->sym->n == 0)
     return;
@@ -101,11 +104,11 @@ void initialize_vars(struct act_chp *c)
       {
         if (sym->bitwidth > 1)
         {
-          fprintf(output_stream, "  syn_var_init_false var_%s[%d];\n", sym->name, sym->bitwidth);
+          fprintf(output_stream, "  syn::var_init_false var_%s[%d];\n", sym->name, sym->bitwidth);
         }
         else
         {
-          fprintf(output_stream, "  syn_var_init_false var_%s;\n", sym->name);
+          fprintf(output_stream, "  syn::var_init_false var_%s;\n", sym->name);
         }
       }
     }
@@ -119,7 +122,7 @@ void emit_const_1(void)
   static int emitted = 0;
   if (!emitted)
   {
-    fprintf(output_stream, "  syn_var_init_true const_1;\n");
+    fprintf(output_stream, "  syn::var_init_true const_1;\n");
   }
   emitted = 1;
 }
@@ -129,7 +132,7 @@ void emit_const_0(void)
   static int emitted = 0;
   if (!emitted)
   {
-    fprintf(output_stream, "  syn_var_init_false const_0;\n");
+    fprintf(output_stream, "  syn::var_init_false const_0;\n");
   }
   emitted = 1;
 }
@@ -339,7 +342,7 @@ int unop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay)
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, NULL, l, -1, false);
       if (ret > 0) return ret;
     }
-    fprintf(output_stream, "  syn_expr_%s e_%d;\n", s, expr_count);
+    fprintf(output_stream, "  syn::expr_%s e_%d;\n", s, expr_count);
     fprintf(output_stream, "  e_%d.in = e_%d.out;\n", expr_count, l);
   }
   /* print ACT module for multi-bit unary operations with the bundle data protocol */
@@ -358,27 +361,38 @@ int unop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay)
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, NULL, l, -1, false);
       if (ret > 0) return ret;
     }
-    fprintf(output_stream, "  syn_%s<%d> e_%d;\n", s, *bitwidth, expr_count);
+    fprintf(output_stream, "  syn::%s<%d> e_%d;\n", s, *bitwidth, expr_count);
     fprintf(output_stream, "  (i:%d: e_%d.in[i] = e_%d.out[i];)\n", *bitwidth, expr_count, l);
   }
 
   return expr_count++;
 }
 
-int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool commutative)
+int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool commutative, bool alwayssize)
 {
   int l = _print_expr(e->u.e.l, bitwidth, base_var, delay);
   int r = _print_expr(e->u.e.r, bitwidth, base_var, delay);
 
+  /* Handle expr_ with only template<N> declarations */
+  if (alwayssize && *bitwidth == 1) {
+    if (optimization > 0)
+    {
+      int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
+      if (ret > 0) return ret;
+    }
+    fprintf(output_stream, "  syn::expr_%s<1> e_%d;\n", s, expr_count);
+    fprintf(output_stream, "  e_%d.in1 = {e_%d.out};\n", expr_count, l);
+    fprintf(output_stream, "  e_%d.in2 = {e_%d.out};\n", expr_count, r);
+  }
   /* print ACT module for boolean binary operations */
-  if (*bitwidth == 1)
+  else if (*bitwidth == 1)
   {
     if (optimization > 0)
     {
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-    fprintf(output_stream, "  syn_expr_%s e_%d;\n", s, expr_count);
+    fprintf(output_stream, "  syn::expr_%s e_%d;\n", s, expr_count);
     fprintf(output_stream, "  e_%d.in1 = e_%d.out;\n", expr_count, l);
     fprintf(output_stream, "  e_%d.in2 = e_%d.out;\n", expr_count, r);
   }
@@ -401,7 +415,7 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-    fprintf(output_stream, "  syn_%s<%d> e_%d;\n", s, *bitwidth, expr_count);
+    fprintf(output_stream, "  syn::%s<%d> e_%d;\n", s, *bitwidth, expr_count);
     fprintf(output_stream, "  (i:%d: e_%d.in1[i] = e_%d.out[i];)\n", *bitwidth, expr_count, l);
     fprintf(output_stream, "  (i:%d: e_%d.in2[i] = e_%d.out[i];)\n", *bitwidth, expr_count, r);
   }
@@ -415,22 +429,22 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
   switch (e->type)
   {
     case E_AND:
-      ret = binop("and", e, bitwidth, base_var, delay, true);
+      ret = binop("and", e, bitwidth, base_var, delay, true, false);
       break;
     case E_OR:
-      ret = binop("or", e, bitwidth, base_var, delay, true);
+      ret = binop("or", e, bitwidth, base_var, delay, true, false);
       break;
     case E_XOR:
-      ret = binop("xor", e, bitwidth, base_var, delay, true);
+      ret = binop("xor", e, bitwidth, base_var, delay, true, false);
       break;
     case E_PLUS:
-      ret = binop("add", e, bitwidth, base_var, delay, true);
+      ret = binop("add", e, bitwidth, base_var, delay, true, false);
       break;
     case E_MINUS:
-      ret = binop("sub", e, bitwidth, base_var, delay, false);
+      ret = binop("sub", e, bitwidth, base_var, delay, false, false);
       break;
     case E_MULT:
-      ret = binop("mul", e, bitwidth, base_var, delay, true);
+      ret = binop("mul", e, bitwidth, base_var, delay, true, false);
       break;
     case E_NOT:
     case E_COMPLEMENT:
@@ -440,22 +454,22 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       ret = unop("uminus", e, bitwidth, base_var, delay);
       break;
     case E_EQ:
-      ret = binop("eq", e, bitwidth, base_var, delay, true);
+      ret = binop("eq", e, bitwidth, base_var, delay, true, true);
       break;
     case E_NE:
-      ret = binop("ne", e, bitwidth, base_var, delay, true);
+      ret = binop("ne", e, bitwidth, base_var, delay, true, true);
       break;
     case E_LT:
-      ret = binop("lt", e, bitwidth, base_var, delay, false);
+      ret = binop("lt", e, bitwidth, base_var, delay, false, true);
       break;
     case E_GT:
-      ret = binop("gt", e, bitwidth, base_var, delay, false);
+      ret = binop("gt", e, bitwidth, base_var, delay, false, true);
       break;
     case E_LE:
-      ret = binop("le", e, bitwidth, base_var, delay, false);
+      ret = binop("le", e, bitwidth, base_var, delay, false, true);
       break;
     case E_GE:
-      ret = binop("ge", e, bitwidth, base_var, delay, false);
+      ret = binop("ge", e, bitwidth, base_var, delay, false, true);
       break;
     case E_VAR:
     {
@@ -472,7 +486,7 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       /* receive variable into a boolean latch */
       if (TypeFactory::bitWidth(it) == 1)
       {
-        fprintf(output_stream, "  syn_expr_var e_%d;\n", expr_count);
+        fprintf(output_stream, "  syn::expr_var e_%d;\n", expr_count);
         fprintf(output_stream, "  e_%d.v = var_%s.v;\n", expr_count, ((ActId *) e->u.e.l)->getName());
         /* the current expression becomes the base go signal, if none is set */
         if (*base_var == -1)
@@ -482,7 +496,8 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         /* otherwise, the current expression is connected to the base go signal */
         else
         {
-          fprintf(output_stream, "  e_%d.go_r = e_%d.go.r;\n", expr_count, *base_var);
+          fprintf(output_stream, "  /* testpoint 8 */\n");
+          fprintf(output_stream, "  e_%d.go_r = e_%d.go_r;\n", expr_count, *base_var); // replaced go.r with go_r 4/8
         }
       }
       /* recieve variable into a mult-bit bundled latch */
@@ -494,7 +509,7 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       /* receive variable into a multi-bit delay-insensitive latch */
       else
       {
-        fprintf(output_stream, "  syn_expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(it), expr_count);
+        fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(it), expr_count);
         fprintf(output_stream, "  (i:%d: e_%d.v[i] = var_%s[i].v;)\n", TypeFactory::bitWidth(it), expr_count, ((ActId *) e->u.e.l)->getName());
         /* the current expression becomes the base go signal, if none is set */
         if (*base_var == -1)
@@ -525,13 +540,13 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         if (e->u.v == 0)
         {
           emit_const_0();
-          fprintf(output_stream, "  syn_expr_var e_%d;\n", expr_count);
+          fprintf(output_stream, "  syn::expr_var e_%d;\n", expr_count);
           fprintf(output_stream, "  e_%d.v = const_0.v;\n", expr_count);
         }
         else
         {
           emit_const_1();
-          fprintf(output_stream, "  syn_expr_var e_%d;\n", expr_count);
+          fprintf(output_stream, "  syn::expr_var e_%d;\n", expr_count);
           fprintf(output_stream, "  e_%d.v = const_1.v;\n", expr_count);
         }
         /* the current expression becomes the base go signal, if none is set */
@@ -542,7 +557,8 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         /* otherwise, the current expression is connected to the base go signal */
         else
         {
-          fprintf(output_stream, "  e_%d.go_r = e_%d.go.r;\n", expr_count, *base_var);
+          fprintf(output_stream, "  /* testpoint 9 */\n");
+          fprintf(output_stream, "  e_%d.go_r = e_%d.go_r;\n", expr_count, *base_var); // replaced go.r with go_r 4/8
         }
       }
       /* initialize a multi-bit bundled latch */
@@ -570,7 +586,7 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       {
         emit_const_0();
         emit_const_1();
-        fprintf(output_stream, "  syn_expr_vararray<%d> e_%d;\n", *bitwidth, expr_count);
+        fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", *bitwidth, expr_count);
         /* set each bit individually */
         int t = e->u.v;
         for (int i = *bitwidth; i > 0; i--, t >>= 1)
@@ -599,7 +615,7 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       break;
     case E_TRUE:
       emit_const_1();
-      fprintf(output_stream, "  syn_expr_var e_%d;\n", expr_count);
+      fprintf(output_stream, "  syn::expr_var e_%d;\n", expr_count);
       fprintf(output_stream, "  e_%d.v = const_1.v;\n", expr_count);
       /* the current expression becomes the base go signal, if none is set */
       if (*base_var == -1)
@@ -615,7 +631,7 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       break;
     case E_FALSE:
       emit_const_0();
-      fprintf(output_stream, "  syn_expr_var e_%d;\n", expr_count);
+      fprintf(output_stream, "  syn::expr_var e_%d;\n", expr_count);
       fprintf(output_stream, "  e_%d.v = const_0.v;\n", expr_count);
       /* the current expression becomes the base go signal, if none is set */
       if (*base_var == -1)
@@ -634,14 +650,14 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       InstType *it = P->Lookup((ActId *) e->u.e.l);
       if (TypeFactory::bitWidth(it) == 1)
       {
-        fprintf(output_stream, "  syn_a1of2_probe e_%d;\n", expr_count);
+        fprintf(output_stream, "  syn::a1of2_probe e_%d;\n", expr_count);
         fprintf(output_stream, "  e_%d.t = chan_%s.t;\n", expr_count, ((ActId *) e->u.e.l)->getName());
         fprintf(output_stream, "  e_%d.f = chan_%s.f;\n", expr_count, ((ActId *) e->u.e.l)->getName());
         fprintf(output_stream, "  e_%d.a = chan_%s.a;\n", expr_count, ((ActId *) e->u.e.l)->getName());
       }
       else
       {
-        fprintf(output_stream, "  syn_aN1of2_probe<%d> e_%d;\n", TypeFactory::bitWidth(it), expr_count);
+        fprintf(output_stream, "  syn::aN1of2_probe<%d> e_%d;\n", TypeFactory::bitWidth(it), expr_count);
         fprintf(output_stream, "  e_%d.c = chan_%s;\n", expr_count, ((ActId *) e->u.e.l)->getName());
       }
       *bitwidth = TypeFactory::bitWidth(it);
@@ -685,6 +701,7 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       /* otherwise, the current expression is connected to the base go signal */
       else
       {
+        fprintf(output_stream, "  /* testpoint 10 */\n");
         fprintf(output_stream, "  e_%d.go_r = e_%d.go.r;\n", expr_count, *base_var);
       }
       ret = expr_count++;
@@ -709,14 +726,15 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
   int seq = stmt_count++;
   int evar = expr_count++;
 
-  fprintf(output_stream, "  syn_fullseq s_%d;\n", seq);
+  fprintf(output_stream, "  /* testpoint 1 */\n");
+  fprintf(output_stream, "  syn::fullseq s_%d;\n", seq);
   fprintf(output_stream, "  %s = s_%d.go.r;\n", req, seq);
 
   if (bits == 1)
   {
-    fprintf(output_stream, "  syn_recv rtv_%d;\n", seq);
-    fprintf(output_stream, "  syn_expr_var e_%d;\n", evar);
-    fprintf(output_stream, "  syn_var_init_false tv_%d;\n", seq);
+    fprintf(output_stream, "  syn::recv rtv_%d;\n", seq);
+    fprintf(output_stream, "  syn::expr_var e_%d;\n", evar);
+    fprintf(output_stream, "  syn::var_init_false tv_%d;\n", seq);
     fprintf(output_stream, "  tv_%d.v = rtv_%d.v;\n", seq, seq);
     fprintf(output_stream, "  e_%d.v = tv_%d.v;\n", evar, seq);
     fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
@@ -727,10 +745,11 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
   else if (bundle_data)
   {
     fprintf(output_stream, "  bundled_recv<%d> brtv_%d;\n", bits, seq);
-    fprintf(output_stream, "  syn_expr_vararray<%d> e_%d;\n", bits, evar);
-    fprintf(output_stream, "  syn_var_init_false tv_%d[%d];\n", seq, bits);
+    fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", bits, evar);
+    fprintf(output_stream, "  syn::var_init_false tv_%d[%d];\n", seq, bits);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = tv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = brtv_%d.v[i];)\n", bits, evar, seq);
+    fprintf(output_stream, "  /* testpoint 2 */\n");
     fprintf(output_stream, "  s_%d.r.r = brtv_%d.go.r;\n", seq, seq);
     fprintf(output_stream, "  s_%d.r.a = brtv_%d.go.a;\n", seq, seq);
     fprintf(output_stream, "  (i:%d: e_%d.out[i].t = brtv_%d.in.d[i].t;\n", bits, eout, seq);
@@ -738,14 +757,15 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
   }
   else
   {
-    fprintf(output_stream, "  syn_recv rtv_%d[%d];\n", seq, bits);
-    fprintf(output_stream, "  syn_expr_vararray<%d> e_%d;\n", bits, evar);
-    fprintf(output_stream, "  syn_var_init_false tv_%d[%d];\n", seq, bits);
+    fprintf(output_stream, "  syn::recv rtv_%d[%d];\n", seq, bits);
+    fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", bits, evar);
+    fprintf(output_stream, "  syn::var_init_false tv_%d[%d];\n", seq, bits);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = tv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = rtv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
+    fprintf(output_stream, "  /* testpoint 3 */\n");
     fprintf(output_stream, "  (i:%d: s_%d.r.r = rtv_%d[i].go.r;)\n", bits, seq, seq);
-    fprintf(output_stream, "  syn_ctree<%d> ct_%d;\n", bits, seq);
+    fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", bits, seq);
     fprintf(output_stream, "  (i:%d: ct_%d.in[i] = rtv_%d[i].go.a;)\n", bits, seq, seq);
     fprintf(output_stream, "  s_%d.r.a = ct_%d.out;\n", seq, seq);
     fprintf(output_stream, "  (i:%d: e_%d.out[i].t = rtv_%d[i].in.t;\n", bits, eout, seq);
@@ -789,7 +809,7 @@ int print_one_gc(act_chp_gc_t *gc, int *bitwidth, int *base_var)
       fprintf(output_stream, "  bundled_var_to_dualrail be_%d;\n", expr_count);
       fprintf(output_stream, "  be_%d.d = dn_%d.out;\n", expr_count, a);
       fprintf(output_stream, "  be_%d.in = be_%d.out;\n", expr_count, a);
-      fprintf(output_stream, "  syn_expr_var e_%d;\n", expr_count);
+      fprintf(output_stream, "  syn::expr_var e_%d;\n", expr_count);
       fprintf(output_stream, "  e_%d.v = be_%d.out;\n", expr_count, expr_count);
       snprintf(buf, MAX_EXPR_SIZE, "dn_%d.out", a);
       a = expr_count++;
@@ -853,7 +873,7 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var)
 
   /* connect statment request to first guard */
   na = stmt_count++;
-  fprintf(output_stream, "  syn_bool_notand na_%d;\n", na);
+  fprintf(output_stream, "  syn::bool_notand na_%d;\n", na);
   fprintf(output_stream, "  na_%d.in1 = c_%d.r;\n", na, ret);
   fprintf(output_stream, "  na_%d.out = gc_%d.r;\n", na, start_gc_chan);
 
@@ -877,13 +897,13 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var)
     /* construct a multi-stage or gate for guard outputs */
     int a, b;
     a = stmt_count++;
-    fprintf(output_stream, "  syn_bool_or or_%d;\n", a);
+    fprintf(output_stream, "  syn::bool_or or_%d;\n", a);
     fprintf(output_stream, "  or_%d.in1 = gc_%d.t;\n", a, start_gc_chan);
     fprintf(output_stream, "  or_%d.in2 = gc_%d.t;\n", a, start_gc_chan + 1);
     for (int i = start_gc_chan + 2; i < end_gc_chan; i++)
     {
       b = stmt_count++;
-      fprintf(output_stream, "  syn_bool_or or_%d;\n", b);
+      fprintf(output_stream, "  syn::bool_or or_%d;\n", b);
       fprintf(output_stream, "  or_%d.in1 = or_%d.out;\n", b, a);
       fprintf(output_stream, "  or_%d.in2 = gc_%d.t;\n", b, i);
       a = b;
@@ -917,7 +937,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
   {
     case ACT_CHP_SKIP:
       fprintf(output_stream, "  /* skip */");
-      fprintf(output_stream, "  syn_skip s_%d;\n", stmt_count);
+      fprintf(output_stream, "  syn::skip s_%d;\n", stmt_count);
       fprintf(output_stream, "  s_%d.go = c_%d;\n", stmt_count, chan_count);
       stmt_count++;
       ret = chan_count++;
@@ -952,7 +972,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         fprintf(output_stream, "  bundled_vararray_to_dualrail<%d> be_%d;\n", TypeFactory::bitWidth(v), expr_count);
         fprintf(output_stream, "  be_%d.d = dn_%d.out;\n", expr_count, a);
         fprintf(output_stream, "  (i:%d: be_%d.in[i] = be_%d.out[i];)\n", TypeFactory::bitWidth(v), expr_count, a);
-        fprintf(output_stream, "  syn_expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(v), expr_count);
+        fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(v), expr_count);
         fprintf(output_stream, "  e_%d.go_r = dn_%d.out;\n", expr_count, a);
         fprintf(output_stream, "  (i:%d: e_%d.v[i] = be_%d.out[i];)\n", TypeFactory::bitWidth(v), expr_count, expr_count);
         snprintf(buf, MAX_EXPR_SIZE, "e_%d.go_r", expr_count);
@@ -963,7 +983,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       /* receive latched value into assignment variable */
       if (TypeFactory::bitWidth(v) == 1)
       {
-        fprintf(output_stream, "  syn_recv s_%d;\n", b);
+        fprintf(output_stream, "  syn::recv s_%d;\n", b);
         fprintf(output_stream, "  s_%d.go = c_%d;\n", b, ret);
         fprintf(output_stream, "  s_%d.in.t = e_%d.out.t;\n", b, a);
         fprintf(output_stream, "  s_%d.in.f = e_%d.out.f;\n", b, a);
@@ -972,6 +992,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       else if (bundle_data)
       {
         fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), b);
+        fprintf(output_stream, "  /* testpoint 4 */\n");
         fprintf(output_stream, "  s_%d.go.r = e_%d.go_r;\n", b, a);
         fprintf(output_stream, "  s_%d.go.a = c_%d.a;\n", b, ret);
         fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
@@ -980,12 +1001,13 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       }
       else
       {
-        fprintf(output_stream, "  syn_recv s_%d[%d];\n", b, TypeFactory::bitWidth(v));
+        fprintf(output_stream, "  syn::recv s_%d[%d];\n", b, TypeFactory::bitWidth(v));
+        fprintf(output_stream, "  /* testpoint 5 */\n");
         fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), b, ret);
         fprintf(output_stream, "  (i:%d: s_%d[i].in.t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
         fprintf(output_stream, "       %*cs_%d[i].in.f = e_%d.out[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, a);
         fprintf(output_stream, "       %*cs_%d[i].v = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, c->u.assign.id->getName());
-        fprintf(output_stream, "  syn_ctree<%d> ct_%d;\n", TypeFactory::bitWidth(v), b);
+        fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", TypeFactory::bitWidth(v), b);
         fprintf(output_stream, "  (i:%d: ct_%d.in[i] = s_%d[i].go.a;)\n", TypeFactory::bitWidth(v), b, b);
         fprintf(output_stream, "  ct_%d.out = c_%d.a;\n", b, ret);
       }
@@ -1024,7 +1046,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
           fprintf(output_stream, "  bundled_vararray_to_dualrail<%d> be_%d;\n", TypeFactory::bitWidth(v), expr_count);
           fprintf(output_stream, "  be_%d.d = dn_%d.out;\n", expr_count, a);
           fprintf(output_stream, "  (i:%d: be_%d.in = be_%d.out;)\n", TypeFactory::bitWidth(v), expr_count, a);
-          fprintf(output_stream, "  syn_expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(v), expr_count);
+          fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(v), expr_count);
           fprintf(output_stream, "  e_%d.go_r = dn_%d.out;\n", expr_count, a);
           fprintf(output_stream, "  (i:%d: e_%d.v[i] = be_%d.out[i];)\n", TypeFactory::bitWidth(v), expr_count, expr_count);
           snprintf(buf, MAX_EXPR_SIZE, "e_%d.go_r", expr_count);
@@ -1064,7 +1086,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         /* receive channel value into receiving variable */
         if (TypeFactory::bitWidth(v) == 1)
         {
-          fprintf(output_stream, "  syn_recv s_%d;\n", a);
+          fprintf(output_stream, "  syn::recv s_%d;\n", a);
           fprintf(output_stream, "  s_%d.go = c_%d;\n", a, ret);
           fprintf(output_stream, "  s_%d.in = chan_%s;\n", a, c->u.comm.chan->getName());
           fprintf(output_stream, "  s_%d.v = var_%s.v;\n", a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
@@ -1072,6 +1094,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         else if (bundle_data)
         {
           fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), a);
+          fprintf(output_stream, "  /* testpoint 6 */\n");
           fprintf(output_stream, "  s_%d.go.r = c_%d.r;\n", a, ret);
           fprintf(output_stream, "  s_%d.go.a = c_%d.a; c_%d.a = chan_%s.a;\n", a, ret, ret, c->u.comm.chan->getName());
           fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = chan_%s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
@@ -1080,12 +1103,13 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         }
         else
         {
-          fprintf(output_stream, "  syn_recv s_%d[%d];\n", a, TypeFactory::bitWidth(v));
+          fprintf(output_stream, "  syn::recv s_%d[%d];\n", a, TypeFactory::bitWidth(v));
+          fprintf(output_stream, "  /* testpoint 7 */\n");
           fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), a, ret);
           fprintf(output_stream, "  (i:%d: s_%d[i].in.t = chan_%s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
           fprintf(output_stream, "       %*cs_%d[i].in.f = chan_%s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
           fprintf(output_stream, "       %*cs_%d[i].v = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
-          fprintf(output_stream, "  syn_ctree<%d> ct_%d;\n", TypeFactory::bitWidth(v), a);
+          fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", TypeFactory::bitWidth(v), a);
           fprintf(output_stream, "  (i:%d: ct_%d.in[i] = s_%d[i].go.a;)\n", TypeFactory::bitWidth(v), a, a);
           fprintf(output_stream, "  ct_%d.out = c_%d.a; c_%d.a = chan_%s.a;\n", a, ret, ret, c->u.comm.chan->getName());
         }
@@ -1117,7 +1141,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         b = print_chp_stmt((act_chp_lang_t *)list_value(li), bitwidth, base_var);
         s = stmt_count++;
         /* connect the go signal to the statement appropriately */
-        fprintf(output_stream, "  syn_%s s_%d;\n", c->type == ACT_CHP_COMMA ? "par" : "seq", s);
+        fprintf(output_stream, "  syn::%s s_%d;\n", c->type == ACT_CHP_COMMA ? "par" : "seq", s);
         fprintf(output_stream, "  s_%d.go = c_%d;\n", s, a);
         fprintf(output_stream, "  s_%d.s1 = c_%d;\n", s, b);
         /* clear the list of evaluated expressions between sequential statements */
@@ -1166,7 +1190,9 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
 
 void generate_act(Process *p, const char *output_file, bool bundled, int opt)
 {
-  struct act_chp *chp = p->lang->getchp();
+  struct act_chp *chp = NULL;
+  if (p->lang != NULL && p->lang->getchp() != NULL)
+    chp = p->lang->getchp();
 
   /* set global variables */
   P = p;
@@ -1187,25 +1213,54 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   {
     output_stream = stdout;
   }
-
+  
   /* TODO - print import statements and wrapper process declaration */
-  fprintf(output_stream, "import \"%ssyn.act\";\n", ACT_LIB_PATH);
-  if (bundle_data) fprintf(output_stream, "import \"%sbundled.act\";\n", ACT_LIB_PATH);
+  fprintf(output_stream, "import syn;\n");
+  if (bundle_data) fprintf(output_stream, "import bundled.act;\n");
   fprintf(output_stream, "\n");
   fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");
   
-  /* TODO - initialize all variables and channels */ 
-  // initialize_vars(chp);
+  /* initialize all variables and channels */
+  ActInstiter iter(p->CurScope());
+  int bw = 0;
+  
+  fprintf(output_stream, "/* Initialize chp vars */\n");
+
+  /* iterate through Scope Hashtable to find all chp variables */
+  for (iter = iter.begin(); iter != iter.end(); iter++) {
+    ValueIdx *vx = *iter;
+    if (TypeFactory::isChanType (vx->t)) {
+      bw = TypeFactory::bitWidth(vx->t);
+      if (bw == 1) {
+        fprintf(output_stream, "  aN1of2 chan_%s;\n", vx->getName());
+      } else if (bw > 1) {
+        fprintf(output_stream, "  aN1of2<%d> chan_%s;\n", bw, vx->getName());
+      }
+    } else if (TypeFactory::isIntType (vx->t)) {
+      bw = TypeFactory::bitWidth(vx->t);
+      if (bw == 1) {
+        fprintf(output_stream, "  syn::var_init_false var_%s;\n", vx->getName());
+      } else if (bw > 1) {
+        fprintf(output_stream, "  syn::var_init_false var_%s[%d];\n", vx->getName(), bw);
+      }
+    }
+  }
+  fprintf(output_stream, "\n");
 
   int *bitwidth = (int *) calloc(1, sizeof(int));
   int *base_var = (int *) calloc(1, sizeof(int));
   if (optimization > 0) evaluated_exprs = hash_new(INITIAL_HASH_SIZE);
   
   /* translate the CHP */
-  int i = print_chp_stmt(chp->c, bitwidth, base_var);
+  int i = 0;
+  if (chp != NULL && chp->c != NULL)
+    print_chp_stmt(chp->c, bitwidth, base_var);
   
-  free(bitwidth);
-  free(base_var);
+  if (bitwidth != NULL)
+    free(bitwidth);
+  if (base_var != NULL)
+    free(base_var);
+  
   if (optimization > 0)
   {
     /* free allocated memory for buckets still remaining in the table */

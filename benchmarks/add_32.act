@@ -1,4 +1,4 @@
-defproc add_32 {
+defproc add_32 () {
   int<32> x;
   int<32> y;
   int<32> z;

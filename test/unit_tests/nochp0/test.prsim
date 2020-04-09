@@ -1,0 +1,21 @@
+initialize
+
+watch t.c_0.r
+watch t.c_0.a
+
+set t.c_0.r 1
+step
+
+assert t.go.r 1
+set t.c_0.a 1
+step
+
+assert t.go.a 1
+set t.c_0.r 0
+step
+
+assert t.go.r 0
+set t.c_0.a 0
+step
+
+assert t.go.a 0

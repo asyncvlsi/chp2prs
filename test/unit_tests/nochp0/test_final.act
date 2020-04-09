@@ -1,0 +1,10 @@
+import syn;
+
+defproc toplevel (a1of1 go)
+{
+/* Initialize chp vars */
+
+  go = c_0;
+}
+
+toplevel t;
