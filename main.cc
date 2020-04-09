@@ -73,6 +73,11 @@ int main(int argc, char **argv)
   }
 
   /* extract the chp */
+  if (p->lang == NULL || p->lang->getchp() == NULL)
+  {
+    fatal_error("Input file `%s' does not have any chp.", argv[2]);
+  }
+
   check_chp(p);
   generate_act(p, argv[3], false, 0);
 

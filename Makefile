@@ -52,14 +52,14 @@ update_globals:
 	fi
 	
 ## SYN File Copy for Syn File
-#update_syn:
-#	@if [ -d lib/ -a -f lib/syn.act ] ; \
-#	then \
-#		(cp lib/syn.act $(ACT_PATH)/); \
-#		(echo "Copied syn.act to ACT_PATH") \
-#	else \
-#		(echo "Error: no syn file to update") \
-#	fi
+update_syn:
+	@if [ -d lib/ -a -f lib/syn.act ] ; \
+	then \
+		(cp lib/syn.act $(ACT_PATH)/); \
+		(echo "Copied syn.act to ACT_PATH") \
+	else \
+		(echo "Error: no syn file to update") \
+	fi
 #
 ## BUNDLED File Copy for Bundled File
 #update_bundled:
@@ -73,20 +73,20 @@ update_globals:
 
  # SYN File Copy for Syn Namespace
 #ifdef
-update_syn:
-	@if [ -d lib/ -a -f lib/syn.act ] ; \
-	then \
-		if [ -d $(ACT_PATH)/syn ]; \
-		then \
-			cp lib/syn.act $(ACT_PATH)/syn/_all_.act; \
-			echo "Copied syn.act to ACT_PATH/syn/_all_.act"; \
-		else \
-			(mkdir $(ACT_PATH)/syn; cp lib/syn.act $(ACT_PATH)/syn/_all_.act); \
-			(echo "Copied syn.act to ACT_PATH/syn/_all_.act") \
-		fi \
-	else \
-		(echo "Error: no syn file to update") \
-	fi
+#update_syn:
+#	@if [ -d lib/ -a -f lib/syn.act ] ; \
+#	then \
+#		if [ -d $(ACT_PATH)/syn ]; \
+#		then \
+#			cp lib/syn.act $(ACT_PATH)/syn/_all_.act; \
+#			echo "Copied syn.act to ACT_PATH/syn/_all_.act"; \
+#		else \
+#			(mkdir $(ACT_PATH)/syn; cp lib/syn.act $(ACT_PATH)/syn/_all_.act); \
+#			(echo "Copied syn.act to ACT_PATH/syn/_all_.act") \
+#		fi \
+#	else \
+#		(echo "Error: no syn file to update") \
+#	fi
 	
  # BUNDLED File Copy for namespace
 update_bundled:

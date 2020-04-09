@@ -368,13 +368,24 @@ int unop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay)
   return expr_count++;
 }
 
-int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool commutative)
+int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool commutative, bool alwayssize)
 {
   int l = _print_expr(e->u.e.l, bitwidth, base_var, delay);
   int r = _print_expr(e->u.e.r, bitwidth, base_var, delay);
 
+  /* Handle expr_ with only template<N> declarations */
+  if (alwayssize && *bitwidth == 1) {
+    if (optimization > 0)
+    {
+      int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
+      if (ret > 0) return ret;
+    }
+    fprintf(output_stream, "  syn::expr_%s<1> e_%d;\n", s, expr_count);
+    fprintf(output_stream, "  e_%d.in1 = {e_%d.out};\n", expr_count, l);
+    fprintf(output_stream, "  e_%d.in2 = {e_%d.out};\n", expr_count, r);
+  }
   /* print ACT module for boolean binary operations */
-  if (*bitwidth == 1)
+  else if (*bitwidth == 1)
   {
     if (optimization > 0)
     {
@@ -418,22 +429,22 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
   switch (e->type)
   {
     case E_AND:
-      ret = binop("and", e, bitwidth, base_var, delay, true);
+      ret = binop("and", e, bitwidth, base_var, delay, true, false);
       break;
     case E_OR:
-      ret = binop("or", e, bitwidth, base_var, delay, true);
+      ret = binop("or", e, bitwidth, base_var, delay, true, false);
       break;
     case E_XOR:
-      ret = binop("xor", e, bitwidth, base_var, delay, true);
+      ret = binop("xor", e, bitwidth, base_var, delay, true, false);
       break;
     case E_PLUS:
-      ret = binop("add", e, bitwidth, base_var, delay, true);
+      ret = binop("add", e, bitwidth, base_var, delay, true, false);
       break;
     case E_MINUS:
-      ret = binop("sub", e, bitwidth, base_var, delay, false);
+      ret = binop("sub", e, bitwidth, base_var, delay, false, false);
       break;
     case E_MULT:
-      ret = binop("mul", e, bitwidth, base_var, delay, true);
+      ret = binop("mul", e, bitwidth, base_var, delay, true, false);
       break;
     case E_NOT:
     case E_COMPLEMENT:
@@ -443,22 +454,22 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       ret = unop("uminus", e, bitwidth, base_var, delay);
       break;
     case E_EQ:
-      ret = binop("eq", e, bitwidth, base_var, delay, true);
+      ret = binop("eq", e, bitwidth, base_var, delay, true, true);
       break;
     case E_NE:
-      ret = binop("ne", e, bitwidth, base_var, delay, true);
+      ret = binop("ne", e, bitwidth, base_var, delay, true, true);
       break;
     case E_LT:
-      ret = binop("lt", e, bitwidth, base_var, delay, false);
+      ret = binop("lt", e, bitwidth, base_var, delay, false, true);
       break;
     case E_GT:
-      ret = binop("gt", e, bitwidth, base_var, delay, false);
+      ret = binop("gt", e, bitwidth, base_var, delay, false, true);
       break;
     case E_LE:
-      ret = binop("le", e, bitwidth, base_var, delay, false);
+      ret = binop("le", e, bitwidth, base_var, delay, false, true);
       break;
     case E_GE:
-      ret = binop("ge", e, bitwidth, base_var, delay, false);
+      ret = binop("ge", e, bitwidth, base_var, delay, false, true);
       break;
     case E_VAR:
     {

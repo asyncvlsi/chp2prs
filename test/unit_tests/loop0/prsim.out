@@ -1,18 +1,16 @@
-Node `t.var_x.v.t' not found
-Node `t.var_x.v.f' not found
-Node `t.var_y.v.t' not found
-Node `t.var_y.v.f' not found
-Node `t.var_x.v.t' not found
-Node `t.var_x.v.f' not found
-Node `t.var_y.v.t' not found
-Node `t.var_y.v.f' not found
 	         0 Reset : 1
 	         0 t.go.a : 0
 	         0 t.go.r : 0
 	         0 _Reset : 0
-	       180 Reset : 0
-	       180 _Reset : 1
-Node `t.var_x.v.t' not found
-Node `t.var_x.v.f' not found
-Node `t.var_y.v.t' not found
-Node `t.var_y.v.f' not found
+	        10 t.var_x.v.t : 0  [by Reset:=1]
+	        10 t.var_y.v.t : 0  [by Reset:=1]
+	        30 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	        50 t.var_y.v.f : 1  [by t.s_4.in.t:=0]
+	       100 Reset : 0
+	       100 _Reset : 1
+	       100 t.go.r : 1
+	       790 t.var_y.v.f : 0  [by t.s_4.in.t:=1]
+	       810 t.var_y.v.t : 1  [by t.var_y.v.f:=0]
+	      1050 t.var_x.v.f : 0  [by t.s_7.in.t:=1]
+	      1070 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      1580 t.go.a : 1  [by t.e_6._out.f:=0]

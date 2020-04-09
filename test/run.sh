@@ -66,19 +66,24 @@ then
                             faildirs="$faildirs $i"
                         else
                             echo ""
-                            echo "==> test ${und}~PASSED~${normal} prsim running chp2prs prs!!!"
+                            echo "==> test ${und}~PASSED~${normal} prsim running chp2prs prs!"
                         fi
                     else
                         echo ""
-                        echo "==> test ${und}FAILED${normal} in aflat conversion."
+                        echo "==> test ${bold}FAILED${normal} in aflat conversion."
                         fail=`expr $fail + 1`
                         faildirs="$faildirs $i"
                     fi
                 else
                     echo ""
-                    echo "==> test ${und}FAILED${normal} in chp2prs conversion."
-                    fail=`expr $fail + 1`
-                    faildirs="$faildirs $i"
+                    if [ $i == "nochp0" ]
+                    then
+                      echo "==> test ${und}~PASSED~${normal} -- no chp2prs conversion expected."
+                    else
+                      echo "==> test ${bold}FAILED${normal} in chp2prs conversion."
+                      fail=`expr $fail + 1`
+                      faildirs="$faildirs $i"
+                    fi
                 fi
             else
     #            echo ""
@@ -90,10 +95,10 @@ then
         (cd "..");
         
         echo ""
-        echo "*******************************"
-        echo "* ${bold}# FAILED DIRECTORS:${normal} $fail"
-        echo "* ${bold}FAILED DIRECTORIES:${normal}$faildirs"
-        echo "*******************************"
+        echo "${bold}*********************************"
+        echo "* # FAILED DIRECTORS:${normal} $fail ${bold}*"
+        echo "* FAILED DIRECTORIES:${normal}$faildirs ${bold}*"
+        echo "*********************************${normal}"
     else
         echo "${bold}Error:${bold} no unit_tests directory."
     fi

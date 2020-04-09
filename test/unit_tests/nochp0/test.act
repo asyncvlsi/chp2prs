@@ -4,4 +4,4 @@ defproc nochp0() {
   syn::expr_and a;
 }
 
-nochp0() n;
+nochp0 n;
