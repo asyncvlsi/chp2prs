@@ -620,7 +620,7 @@ namespace syn {
 
   /* EQUALITY */
   export template<pint N>
-  defproc eq (dualrail in1[N], in2[N]; dualrail out)
+  defproc expr_eq (dualrail in1[N], in2[N]; dualrail out)
   {
     _dualrail _out;
     prs
@@ -635,7 +635,7 @@ namespace syn {
 
   /* INEQUALITY */
   export template<pint N>
-  defproc ne (dualrail in1[N], in2[N]; dualrail out)
+  defproc expr_ne (dualrail in1[N], in2[N]; dualrail out)
   {
     _dualrail _out;
     prs
@@ -650,10 +650,10 @@ namespace syn {
 
   /* LESS THAN OR EQUALS */
   export template<pint N>
-  defproc le (dualrail in1[N], in2[N]; dualrail out)
+  defproc expr_le (dualrail in1[N], in2[N]; dualrail out)
   {
     sub<N> sub (in1, in2);
-    eq<N> eq (in1, in2);
+    expr_eq<N> eq (in1, in2);
 
     _dualrail _out;
     prs
@@ -668,7 +668,7 @@ namespace syn {
 
   /* GREATER THAN OR EQUALS */
   export template<pint N>
-  defproc ge (dualrail in1[N], in2[N]; dualrail out)
+  defproc expr_ge (dualrail in1[N], in2[N]; dualrail out)
   {
     sub<N> sub (in1, in2);
 
@@ -685,7 +685,7 @@ namespace syn {
 
   /* LESS THAN */
   export template<pint N>
-  defproc lt (dualrail in1[N], in2[N]; dualrail out)
+  defproc expr_lt (dualrail in1[N], in2[N]; dualrail out)
   {
     sub<N> sub (in1, in2);
 
@@ -702,10 +702,10 @@ namespace syn {
 
   /* GREATER THAN */
   export template<pint N>
-  defproc gt (dualrail in1[N], in2[N]; dualrail out)
+  defproc expr_gt (dualrail in1[N], in2[N]; dualrail out)
   {
     sub<N> sub (in1, in2);
-    eq<N> eq (in1, in2);
+    expr_eq<N> eq (in1, in2);
 
     _dualrail _out;
     prs
