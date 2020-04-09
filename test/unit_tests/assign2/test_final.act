@@ -1,13 +1,16 @@
 import syn;
 
-syn::var_init_false var_x;
 defproc toplevel (a1of1 go)
 {
+/* Initialize chp vars */
+  syn::var_init_false var_x;
+
   /* assign */
   syn::var_init_true const_1;
   syn::expr_var e_1;
   e_1.v = const_1.v;
   a1of1 c_0;
+  /* testpoint 1 */
   syn::fullseq s_1;
   c_0.r = s_1.go.r;
   syn::recv rtv_1;

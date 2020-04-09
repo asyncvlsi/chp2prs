@@ -1,2 +1,4 @@
-syn_var var_x 0,0 0,0 1,1
-syn_var var_y 0,0 1,1 1,1
+bool t.go.r  0,0   1,1
+syn_var t.var_x  n,0  n,0
+syn_var t.var_y  n,0  n,1
+bool t.go.a  0,0   n,1

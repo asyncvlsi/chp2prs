@@ -1,0 +1,191 @@
+import syn;
+
+defproc toplevel (a1of1 go)
+{
+/* Initialize chp vars */
+  syn::var_init_false var_y;
+  syn::var_init_false var_x;
+
+  /* semicolon */
+  a1of1 c_0;
+
+  /* assign */
+  syn::var_init_false const_0;
+  syn::expr_var e_1;
+  e_1.v = const_0.v;
+  a1of1 c_1;
+  /* testpoint 1 */
+  syn::fullseq s_1;
+  c_1.r = s_1.go.r;
+  syn::recv rtv_1;
+  syn::expr_var e_2;
+  syn::var_init_false tv_1;
+  tv_1.v = rtv_1.v;
+  e_2.v = tv_1.v;
+  s_1.r.r = e_1.go_r;
+  s_1.r = rtv_1.go;
+  e_1.out.t = rtv_1.in.t;
+  e_1.out.f = rtv_1.in.f;
+  s_1.go.a = e_2.go_r;
+  syn::recv s_0;
+  s_0.go = c_1;
+  s_0.in.t = e_2.out.t;
+  s_0.in.f = e_2.out.f;
+  s_0.v = var_y.v;
+
+  syn::seq s_2;
+  s_2.go = c_0;
+  s_2.s1 = c_1;
+
+
+  /* emit individual gc (#0) [loop] */
+  r1of2 gc_0;
+  syn::expr_var e_3;
+  e_3.v = var_y.v;
+  syn::expr_var e_4;
+  e_4.v = const_0.v;
+  /* testpoint 9 */
+  e_4.go_r = e_3.go_r;
+  syn::expr_gt e_5;
+  e_5.in1 = e_3.out;
+  e_5.in2 = e_4.out;
+  /* testpoint 1 */
+  syn::fullseq s_3;
+  gc_0.r = s_3.go.r;
+  syn::recv rtv_3;
+  syn::expr_var e_6;
+  syn::var_init_false tv_3;
+  tv_3.v = rtv_3.v;
+  e_6.v = tv_3.v;
+  s_3.r.r = e_3.go_r;
+  s_3.r = rtv_3.go;
+  e_5.out.t = rtv_3.in.t;
+  e_5.out.f = rtv_3.in.f;
+  s_3.go.a = e_6.go_r;
+  /* assign */
+  syn::var_init_true const_1;
+  syn::expr_var e_7;
+  e_7.v = const_1.v;
+  a1of1 c_2;
+  /* testpoint 1 */
+  syn::fullseq s_5;
+  c_2.r = s_5.go.r;
+  syn::recv rtv_5;
+  syn::expr_var e_8;
+  syn::var_init_false tv_5;
+  tv_5.v = rtv_5.v;
+  e_8.v = tv_5.v;
+  s_5.r.r = e_7.go_r;
+  s_5.r = rtv_5.go;
+  e_7.out.t = rtv_5.in.t;
+  e_7.out.f = rtv_5.in.f;
+  s_5.go.a = e_8.go_r;
+  syn::recv s_4;
+  s_4.go = c_2;
+  s_4.in.t = e_8.out.t;
+  s_4.in.f = e_8.out.f;
+  s_4.v = var_y.v;
+
+  e_6.out.t = c_2.r;
+  gc_0.t = c_2.a;
+  gc_0.f = e_6.out.f;
+  r1of2 gc_1;
+  syn::expr_var e_9;
+  e_9.v = var_y.v;
+  syn::expr_var e_10;
+  e_10.v = const_0.v;
+  /* testpoint 9 */
+  e_10.go_r = e_9.go_r;
+  syn::expr_eq e_11;
+  e_11.in1 = e_9.out;
+  e_11.in2 = e_10.out;
+  /* testpoint 1 */
+  syn::fullseq s_6;
+  gc_1.r = s_6.go.r;
+  syn::recv rtv_6;
+  syn::expr_var e_12;
+  syn::var_init_false tv_6;
+  tv_6.v = rtv_6.v;
+  e_12.v = tv_6.v;
+  s_6.r.r = e_9.go_r;
+  s_6.r = rtv_6.go;
+  e_11.out.t = rtv_6.in.t;
+  e_11.out.f = rtv_6.in.f;
+  s_6.go.a = e_12.go_r;
+  /* semicolon */
+  a1of1 c_3;
+
+  /* assign */
+  syn::expr_var e_13;
+  e_13.v = var_y.v;
+  a1of1 c_4;
+  /* testpoint 1 */
+  syn::fullseq s_8;
+  c_4.r = s_8.go.r;
+  syn::recv rtv_8;
+  syn::expr_var e_14;
+  syn::var_init_false tv_8;
+  tv_8.v = rtv_8.v;
+  e_14.v = tv_8.v;
+  s_8.r.r = e_13.go_r;
+  s_8.r = rtv_8.go;
+  e_13.out.t = rtv_8.in.t;
+  e_13.out.f = rtv_8.in.f;
+  s_8.go.a = e_14.go_r;
+  syn::recv s_7;
+  s_7.go = c_4;
+  s_7.in.t = e_14.out.t;
+  s_7.in.f = e_14.out.f;
+  s_7.v = var_x.v;
+
+  syn::seq s_9;
+  s_9.go = c_3;
+  s_9.s1 = c_4;
+
+  /* assign */
+  syn::expr_var e_15;
+  e_15.v = const_0.v;
+  a1of1 c_5;
+  /* testpoint 1 */
+  syn::fullseq s_11;
+  c_5.r = s_11.go.r;
+  syn::recv rtv_11;
+  syn::expr_var e_16;
+  syn::var_init_false tv_11;
+  tv_11.v = rtv_11.v;
+  e_16.v = tv_11.v;
+  s_11.r.r = e_15.go_r;
+  s_11.r = rtv_11.go;
+  e_15.out.t = rtv_11.in.t;
+  e_15.out.f = rtv_11.in.f;
+  s_11.go.a = e_16.go_r;
+  syn::recv s_10;
+  s_10.go = c_5;
+  s_10.in.t = e_16.out.t;
+  s_10.in.f = e_16.out.f;
+  s_10.v = var_y.v;
+
+  s_9.s2 = c_5;
+
+  e_12.out.t = c_3.r;
+  gc_1.t = c_3.a;
+  gc_1.f = e_12.out.f;
+  a1of1 c_6;
+  /* gc cascade, start = 0, end = 1 */
+  gc_0.f = gc_1.r;
+  syn::bool_notand na_12;
+  na_12.in1 = c_6.r;
+  na_12.out = gc_0.r;
+  syn::bool_or or_13;
+  or_13.in1 = gc_0.t;
+  or_13.in2 = gc_1.t;
+  or_13.out = na_12.in2;
+  gc_1.f = c_6.a;
+  /* end of gc (#0) */
+
+  s_2.s2 = c_6;
+
+  go = c_0;
+}
+
+toplevel t;

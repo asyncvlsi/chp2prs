@@ -1,16 +1,12 @@
 	         0 Reset : 1
+	         0 t.go.a : 0
+	         0 t.go.r : 0
 	         0 _Reset : 0
-	        10 t.c_0.a : 0  [by Reset:=1]
-	        10 var_x.v.t : 0  [by Reset:=1]
-	        30 var_x.v.f : 1  [by var_x.v.t:=0]
-	        30 t.c_0.r : 0
-	       100 Reset : 0
-	       100 _Reset : 1
-	       100 t.c_0.r : 1
-WARNING: weak-interference `t.c_0.a'
->> cause: t.s_0._goa (val: X)
->> time:        320
-	       330 t.c_0.a : X  [by t.s_0._goa:=X]
-WRONG ASSERT:	"t.c_0.a" has value X and not 1.
-WRONG ASSERT:	"var_x.v.t" has value 0 and not 1.
-WRONG ASSERT:	"var_x.v.f" has value 1 and not 0.
+	        10 t.var_x.v.t : 0  [by Reset:=1]
+	        30 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	        80 Reset : 0
+	        80 _Reset : 1
+	        80 t.go.r : 1
+	       300 t.var_x.v.f : 0  [by t.s_0.in.t:=1]
+	       320 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	       340 t.go.a : 1  [by t.s_0._goa:=0]

@@ -1,3 +1,0 @@
-import syn;
-
-syn::var_init_false var_x;

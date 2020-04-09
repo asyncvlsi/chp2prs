@@ -1,4 +1,7 @@
 import syn;
 
-syn::expr_and a;
+defproc nochp0() {
+  syn::expr_and a;
+}
 
+nochp0() n;

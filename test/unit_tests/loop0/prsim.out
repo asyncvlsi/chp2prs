@@ -1,0 +1,18 @@
+Node `t.var_x.v.t' not found
+Node `t.var_x.v.f' not found
+Node `t.var_y.v.t' not found
+Node `t.var_y.v.f' not found
+Node `t.var_x.v.t' not found
+Node `t.var_x.v.f' not found
+Node `t.var_y.v.t' not found
+Node `t.var_y.v.f' not found
+	         0 Reset : 1
+	         0 t.go.a : 0
+	         0 t.go.r : 0
+	         0 _Reset : 0
+	       180 Reset : 0
+	       180 _Reset : 1
+Node `t.var_x.v.t' not found
+Node `t.var_x.v.f' not found
+Node `t.var_y.v.t' not found
+Node `t.var_y.v.f' not found

@@ -1,4 +1,4 @@
-defproc assignment1 () {
+defproc assign1 () {
   int<1> x;
 
   chp {
@@ -6,4 +6,4 @@ defproc assignment1 () {
   }
 }
 
-assignment1 a;
+assign1 a;

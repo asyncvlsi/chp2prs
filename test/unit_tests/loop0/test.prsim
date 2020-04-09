@@ -42,4 +42,10 @@ assert t.var_x.v.t 0
 assert t.var_x.v.f 1
 assert t.var_y.v.t 1
 assert t.var_y.v.f 0
-assert t.go.a 1
+assert t.go.a 0
+cycle
+
+assert t.var_x.v.t 1
+assert t.var_x.v.f 0
+assert t.var_y.v.t 0
+assert t.var_y.v.f 1
