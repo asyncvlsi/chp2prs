@@ -36,8 +36,8 @@ update: update_channel update_globals update_syn update_bundled
 update_channel:
 	@if [ -d lib/ -a -f lib/channel.act ] ; \
 	then \
-		(cp lib/channel.act $(ACT_PATH)/); \
-		(echo "Copied channel.act to ACT_PATH") \
+		(cp lib/channel.act $(ACT_HOME)/act); \
+		(echo "Copied channel.act to ACT_HOME") \
 	else \
 		(echo "Error: no channel file to update") \
 	fi
@@ -45,8 +45,8 @@ update_channel:
 update_globals:
 	@if [ -d lib/ -a -f lib/globals.act ] ; \
 	then \
-		(cp lib/globals.act $(ACT_PATH)/); \
-		(echo "Copied globals.act to ACT_PATH") \
+		(cp lib/globals.act $(ACT_HOME)/act); \
+		(echo "Copied globals.act to ACT_HOME") \
 	else \
 		(echo "Error: no globals file to update") \
 	fi
@@ -55,13 +55,13 @@ update_globals:
 update_syn:
 	@if [ -d lib/ -a -f lib/syn.act ] ; \
 	then \
-		if [ -d $(ACT_PATH)/syn ]; \
+		if [ -d $(ACT_HOME)/act/syn ]; \
 		then \
-			cp lib/syn.act $(ACT_PATH)/syn/_all_.act; \
-			echo "Copied syn.act to ACT_PATH/syn/_all_.act"; \
+			cp lib/syn.act $(ACT_HOME)/act/syn/_all_.act; \
+			echo "Copied syn.act to ACT_HOME/act/syn/_all_.act"; \
 		else \
-			(mkdir $(ACT_PATH)/syn; cp lib/syn.act $(ACT_PATH)/syn/_all_.act); \
-			(echo "Copied syn.act to ACT_PATH/syn/_all_.act") \
+			(mkdir $(ACT_HOME)/act/syn; cp lib/syn.act $(ACT_HOME)/act/syn/_all_.act); \
+			(echo "Copied syn.act to ACT_HOME/act/syn/_all_.act") \
 		fi \
 	else \
 		(echo "Error: no syn file to update") \
@@ -71,13 +71,13 @@ update_syn:
 update_bundled:
 	@if [ -d lib/ -a -f lib/bundled.act ] ; \
 	then \
-		if [ -d $(ACT_PATH)/bundled ]; \
+		if [ -d $(ACT_HOME)/act/bundled ]; \
 		then \
-			cp lib/bundled.act $(ACT_PATH)/bundled/_all_.act; \
-			echo "Copied bundled.act to ACT_PATH/bundled/_all_.act"; \
+			cp lib/bundled.act $(ACT_HOME)/act/bundled/_all_.act; \
+			echo "Copied bundled.act to ACT_HOME/act/bundled/_all_.act"; \
 		else \
-			(mkdir $(ACT_PATH)/bundled; cp lib/bundled.act $(ACT_PATH)/bundled/_all_.act); \
-			(echo "Copied bundled.act to ACT_PATH/bundled/_all_.act") \
+			(mkdir $(ACT_HOME)/act/bundled; cp lib/bundled.act $(ACT_HOME)/act/bundled/_all_.act); \
+			(echo "Copied bundled.act to ACT_HOME/act/bundled/_all_.act") \
 		fi \
 	else \
 		(echo "Error: no bundled file to update") \

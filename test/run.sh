@@ -1,5 +1,10 @@
 #!/bin/sh
 
+ARCH=`$VLSI_TOOLS_SRC/scripts/getarch`
+OS=`$VLSI_TOOLS_SRC/scripts/getos`
+EXT=${ARCH}_${OS}
+ACTTOOL=../../chp2prs.$EXT
+
 fail=0
 faildirs=""
 proc=""
@@ -47,7 +52,7 @@ then
 #                proc=$(cat "$i/proc.txt")
                 proc="$i<>"
                 echo "... checking chp2prs for proc $proc"
-                if (../../chp2prs.i386_darwin19_2_0 "$i/test.act" $proc "$i/test_final.act");
+                if ($ACTTOOL "$i/test.act" $proc "$i/test_final.act");
                 then
                     echo "... chp2prs complete, checking aflat"
                     
