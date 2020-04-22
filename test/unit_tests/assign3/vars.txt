@@ -1,6 +1,0 @@
-import syn;
-
-defproc toplevel (a1of1 go)
-{
-  syn::var_init_false var_x;
-  syn::var_init_false var_y;

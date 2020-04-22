@@ -1214,11 +1214,32 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
     output_stream = stdout;
   }
   
-  /* TODO - print import statements and wrapper process declaration */
+  /* TODO - print wrapper process declaration */
   fprintf(output_stream, "import syn;\n");
   if (bundle_data) fprintf(output_stream, "import bundled.act;\n");
   fprintf(output_stream, "\n");
-  fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");
+  
+  /* Print params for toplevel from process port list */
+  printf("TEST: %s port... port0: %d\n", p->getName(), p->getNumPorts());
+  int pnum = p->getNumPorts();
+  if (pnum == 0) {
+    fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");
+  }
+  else {
+    InstType * type;
+
+    fprintf(output_stream, "defproc toplevel (a1of1 go; ");
+    for (int i=0; i<pnum; i++) {
+      type = getPortType (int pos);
+      
+      if (i < pnum-1) {
+        fprintf(output_stream, "%s; ", getPortName(i));
+      } else {
+        fprintf(output_stream, "%s) {\n", getPortName(i));
+      }
+    }
+    
+  }
   
   /* initialize all variables and channels */
   ActInstiter iter(p->CurScope());
@@ -1229,6 +1250,8 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   /* iterate through Scope Hashtable to find all chp variables */
   for (iter = iter.begin(); iter != iter.end(); iter++) {
     ValueIdx *vx = *iter;
+    
+    /* chan variable found */
     if (TypeFactory::isChanType (vx->t)) {
       bw = TypeFactory::bitWidth(vx->t);
       if (bw == 1) {
@@ -1236,6 +1259,8 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
       } else if (bw > 1) {
         fprintf(output_stream, "  aN1of2<%d> chan_%s;\n", bw, vx->getName());
       }
+      
+    /* int variable found */
     } else if (TypeFactory::isIntType (vx->t)) {
       bw = TypeFactory::bitWidth(vx->t);
       if (bw == 1) {

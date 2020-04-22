@@ -1,4 +1,4 @@
-defproc add_8() {
+defproc add8() {
   int<8> x;
   int<8> y;
   int<8> z;
@@ -10,4 +10,4 @@ defproc add_8() {
   }
 }
 
-add_8 a;
+add8 a;
