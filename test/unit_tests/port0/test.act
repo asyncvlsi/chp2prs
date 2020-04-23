@@ -1,4 +1,5 @@
-defproc port0(aN1of2<32> a) {
+defproc port0(chan(int<32>) a) {
+  int<32> x;
   int<32> y;
   // chan(int<32>) a;
 
@@ -8,5 +9,5 @@ defproc port0(aN1of2<32> a) {
   }
 }
 
-comm2 c;
+port0 c;
 

@@ -342,6 +342,7 @@ int unop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay)
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, NULL, l, -1, false);
       if (ret > 0) return ret;
     }
+    printf("TEST1: potential problem=expr_%s\n", s);
     fprintf(output_stream, "  syn::expr_%s e_%d;\n", s, expr_count);
     fprintf(output_stream, "  e_%d.in = e_%d.out;\n", expr_count, l);
   }
@@ -380,7 +381,8 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-    fprintf(output_stream, "  syn::expr_%s<1> e_%d;\n", s, expr_count);
+    printf("TEST2: potential problem=%s\n", s);
+    fprintf(output_stream, "  syn::%s<1> e_%d;\n", s, expr_count); // changed expr_%s to %s
     fprintf(output_stream, "  e_%d.in1 = {e_%d.out};\n", expr_count, l);
     fprintf(output_stream, "  e_%d.in2 = {e_%d.out};\n", expr_count, r);
   }
@@ -392,7 +394,8 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-    fprintf(output_stream, "  syn::expr_%s e_%d;\n", s, expr_count);
+    printf("TEST3: potential problem=%s\n", s);
+    fprintf(output_stream, "  syn::%s e_%d;\n", s, expr_count); // changed expr_%s to %s
     fprintf(output_stream, "  e_%d.in1 = e_%d.out;\n", expr_count, l);
     fprintf(output_stream, "  e_%d.in2 = e_%d.out;\n", expr_count, r);
   }
@@ -415,7 +418,8 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-    fprintf(output_stream, "  syn::%s<%d> e_%d;\n", s, *bitwidth, expr_count);
+    printf("TEST4: potential problem=%s\n", s);
+    fprintf(output_stream, "  syn::%s<%d> e_%d;\n", s, *bitwidth, expr_count); // left as %s
     fprintf(output_stream, "  (i:%d: e_%d.in1[i] = e_%d.out[i];)\n", *bitwidth, expr_count, l);
     fprintf(output_stream, "  (i:%d: e_%d.in2[i] = e_%d.out[i];)\n", *bitwidth, expr_count, r);
   }
@@ -429,13 +433,13 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
   switch (e->type)
   {
     case E_AND:
-      ret = binop("and", e, bitwidth, base_var, delay, true, false);
+      ret = binop("expr_and", e, bitwidth, base_var, delay, true, false);
       break;
     case E_OR:
-      ret = binop("or", e, bitwidth, base_var, delay, true, false);
+      ret = binop("expr_or", e, bitwidth, base_var, delay, true, false);
       break;
     case E_XOR:
-      ret = binop("xor", e, bitwidth, base_var, delay, true, false);
+      ret = binop("expr_xor", e, bitwidth, base_var, delay, true, false);
       break;
     case E_PLUS:
       ret = binop("add", e, bitwidth, base_var, delay, true, false);
@@ -448,28 +452,28 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       break;
     case E_NOT:
     case E_COMPLEMENT:
-      ret = unop("not", e, bitwidth, base_var, delay);
+      ret = unop("expr_not", e, bitwidth, base_var, delay);
       break;
     case E_UMINUS:
       ret = unop("uminus", e, bitwidth, base_var, delay);
       break;
     case E_EQ:
-      ret = binop("eq", e, bitwidth, base_var, delay, true, true);
+      ret = binop("expr_eq", e, bitwidth, base_var, delay, true, true);
       break;
     case E_NE:
-      ret = binop("ne", e, bitwidth, base_var, delay, true, true);
+      ret = binop("expr_ne", e, bitwidth, base_var, delay, true, true);
       break;
     case E_LT:
-      ret = binop("lt", e, bitwidth, base_var, delay, false, true);
+      ret = binop("expr_lt", e, bitwidth, base_var, delay, false, true);
       break;
     case E_GT:
-      ret = binop("gt", e, bitwidth, base_var, delay, false, true);
+      ret = binop("expr_gt", e, bitwidth, base_var, delay, false, true);
       break;
     case E_LE:
-      ret = binop("le", e, bitwidth, base_var, delay, false, true);
+      ret = binop("expr_le", e, bitwidth, base_var, delay, false, true);
       break;
     case E_GE:
-      ret = binop("ge", e, bitwidth, base_var, delay, false, true);
+      ret = binop("expr_ge", e, bitwidth, base_var, delay, false, true);
       break;
     case E_VAR:
     {
@@ -1220,22 +1224,32 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   fprintf(output_stream, "\n");
   
   /* Print params for toplevel from process port list */
-  printf("TEST: %s port... port0: %d\n", p->getName(), p->getNumPorts());
+  printf("TEST: %s has %d ports\n", p->getName(), p->getNumPorts());
   int pnum = p->getNumPorts();
   if (pnum == 0) {
     fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");
   }
   else {
     InstType * type;
+    int bw;
 
     fprintf(output_stream, "defproc toplevel (a1of1 go; ");
     for (int i=0; i<pnum; i++) {
-      type = getPortType (int pos);
+      type = p->getPortType (i);
+      bw = TypeFactory::bitWidth(type);
       
-      if (i < pnum-1) {
-        fprintf(output_stream, "%s; ", getPortName(i));
-      } else {
-        fprintf(output_stream, "%s) {\n", getPortName(i));
+      if (TypeFactory::isChanType(type)) {
+        if (bw == 1) {
+          fprintf(output_stream, "aN1of2 %s", p->getPortName(i));
+        } else {
+          fprintf(output_stream, "aN1of2<%d> %s", TypeFactory::bitWidth(type), p->getPortName(i));
+        }
+        
+        if (i < pnum-1) {
+          fprintf(output_stream, "; ");
+        } else {
+          fprintf(output_stream, ") {\n");
+        }
       }
     }
     

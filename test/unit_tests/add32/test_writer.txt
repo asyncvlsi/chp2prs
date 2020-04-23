@@ -1,2 +1,5 @@
 bool t.c_0.r        r,r                1,1
+syn_var t.var_x[32] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00001000011010101011010001110010
+syn_var t.var_y[32] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,11110000111100101100001010101000
+syn_var t.var_z[32] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,11111000101001010000111011000110
 bool t.c_0.a        r,r                n,1
