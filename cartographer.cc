@@ -342,7 +342,7 @@ int unop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay)
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, NULL, l, -1, false);
       if (ret > 0) return ret;
     }
-    printf("TEST1: potential problem=expr_%s\n", s);
+//    printf("TEST1: potential problem=expr_%s\n", s);
     fprintf(output_stream, "  syn::expr_%s e_%d;\n", s, expr_count);
     fprintf(output_stream, "  e_%d.in = e_%d.out;\n", expr_count, l);
   }
@@ -381,7 +381,7 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-    printf("TEST2: potential problem=%s\n", s);
+//    printf("TEST2: potential problem=%s\n", s);
     fprintf(output_stream, "  syn::%s<1> e_%d;\n", s, expr_count); // changed expr_%s to %s
     fprintf(output_stream, "  e_%d.in1 = {e_%d.out};\n", expr_count, l);
     fprintf(output_stream, "  e_%d.in2 = {e_%d.out};\n", expr_count, r);
@@ -394,7 +394,7 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-    printf("TEST3: potential problem=%s\n", s);
+//    printf("TEST3: potential problem=%s\n", s);
     fprintf(output_stream, "  syn::%s e_%d;\n", s, expr_count); // changed expr_%s to %s
     fprintf(output_stream, "  e_%d.in1 = e_%d.out;\n", expr_count, l);
     fprintf(output_stream, "  e_%d.in2 = e_%d.out;\n", expr_count, r);
@@ -418,7 +418,7 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-    printf("TEST4: potential problem=%s\n", s);
+//    printf("TEST4: potential problem=%s\n", s);
     fprintf(output_stream, "  syn::%s<%d> e_%d;\n", s, *bitwidth, expr_count); // left as %s
     fprintf(output_stream, "  (i:%d: e_%d.in1[i] = e_%d.out[i];)\n", *bitwidth, expr_count, l);
     fprintf(output_stream, "  (i:%d: e_%d.in2[i] = e_%d.out[i];)\n", *bitwidth, expr_count, r);
