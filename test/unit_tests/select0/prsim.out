@@ -1,0 +1,404 @@
+	         0 Reset : 1
+	         0 t.c_0.a : 0
+	         0 t.c_0.r : 0
+	         0 _Reset : 0
+	        10 t.var_z[27].v.t : 0  [by Reset:=1]
+	        10 t.var_x[7].v.t : 0  [by Reset:=1]
+	        10 t.var_x[6].v.t : 0  [by Reset:=1]
+	        10 t.var_x[5].v.t : 0  [by Reset:=1]
+	        10 t.var_x[4].v.t : 0  [by Reset:=1]
+	        10 t.var_z[26].v.t : 0  [by Reset:=1]
+	        10 t.var_x[3].v.t : 0  [by Reset:=1]
+	        10 t.var_x[2].v.t : 0  [by Reset:=1]
+	        10 t.var_x[1].v.t : 0  [by Reset:=1]
+	        10 t.var_x[0].v.t : 0  [by Reset:=1]
+	        10 t.var_z[25].v.t : 0  [by Reset:=1]
+	        10 t.var_z[24].v.t : 0  [by Reset:=1]
+	        10 t.var_z[23].v.t : 0  [by Reset:=1]
+	        10 t.var_z[22].v.t : 0  [by Reset:=1]
+	        10 t.var_z[21].v.t : 0  [by Reset:=1]
+	        10 t.var_z[20].v.t : 0  [by Reset:=1]
+	        10 t.var_z[19].v.t : 0  [by Reset:=1]
+	        10 t.var_z[18].v.t : 0  [by Reset:=1]
+	        10 t.var_z[17].v.t : 0  [by Reset:=1]
+	        10 t.var_z[16].v.t : 0  [by Reset:=1]
+	        10 t.var_z[15].v.t : 0  [by Reset:=1]
+	        10 t.var_z[14].v.t : 0  [by Reset:=1]
+	        10 t.var_z[13].v.t : 0  [by Reset:=1]
+	        10 t.var_z[12].v.t : 0  [by Reset:=1]
+	        10 t.var_z[11].v.t : 0  [by Reset:=1]
+	        10 t.var_z[10].v.t : 0  [by Reset:=1]
+	        10 t.var_z[9].v.t : 0  [by Reset:=1]
+	        10 t.var_z[8].v.t : 0  [by Reset:=1]
+	        10 t.var_z[7].v.t : 0  [by Reset:=1]
+	        10 t.var_z[6].v.t : 0  [by Reset:=1]
+	        10 t.var_z[5].v.t : 0  [by Reset:=1]
+	        10 t.var_z[4].v.t : 0  [by Reset:=1]
+	        10 t.var_z[3].v.t : 0  [by Reset:=1]
+	        10 t.var_z[2].v.t : 0  [by Reset:=1]
+	        10 t.var_z[1].v.t : 0  [by Reset:=1]
+	        10 t.var_z[0].v.t : 0  [by Reset:=1]
+	        10 t.var_x[31].v.t : 0  [by Reset:=1]
+	        10 t.var_x[30].v.t : 0  [by Reset:=1]
+	        10 t.var_x[29].v.t : 0  [by Reset:=1]
+	        10 t.var_x[28].v.t : 0  [by Reset:=1]
+	        10 t.var_x[27].v.t : 0  [by Reset:=1]
+	        10 t.var_x[26].v.t : 0  [by Reset:=1]
+	        10 t.var_x[25].v.t : 0  [by Reset:=1]
+	        10 t.var_x[24].v.t : 0  [by Reset:=1]
+	        10 t.var_y[31].v.t : 0  [by Reset:=1]
+	        10 t.var_z[31].v.t : 0  [by Reset:=1]
+	        10 t.var_x[23].v.t : 0  [by Reset:=1]
+	        10 t.var_y[30].v.t : 0  [by Reset:=1]
+	        10 t.var_y[29].v.t : 0  [by Reset:=1]
+	        10 t.var_x[22].v.t : 0  [by Reset:=1]
+	        10 t.var_y[28].v.t : 0  [by Reset:=1]
+	        10 t.var_y[27].v.t : 0  [by Reset:=1]
+	        10 t.var_x[21].v.t : 0  [by Reset:=1]
+	        10 t.var_y[26].v.t : 0  [by Reset:=1]
+	        10 t.var_y[25].v.t : 0  [by Reset:=1]
+	        10 t.var_x[20].v.t : 0  [by Reset:=1]
+	        10 t.var_y[24].v.t : 0  [by Reset:=1]
+	        10 t.var_y[23].v.t : 0  [by Reset:=1]
+	        10 t.var_z[30].v.t : 0  [by Reset:=1]
+	        10 t.var_x[19].v.t : 0  [by Reset:=1]
+	        10 t.var_y[22].v.t : 0  [by Reset:=1]
+	        10 t.var_y[21].v.t : 0  [by Reset:=1]
+	        10 t.var_x[18].v.t : 0  [by Reset:=1]
+	        10 t.var_y[20].v.t : 0  [by Reset:=1]
+	        10 t.var_y[19].v.t : 0  [by Reset:=1]
+	        10 t.var_x[17].v.t : 0  [by Reset:=1]
+	        10 t.var_y[18].v.t : 0  [by Reset:=1]
+	        10 t.var_y[17].v.t : 0  [by Reset:=1]
+	        10 t.var_x[16].v.t : 0  [by Reset:=1]
+	        10 t.var_y[16].v.t : 0  [by Reset:=1]
+	        10 t.var_y[15].v.t : 0  [by Reset:=1]
+	        10 t.var_z[29].v.t : 0  [by Reset:=1]
+	        10 t.var_x[15].v.t : 0  [by Reset:=1]
+	        10 t.var_y[14].v.t : 0  [by Reset:=1]
+	        10 t.var_y[13].v.t : 0  [by Reset:=1]
+	        10 t.var_x[14].v.t : 0  [by Reset:=1]
+	        10 t.var_y[12].v.t : 0  [by Reset:=1]
+	        10 t.var_y[11].v.t : 0  [by Reset:=1]
+	        10 t.var_x[13].v.t : 0  [by Reset:=1]
+	        10 t.var_y[10].v.t : 0  [by Reset:=1]
+	        10 t.var_y[9].v.t : 0  [by Reset:=1]
+	        10 t.var_x[12].v.t : 0  [by Reset:=1]
+	        10 t.var_y[8].v.t : 0  [by Reset:=1]
+	        10 t.var_y[7].v.t : 0  [by Reset:=1]
+	        10 t.var_z[28].v.t : 0  [by Reset:=1]
+	        10 t.var_x[11].v.t : 0  [by Reset:=1]
+	        10 t.var_y[6].v.t : 0  [by Reset:=1]
+	        10 t.var_y[5].v.t : 0  [by Reset:=1]
+	        10 t.var_x[10].v.t : 0  [by Reset:=1]
+	        10 t.var_y[4].v.t : 0  [by Reset:=1]
+	        10 t.var_y[3].v.t : 0  [by Reset:=1]
+	        10 t.var_x[9].v.t : 0  [by Reset:=1]
+	        10 t.var_y[2].v.t : 0  [by Reset:=1]
+	        10 t.var_y[1].v.t : 0  [by Reset:=1]
+	        10 t.var_x[8].v.t : 0  [by Reset:=1]
+	        10 t.var_y[0].v.t : 0  [by Reset:=1]
+	        50 t.var_x[9].v.f : 1  [by t.s_33[9].in.t:=0]
+	        50 t.var_y[13].v.f : 1  [by t.s_3[13].in.t:=0]
+	        50 t.var_x[18].v.f : 1  [by t.s_18[18].in.t:=0]
+	        50 t.var_y[28].v.f : 1  [by t.s_3[28].in.t:=0]
+	        50 t.var_y[12].v.f : 1  [by t.s_3[12].in.t:=0]
+	        50 t.var_y[27].v.f : 1  [by t.s_3[27].in.t:=0]
+	        50 t.var_y[3].v.f : 1  [by t.s_3[3].in.t:=0]
+	        50 t.var_y[11].v.f : 1  [by t.s_3[11].in.t:=0]
+	        50 t.var_x[14].v.f : 1  [by t.s_18[14].in.t:=0]
+	        50 t.var_y[10].v.f : 1  [by t.s_3[10].in.t:=0]
+	        50 t.var_y[1].v.f : 1  [by t.s_3[1].in.t:=0]
+	        50 t.var_y[9].v.f : 1  [by t.s_3[9].in.t:=0]
+	        50 t.var_x[7].v.f : 1  [by t.s_18[7].in.t:=0]
+	        50 t.var_y[0].v.f : 1  [by t.s_3[0].in.t:=0]
+	        50 t.var_y[8].v.f : 1  [by t.s_3[8].in.t:=0]
+	        50 t.var_x[10].v.f : 1  [by t.s_18[10].in.t:=0]
+	        50 t.var_y[6].v.f : 1  [by t.s_3[6].in.t:=0]
+	        50 t.var_x[6].v.f : 1  [by t.s_18[6].in.t:=0]
+	        50 t.var_y[19].v.f : 1  [by t.s_3[19].in.t:=0]
+	        50 t.var_z[23].v.f : 1  [by t.s_28[23].in.t:=0]
+	        50 t.var_z[4].v.f : 1  [by t.s_28[4].in.t:=0]
+	        50 t.var_x[25].v.f : 1  [by t.s_33[25].in.t:=0]
+	        50 t.var_x[0].v.f : 1  [by t.s_18[0].in.t:=0]
+	        50 t.var_z[14].v.f : 1  [by t.s_28[14].in.t:=0]
+	        50 t.var_y[2].v.f : 1  [by t.s_3[2].in.t:=0]
+	        50 t.var_x[12].v.f : 1  [by t.s_18[12].in.t:=0]
+	        50 t.var_z[16].v.f : 1  [by t.s_28[16].in.t:=0]
+	        50 t.var_x[13].v.f : 1  [by t.s_33[13].in.t:=0]
+	        50 t.var_x[1].v.f : 1  [by t.s_33[1].in.t:=0]
+	        50 t.var_z[15].v.f : 1  [by t.s_28[15].in.t:=0]
+	        50 t.var_z[10].v.f : 1  [by t.s_7[10].in.t:=0]
+	        50 t.var_y[15].v.f : 1  [by t.s_3[15].in.t:=0]
+	        50 t.var_z[12].v.f : 1  [by t.c_20.r:=0]
+	        50 t.var_y[24].v.f : 1  [by t.s_3[24].in.t:=0]
+	        50 t.var_x[23].v.f : 1  [by t.s_18[23].in.t:=0]
+	        50 t.var_z[7].v.f : 1  [by t.s_28[7].in.t:=0]
+	        50 t.var_x[5].v.f : 1  [by t.s_33[5].in.t:=0]
+	        50 t.var_x[17].v.f : 1  [by t.s_33[17].in.t:=0]
+	        50 t.var_z[28].v.f : 1  [by t.c_20.r:=0]
+	        50 t.var_x[31].v.f : 1  [by t.s_18[31].in.t:=0]
+	        50 t.var_z[9].v.f : 1  [by t.s_7[9].in.t:=0]
+	        50 t.var_z[17].v.f : 1  [by t.c_19.r:=0]
+	        50 t.var_x[30].v.f : 1  [by t.s_18[30].in.t:=0]
+	        50 t.var_y[30].v.f : 1  [by t.s_3[30].in.t:=0]
+	        50 t.var_y[25].v.f : 1  [by t.s_3[25].in.t:=0]
+	        50 t.var_x[26].v.f : 1  [by t.s_18[26].in.t:=0]
+	        50 t.var_z[25].v.f : 1  [by t.c_18.r:=0]
+	        50 t.var_y[26].v.f : 1  [by t.s_3[26].in.t:=0]
+	        50 t.var_y[21].v.f : 1  [by t.s_3[21].in.t:=0]
+	        50 t.var_y[7].v.f : 1  [by t.s_3[7].in.t:=0]
+	        50 t.var_y[22].v.f : 1  [by t.s_3[22].in.t:=0]
+	        50 t.var_z[21].v.f : 1  [by t.s_28[21].in.t:=0]
+	        50 t.var_z[31].v.f : 1  [by t.s_28[31].in.t:=0]
+	        50 t.var_z[27].v.f : 1  [by t.s_28[27].in.t:=0]
+	        50 t.var_z[26].v.f : 1  [by t.s_28[26].in.t:=0]
+	        50 t.var_z[13].v.f : 1  [by t.s_28[13].in.t:=0]
+	        50 t.var_x[4].v.f : 1  [by t.s_18[4].in.t:=0]
+	        50 t.var_y[4].v.f : 1  [by t.s_3[4].in.t:=0]
+	        50 t.var_z[18].v.f : 1  [by t.s_28[18].in.t:=0]
+	        50 t.var_z[5].v.f : 1  [by t.s_28[5].in.t:=0]
+	        50 t.var_z[11].v.f : 1  [by t.s_28[11].in.t:=0]
+	        50 t.var_z[8].v.f : 1  [by t.s_28[8].in.t:=0]
+	        50 t.var_x[22].v.f : 1  [by t.s_18[22].in.t:=0]
+	        50 t.var_z[6].v.f : 1  [by t.s_28[6].in.t:=0]
+	        50 t.var_z[3].v.f : 1  [by t.s_28[3].in.t:=0]
+	        50 t.var_z[2].v.f : 1  [by t.s_28[2].in.t:=0]
+	        50 t.var_z[0].v.f : 1  [by t.s_28[0].in.t:=0]
+	        50 t.var_x[28].v.f : 1  [by t.s_18[28].in.t:=0]
+	        50 t.var_y[18].v.f : 1  [by t.s_3[18].in.t:=0]
+	        50 t.var_x[27].v.f : 1  [by t.s_18[27].in.t:=0]
+	        50 t.var_y[29].v.f : 1  [by t.s_3[29].in.t:=0]
+	        50 t.var_y[31].v.f : 1  [by t.s_3[31].in.t:=0]
+	        50 t.var_y[16].v.f : 1  [by t.s_3[16].in.t:=0]
+	        50 t.var_y[17].v.f : 1  [by t.s_3[17].in.t:=0]
+	        50 t.var_x[24].v.f : 1  [by t.s_18[24].in.t:=0]
+	        50 t.var_y[23].v.f : 1  [by t.s_3[23].in.t:=0]
+	        50 t.var_z[1].v.f : 1  [by t.c_20.r:=0]
+	        50 t.var_x[19].v.f : 1  [by t.s_18[19].in.t:=0]
+	        50 t.var_y[20].v.f : 1  [by t.s_3[20].in.t:=0]
+	        50 t.var_y[14].v.f : 1  [by t.s_3[14].in.t:=0]
+	        50 t.var_x[20].v.f : 1  [by t.s_18[20].in.t:=0]
+	        50 t.var_x[15].v.f : 1  [by t.s_18[15].in.t:=0]
+	        50 t.var_x[16].v.f : 1  [by t.s_18[16].in.t:=0]
+	        50 t.var_x[11].v.f : 1  [by t.s_18[11].in.t:=0]
+	        50 t.var_z[30].v.f : 1  [by t.s_28[30].in.t:=0]
+	        50 t.var_z[29].v.f : 1  [by t.s_28[29].in.t:=0]
+	        50 t.var_z[20].v.f : 1  [by t.s_28[20].in.t:=0]
+	        50 t.var_x[21].v.f : 1  [by t.s_33[21].in.t:=0]
+	        50 t.var_x[8].v.f : 1  [by t.s_18[8].in.t:=0]
+	        50 t.var_z[24].v.f : 1  [by t.s_28[24].in.t:=0]
+	        50 t.var_x[3].v.f : 1  [by t.s_18[3].in.t:=0]
+	        50 t.var_x[29].v.f : 1  [by t.s_18[29].in.t:=0]
+	        50 t.var_y[5].v.f : 1  [by t.s_3[5].in.t:=0]
+	        50 t.var_x[2].v.f : 1  [by t.s_18[2].in.t:=0]
+	        50 t.var_z[22].v.f : 1  [by t.s_28[22].in.t:=0]
+	        50 t.var_z[19].v.f : 1  [by t.s_28[19].in.t:=0]
+	       280 Reset : 0
+	       280 _Reset : 1
+	       280 t.c_0.r : 1
+	       620 t.var_x[28].v.f : 0  [by t.s_0[28].in.t:=1]
+	       620 t.var_x[0].v.f : 0  [by t.s_0[0].in.t:=1]
+	       620 t.var_x[15].v.f : 0  [by t.s_0[15].in.t:=1]
+	       620 t.var_x[31].v.f : 0  [by t.s_0[31].in.t:=1]
+	       620 t.var_x[29].v.f : 0  [by t.s_0[29].in.t:=1]
+	       620 t.var_x[17].v.f : 0  [by t.s_0[17].in.t:=1]
+	       620 t.var_x[18].v.f : 0  [by t.s_0[18].in.t:=1]
+	       620 t.var_x[4].v.f : 0  [by t.s_0[4].in.t:=1]
+	       620 t.var_x[13].v.f : 0  [by t.s_0[13].in.t:=1]
+	       620 t.var_x[8].v.f : 0  [by t.s_0[8].in.t:=1]
+	       620 t.var_x[24].v.f : 0  [by t.s_0[24].in.t:=1]
+	       620 t.var_x[26].v.f : 0  [by t.s_0[26].in.t:=1]
+	       620 t.var_x[19].v.f : 0  [by t.s_0[19].in.t:=1]
+	       620 t.var_x[9].v.f : 0  [by t.s_0[9].in.t:=1]
+	       620 t.var_x[22].v.f : 0  [by t.s_0[22].in.t:=1]
+	       620 t.var_x[14].v.f : 0  [by t.s_0[14].in.t:=1]
+	       620 t.var_x[12].v.f : 0  [by t.s_0[12].in.t:=1]
+	       640 t.var_x[29].v.t : 1  [by t.var_x[29].v.f:=0]
+	       640 t.var_x[28].v.t : 1  [by t.var_x[28].v.f:=0]
+	       640 t.var_x[14].v.t : 1  [by t.var_x[14].v.f:=0]
+	       640 t.var_x[12].v.t : 1  [by t.var_x[12].v.f:=0]
+	       640 t.var_x[31].v.t : 1  [by t.var_x[31].v.f:=0]
+	       640 t.var_x[18].v.t : 1  [by t.var_x[18].v.f:=0]
+	       640 t.var_x[15].v.t : 1  [by t.var_x[15].v.f:=0]
+	       640 t.var_x[8].v.t : 1  [by t.var_x[8].v.f:=0]
+	       640 t.var_x[22].v.t : 1  [by t.var_x[22].v.f:=0]
+	       640 t.var_x[19].v.t : 1  [by t.var_x[19].v.f:=0]
+	       640 t.var_x[26].v.t : 1  [by t.var_x[26].v.f:=0]
+	       640 t.var_x[24].v.t : 1  [by t.var_x[24].v.f:=0]
+	       640 t.var_x[17].v.t : 1  [by t.var_x[17].v.f:=0]
+	       640 t.var_x[0].v.t : 1  [by t.var_x[0].v.f:=0]
+	       640 t.var_x[4].v.t : 1  [by t.var_x[4].v.f:=0]
+	       640 t.var_x[9].v.t : 1  [by t.var_x[9].v.f:=0]
+	       640 t.var_x[13].v.t : 1  [by t.var_x[13].v.f:=0]
+	      1060 t.var_y[28].v.f : 0  [by t.s_3[28].in.t:=1]
+	      1060 t.var_y[23].v.f : 0  [by t.s_3[23].in.t:=1]
+	      1060 t.var_y[5].v.f : 0  [by t.s_3[5].in.t:=1]
+	      1060 t.var_y[20].v.f : 0  [by t.s_3[20].in.t:=1]
+	      1060 t.var_y[15].v.f : 0  [by t.s_3[15].in.t:=1]
+	      1060 t.var_y[31].v.f : 0  [by t.s_3[31].in.t:=1]
+	      1060 t.var_y[2].v.f : 0  [by t.s_3[2].in.t:=1]
+	      1060 t.var_y[1].v.f : 0  [by t.s_3[1].in.t:=1]
+	      1060 t.var_y[18].v.f : 0  [by t.s_3[18].in.t:=1]
+	      1060 t.var_y[6].v.f : 0  [by t.s_3[6].in.t:=1]
+	      1060 t.var_y[4].v.f : 0  [by t.s_3[4].in.t:=1]
+	      1060 t.var_y[8].v.f : 0  [by t.s_3[8].in.t:=1]
+	      1060 t.var_y[10].v.f : 0  [by t.s_3[10].in.t:=1]
+	      1060 t.var_y[30].v.f : 0  [by t.s_3[30].in.t:=1]
+	      1060 t.var_y[11].v.f : 0  [by t.s_3[11].in.t:=1]
+	      1060 t.var_y[21].v.f : 0  [by t.s_3[21].in.t:=1]
+	      1060 t.var_y[9].v.f : 0  [by t.s_3[9].in.t:=1]
+	      1060 t.var_y[27].v.f : 0  [by t.s_3[27].in.t:=1]
+	      1060 t.var_y[14].v.f : 0  [by t.s_3[14].in.t:=1]
+	      1060 t.var_y[12].v.f : 0  [by t.s_3[12].in.t:=1]
+	      1080 t.var_y[6].v.t : 1  [by t.var_y[6].v.f:=0]
+	      1080 t.var_y[4].v.t : 1  [by t.var_y[4].v.f:=0]
+	      1080 t.var_y[20].v.t : 1  [by t.var_y[20].v.f:=0]
+	      1080 t.var_y[14].v.t : 1  [by t.var_y[14].v.f:=0]
+	      1080 t.var_y[5].v.t : 1  [by t.var_y[5].v.f:=0]
+	      1080 t.var_y[18].v.t : 1  [by t.var_y[18].v.f:=0]
+	      1080 t.var_y[15].v.t : 1  [by t.var_y[15].v.f:=0]
+	      1080 t.var_y[12].v.t : 1  [by t.var_y[12].v.f:=0]
+	      1080 t.var_y[23].v.t : 1  [by t.var_y[23].v.f:=0]
+	      1080 t.var_y[2].v.t : 1  [by t.var_y[2].v.f:=0]
+	      1080 t.var_y[21].v.t : 1  [by t.var_y[21].v.f:=0]
+	      1080 t.var_y[8].v.t : 1  [by t.var_y[8].v.f:=0]
+	      1080 t.var_y[31].v.t : 1  [by t.var_y[31].v.f:=0]
+	      1080 t.var_y[28].v.t : 1  [by t.var_y[28].v.f:=0]
+	      1080 t.var_y[27].v.t : 1  [by t.var_y[27].v.f:=0]
+	      1080 t.var_y[30].v.t : 1  [by t.var_y[30].v.f:=0]
+	      1080 t.var_y[10].v.t : 1  [by t.var_y[10].v.f:=0]
+	      1080 t.var_y[1].v.t : 1  [by t.var_y[1].v.f:=0]
+	      1080 t.var_y[11].v.t : 1  [by t.var_y[11].v.f:=0]
+	      1080 t.var_y[9].v.t : 1  [by t.var_y[9].v.f:=0]
+	      3350 t.var_z[1].v.f : 0  [by t.s_10[1].in.t:=1]
+	      3370 t.var_z[1].v.t : 1  [by t.var_z[1].v.f:=0]
+	      3810 t.var_x[28].v.t : 0  [by t.s_18[28].in.f:=1]
+	      3810 t.var_x[31].v.t : 0  [by t.s_18[31].in.f:=1]
+	      3810 t.var_x[2].v.f : 0  [by t.s_18[2].in.t:=1]
+	      3810 t.var_x[29].v.t : 0  [by t.s_18[29].in.f:=1]
+	      3810 t.var_x[13].v.t : 0  [by t.s_18[13].in.f:=1]
+	      3810 t.var_x[24].v.t : 0  [by t.s_18[24].in.f:=1]
+	      3810 t.var_x[19].v.t : 0  [by t.s_18[19].in.f:=1]
+	      3810 t.var_x[11].v.f : 0  [by t.s_18[11].in.t:=1]
+	      3810 t.var_x[21].v.f : 0  [by t.s_18[21].in.t:=1]
+	      3810 t.var_x[27].v.f : 0  [by t.s_18[27].in.t:=1]
+	      3810 t.var_x[22].v.t : 0  [by t.s_18[22].in.f:=1]
+	      3810 t.var_x[14].v.t : 0  [by t.s_18[14].in.f:=1]
+	      3830 t.var_x[11].v.t : 1  [by t.var_x[11].v.f:=0]
+	      3830 t.var_x[14].v.f : 1  [by t.var_x[14].v.t:=0]
+	      3830 t.var_x[21].v.t : 1  [by t.var_x[21].v.f:=0]
+	      3830 t.var_x[28].v.f : 1  [by t.var_x[28].v.t:=0]
+	      3830 t.var_x[2].v.t : 1  [by t.var_x[2].v.f:=0]
+	      3830 t.var_x[29].v.f : 1  [by t.var_x[29].v.t:=0]
+	      3830 t.var_x[31].v.f : 1  [by t.var_x[31].v.t:=0]
+	      3830 t.var_x[19].v.f : 1  [by t.var_x[19].v.t:=0]
+	      3830 t.var_x[22].v.f : 1  [by t.var_x[22].v.t:=0]
+	      3830 t.var_x[13].v.f : 1  [by t.var_x[13].v.t:=0]
+	      3830 t.var_x[27].v.t : 1  [by t.var_x[27].v.f:=0]
+	      3830 t.var_x[24].v.f : 1  [by t.var_x[24].v.t:=0]
+	      5200 t.var_z[0].v.f : 0  [by t.s_22[0].in.t:=1]
+	      5200 t.var_z[1].v.t : 0  [by t.s_22[1].in.f:=1]
+	      5220 t.var_z[0].v.t : 1  [by t.var_z[0].v.f:=0]
+	      5220 t.var_z[1].v.f : 1  [by t.var_z[1].v.t:=0]
+	      5660 t.var_x[28].v.f : 0  [by t.s_33[28].in.t:=1]
+	      5660 t.var_x[23].v.f : 0  [by t.s_33[23].in.t:=1]
+	      5660 t.var_x[5].v.f : 0  [by t.s_33[5].in.t:=1]
+	      5660 t.var_x[0].v.t : 0  [by t.s_33[0].in.f:=1]
+	      5660 t.var_x[20].v.f : 0  [by t.s_33[20].in.t:=1]
+	      5660 t.var_x[31].v.f : 0  [by t.s_33[31].in.t:=1]
+	      5660 t.var_x[17].v.t : 0  [by t.s_33[17].in.f:=1]
+	      5660 t.var_x[1].v.f : 0  [by t.s_33[1].in.t:=1]
+	      5660 t.var_x[6].v.f : 0  [by t.s_33[6].in.t:=1]
+	      5660 t.var_x[26].v.t : 0  [by t.s_33[26].in.f:=1]
+	      5660 t.var_x[10].v.f : 0  [by t.s_33[10].in.t:=1]
+	      5660 t.var_x[30].v.f : 0  [by t.s_33[30].in.t:=1]
+	      5660 t.var_x[14].v.f : 0  [by t.s_33[14].in.t:=1]
+	      5680 t.var_x[30].v.t : 1  [by t.var_x[30].v.f:=0]
+	      5680 t.var_x[10].v.t : 1  [by t.var_x[10].v.f:=0]
+	      5680 t.var_x[23].v.t : 1  [by t.var_x[23].v.f:=0]
+	      5680 t.var_x[28].v.t : 1  [by t.var_x[28].v.f:=0]
+	      5680 t.var_x[5].v.t : 1  [by t.var_x[5].v.f:=0]
+	      5680 t.var_x[14].v.t : 1  [by t.var_x[14].v.f:=0]
+	      5680 t.var_x[31].v.t : 1  [by t.var_x[31].v.f:=0]
+	      5680 t.var_x[0].v.f : 1  [by t.var_x[0].v.t:=0]
+	      5680 t.var_x[20].v.t : 1  [by t.var_x[20].v.f:=0]
+	      5680 t.var_x[17].v.f : 1  [by t.var_x[17].v.t:=0]
+	      5680 t.var_x[6].v.t : 1  [by t.var_x[6].v.f:=0]
+	      5680 t.var_x[26].v.f : 1  [by t.var_x[26].v.t:=0]
+	      5680 t.var_x[1].v.t : 1  [by t.var_x[1].v.f:=0]
+	      8170 t.var_z[1].v.f : 0  [by t.s_43[1].in.t:=1]
+	      8190 t.var_z[1].v.t : 1  [by t.var_z[1].v.f:=0]
+WRONG ASSERT:	"t.var_x[0].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[0].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[1].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[1].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[3].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[3].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[4].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[4].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[6].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[6].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[7].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[7].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[8].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[8].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[10].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[10].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[11].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[11].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[13].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[13].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[15].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[15].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[16].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[16].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[17].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[17].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[19].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[19].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[20].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[20].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[21].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[21].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[22].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[22].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[28].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[28].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[30].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[30].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_z[0].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_z[0].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_z[1].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_z[1].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[0].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[0].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[1].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[1].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[5].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[5].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[6].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[6].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[10].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[10].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[14].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[14].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[17].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[17].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[20].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[20].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[23].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[23].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[26].v.t" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[26].v.f" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[28].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[28].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[30].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[30].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_x[31].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_x[31].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_z[0].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_z[0].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.var_z[1].v.t" has value 1 and not 0.
+WRONG ASSERT:	"t.var_z[1].v.f" has value 0 and not 1.
+WRONG ASSERT:	"t.c_0.a" has value 0 and not 1.
