@@ -23,14 +23,15 @@ BINARY=chp2prs.$(EXT)
 TARGETS=$(BINARY)
 
 OBJS=main.o check_chp.o cartographer.o
+OBJS+=../chp-optimize/chp-opt.o ../chp-optimize/var-table.o ../chp-optimize/lattice.o ../chp-optimize/expr-helpers.o ../chp-optimize/canonical.o ../chp-optimize/sequencers.o ../chp-optimize/deadcode.o
 
 SRCS=$(OBJS:.o=.cc)
 
 include $(VLSI_TOOLS_SRC)/scripts/Makefile.std
 
 $(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
-	$(CXX) $(CFLAGS) $(OBJS) -o $(BINARY) $(LIBACTPASS)
-	
+	$(CXX) $(CFLAGS) $(OBJS) -o $(BINARY) $(LIBACTPASS) 
+
 update: update_channel update_globals update_syn update_bundled
 
 update_channel:
@@ -51,11 +52,13 @@ update_globals:
 		(echo "Error: no globals file to update") \
 	fi
 
+# TODO: THIS ASSUMES ACT_HOME/ACT EXISTS
+
  # SYN File Copy for Syn Namespace
 update_syn:
 	@if [ -d lib/ -a -f lib/syn.act ] ; \
 	then \
-		if [ -d $(ACT_HOME)/act/syn ]; \
+		if [ -d $(ACT_HOME)/act -a -d $(ACT_HOME)/act/syn ]; \
 		then \
 			cp lib/syn.act $(ACT_HOME)/act/syn/_all_.act; \
 			echo "Copied syn.act to ACT_HOME/act/syn/_all_.act"; \
@@ -84,3 +87,4 @@ update_bundled:
 	fi
 
 -include Makefile.deps
+

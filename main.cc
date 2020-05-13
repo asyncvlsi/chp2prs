@@ -26,6 +26,7 @@
 #include <string.h>
 #include <act/act.h>
 #include <act/passes/netlist.h>
+#include "../chp-optimize/chp-opt.h"
 #include "config.h"
 #include "check_chp.h"
 #include "cartographer.h"
@@ -71,6 +72,8 @@ int main(int argc, char **argv)
   {
     fatal_error("Process `%s' is not expanded.", argv[2]);
   }
+  
+  ChpOpt::optimize(p);
 
   /* extract the chp */
   if (p->lang == NULL || p->lang->getchp() == NULL)

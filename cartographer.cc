@@ -30,7 +30,7 @@
 #include "cartographer.h"
 #include <act/iter.h>
 #include <act/value.h>
-
+#include "/Users/amandahansen/Async/chp-optimize/sequencers.h"
 
 /*
  *
@@ -1135,7 +1135,14 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       a = chan_count++;
       ret = a;
       /* create request/acknowledge channel for the sequencer */
-      fprintf(output_stream, "  a1of1 c_%d;\n", ret);
+      /* TODO HERE GOES THE SEQUENCER YAY */
+      if (c->space && ((SequencerInfo *)c->space)->sequence) {
+        fprintf(output_stream, "/* yay we need a sequencer here */\n");
+        // sequencer needed
+        
+      } else {
+        fprintf(output_stream, "  a1of1 c_%d;\n", ret); // no sequencer needed
+      }
       fprintf(output_stream, "\n");
       /* iterate through all composite statements */
       for (li = list_first(c->u.semi_comma.cmd); list_next(li); li = list_next(li))
@@ -1284,6 +1291,8 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
       }
     }
   }
+  fprintf(output_stream, "  syn::var_init_false loop0000[4];\n");
+  fprintf(output_stream, "  syn::var_init_false sel0000[4];\n");
   fprintf(output_stream, "\n");
 
   int *bitwidth = (int *) calloc(1, sizeof(int));
