@@ -29,22 +29,19 @@ defproc toplevel (a1of1 go)
   e_1.v[7] = const_0.v;
   a1of1 c_1;
   /* testpoint 1 */
-  syn::fullseq s_1;
-  c_1.r = s_1.go.r;
   syn::recv rtv_1[8];
   syn::expr_vararray<8> e_2;
   syn::var_init_false tv_1[8];
   (i:8: e_2.v[i] = tv_1[i].v;)
   (i:8: e_2.v[i] = rtv_1[i].v;)
-  s_1.r.r = e_1.go_r;
+  c_1.r = e_1.go_r;
   /* testpoint 3 */
-  (i:8: s_1.r.r = rtv_1[i].go.r;)
+  (i:8: c_1.r = rtv_1[i].go.r;)
   syn::ctree<8> ct_1;
   (i:8: ct_1.in[i] = rtv_1[i].go.a;)
-  s_1.r.a = ct_1.out;
   (i:8: e_1.out[i].t = rtv_1[i].in.t;
         e_1.out[i].f = rtv_1[i].in.f;)
-  s_1.go.a = e_2.go_r;
+  ct_1.out = e_2.go_r;
   syn::recv s_0[8];
   /* testpoint 5 */
   (i:8: s_0[i].go.r = c_1.r;)
@@ -77,22 +74,19 @@ defproc toplevel (a1of1 go)
   e_3.v[7] = const_0.v;
   a1of1 c_3;
   /* testpoint 1 */
-  syn::fullseq s_4;
-  c_3.r = s_4.go.r;
   syn::recv rtv_4[8];
   syn::expr_vararray<8> e_4;
   syn::var_init_false tv_4[8];
   (i:8: e_4.v[i] = tv_4[i].v;)
   (i:8: e_4.v[i] = rtv_4[i].v;)
-  s_4.r.r = e_3.go_r;
+  c_3.r = e_3.go_r;
   /* testpoint 3 */
-  (i:8: s_4.r.r = rtv_4[i].go.r;)
+  (i:8: c_3.r = rtv_4[i].go.r;)
   syn::ctree<8> ct_4;
   (i:8: ct_4.in[i] = rtv_4[i].go.a;)
-  s_4.r.a = ct_4.out;
   (i:8: e_3.out[i].t = rtv_4[i].in.t;
         e_3.out[i].f = rtv_4[i].in.f;)
-  s_4.go.a = e_4.go_r;
+  ct_4.out = e_4.go_r;
   syn::recv s_3[8];
   /* testpoint 5 */
   (i:8: s_3[i].go.r = c_3.r;)
@@ -121,22 +115,19 @@ defproc toplevel (a1of1 go)
   (i:8: e_7.in2[i] = e_6.out[i];)
   a1of1 c_4;
   /* testpoint 1 */
-  syn::fullseq s_7;
-  c_4.r = s_7.go.r;
   syn::recv rtv_7[8];
   syn::expr_vararray<8> e_8;
   syn::var_init_false tv_7[8];
   (i:8: e_8.v[i] = tv_7[i].v;)
   (i:8: e_8.v[i] = rtv_7[i].v;)
-  s_7.r.r = e_5.go_r;
+  c_4.r = e_5.go_r;
   /* testpoint 3 */
-  (i:8: s_7.r.r = rtv_7[i].go.r;)
+  (i:8: c_4.r = rtv_7[i].go.r;)
   syn::ctree<8> ct_7;
   (i:8: ct_7.in[i] = rtv_7[i].go.a;)
-  s_7.r.a = ct_7.out;
   (i:8: e_7.out[i].t = rtv_7[i].in.t;
         e_7.out[i].f = rtv_7[i].in.f;)
-  s_7.go.a = e_8.go_r;
+  ct_7.out = e_8.go_r;
   syn::recv s_6[8];
   /* testpoint 5 */
   (i:8: s_6[i].go.r = c_4.r;)

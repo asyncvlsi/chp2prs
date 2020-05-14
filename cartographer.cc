@@ -731,8 +731,8 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
   int evar = expr_count++;
 
   fprintf(output_stream, "  /* testpoint 1 */\n");
-  fprintf(output_stream, "  syn::fullseq s_%d;\n", seq);
-  fprintf(output_stream, "  %s = s_%d.go.r;\n", req, seq);
+//  fprintf(output_stream, "  syn::fullseq s_%d;\n", seq);
+//  fprintf(output_stream, "  %s = s_%d.go.r;\n", req, seq);
 
   if (bits == 1)
   {
@@ -741,10 +741,11 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
     fprintf(output_stream, "  syn::var_init_false tv_%d;\n", seq);
     fprintf(output_stream, "  tv_%d.v = rtv_%d.v;\n", seq, seq);
     fprintf(output_stream, "  e_%d.v = tv_%d.v;\n", evar, seq);
-    fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
-    fprintf(output_stream, "  s_%d.r = rtv_%d.go;\n", seq, seq);
+    fprintf(output_stream, "  %s = e_%d.go_r;\n", req, ego);
+    fprintf(output_stream, "  %s = rtv_%d.go.r;\n", req, seq);
     fprintf(output_stream, "  e_%d.out.t = rtv_%d.in.t;\n", eout, seq);
     fprintf(output_stream, "  e_%d.out.f = rtv_%d.in.f;\n", eout, seq);
+    fprintf(output_stream, "  rtv_%d.go.a = e_%d.go_r;\n", seq, evar);
   }
   else if (bundle_data)
   {
@@ -758,6 +759,7 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
     fprintf(output_stream, "  s_%d.r.a = brtv_%d.go.a;\n", seq, seq);
     fprintf(output_stream, "  (i:%d: e_%d.out[i].t = brtv_%d.in.d[i].t;\n", bits, eout, seq);
     fprintf(output_stream, "       %*ce_%d.out[i].f = brtv_%d.in.d[i].f;)\n", get_bitwidth(bits, 10), ' ', eout, seq);
+    fprintf(output_stream, "  brtv_%d.go.a = e_%d.go_r;\n", seq, evar);
   }
   else
   {
@@ -766,16 +768,16 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
     fprintf(output_stream, "  syn::var_init_false tv_%d[%d];\n", seq, bits);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = tv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = rtv_%d[i].v;)\n", bits, evar, seq);
-    fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
+    fprintf(output_stream, "  %s = e_%d.go_r;\n", req, ego);
     fprintf(output_stream, "  /* testpoint 3 */\n");
-    fprintf(output_stream, "  (i:%d: s_%d.r.r = rtv_%d[i].go.r;)\n", bits, seq, seq);
+    fprintf(output_stream, "  (i:%d: %s = rtv_%d[i].go.r;)\n", bits, req, seq);
     fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", bits, seq);
     fprintf(output_stream, "  (i:%d: ct_%d.in[i] = rtv_%d[i].go.a;)\n", bits, seq, seq);
-    fprintf(output_stream, "  s_%d.r.a = ct_%d.out;\n", seq, seq);
+//    fprintf(output_stream, "  s_%d.r.a = ct_%d.out;\n", seq, seq);
     fprintf(output_stream, "  (i:%d: e_%d.out[i].t = rtv_%d[i].in.t;\n", bits, eout, seq);
     fprintf(output_stream, "       %*ce_%d.out[i].f = rtv_%d[i].in.f;)\n", get_bitwidth(bits, 10), ' ', eout, seq);
+    fprintf(output_stream, "  ct_%d.out = e_%d.go_r;\n", seq, evar);
   }
-  fprintf(output_stream, "  s_%d.go.a = e_%d.go_r;\n", seq, evar);
 
   return evar;
 }

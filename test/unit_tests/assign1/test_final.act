@@ -14,18 +14,16 @@ defproc toplevel (a1of1 go)
   e_1.v = const_0.v;
   a1of1 c_0;
   /* testpoint 1 */
-  syn::fullseq s_1;
-  c_0.r = s_1.go.r;
   syn::recv rtv_1;
   syn::expr_var e_2;
   syn::var_init_false tv_1;
   tv_1.v = rtv_1.v;
   e_2.v = tv_1.v;
-  s_1.r.r = e_1.go_r;
-  s_1.r = rtv_1.go;
+  c_0.r = e_1.go_r;
+  c_0.r = rtv_1.go.r;
   e_1.out.t = rtv_1.in.t;
   e_1.out.f = rtv_1.in.f;
-  s_1.go.a = e_2.go_r;
+  rtv_1.go.a = e_2.go_r;
   syn::recv s_0;
   s_0.go = c_0;
   s_0.in.t = e_2.out.t;
