@@ -2,7 +2,8 @@ defproc assign1 () {
   int<1> x;
 
   chp {
-    x:=0
+    x:=0;
+    x:=1
   }
 }
 

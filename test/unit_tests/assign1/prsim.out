@@ -7,4 +7,6 @@
 	        40 Reset : 0
 	        40 _Reset : 1
 	        40 t.go.r : 1
-	       120 t.go.a : 1  [by t.s_0._goa:=0]
+	       220 t.var_x.v.f : 0  [by t.s_3.in.t:=1]
+	       240 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	       260 t.go.a : 1  [by t.s_3._goa:=0]

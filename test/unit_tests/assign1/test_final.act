@@ -8,27 +8,64 @@ defproc toplevel (a1of1 go)
   syn::var_init_false sel0000[4];
 
   /* ... printchpstmt 3 c_0...*/
+  /* semicolon */
+  a1of1 c_0;
+
+  /* printing composite statement: ns=-1 */
+  /* ... printchpstmt 0 c_a=0, c_b=48, ns=-1... for left side*/
+  /* ... printchpstmt 5 ...*/
   /* assign */
   syn::var_init_false const_0;
   syn::expr_var e_1;
   e_1.v = const_0.v;
-  a1of1 c_0;
+  a1of1 c_1;
   /* testpoint 1 */
   syn::recv rtv_1;
   syn::expr_var e_2;
   syn::var_init_false tv_1;
   tv_1.v = rtv_1.v;
   e_2.v = tv_1.v;
-  c_0.r = e_1.go_r;
-  c_0.r = rtv_1.go.r;
+  c_1.r = e_1.go_r;
+  c_1.r = rtv_1.go.r;
   e_1.out.t = rtv_1.in.t;
   e_1.out.f = rtv_1.in.f;
   rtv_1.go.a = e_2.go_r;
   syn::recv s_0;
-  s_0.go = c_0;
+  s_0.go = c_1;
   s_0.in.t = e_2.out.t;
   s_0.in.f = e_2.out.f;
   s_0.v = var_x.v;
+
+  /* ... printchpstmt 0 c_a=0, c_b=1, ns=-1... for RIGHT side*/
+  syn::seq s_2;
+  /* is this the place?? ns=-1*/
+  s_2.go = c_0;
+  s_2.s1 = c_1;
+
+  /* ... printchpstmt 2 c_1, ns=-1...*/
+  /* assign */
+  syn::var_init_true const_1;
+  syn::expr_var e_3;
+  e_3.v = const_1.v;
+  a1of1 c_2;
+  /* testpoint 1 */
+  syn::recv rtv_4;
+  syn::expr_var e_4;
+  syn::var_init_false tv_4;
+  tv_4.v = rtv_4.v;
+  e_4.v = tv_4.v;
+  c_2.r = e_3.go_r;
+  c_2.r = rtv_4.go.r;
+  e_3.out.t = rtv_4.in.t;
+  e_3.out.f = rtv_4.in.f;
+  rtv_4.go.a = e_4.go_r;
+  syn::recv s_3;
+  s_3.go = c_2;
+  s_3.in.t = e_4.out.t;
+  s_3.in.f = e_4.out.f;
+  s_3.v = var_x.v;
+
+  s_2.s2 = c_2;
 
   go = c_0;
 }
