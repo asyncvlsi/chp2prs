@@ -62,8 +62,8 @@ set t.go.r 1
 cycle
 
 assert t.go.r 1
-assert t.var_x.v.t 0
-assert t.var_x.v.f 1
+assert t.var_x.v.t 1
+assert t.var_x.v.f 0
 assert t.var_y.v.t 1
 assert t.var_y.v.f 0
 assert t.var_z.v.t 0

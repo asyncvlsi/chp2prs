@@ -1,5 +1,5 @@
 bool t.go.r       r,r   1,1
-syn_var t.var_x   n,0   n,1
+syn_var t.var_x   n,0   n,0
 syn_var t.var_y   n,0   n,0
 syn_var t.var_z   n,0   n,1
 syn_var t.var_v   n,0   n,1
