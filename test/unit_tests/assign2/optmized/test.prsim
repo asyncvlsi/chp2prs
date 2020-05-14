@@ -10,10 +10,10 @@ watch t.var_z.v.t
 watch t.var_z.v.f
 watch t.var_v.v.t
 watch t.var_v.v.f
-watch t.s_0.go.r
-watch t.s_0.go.a
-watch t.s_0.r.r
-watch t.s_0.r.a
+watch t.s_14.go.r
+watch t.s_14.go.a
+watch t.s_14.r.r
+watch t.s_14.r.a
 watch t.go.a
 set_principal t.go.r
 set_principal t.var_x.v.t
@@ -24,9 +24,9 @@ set_principal t.var_z.v.t
 set_principal t.var_z.v.f
 set_principal t.var_v.v.t
 set_principal t.var_v.v.f
-set_principal t.s_0.r.r
-set_principal t.s_0.r.a
-set_principal t.s_0.go.a
+set_principal t.s_14.r.r
+set_principal t.s_14.r.a
+set_principal t.s_14.go.a
 set_principal t.go.a
 
 mode reset

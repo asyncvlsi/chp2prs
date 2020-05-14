@@ -2,7 +2,8 @@ defproc comm1() {
   int<32> x;
   int<32> y;
   chan(int<32>) a;
-
+  int<4> sel0000;
+  int<4> loop0000;
 
   chp {
     (x := 156707415 ; a!x) , [ #a -> a?y ]      // [00001001010101110010101001010111]
