@@ -311,7 +311,7 @@ defproc toplevel (a1of1 go)
   e_28.v = var_y.v;
   /* testpoint 8 */
   e_28.go_r = e_27.go_r;
-  syn::expr_ne<1> e_29;
+  syn::expr_eq<1> e_29;
   e_29.in1 = {e_27.out};
   e_29.in2 = {e_28.out};
   a1of1 c_15;

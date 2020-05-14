@@ -1,4 +1,3 @@
-Node `t.s_0.go.r' already in a breakpoint/watchpoint
 	         0 Reset : 1
 	         0 t.go.a : 0
 	         0 t.go.r : 0
@@ -31,5 +30,3 @@ Node `t.s_0.go.r' already in a breakpoint/watchpoint
 	      1770 t.var_x.v.t : 0  [by t.s_13.in.f:=1]
 	      1790 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
 	      1810 t.go.a : 1  [by t.s_13._goa:=0]
-WRONG ASSERT:	"t.var_x.v.t" has value 0 and not 1.
-WRONG ASSERT:	"t.var_x.v.f" has value 1 and not 0.
