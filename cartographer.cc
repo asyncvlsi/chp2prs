@@ -92,11 +92,11 @@ void initialize_vars(struct act_chp *c)
       {
         if (sym->bitwidth > 1)
         {
-          fprintf(output_stream, "  aN1of2<%d> chan_%s;\n", sym->bitwidth, sym->name);
+          fprintf(output_stream, "  aN1of2<%d> %s;\n", sym->bitwidth, sym->name);
         }
         else
         {
-          fprintf(output_stream, "  a1of2 chan_%s;\n", sym->name);
+          fprintf(output_stream, "  a1of2 %s;\n", sym->name);
         }
       }
       /* declare variables, initialized to false */
@@ -655,14 +655,14 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       if (TypeFactory::bitWidth(it) == 1)
       {
         fprintf(output_stream, "  syn::a1of2_probe e_%d;\n", expr_count);
-        fprintf(output_stream, "  e_%d.t = chan_%s.t;\n", expr_count, ((ActId *) e->u.e.l)->getName());
-        fprintf(output_stream, "  e_%d.f = chan_%s.f;\n", expr_count, ((ActId *) e->u.e.l)->getName());
-        fprintf(output_stream, "  e_%d.a = chan_%s.a;\n", expr_count, ((ActId *) e->u.e.l)->getName());
+        fprintf(output_stream, "  e_%d.t = %s.t;\n", expr_count, ((ActId *) e->u.e.l)->getName());
+        fprintf(output_stream, "  e_%d.f = %s.f;\n", expr_count, ((ActId *) e->u.e.l)->getName());
+        fprintf(output_stream, "  e_%d.a = %s.a;\n", expr_count, ((ActId *) e->u.e.l)->getName());
       }
       else
       {
         fprintf(output_stream, "  syn::aN1of2_probe<%d> e_%d;\n", TypeFactory::bitWidth(it), expr_count);
-        fprintf(output_stream, "  e_%d.c = chan_%s;\n", expr_count, ((ActId *) e->u.e.l)->getName());
+        fprintf(output_stream, "  e_%d.c = %s;\n", expr_count, ((ActId *) e->u.e.l)->getName());
       }
       *bitwidth = TypeFactory::bitWidth(it);
       /* the current expression becomes the base go signal, if none is set */
@@ -1062,16 +1062,16 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         /* connect latched value to channel */
         if (*bitwidth == 1)
         {
-          fprintf(output_stream, "  chan_%s.t = e_%d.out.t;\n", c->u.comm.chan->getName(), a);
-          fprintf(output_stream, "  chan_%s.f = e_%d.out.f;\n", c->u.comm.chan->getName(), a);
+          fprintf(output_stream, "  %s.t = e_%d.out.t;\n", c->u.comm.chan->getName(), a);
+          fprintf(output_stream, "  %s.f = e_%d.out.f;\n", c->u.comm.chan->getName(), a);
         }
         else if (bundle_data)
         {
-          fprintf(output_stream, "  (i:%d: chan_%s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), c->u.comm.chan->getName(), a);
+          fprintf(output_stream, "  (i:%d: %s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), c->u.comm.chan->getName(), a);
         }
         else
         {
-          fprintf(output_stream, "  (i:%d: chan_%s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), c->u.comm.chan->getName(), a);
+          fprintf(output_stream, "  (i:%d: %s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), c->u.comm.chan->getName(), a);
         }
       }
       fprintf(output_stream, "\n");
@@ -1092,7 +1092,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         {
           fprintf(output_stream, "  syn::recv s_%d;\n", a);
           fprintf(output_stream, "  s_%d.go = c_%d;\n", a, ret);
-          fprintf(output_stream, "  s_%d.in = chan_%s;\n", a, c->u.comm.chan->getName());
+          fprintf(output_stream, "  s_%d.in = %s;\n", a, c->u.comm.chan->getName());
           fprintf(output_stream, "  s_%d.v = var_%s.v;\n", a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
         }
         else if (bundle_data)
@@ -1100,9 +1100,9 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
           fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), a);
           fprintf(output_stream, "  /* testpoint 6 */\n");
           fprintf(output_stream, "  s_%d.go.r = c_%d.r;\n", a, ret);
-          fprintf(output_stream, "  s_%d.go.a = c_%d.a; c_%d.a = chan_%s.a;\n", a, ret, ret, c->u.comm.chan->getName());
-          fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = chan_%s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
-          fprintf(output_stream, "       %*cs_%d.in.d[i].f = chan_%s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
+          fprintf(output_stream, "  s_%d.go.a = c_%d.a; c_%d.a = %s.a;\n", a, ret, ret, c->u.comm.chan->getName());
+          fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = %s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
+          fprintf(output_stream, "       %*cs_%d.in.d[i].f = %s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
           fprintf(output_stream, "       %*cs_%d.v[i] = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
         }
         else
@@ -1110,12 +1110,12 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
           fprintf(output_stream, "  syn::recv s_%d[%d];\n", a, TypeFactory::bitWidth(v));
           fprintf(output_stream, "  /* testpoint 7 */\n");
           fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), a, ret);
-          fprintf(output_stream, "  (i:%d: s_%d[i].in.t = chan_%s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
-          fprintf(output_stream, "       %*cs_%d[i].in.f = chan_%s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
+          fprintf(output_stream, "  (i:%d: s_%d[i].in.t = %s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
+          fprintf(output_stream, "       %*cs_%d[i].in.f = %s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
           fprintf(output_stream, "       %*cs_%d[i].v = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
           fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", TypeFactory::bitWidth(v), a);
           fprintf(output_stream, "  (i:%d: ct_%d.in[i] = s_%d[i].go.a;)\n", TypeFactory::bitWidth(v), a, a);
-          fprintf(output_stream, "  ct_%d.out = c_%d.a; c_%d.a = chan_%s.a;\n", a, ret, ret, c->u.comm.chan->getName());
+          fprintf(output_stream, "  ct_%d.out = c_%d.a; c_%d.a = %s.a;\n", a, ret, ret, c->u.comm.chan->getName());
         }
         /* clear received entry from the list of evaluated expressions */
         if (optimization > 0) hash_remove_expr(evaluated_exprs, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
@@ -1226,6 +1226,15 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   /* Print params for toplevel from process port list */
   printf("TEST: %s has %d ports\n", p->getName(), p->getNumPorts());
   int pnum = p->getNumPorts();
+  
+  /* store names of toplevel params so not redeclared below */
+  int tl_p = 0;
+  char ** toplevel_params = (char**)malloc(sizeof(char*) * pnum);
+  if (toplevel_params == NULL) {
+    fprintf(stderr, "Error: could not malloc for toplevel params\n");
+    return;
+  }
+  
   if (pnum == 0) {
     fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");
   }
@@ -1239,6 +1248,11 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
       bw = TypeFactory::bitWidth(type);
       
       if (TypeFactory::isChanType(type)) {
+        /* store name in toplevel params */
+        toplevel_params[tl_p] = strdup(p->getPortName(i));
+        printf("tl_p[%d]=%s , "); // TESTING TODO -- REMOVE LATER
+        tl_p++;
+        
         if (bw == 1) {
           fprintf(output_stream, "aN1of2 %s", p->getPortName(i));
         } else {
@@ -1252,7 +1266,7 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
         }
       }
     }
-    
+    printf("\n"); // TESTING TODO -- REMOVE LATER
   }
   
   /* initialize all variables and channels */
@@ -1268,10 +1282,22 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
     /* chan variable found */
     if (TypeFactory::isChanType (vx->t)) {
       bw = TypeFactory::bitWidth(vx->t);
-      if (bw == 1) {
-        fprintf(output_stream, "  aN1of2 chan_%s;\n", vx->getName());
-      } else if (bw > 1) {
-        fprintf(output_stream, "  aN1of2<%d> chan_%s;\n", bw, vx->getName());
+      
+      /* check that is not a toplevel param */
+      bool is_toplevel = false;
+      for (int t=0; t<tl_p && !is_toplevel; t++) {
+        if (strcmp(vx->getName(), toplevel_params[t]) == 0) {
+          is_toplevel = true;
+        }
+      }
+      printf("Test-->%s is toplevel? %d\n", vx->getName(), is_toplevel);
+        
+      if (!is_toplevel){
+        if (bw == 1) {
+          fprintf(output_stream, "  aN1of2 %s;\n", vx->getName());
+        } else if (bw > 1) {
+          fprintf(output_stream, "  aN1of2<%d> %s;\n", bw, vx->getName());
+        }
       }
       
     /* int variable found */
