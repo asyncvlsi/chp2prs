@@ -1250,7 +1250,7 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
       if (TypeFactory::isChanType(type)) {
         /* store name in toplevel params */
         toplevel_params[tl_p] = strdup(p->getPortName(i));
-        printf("tl_p[%d]=%s , "); // TESTING TODO -- REMOVE LATER
+        printf("tl_p[%d]=%s , ", tl_p); // TESTING TODO -- REMOVE LATER
         tl_p++;
         
         if (bw == 1) {
