@@ -3,6 +3,8 @@ import syn;
 defproc toplevel (a1of1 go)
 {
 /* Initialize chp vars */
+  syn::var_init_false var_loop0000[4];
+  syn::var_init_false var_sel0000[4];
   aN1of2<32> chan_a;
   syn::var_init_false var_y[32];
   syn::var_init_false var_x[32];

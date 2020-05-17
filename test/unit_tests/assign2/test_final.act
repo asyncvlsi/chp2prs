@@ -7,115 +7,99 @@ defproc toplevel (a1of1 go)
   syn::var_init_false var_y;
   syn::var_init_false var_x;
   syn::var_init_false var_z;
-  syn::var_init_false loop0000[4];
-  syn::var_init_false sel0000[4];
 
-  /* ... printchpstmt 3 c_0...*/
   /* semicolon */
   a1of1 c_0;
 
-  /* printing composite statement: ns=-1 */
-  /* ... printchpstmt 0 c_a=0, c_b=48, ns=-1... for left side*/
-  /* semicolon */
-/* yay we need a sequencer here, ret=1 */
-  a1of1 c_1;
-  syn::fullseq s_0;
-  c_1 = s_0.go;
-
-  /* printing composite statement: ns=1 */
-  /* ... printchpstmt 0 c_a=1, c_b=48, ns=1... for left side*/
   /* assign */
   syn::var_init_true const_1;
   syn::expr_var e_1;
   e_1.v = const_1.v;
-  a1of1 c_2;
+  a1of1 c_1;
   /* testpoint 1 */
-  syn::recv rtv_2;
+  syn::fullseq s_1;
+  c_1.r = s_1.go.r;
+  syn::recv rtv_1;
   syn::expr_var e_2;
-  syn::var_init_false tv_2;
-  tv_2.v = rtv_2.v;
-  e_2.v = tv_2.v;
-  c_2.r = e_1.go_r;
-  c_2.r = rtv_2.go.r;
-  e_1.out.t = rtv_2.in.t;
-  e_1.out.f = rtv_2.in.f;
-  rtv_2.go.a = e_2.go_r;
-  syn::recv s_1;
-  s_1.go = c_2;
-  s_1.in.t = e_2.out.t;
-  s_1.in.f = e_2.out.f;
-  s_1.v = var_x.v;
+  syn::var_init_false tv_1;
+  tv_1.v = rtv_1.v;
+  e_2.v = tv_1.v;
+  s_1.r.r = e_1.go_r;
+  s_1.r = rtv_1.go;
+  e_1.out.t = rtv_1.in.t;
+  e_1.out.f = rtv_1.in.f;
+  s_1.go.a = e_2.go_r;
+  syn::recv s_0;
+  s_0.go = c_1;
+  s_0.in.t = e_2.out.t;
+  s_0.in.f = e_2.out.f;
+  s_0.v = var_x.v;
 
-  /* ... printchpstmt 0 c_a=1, c_b=2, ns=1... for RIGHT side*/
-  syn::seq s_3;
-  /* is this the place?? ns=1*/
-  s_3.go = s_0.r;
-  s_3.s1 = c_2;
-  a1of1 c_3;
-  s_3.s2 = c_3;
+  syn::seq s_2;
+  s_2.go = c_0;
+  s_2.s1 = c_1;
+  a1of1 c_2;
+  s_2.s2 = c_2;
 
-  /* printing composite statement: ns=1 */
-  /* ... printchpstmt 0 c_a=3, c_b=2, ns=1... for left side*/
   /* assign */
   syn::var_init_false const_0;
   syn::expr_var e_3;
   e_3.v = const_0.v;
-  a1of1 c_4;
+  a1of1 c_3;
   /* testpoint 1 */
-  syn::recv rtv_5;
+  syn::fullseq s_4;
+  c_3.r = s_4.go.r;
+  syn::recv rtv_4;
   syn::expr_var e_4;
-  syn::var_init_false tv_5;
-  tv_5.v = rtv_5.v;
-  e_4.v = tv_5.v;
-  c_4.r = e_3.go_r;
-  c_4.r = rtv_5.go.r;
-  e_3.out.t = rtv_5.in.t;
-  e_3.out.f = rtv_5.in.f;
-  rtv_5.go.a = e_4.go_r;
-  syn::recv s_4;
-  s_4.go = c_4;
-  s_4.in.t = e_4.out.t;
-  s_4.in.f = e_4.out.f;
-  s_4.v = var_y.v;
+  syn::var_init_false tv_4;
+  tv_4.v = rtv_4.v;
+  e_4.v = tv_4.v;
+  s_4.r.r = e_3.go_r;
+  s_4.r = rtv_4.go;
+  e_3.out.t = rtv_4.in.t;
+  e_3.out.f = rtv_4.in.f;
+  s_4.go.a = e_4.go_r;
+  syn::recv s_3;
+  s_3.go = c_3;
+  s_3.in.t = e_4.out.t;
+  s_3.in.f = e_4.out.f;
+  s_3.v = var_y.v;
 
-  /* ... printchpstmt 0 c_a=3, c_b=4, ns=1... for RIGHT side*/
-  syn::seq s_6;
-  /* is this the place?? ns=1*/
-  s_6.go = c_3;
-  s_6.s1 = c_4;
-  a1of1 c_5;
-  s_6.s2 = c_5;
+  syn::seq s_5;
+  s_5.go = c_2;
+  s_5.s1 = c_3;
+  a1of1 c_4;
+  s_5.s2 = c_4;
 
-  /* printing composite statement: ns=1 */
-  /* ... printchpstmt 0 c_a=5, c_b=4, ns=1... for left side*/
   /* assign */
   syn::expr_var e_5;
   e_5.v = const_1.v;
-  a1of1 c_6;
+  a1of1 c_5;
   /* testpoint 1 */
-  syn::recv rtv_8;
+  syn::fullseq s_7;
+  c_5.r = s_7.go.r;
+  syn::recv rtv_7;
   syn::expr_var e_6;
-  syn::var_init_false tv_8;
-  tv_8.v = rtv_8.v;
-  e_6.v = tv_8.v;
-  c_6.r = e_5.go_r;
-  c_6.r = rtv_8.go.r;
-  e_5.out.t = rtv_8.in.t;
-  e_5.out.f = rtv_8.in.f;
-  rtv_8.go.a = e_6.go_r;
-  syn::recv s_7;
-  s_7.go = c_6;
-  s_7.in.t = e_6.out.t;
-  s_7.in.f = e_6.out.f;
-  s_7.v = var_z.v;
+  syn::var_init_false tv_7;
+  tv_7.v = rtv_7.v;
+  e_6.v = tv_7.v;
+  s_7.r.r = e_5.go_r;
+  s_7.r = rtv_7.go;
+  e_5.out.t = rtv_7.in.t;
+  e_5.out.f = rtv_7.in.f;
+  s_7.go.a = e_6.go_r;
+  syn::recv s_6;
+  s_6.go = c_5;
+  s_6.in.t = e_6.out.t;
+  s_6.in.f = e_6.out.f;
+  s_6.v = var_z.v;
 
-  /* ... printchpstmt 0 c_a=5, c_b=6, ns=1... for RIGHT side*/
-  syn::seq s_9;
-  /* is this the place?? ns=1*/
-  s_9.go = c_5;
-  s_9.s1 = c_6;
+  syn::seq s_8;
+  s_8.go = c_4;
+  s_8.s1 = c_5;
+  a1of1 c_6;
+  s_8.s2 = c_6;
 
-  /* ... printchpstmt 2 c_6, ns=1...*/
   /* assign */
   syn::expr_var e_7;
   e_7.v = var_x.v;
@@ -135,53 +119,52 @@ defproc toplevel (a1of1 go)
   e_11.in2 = e_10.out;
   a1of1 c_7;
   /* testpoint 1 */
-  syn::recv rtv_11;
+  syn::fullseq s_10;
+  c_7.r = s_10.go.r;
+  syn::recv rtv_10;
   syn::expr_var e_12;
-  syn::var_init_false tv_11;
-  tv_11.v = rtv_11.v;
-  e_12.v = tv_11.v;
-  c_7.r = e_7.go_r;
-  c_7.r = rtv_11.go.r;
-  e_11.out.t = rtv_11.in.t;
-  e_11.out.f = rtv_11.in.f;
-  rtv_11.go.a = e_12.go_r;
-  syn::recv s_10;
-  s_10.go = c_7;
-  s_10.in.t = e_12.out.t;
-  s_10.in.f = e_12.out.f;
-  s_10.v = var_v.v;
+  syn::var_init_false tv_10;
+  tv_10.v = rtv_10.v;
+  e_12.v = tv_10.v;
+  s_10.r.r = e_7.go_r;
+  s_10.r = rtv_10.go;
+  e_11.out.t = rtv_10.in.t;
+  e_11.out.f = rtv_10.in.f;
+  s_10.go.a = e_12.go_r;
+  syn::recv s_9;
+  s_9.go = c_7;
+  s_9.in.t = e_12.out.t;
+  s_9.in.f = e_12.out.f;
+  s_9.v = var_v.v;
 
-  s_9.s2 = c_7;
+  syn::seq s_11;
+  s_11.go = c_6;
+  s_11.s1 = c_7;
 
-  /* ... printchpstmt 0 c_a=0, c_b=1, ns=-1... for RIGHT side*/
-  syn::seq s_12;
-  /* is this the place?? ns=-1*/
-  s_12.go = c_0;
-  s_12.s1 = c_1;
-
-  /* ... printchpstmt 2 c_1, ns=-1...*/
   /* assign */
   syn::expr_var e_13;
   e_13.v = const_0.v;
   a1of1 c_8;
   /* testpoint 1 */
-  syn::recv rtv_14;
+  syn::fullseq s_13;
+  c_8.r = s_13.go.r;
+  syn::recv rtv_13;
   syn::expr_var e_14;
-  syn::var_init_false tv_14;
-  tv_14.v = rtv_14.v;
-  e_14.v = tv_14.v;
-  c_8.r = e_13.go_r;
-  c_8.r = rtv_14.go.r;
-  e_13.out.t = rtv_14.in.t;
-  e_13.out.f = rtv_14.in.f;
-  rtv_14.go.a = e_14.go_r;
-  syn::recv s_13;
-  s_13.go = c_8;
-  s_13.in.t = e_14.out.t;
-  s_13.in.f = e_14.out.f;
-  s_13.v = var_x.v;
+  syn::var_init_false tv_13;
+  tv_13.v = rtv_13.v;
+  e_14.v = tv_13.v;
+  s_13.r.r = e_13.go_r;
+  s_13.r = rtv_13.go;
+  e_13.out.t = rtv_13.in.t;
+  e_13.out.f = rtv_13.in.f;
+  s_13.go.a = e_14.go_r;
+  syn::recv s_12;
+  s_12.go = c_8;
+  s_12.in.t = e_14.out.t;
+  s_12.in.f = e_14.out.f;
+  s_12.v = var_x.v;
 
-  s_12.s2 = c_8;
+  s_11.s2 = c_8;
 
   go = c_0;
 }

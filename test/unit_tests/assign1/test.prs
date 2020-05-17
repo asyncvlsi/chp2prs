@@ -13,42 +13,6 @@
 = "t.s_3.in.d[1]" "t.s_3.in.t"
 = "t.s_3.in.d[0]" "t.s_3.in.f"
 = "t.s_3.in.d[1]" "t.s_3.in.t"
-"Reset"->"t.loop0000[0].v.t"-
-"t.loop0000[0].v.f"->"t.loop0000[0].v.t"-
-"t.loop0000[0].v.t"->"t.loop0000[0].v.f"-
-weak ~"t.loop0000[0].v.t"->"t.loop0000[0].v.f"+
-weak ~"t.loop0000[0].v.f"->"t.loop0000[0].v.t"+
-= "t.loop0000[0].v.d[0]" "t.loop0000[0].v.f"
-= "t.loop0000[0].v.d[1]" "t.loop0000[0].v.t"
-= "t.loop0000[0].v.d[0]" "t.loop0000[0].v.f"
-= "t.loop0000[0].v.d[1]" "t.loop0000[0].v.t"
-"Reset"->"t.loop0000[1].v.t"-
-"t.loop0000[1].v.f"->"t.loop0000[1].v.t"-
-"t.loop0000[1].v.t"->"t.loop0000[1].v.f"-
-weak ~"t.loop0000[1].v.t"->"t.loop0000[1].v.f"+
-weak ~"t.loop0000[1].v.f"->"t.loop0000[1].v.t"+
-= "t.loop0000[1].v.d[0]" "t.loop0000[1].v.f"
-= "t.loop0000[1].v.d[1]" "t.loop0000[1].v.t"
-= "t.loop0000[1].v.d[0]" "t.loop0000[1].v.f"
-= "t.loop0000[1].v.d[1]" "t.loop0000[1].v.t"
-"Reset"->"t.loop0000[2].v.t"-
-"t.loop0000[2].v.f"->"t.loop0000[2].v.t"-
-"t.loop0000[2].v.t"->"t.loop0000[2].v.f"-
-weak ~"t.loop0000[2].v.t"->"t.loop0000[2].v.f"+
-weak ~"t.loop0000[2].v.f"->"t.loop0000[2].v.t"+
-= "t.loop0000[2].v.d[0]" "t.loop0000[2].v.f"
-= "t.loop0000[2].v.d[1]" "t.loop0000[2].v.t"
-= "t.loop0000[2].v.d[0]" "t.loop0000[2].v.f"
-= "t.loop0000[2].v.d[1]" "t.loop0000[2].v.t"
-"Reset"->"t.loop0000[3].v.t"-
-"t.loop0000[3].v.f"->"t.loop0000[3].v.t"-
-"t.loop0000[3].v.t"->"t.loop0000[3].v.f"-
-weak ~"t.loop0000[3].v.t"->"t.loop0000[3].v.f"+
-weak ~"t.loop0000[3].v.f"->"t.loop0000[3].v.t"+
-= "t.loop0000[3].v.d[0]" "t.loop0000[3].v.f"
-= "t.loop0000[3].v.d[1]" "t.loop0000[3].v.t"
-= "t.loop0000[3].v.d[0]" "t.loop0000[3].v.f"
-= "t.loop0000[3].v.d[1]" "t.loop0000[3].v.t"
 "t.e_3.go_r"&"t.e_3.v.t"->"t.e_3._out.t"-
 "t.e_3.go_r"&"t.e_3.v.f"->"t.e_3._out.f"-
 ~"_Reset"|~"t.e_3.go_r"->"t.e_3._out.t"+
@@ -69,6 +33,7 @@ weak ~"t.loop0000[3].v.f"->"t.loop0000[3].v.t"+
 = "t.e_3.out.d[1]" "t.e_3.out.t"
 = "t.e_3.out.d[0]" "t.e_3.out.f"
 = "t.e_3.out.d[1]" "t.e_3.out.t"
+= "t.e_3.go_r" "t.s_4.r.r"
 = "t.e_3.v.f" "t.const_1.v.f"
 = "t.e_3.v.t" "t.const_1.v.t"
 = "t.e_3.v.d[0]" "t.const_1.v.d[0]"
@@ -81,6 +46,21 @@ weak ~"t.loop0000[3].v.f"->"t.loop0000[3].v.t"+
 = "t.e_3.out.d[1]" "t.e_3.out.t"
 = "t.e_3.v.t" "t.e_3.v.d[1]"
 = "t.e_3.v.f" "t.e_3.v.d[0]"
+~"t.s_4.x"&~"t.s_4._gor"->"t.s_4.r.r"+
+~"t.s_4._ra"->"t.s_4.x"+
+"Reset"|"t.s_4.x"->"t.s_4.r.r"-
+"t.s_4.x"&"t.s_4._ra"->"t.s_4._goa"-
+"t.s_4._gor"->"t.s_4.x"-
+~"t.s_4.x"->"t.s_4._goa"+
+"t.s_4.go.r"->"t.s_4._gor"-
+~("t.s_4.go.r")->"t.s_4._gor"+
+"t.s_4._goa"->"t.s_4.go.a"-
+~("t.s_4._goa")->"t.s_4.go.a"+
+"t.s_4.r.a"->"t.s_4._ra"-
+~("t.s_4.r.a")->"t.s_4._ra"+
+= "t.s_4.r.a" "t.rtv_4.go.a"
+= "t.s_4.r.r" "t.rtv_4.go.r"
+= "t.s_4.r.a" "t.rtv_4.in.a"
 "t.rtv_4.go.r"&"t.rtv_4._goa"&"t.rtv_4.in.t"->"t.rtv_4.v.f"-
 "t.rtv_4.go.r"&"t.rtv_4._goa"&"t.rtv_4.in.f"->"t.rtv_4.v.t"-
 "t.rtv_4.go.r"&("t.rtv_4.v.t"&"t.rtv_4.in.t"|"t.rtv_4.v.f"&"t.rtv_4.in.f")->"t.rtv_4._goa"-
@@ -96,6 +76,21 @@ weak ~"t.loop0000[3].v.f"->"t.loop0000[3].v.t"+
 = "t.rtv_4.in.d[1]" "t.rtv_4.in.t"
 = "t.rtv_4.in.d[0]" "t.rtv_4.in.f"
 = "t.rtv_4.in.d[1]" "t.rtv_4.in.t"
+~"t.s_1.x"&~"t.s_1._gor"->"t.s_1.r.r"+
+~"t.s_1._ra"->"t.s_1.x"+
+"Reset"|"t.s_1.x"->"t.s_1.r.r"-
+"t.s_1.x"&"t.s_1._ra"->"t.s_1._goa"-
+"t.s_1._gor"->"t.s_1.x"-
+~"t.s_1.x"->"t.s_1._goa"+
+"t.s_1.go.r"->"t.s_1._gor"-
+~("t.s_1.go.r")->"t.s_1._gor"+
+"t.s_1._goa"->"t.s_1.go.a"-
+~("t.s_1._goa")->"t.s_1.go.a"+
+"t.s_1.r.a"->"t.s_1._ra"-
+~("t.s_1.r.a")->"t.s_1._ra"+
+= "t.s_1.r.a" "t.rtv_1.go.a"
+= "t.s_1.r.r" "t.rtv_1.go.r"
+= "t.s_1.r.a" "t.rtv_1.in.a"
 "t.e_1.go_r"&"t.e_1.v.t"->"t.e_1._out.t"-
 "t.e_1.go_r"&"t.e_1.v.f"->"t.e_1._out.f"-
 ~"_Reset"|~"t.e_1.go_r"->"t.e_1._out.t"+
@@ -116,6 +111,7 @@ weak ~"t.loop0000[3].v.f"->"t.loop0000[3].v.t"+
 = "t.e_1.out.d[1]" "t.e_1.out.t"
 = "t.e_1.out.d[0]" "t.e_1.out.f"
 = "t.e_1.out.d[1]" "t.e_1.out.t"
+= "t.e_1.go_r" "t.s_1.r.r"
 = "t.e_1.v.f" "t.const_0.v.f"
 = "t.e_1.v.t" "t.const_0.v.t"
 = "t.e_1.v.d[0]" "t.const_0.v.d[0]"
@@ -162,21 +158,6 @@ weak ~"t.const_0.v.f"->"t.const_0.v.t"+
 = "t.s_0.v.d[1]" "t.var_x.v.d[1]"
 = "t.s_0.v.t" "t.s_0.v.d[1]"
 = "t.s_0.v.f" "t.s_0.v.d[0]"
-"t.rtv_1.go.r"&"t.rtv_1._goa"&"t.rtv_1.in.t"->"t.rtv_1.v.f"-
-"t.rtv_1.go.r"&"t.rtv_1._goa"&"t.rtv_1.in.f"->"t.rtv_1.v.t"-
-"t.rtv_1.go.r"&("t.rtv_1.v.t"&"t.rtv_1.in.t"|"t.rtv_1.v.f"&"t.rtv_1.in.f")->"t.rtv_1._goa"-
-~"t.rtv_1.in.t"&~"t.rtv_1.in.f"&~"t.rtv_1.go.r"->"t.rtv_1._goa"+
-"Reset"|"t.rtv_1._goa"->"t.rtv_1.go.a"-
-~("Reset"|"t.rtv_1._goa")->"t.rtv_1.go.a"+
-= "t.rtv_1.v.d[0]" "t.rtv_1.v.f"
-= "t.rtv_1.v.d[1]" "t.rtv_1.v.t"
-= "t.rtv_1.v.d[0]" "t.rtv_1.v.f"
-= "t.rtv_1.v.d[1]" "t.rtv_1.v.t"
-= "t.rtv_1.go.a" "t.rtv_1.in.a"
-= "t.rtv_1.in.d[0]" "t.rtv_1.in.f"
-= "t.rtv_1.in.d[1]" "t.rtv_1.in.t"
-= "t.rtv_1.in.d[0]" "t.rtv_1.in.f"
-= "t.rtv_1.in.d[1]" "t.rtv_1.in.t"
 "t.e_2.go_r"&"t.e_2.v.t"->"t.e_2._out.t"-
 "t.e_2.go_r"&"t.e_2.v.f"->"t.e_2._out.f"-
 ~"_Reset"|~"t.e_2.go_r"->"t.e_2._out.t"+
@@ -197,8 +178,7 @@ weak ~"t.const_0.v.f"->"t.const_0.v.t"+
 = "t.e_2.out.d[1]" "t.e_2.out.t"
 = "t.e_2.out.d[0]" "t.e_2.out.f"
 = "t.e_2.out.d[1]" "t.e_2.out.t"
-= "t.e_2.go_r" "t.rtv_1.in.a"
-= "t.e_2.go_r" "t.rtv_1.go.a"
+= "t.e_2.go_r" "t.s_1.go.a"
 = "t.e_2.v.f" "t.rtv_1.v.f"
 = "t.e_2.v.t" "t.rtv_1.v.t"
 = "t.e_2.v.d[0]" "t.rtv_1.v.d[0]"
@@ -217,6 +197,21 @@ weak ~"t.const_0.v.f"->"t.const_0.v.t"+
 = "t.e_2.v.f" "t.e_2.v.d[0]"
 = "t.e_2.v.d[0]" "t.e_2.v.f"
 = "t.e_2.v.d[1]" "t.e_2.v.t"
+"t.rtv_1.go.r"&"t.rtv_1._goa"&"t.rtv_1.in.t"->"t.rtv_1.v.f"-
+"t.rtv_1.go.r"&"t.rtv_1._goa"&"t.rtv_1.in.f"->"t.rtv_1.v.t"-
+"t.rtv_1.go.r"&("t.rtv_1.v.t"&"t.rtv_1.in.t"|"t.rtv_1.v.f"&"t.rtv_1.in.f")->"t.rtv_1._goa"-
+~"t.rtv_1.in.t"&~"t.rtv_1.in.f"&~"t.rtv_1.go.r"->"t.rtv_1._goa"+
+"Reset"|"t.rtv_1._goa"->"t.rtv_1.go.a"-
+~("Reset"|"t.rtv_1._goa")->"t.rtv_1.go.a"+
+= "t.rtv_1.v.d[0]" "t.rtv_1.v.f"
+= "t.rtv_1.v.d[1]" "t.rtv_1.v.t"
+= "t.rtv_1.v.d[0]" "t.rtv_1.v.f"
+= "t.rtv_1.v.d[1]" "t.rtv_1.v.t"
+= "t.rtv_1.go.a" "t.rtv_1.in.a"
+= "t.rtv_1.in.d[0]" "t.rtv_1.in.f"
+= "t.rtv_1.in.d[1]" "t.rtv_1.in.t"
+= "t.rtv_1.in.d[0]" "t.rtv_1.in.f"
+= "t.rtv_1.in.d[1]" "t.rtv_1.in.t"
 "Reset"->"t.tv_1.v.t"-
 "t.tv_1.v.f"->"t.tv_1.v.t"-
 "t.tv_1.v.t"->"t.tv_1.v.f"-
@@ -255,8 +250,7 @@ weak ~"t.var_x.v.f"->"t.var_x.v.t"+
 = "t.e_4.out.d[1]" "t.e_4.out.t"
 = "t.e_4.out.d[0]" "t.e_4.out.f"
 = "t.e_4.out.d[1]" "t.e_4.out.t"
-= "t.e_4.go_r" "t.rtv_4.in.a"
-= "t.e_4.go_r" "t.rtv_4.go.a"
+= "t.e_4.go_r" "t.s_4.go.a"
 = "t.e_4.v.f" "t.rtv_4.v.f"
 = "t.e_4.v.t" "t.rtv_4.v.t"
 = "t.e_4.v.d[0]" "t.rtv_4.v.d[0]"
@@ -275,42 +269,6 @@ weak ~"t.var_x.v.f"->"t.var_x.v.t"+
 = "t.e_4.v.f" "t.e_4.v.d[0]"
 = "t.e_4.v.d[0]" "t.e_4.v.f"
 = "t.e_4.v.d[1]" "t.e_4.v.t"
-"Reset"->"t.sel0000[0].v.t"-
-"t.sel0000[0].v.f"->"t.sel0000[0].v.t"-
-"t.sel0000[0].v.t"->"t.sel0000[0].v.f"-
-weak ~"t.sel0000[0].v.t"->"t.sel0000[0].v.f"+
-weak ~"t.sel0000[0].v.f"->"t.sel0000[0].v.t"+
-= "t.sel0000[0].v.d[0]" "t.sel0000[0].v.f"
-= "t.sel0000[0].v.d[1]" "t.sel0000[0].v.t"
-= "t.sel0000[0].v.d[0]" "t.sel0000[0].v.f"
-= "t.sel0000[0].v.d[1]" "t.sel0000[0].v.t"
-"Reset"->"t.sel0000[1].v.t"-
-"t.sel0000[1].v.f"->"t.sel0000[1].v.t"-
-"t.sel0000[1].v.t"->"t.sel0000[1].v.f"-
-weak ~"t.sel0000[1].v.t"->"t.sel0000[1].v.f"+
-weak ~"t.sel0000[1].v.f"->"t.sel0000[1].v.t"+
-= "t.sel0000[1].v.d[0]" "t.sel0000[1].v.f"
-= "t.sel0000[1].v.d[1]" "t.sel0000[1].v.t"
-= "t.sel0000[1].v.d[0]" "t.sel0000[1].v.f"
-= "t.sel0000[1].v.d[1]" "t.sel0000[1].v.t"
-"Reset"->"t.sel0000[2].v.t"-
-"t.sel0000[2].v.f"->"t.sel0000[2].v.t"-
-"t.sel0000[2].v.t"->"t.sel0000[2].v.f"-
-weak ~"t.sel0000[2].v.t"->"t.sel0000[2].v.f"+
-weak ~"t.sel0000[2].v.f"->"t.sel0000[2].v.t"+
-= "t.sel0000[2].v.d[0]" "t.sel0000[2].v.f"
-= "t.sel0000[2].v.d[1]" "t.sel0000[2].v.t"
-= "t.sel0000[2].v.d[0]" "t.sel0000[2].v.f"
-= "t.sel0000[2].v.d[1]" "t.sel0000[2].v.t"
-"Reset"->"t.sel0000[3].v.t"-
-"t.sel0000[3].v.f"->"t.sel0000[3].v.t"-
-"t.sel0000[3].v.t"->"t.sel0000[3].v.f"-
-weak ~"t.sel0000[3].v.t"->"t.sel0000[3].v.f"+
-weak ~"t.sel0000[3].v.f"->"t.sel0000[3].v.t"+
-= "t.sel0000[3].v.d[0]" "t.sel0000[3].v.f"
-= "t.sel0000[3].v.d[1]" "t.sel0000[3].v.t"
-= "t.sel0000[3].v.d[0]" "t.sel0000[3].v.f"
-= "t.sel0000[3].v.d[1]" "t.sel0000[3].v.t"
 "Reset"->"t.tv_4.v.t"-
 "t.tv_4.v.f"->"t.tv_4.v.t"-
 "t.tv_4.v.t"->"t.tv_4.v.f"-
@@ -324,8 +282,7 @@ weak ~"t.tv_4.v.f"->"t.tv_4.v.t"+
 = "t.c_1.r" "t.s_2.s1.r"
 = "t.c_1.a" "t.s_0.go.a"
 = "t.c_1.r" "t.s_0.go.r"
-= "t.c_1.a" "t.rtv_4.go.r"
-= "t.c_1.a" "t.e_3.go_r"
+= "t.c_1.a" "t.s_4.go.r"
 = "t.c_1.a" "t.c_2.r"
 = "t.c_1.a" "t.s_0.in.a"
 "Reset"->"t.const_1.v.f"-
@@ -341,8 +298,7 @@ weak ~"t.const_1.v.f"->"t.const_1.v.t"+
 = "t.go.r" "t.s_2.go.r"
 = "t.go.a" "t.c_0.a"
 = "t.go.r" "t.c_0.r"
-= "t.go.r" "t.rtv_1.go.r"
-= "t.go.r" "t.e_1.go_r"
+= "t.go.r" "t.s_1.go.r"
 = "t.go.r" "t.c_1.r"
 = "t.go.a" "t.s_3.in.a"
 = "t.go.a" "t.c_2.a"
