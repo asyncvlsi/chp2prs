@@ -3,7 +3,7 @@ import syn;
 defproc toplevel (a1of1 go)
 {
 /* Initialize chp vars */
-  aN1of2<32> chan_a;
+  aN1of2<32> a;
   syn::var_init_false var_y[32];
   syn::var_init_false var_x[32];
 
@@ -82,7 +82,7 @@ defproc toplevel (a1of1 go)
   /* emit individual gc (#0) [selection] */
   r1of2 gc_0;
   syn::aN1of2_probe<32> e_3;
-  e_3.c = chan_a;
+  e_3.c = a;
   /* testpoint 1 */
   syn::fullseq s_3;
   gc_0.r = s_3.go.r;
@@ -101,12 +101,12 @@ defproc toplevel (a1of1 go)
   syn::recv s_4[32];
   /* testpoint 7 */
   (i:32: s_4[i].go.r = c_2.r;)
-  (i:32: s_4[i].in.t = chan_a.d[i].t;
-         s_4[i].in.f = chan_a.d[i].f;
+  (i:32: s_4[i].in.t = a.d[i].t;
+         s_4[i].in.f = a.d[i].f;
          s_4[i].v = var_y[i].v;)
   syn::ctree<32> ct_4;
   (i:32: ct_4.in[i] = s_4[i].go.a;)
-  ct_4.out = c_2.a; c_2.a = chan_a.a;
+  ct_4.out = c_2.a; c_2.a = a.a;
 
   e_4.out.t = c_2.r;
   gc_0.t = c_2.a;

@@ -5,7 +5,7 @@ defproc toplevel (a1of1 go)
 /* Initialize chp vars */
   syn::var_init_false var_loop0000[4];
   syn::var_init_false var_sel0000[4];
-  aN1of2<32> chan_a;
+  aN1of2<32> a;
   syn::var_init_false var_y[32];
   syn::var_init_false var_x[32];
 
@@ -105,7 +105,7 @@ defproc toplevel (a1of1 go)
          e_3.out[i].f = rtv_3[i].in.f;)
   s_3.go.a = e_4.go_r;
   c_3.a = e_4.go_r;
-  (i:32: chan_a.d[i] = e_4.out[i];)
+  (i:32: a.d[i] = e_4.out[i];)
 
   s_2.s2 = c_3;
 
@@ -117,7 +117,7 @@ defproc toplevel (a1of1 go)
   /* emit individual gc (#0) [selection] */
   r1of2 gc_0;
   syn::aN1of2_probe<32> e_5;
-  e_5.c = chan_a;
+  e_5.c = a;
   /* testpoint 1 */
   syn::fullseq s_5;
   gc_0.r = s_5.go.r;
@@ -136,12 +136,12 @@ defproc toplevel (a1of1 go)
   syn::recv s_6[32];
   /* testpoint 7 */
   (i:32: s_6[i].go.r = c_4.r;)
-  (i:32: s_6[i].in.t = chan_a.d[i].t;
-         s_6[i].in.f = chan_a.d[i].f;
+  (i:32: s_6[i].in.t = a.d[i].t;
+         s_6[i].in.f = a.d[i].f;
          s_6[i].v = var_y[i].v;)
   syn::ctree<32> ct_6;
   (i:32: ct_6.in[i] = s_6[i].go.a;)
-  ct_6.out = c_4.a; c_4.a = chan_a.a;
+  ct_6.out = c_4.a; c_4.a = a.a;
 
   e_6.out.t = c_4.r;
   gc_0.t = c_4.a;

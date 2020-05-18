@@ -5,8 +5,4 @@ syn_var t.var_z  n,0  n,0
 syn_var t.var_v  n,0  n,1
 syn_var t.var_a  n,0  n,1
 syn_var t.var_b  n,0  n,1
-bool t.s_0.r.r  n,n n,0
-bool t.s_0.r.a  n,n n,0
-bool t.s_1.r.r  n,n  n,0
-bool t.s_1.r.a  n,n n,0
 bool t.go.a  0,0 n,1

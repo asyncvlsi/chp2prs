@@ -1,0 +1,130 @@
+import syn;
+
+defproc toplevel (a1of1 go)
+{
+/* Initialize chp vars */
+  syn::var_init_false var_y;
+  syn::var_init_false var_x;
+  syn::var_init_false loop0000[4];
+  syn::var_init_false sel0000[4];
+
+  /* semicolon */
+  a1of1 c_0;
+
+  /* YES we need a sequencer here, ns=1, seq_num=1 */
+  /* semicolon */
+  a1of1 c_1;
+  syn::fullseq fs_0;
+  c_1 = fs_0.go;
+
+  /* assign */
+  syn::var_init_true const_1;
+  syn::expr_var e_1;
+  e_1.v = const_1.v;
+  /* assign vars: a=1, b=1 */
+  a1of1 c_2;
+  syn::recv rtv_2;
+  syn::expr_var e_2;
+  syn::var_init_false tv_2;
+  tv_2.v = rtv_2.v;
+  e_2.v = tv_2.v;
+  c_2.r = e_1.go_r;
+  c_2.r = rtv_2.go.r;
+  e_1.out.t = rtv_2.in.t;
+  e_1.out.f = rtv_2.in.f;
+  rtv_2.go.a = e_2.go_r;
+  syn::recv s_1;
+  s_1.go = c_2;
+  s_1.in.t = e_2.out.t;
+  s_1.in.f = e_2.out.f;
+  s_1.v = var_x.v;
+
+  syn::seq s_3;
+  /* is this the place?? ns=1*/
+  s_3.go = fs_0.r;
+  s_3.s1 = c_2;
+
+  /* assign */
+  syn::expr_var e_3;
+  e_3.v = const_1.v;
+  /* assign vars: a=3, b=4 */
+  a1of1 c_3;
+  syn::recv rtv_5;
+  syn::expr_var e_4;
+  syn::var_init_false tv_5;
+  tv_5.v = rtv_5.v;
+  e_4.v = tv_5.v;
+  c_3.r = e_3.go_r;
+  c_3.r = rtv_5.go.r;
+  e_3.out.t = rtv_5.in.t;
+  e_3.out.f = rtv_5.in.f;
+  rtv_5.go.a = e_4.go_r;
+  syn::recv s_4;
+  s_4.go = c_3;
+  s_4.in.t = e_4.out.t;
+  s_4.in.f = e_4.out.f;
+  s_4.v = var_y.v;
+
+  s_3.s2 = c_3;
+
+  syn::seq s_6;
+  /* is this the place?? ns=-1*/
+  s_6.go = c_0;
+  s_6.s1 = c_1;
+  a1of1 c_4;
+  s_6.s2 = c_4;
+
+  /* assign */
+  syn::var_init_false const_0;
+  syn::expr_var e_5;
+  e_5.v = const_0.v;
+  /* assign vars: a=5, b=7 */
+  a1of1 c_5;
+  syn::recv rtv_8;
+  syn::expr_var e_6;
+  syn::var_init_false tv_8;
+  tv_8.v = rtv_8.v;
+  e_6.v = tv_8.v;
+  c_5.r = e_5.go_r;
+  c_5.r = rtv_8.go.r;
+  e_5.out.t = rtv_8.in.t;
+  e_5.out.f = rtv_8.in.f;
+  rtv_8.go.a = e_6.go_r;
+  syn::recv s_7;
+  s_7.go = c_5;
+  s_7.in.t = e_6.out.t;
+  s_7.in.f = e_6.out.f;
+  s_7.v = var_x.v;
+
+  syn::seq s_9;
+  /* is this the place?? ns=-1*/
+  s_9.go = c_4;
+  s_9.s1 = c_5;
+
+  /* assign */
+  syn::expr_var e_7;
+  e_7.v = const_0.v;
+  /* assign vars: a=7, b=10 */
+  a1of1 c_6;
+  syn::recv rtv_11;
+  syn::expr_var e_8;
+  syn::var_init_false tv_11;
+  tv_11.v = rtv_11.v;
+  e_8.v = tv_11.v;
+  c_6.r = e_7.go_r;
+  c_6.r = rtv_11.go.r;
+  e_7.out.t = rtv_11.in.t;
+  e_7.out.f = rtv_11.in.f;
+  rtv_11.go.a = e_8.go_r;
+  syn::recv s_10;
+  s_10.go = c_6;
+  s_10.in.t = e_8.out.t;
+  s_10.in.f = e_8.out.f;
+  s_10.v = var_y.v;
+
+  s_9.s2 = c_6;
+
+  go = c_0;
+}
+
+toplevel t;

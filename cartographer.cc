@@ -500,7 +500,6 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         /* otherwise, the current expression is connected to the base go signal */
         else
         {
-          fprintf(output_stream, "  /* testpoint 8 */\n");
           fprintf(output_stream, "  e_%d.go_r = e_%d.go_r;\n", expr_count, *base_var); // replaced go.r with go_r 4/8
         }
       }
@@ -561,7 +560,6 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         /* otherwise, the current expression is connected to the base go signal */
         else
         {
-          fprintf(output_stream, "  /* testpoint 9 */\n");
           fprintf(output_stream, "  e_%d.go_r = e_%d.go_r;\n", expr_count, *base_var); // replaced go.r with go_r 4/8
         }
       }
@@ -705,7 +703,6 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       /* otherwise, the current expression is connected to the base go signal */
       else
       {
-        fprintf(output_stream, "  /* testpoint 10 */\n");
         fprintf(output_stream, "  e_%d.go_r = e_%d.go.r;\n", expr_count, *base_var);
       }
       ret = expr_count++;
@@ -730,7 +727,6 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
   int seq = stmt_count++;
   int evar = expr_count++;
 
-  fprintf(output_stream, "  /* testpoint 1 */\n");
 //  fprintf(output_stream, "  syn::fullseq s_%d;\n", seq);
 //  fprintf(output_stream, "  %s = s_%d.go.r;\n", req, seq);
 
@@ -754,7 +750,6 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
     fprintf(output_stream, "  syn::var_init_false tv_%d[%d];\n", seq, bits);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = tv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = brtv_%d.v[i];)\n", bits, evar, seq);
-    fprintf(output_stream, "  /* testpoint 2 */\n");
     fprintf(output_stream, "  s_%d.r.r = brtv_%d.go.r;\n", seq, seq);
     fprintf(output_stream, "  s_%d.r.a = brtv_%d.go.a;\n", seq, seq);
     fprintf(output_stream, "  (i:%d: e_%d.out[i].t = brtv_%d.in.d[i].t;\n", bits, eout, seq);
@@ -769,7 +764,6 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = tv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = rtv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  %s = e_%d.go_r;\n", req, ego);
-    fprintf(output_stream, "  /* testpoint 3 */\n");
     fprintf(output_stream, "  (i:%d: %s = rtv_%d[i].go.r;)\n", bits, req, seq);
     fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", bits, seq);
     fprintf(output_stream, "  (i:%d: ct_%d.in[i] = rtv_%d[i].go.a;)\n", bits, seq, seq);
@@ -826,8 +820,8 @@ int print_one_gc(act_chp_gc_t *gc, int *bitwidth, int *base_var)
     a = print_expr_tmpvar(buf, *base_var, a, 1);
 
     /* print guarded statement */
-    fprintf(output_stream, "  /* ... printchpstmt 1 c_%d...*/\n", b);
-    b = print_chp_stmt(gc->s, bitwidth, base_var);
+//    fprintf(output_stream, "  /* ... printchpstmt 1 c_%d...*/\n", b);
+    b = print_chp_stmt(gc->s, bitwidth, base_var, -1, -1);
 
     /* empty guard */
     if (b == -1)
@@ -845,8 +839,8 @@ int print_one_gc(act_chp_gc_t *gc, int *bitwidth, int *base_var)
   /* unguarded statement case (implicit true guard) */
   else
   {
-    fprintf(output_stream, "  /* ... printchpstmt 4 c_%d...*/\n", b);
-    b = print_chp_stmt(gc->s, bitwidth, base_var);
+//    fprintf(output_stream, "  /* ... printchpstmt 4 c_%d...*/\n", b);
+    b = print_chp_stmt(gc->s, bitwidth, base_var, -1, -1);
     fprintf(output_stream, "  gc_%d.r = c_%d.r;\n", ret, b);
     fprintf(output_stream, "  gc_%d.t = c_%d.a;\n", ret, b);
     fprintf(output_stream, "  gc_%d.f = GND;\n", ret);
@@ -934,13 +928,15 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var)
   return ret;
 }
 
-int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
+int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_sequencer, int seq_num)
 {
   int ret, a, b, delay;
   InstType *v, *u;
   char buf[MAX_EXPR_SIZE];
+  
   if (!c)
     return -1;
+  
   switch (c->type)
   {
     case ACT_CHP_SKIP:
@@ -958,9 +954,20 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       a = print_expr(c->u.assign.e, bitwidth, base_var, &delay);
       ret = chan_count++;
       b = stmt_count++;
+      fprintf(output_stream, "  /* assign vars: a=%d, b=%d */\n", a, b);
+
       /* create request/acknowledge channel for the statement */
-      fprintf(output_stream, "  a1of1 c_%d;\n", ret);
-      snprintf(buf, MAX_EXPR_SIZE, "c_%d.r", ret);
+      if (need_sequencer >=0) {
+        fprintf(output_stream, "  /* YES we need a sequencer in this assignment */\n");
+        fprintf(output_stream, "  a1of1 c_%d;\n", ret);
+        fprintf(output_stream, "  syn::fullseq fs_%d;\n", seq_num);
+        fprintf(output_stream, "  c_%d = fs_%d.go;\n", ret, seq_num);
+        snprintf(buf, MAX_EXPR_SIZE, "fs_%d.r.r", seq_num);
+      } else {
+        fprintf(output_stream, "  a1of1 c_%d;\n", ret);
+        snprintf(buf, MAX_EXPR_SIZE, "c_%d.r", ret);
+      }
+      
       if (bundle_data && TypeFactory::bitWidth(v) > 1)
       {
         /* accumulate delay of the last operation */
@@ -992,7 +999,11 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       if (TypeFactory::bitWidth(v) == 1)
       {
         fprintf(output_stream, "  syn::recv s_%d;\n", b);
-        fprintf(output_stream, "  s_%d.go = c_%d;\n", b, ret);
+        if (need_sequencer >=0){
+          fprintf(output_stream, "  s_%d.go = fs_%d.r;\n", b, seq_num);
+        } else {
+          fprintf(output_stream, "  s_%d.go = c_%d;\n", b, ret);
+        }
         fprintf(output_stream, "  s_%d.in.t = e_%d.out.t;\n", b, a);
         fprintf(output_stream, "  s_%d.in.f = e_%d.out.f;\n", b, a);
         fprintf(output_stream, "  s_%d.v = var_%s.v;\n", b, c->u.assign.id->getName());
@@ -1000,9 +1011,12 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       else if (bundle_data)
       {
         fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), b);
-        fprintf(output_stream, "  /* testpoint 4 */\n");
         fprintf(output_stream, "  s_%d.go.r = e_%d.go_r;\n", b, a);
-        fprintf(output_stream, "  s_%d.go.a = c_%d.a;\n", b, ret);
+        if (need_sequencer >=0) {
+          fprintf(output_stream, "  s_%d.go.a = fs_%d.r.a;\n", b, seq_num);
+        } else {
+          fprintf(output_stream, "  s_%d.go.a = c_%d.a;\n", b, ret);
+        }
         fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
         fprintf(output_stream, "       %*cs_%d.in.d[i].f = e_%d.out[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, a);
         fprintf(output_stream, "       %*cs_%d.v[i] = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, c->u.assign.id->getName());
@@ -1010,14 +1024,21 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       else
       {
         fprintf(output_stream, "  syn::recv s_%d[%d];\n", b, TypeFactory::bitWidth(v));
-        fprintf(output_stream, "  /* testpoint 5 */\n");
-        fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), b, ret);
+        if (need_sequencer >=0) {
+          fprintf(output_stream, "  (i:%d: s_%d[i].go.r = fs_%d.r.r;)\n", TypeFactory::bitWidth(v), b, seq_num);
+        } else {
+          fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), b, ret);
+        }
         fprintf(output_stream, "  (i:%d: s_%d[i].in.t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
         fprintf(output_stream, "       %*cs_%d[i].in.f = e_%d.out[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, a);
         fprintf(output_stream, "       %*cs_%d[i].v = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, c->u.assign.id->getName());
         fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", TypeFactory::bitWidth(v), b);
         fprintf(output_stream, "  (i:%d: ct_%d.in[i] = s_%d[i].go.a;)\n", TypeFactory::bitWidth(v), b, b);
-        fprintf(output_stream, "  ct_%d.out = c_%d.a;\n", b, ret);
+        if (need_sequencer >=0) {
+          fprintf(output_stream, "  ct_%d.out = fs_%d.r.a;\n", b, seq_num);
+        } else {
+          fprintf(output_stream, "  ct_%d.out = c_%d.a;\n", b, ret);
+        }
       }
       fprintf(output_stream, "\n");
       /* clear assigned entry from the list of evaluated expressions */
@@ -1102,7 +1123,6 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         else if (bundle_data)
         {
           fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), a);
-          fprintf(output_stream, "  /* testpoint 6 */\n");
           fprintf(output_stream, "  s_%d.go.r = c_%d.r;\n", a, ret);
           fprintf(output_stream, "  s_%d.go.a = c_%d.a; c_%d.a = chan_%s.a;\n", a, ret, ret, c->u.comm.chan->getName());
           fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = chan_%s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
@@ -1112,7 +1132,6 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         else
         {
           fprintf(output_stream, "  syn::recv s_%d[%d];\n", a, TypeFactory::bitWidth(v));
-          fprintf(output_stream, "  /* testpoint 7 */\n");
           fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), a, ret);
           fprintf(output_stream, "  (i:%d: s_%d[i].in.t = chan_%s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
           fprintf(output_stream, "       %*cs_%d[i].in.f = chan_%s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
@@ -1129,28 +1148,31 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
     case ACT_CHP_COMMA:
     case ACT_CHP_SEMI:
     {
+//      fprintf(output_stream, "  /* CHECKING IF SEQUENCER... cspace NULL? %d, seq=%d */\n", (c->space != NULL), (((SequencerInfo *)c->space)->sequence));
+            
+      if (c->space && ((SequencerInfo *)c->space)->sequence) {
+        fprintf(output_stream, "  /* YES we need a sequencer here, ns=%d, seq_num=%d */\n", chan_count, stmt_count+1);
+        int s = stmt_count++;
+        need_sequencer = chan_count;
+        seq_num = s;
+      }
+
       listitem_t *li;
       /* special case for a single (non-composed) statement, generated by parser */
       if (list_length(c->u.semi_comma.cmd) == 1)
       {
-        fprintf(output_stream, "  /* ... printchpstmt 5 ...*/\n");
-        return print_chp_stmt((act_chp_lang_t *)list_value(list_first(c->u.semi_comma.cmd)), bitwidth, base_var);
+//        fprintf(output_stream, "  /* ... printchpstmt 5 ...*/\n");
+        return print_chp_stmt((act_chp_lang_t *)list_value(list_first(c->u.semi_comma.cmd)), bitwidth, base_var, seq_num, need_sequencer);
       }
+      
       fprintf(output_stream, "  /* %s */\n", c->type == ACT_CHP_COMMA ? "comma" : "semicolon");
       a = chan_count++;
       ret = a;
       /* create request/acknowledge channel for the sequencer */
-      /* TODO HERE GOES THE SEQUENCER YAY */
-      int need_sequencer = -1;    // indicates control signal # if seq needed
-      int seq_num = -1;           // indicates the seq variable #
-      if (c->space && ((SequencerInfo *)c->space)->sequence) {
-        fprintf(output_stream, "/* yay we need a sequencer here, ret=%d */\n", a);
-        int s = stmt_count++;
-        need_sequencer = ret;
-        seq_num = s;
+      if (need_sequencer >= 0) {
         fprintf(output_stream, "  a1of1 c_%d;\n", ret);
-        fprintf(output_stream, "  syn::fullseq s_%d;\n", seq_num);
-        fprintf(output_stream, "  c_%d = s_%d.go;\n", ret, seq_num);
+        fprintf(output_stream, "  syn::fullseq fs_%d;\n", seq_num);
+        fprintf(output_stream, "  c_%d = fs_%d.go;\n", ret, seq_num);
       } else {
         fprintf(output_stream, "  a1of1 c_%d;\n", ret); // no sequencer needed
       }
@@ -1158,20 +1180,20 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       /* iterate through all composite statements */
       for (li = list_first(c->u.semi_comma.cmd); list_next(li); li = list_next(li))
       {
-        fprintf(output_stream, "  /* printing composite statement: ns=%d */\n", need_sequencer);
+//        fprintf(output_stream, "  /* printing composite statement: ns=%d */\n", need_sequencer);
         int s;
         /* print the left statement */
-        fprintf(output_stream, "  /* ... printchpstmt 0 c_a=%d, c_b=%d, ns=%d... for left side*/\n", a, b, need_sequencer);
-        b = print_chp_stmt((act_chp_lang_t *)list_value(li), bitwidth, base_var);
+//        fprintf(output_stream, "  /* ... printchpstmt 0 c_a=%d, c_b=%d, ns=%d... for LEFT side*/\n", a, b, need_sequencer);
+        b = print_chp_stmt((act_chp_lang_t *)list_value(li), bitwidth, base_var, -1, -1);
         s = stmt_count++;
-        fprintf(output_stream, "  /* ... printchpstmt 0 c_a=%d, c_b=%d, ns=%d... for RIGHT side*/\n", a, b, need_sequencer);
+//        fprintf(output_stream, "  /* ... printchpstmt 0 c_a=%d, c_b=%d, ns=%d... for RIGHT side*/\n", a, b, need_sequencer);
         /* connect the go signal to the statement appropriately */
         fprintf(output_stream, "  syn::%s s_%d;\n", c->type == ACT_CHP_COMMA ? "par" : "seq", s);
         
         fprintf(output_stream, "  /* is this the place?? ns=%d*/\n", need_sequencer);
         // print out statement to rely on sequencer if needed
         if (need_sequencer >= 0 && a == need_sequencer) {
-          fprintf(output_stream, "  s_%d.go = s_%d.r;\n", s, seq_num);
+          fprintf(output_stream, "  s_%d.go = fs_%d.r;\n", s, seq_num);
         } else {
           fprintf(output_stream, "  s_%d.go = c_%d;\n", s, a);
         }
@@ -1194,8 +1216,8 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         if (!list_next(list_next(li)))
         {
           fprintf(output_stream, "\n");
-          fprintf(output_stream, "  /* ... printchpstmt 2 c_%d, ns=%d...*/\n", b, need_sequencer);
-          b = print_chp_stmt((act_chp_lang_t *)list_value(list_next(li)), bitwidth, base_var);
+//          fprintf(output_stream, "  /* ... printchpstmt 2 c_%d, ns=%d...*/\n", b, need_sequencer);
+          b = print_chp_stmt((act_chp_lang_t *)list_value(list_next(li)), bitwidth, base_var, -1, -1);
           fprintf(output_stream, "  s_%d.s2 = c_%d;\n", s, b);
         }
         /* otherwise, connect the channels appropriately */
@@ -1253,7 +1275,7 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   fprintf(output_stream, "\n");
   
   /* Print params for toplevel from process port list */
-  printf("TEST: %s has %d ports\n", p->getName(), p->getNumPorts());
+//  printf("TEST: %s has %d ports\n", p->getName(), p->getNumPorts());
   int pnum = p->getNumPorts();
   if (pnum == 0) {
     fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");
@@ -1324,8 +1346,8 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   /* translate the CHP */
   int i = 0;
   if (chp != NULL && chp->c != NULL) {
-    fprintf(output_stream, "  /* ... printchpstmt 3 c_%d...*/\n",i);
-    print_chp_stmt(chp->c, bitwidth, base_var);
+//    fprintf(output_stream, "  /* ... printchpstmt 3 c_%d...*/\n",i);
+    print_chp_stmt(chp->c, bitwidth, base_var, -1, -1);
   }
   
   if (bitwidth != NULL)

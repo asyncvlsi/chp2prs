@@ -386,11 +386,13 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var);
  * Parameters: c - object containing the CHP statement
  *             bitwidth - reference to the width of the statement
  *             base_var - reference to the go signal for the statement
+ *             need_sequencer - control signal # if fullseq needed, o.w. = -1
+ *             seq_num - fullseq variable # if fullseq needed, o.w. = -1
  *
  * Return Value: the integer corresponding to the base request channel for the
  *               statement
  */
-int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var);
+int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_sequencer, int seq_num);
 
 
 /*

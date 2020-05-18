@@ -1,0 +1,28 @@
+	         0 Reset : 1
+	         0 t.go.a : 0
+	         0 t.go.r : 0
+	         0 _Reset : 0
+	        10 t.var_y.v.t : 0  [by Reset:=1]
+	        10 t.var_x.v.t : 0  [by Reset:=1]
+	        50 t.var_y.v.f : 1  [by t.e_8.out.t:=0]
+	        50 t.var_x.v.f : 1  [by t.s_4.in.t:=0]
+	       130 Reset : 0
+	       130 _Reset : 1
+	       130 t.go.r : 1
+	       310 t.var_x.v.f : 0  [by t.s_4.in.t:=1]
+	       330 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	       590 t.var_y.v.f : 0  [by t.s_7.in.t:=1]
+	       610 t.var_y.v.t : 1  [by t.var_y.v.f:=0]
+	       700 t.var_x.v.t : 0  [by t.e_6.out.f:=1]
+	       720 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      1070 t.var_y.v.t : 0  [by t.e_8.out.f:=1]
+	      1090 t.var_y.v.f : 1  [by t.var_y.v.t:=0]
+	      1390 t.var_x.v.f : 0  [by t.s_16.in.t:=1]
+	      1410 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      1530 t.var_y.v.f : 0  [by t.s_19.in.t:=1]
+	      1550 t.var_y.v.t : 1  [by t.var_y.v.f:=0]
+	      1900 t.var_x.v.t : 0  [by t.s_22.in.f:=1]
+	      1920 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      2010 t.var_y.v.t : 0  [by t.s_25.in.f:=1]
+	      2030 t.var_y.v.f : 1  [by t.var_y.v.t:=0]
+	      2050 t.go.a : 1  [by t.s_25._goa:=0]

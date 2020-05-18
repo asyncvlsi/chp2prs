@@ -1,0 +1,9 @@
+defproc assign0 () {
+  int<1> x;
+
+  chp {
+    x:=1
+  }
+}
+
+assign0 a;

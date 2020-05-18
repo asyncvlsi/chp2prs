@@ -1,0 +1,12 @@
+defproc assign03 () {
+  int<1> x;
+
+  chp {
+    x:=1;
+    x:=0;
+    x:=1;
+    x:=0
+  }
+}
+
+assign03 a;

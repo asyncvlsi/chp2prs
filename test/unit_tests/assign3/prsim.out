@@ -1,46 +1,34 @@
-Node `t.s_0.r.r' not found
-Node `t.s_0.r.a' not found
-Node `t.s_0.r.r' not found
-Node `t.s_0.r.a' not found
 	         0 Reset : 1
 	         0 t.go.a : 0
 	         0 t.go.r : 0
 	         0 _Reset : 0
+	        10 t.var_b.v.t : 0  [by Reset:=1]
 	        10 t.var_v.v.t : 0  [by Reset:=1]
 	        10 t.var_x.v.t : 0  [by Reset:=1]
+	        10 t.var_z.v.t : 0  [by Reset:=1]
 	        10 t.var_y.v.t : 0  [by Reset:=1]
 	        10 t.var_a.v.t : 0  [by Reset:=1]
-	        10 t.var_z.v.t : 0  [by Reset:=1]
-	        10 t.s_1.r.a : 0  [by Reset:=1]
-	        10 t.var_b.v.t : 0  [by Reset:=1]
-	        20 t.s_1.r.r : 0  [by t.s_1._gor:=1]
-	        30 t.var_a.v.f : 1  [by t.c_7.a:=0]
+	        30 t.var_a.v.f : 1  [by t.var_a.v.t:=0]
+	        30 t.var_x.v.f : 1  [by t.c_14.a:=0]
 	        30 t.var_z.v.f : 1  [by t.var_z.v.t:=0]
-	        30 t.var_y.v.f : 1  [by t.c_11.a:=0]
-	        30 t.var_v.v.f : 1  [by t.c_3.a:=0]
-	        30 t.var_x.v.f : 1  [by t.c_13.a:=0]
-	        30 t.var_b.v.f : 1  [by t.var_b.v.t:=0]
-	       100 Reset : 0
-	       100 _Reset : 1
-	       100 t.go.r : 1
-	       120 t.s_1.r.r : 1  [by t.s_1._gor:=0]
-	       190 t.s_1.r.a : 1  [by t.rtv_1._goa:=0]
-	       220 t.s_1.r.r : 0  [by t.s_1.x:=1]
-	       260 t.s_1.r.a : 0  [by t.rtv_1._goa:=1]
-	       320 t.var_y.v.f : 0  [by t.s_0.in.t:=1]
-	       340 t.var_y.v.t : 1  [by t.var_y.v.f:=0]
-	       920 t.var_v.v.f : 0  [by t.s_6.in.t:=1]
-	       940 t.var_v.v.t : 1  [by t.var_v.v.f:=0]
-	      1580 t.var_a.v.f : 0  [by t.s_12.in.t:=1]
-	      1600 t.var_a.v.t : 1  [by t.var_a.v.f:=0]
-	      1940 t.var_b.v.f : 0  [by t.s_15.in.t:=1]
-	      1960 t.var_b.v.t : 1  [by t.var_b.v.f:=0]
-	      2210 t.var_y.v.t : 0  [by t.s_18.in.f:=1]
-	      2230 t.var_y.v.f : 1  [by t.var_y.v.t:=0]
-	      2510 t.var_x.v.f : 0  [by t.s_21.in.t:=1]
-	      2530 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
-	      2770 t.var_y.v.f : 0  [by t.s_24.in.t:=1]
-	      2790 t.var_y.v.t : 1  [by t.var_y.v.f:=0]
-	      2810 t.go.a : 1  [by t.s_24._goa:=0]
-Node `t.s_0.r.r' not found
-Node `t.s_0.r.a' not found
+	        30 t.var_b.v.f : 1  [by t.c_11.a:=0]
+	        30 t.var_v.v.f : 1  [by t.var_v.v.t:=0]
+	        50 t.var_y.v.f : 1  [by t.s_20.in.t:=0]
+	       110 Reset : 0
+	       110 _Reset : 1
+	       110 t.go.r : 1
+	       250 t.var_y.v.f : 0  [by t.s_2.in.t:=1]
+	       270 t.var_y.v.t : 1  [by t.var_y.v.f:=0]
+	       550 t.var_v.v.f : 0  [by t.s_8.in.t:=1]
+	       570 t.var_v.v.t : 1  [by t.var_v.v.f:=0]
+	       890 t.var_a.v.f : 0  [by t.s_14.in.t:=1]
+	       910 t.var_a.v.t : 1  [by t.var_a.v.f:=0]
+	      1090 t.var_b.v.f : 0  [by t.s_17.in.t:=1]
+	      1110 t.var_b.v.t : 1  [by t.var_b.v.f:=0]
+	      1940 t.var_y.v.t : 0  [by t.s_20.in.f:=1]
+	      1960 t.var_y.v.f : 1  [by t.var_y.v.t:=0]
+	      2100 t.var_x.v.f : 0  [by t.s_23.in.t:=1]
+	      2120 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      2540 t.var_y.v.f : 0  [by t.s_26.in.t:=1]
+	      2560 t.var_y.v.t : 1  [by t.var_y.v.f:=0]
+	      2580 t.go.a : 1  [by t.s_26._goa:=0]

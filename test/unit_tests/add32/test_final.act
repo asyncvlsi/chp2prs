@@ -6,6 +6,8 @@ defproc toplevel (a1of1 go)
   syn::var_init_false var_y[32];
   syn::var_init_false var_x[32];
   syn::var_init_false var_z[32];
+  syn::var_init_false loop0000[4];
+  syn::var_init_false sel0000[4];
 
   /* semicolon */
   a1of1 c_0;
@@ -46,26 +48,21 @@ defproc toplevel (a1of1 go)
   e_1.v[29] = const_0.v;
   e_1.v[30] = const_1.v;
   e_1.v[31] = const_0.v;
+  /* assign vars: a=1, b=0 */
   a1of1 c_1;
-  /* testpoint 1 */
-  syn::fullseq s_1;
-  c_1.r = s_1.go.r;
   syn::recv rtv_1[32];
   syn::expr_vararray<32> e_2;
   syn::var_init_false tv_1[32];
   (i:32: e_2.v[i] = tv_1[i].v;)
   (i:32: e_2.v[i] = rtv_1[i].v;)
-  s_1.r.r = e_1.go_r;
-  /* testpoint 3 */
-  (i:32: s_1.r.r = rtv_1[i].go.r;)
+  c_1.r = e_1.go_r;
+  (i:32: c_1.r = rtv_1[i].go.r;)
   syn::ctree<32> ct_1;
   (i:32: ct_1.in[i] = rtv_1[i].go.a;)
-  s_1.r.a = ct_1.out;
   (i:32: e_1.out[i].t = rtv_1[i].in.t;
          e_1.out[i].f = rtv_1[i].in.f;)
-  s_1.go.a = e_2.go_r;
+  ct_1.out = e_2.go_r;
   syn::recv s_0[32];
-  /* testpoint 5 */
   (i:32: s_0[i].go.r = c_1.r;)
   (i:32: s_0[i].in.t = e_2.out[i].t;
          s_0[i].in.f = e_2.out[i].f;
@@ -75,6 +72,7 @@ defproc toplevel (a1of1 go)
   ct_0.out = c_1.a;
 
   syn::seq s_2;
+  /* is this the place?? ns=-1*/
   s_2.go = c_0;
   s_2.s1 = c_1;
   a1of1 c_2;
@@ -114,26 +112,21 @@ defproc toplevel (a1of1 go)
   e_3.v[29] = const_0.v;
   e_3.v[30] = const_0.v;
   e_3.v[31] = const_0.v;
+  /* assign vars: a=3, b=3 */
   a1of1 c_3;
-  /* testpoint 1 */
-  syn::fullseq s_4;
-  c_3.r = s_4.go.r;
   syn::recv rtv_4[32];
   syn::expr_vararray<32> e_4;
   syn::var_init_false tv_4[32];
   (i:32: e_4.v[i] = tv_4[i].v;)
   (i:32: e_4.v[i] = rtv_4[i].v;)
-  s_4.r.r = e_3.go_r;
-  /* testpoint 3 */
-  (i:32: s_4.r.r = rtv_4[i].go.r;)
+  c_3.r = e_3.go_r;
+  (i:32: c_3.r = rtv_4[i].go.r;)
   syn::ctree<32> ct_4;
   (i:32: ct_4.in[i] = rtv_4[i].go.a;)
-  s_4.r.a = ct_4.out;
   (i:32: e_3.out[i].t = rtv_4[i].in.t;
          e_3.out[i].f = rtv_4[i].in.f;)
-  s_4.go.a = e_4.go_r;
+  ct_4.out = e_4.go_r;
   syn::recv s_3[32];
-  /* testpoint 5 */
   (i:32: s_3[i].go.r = c_3.r;)
   (i:32: s_3[i].in.t = e_4.out[i].t;
          s_3[i].in.f = e_4.out[i].f;
@@ -143,6 +136,7 @@ defproc toplevel (a1of1 go)
   ct_3.out = c_3.a;
 
   syn::seq s_5;
+  /* is this the place?? ns=-1*/
   s_5.go = c_2;
   s_5.s1 = c_3;
 
@@ -155,26 +149,21 @@ defproc toplevel (a1of1 go)
   syn::add<32> e_7;
   (i:32: e_7.in1[i] = e_5.out[i];)
   (i:32: e_7.in2[i] = e_6.out[i];)
+  /* assign vars: a=7, b=6 */
   a1of1 c_4;
-  /* testpoint 1 */
-  syn::fullseq s_7;
-  c_4.r = s_7.go.r;
   syn::recv rtv_7[32];
   syn::expr_vararray<32> e_8;
   syn::var_init_false tv_7[32];
   (i:32: e_8.v[i] = tv_7[i].v;)
   (i:32: e_8.v[i] = rtv_7[i].v;)
-  s_7.r.r = e_5.go_r;
-  /* testpoint 3 */
-  (i:32: s_7.r.r = rtv_7[i].go.r;)
+  c_4.r = e_5.go_r;
+  (i:32: c_4.r = rtv_7[i].go.r;)
   syn::ctree<32> ct_7;
   (i:32: ct_7.in[i] = rtv_7[i].go.a;)
-  s_7.r.a = ct_7.out;
   (i:32: e_7.out[i].t = rtv_7[i].in.t;
          e_7.out[i].f = rtv_7[i].in.f;)
-  s_7.go.a = e_8.go_r;
+  ct_7.out = e_8.go_r;
   syn::recv s_6[32];
-  /* testpoint 5 */
   (i:32: s_6[i].go.r = c_4.r;)
   (i:32: s_6[i].in.t = e_8.out[i].t;
          s_6[i].in.f = e_8.out[i].f;
