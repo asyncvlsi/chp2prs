@@ -1,9 +1,7 @@
 import syn;
 
-defproc toplevel (a1of1 go)
-{
+defproc toplevel (a1of1 go; aN1of2<32> a) {
 /* Initialize chp vars */
-  aN1of2<32> chan_a;
   syn::var_init_false var_y[32];
   syn::var_init_false var_x[32];
 
@@ -82,7 +80,7 @@ defproc toplevel (a1of1 go)
   /* emit individual gc (#0) [selection] */
   r1of2 gc_0;
   syn::aN1of2_probe<32> e_3;
-  e_3.c = chan_a;
+  e_3.c = a;
   /* testpoint 1 */
   syn::fullseq s_3;
   gc_0.r = s_3.go.r;
@@ -101,26 +99,96 @@ defproc toplevel (a1of1 go)
   syn::recv s_4[32];
   /* testpoint 7 */
   (i:32: s_4[i].go.r = c_2.r;)
-  (i:32: s_4[i].in.t = chan_a.d[i].t;
-         s_4[i].in.f = chan_a.d[i].f;
+  (i:32: s_4[i].in.t = a.d[i].t;
+         s_4[i].in.f = a.d[i].f;
          s_4[i].v = var_y[i].v;)
   syn::ctree<32> ct_4;
   (i:32: ct_4.in[i] = s_4[i].go.a;)
-  ct_4.out = c_2.a; c_2.a = chan_a.a;
+  ct_4.out = c_2.a; c_2.a = a.a;
 
   e_4.out.t = c_2.r;
   gc_0.t = c_2.a;
   gc_0.f = e_4.out.f;
+  r1of2 gc_1;
+  /* assign */
+  syn::expr_vararray<32> e_5;
+  e_5.v[0] = const_1.v;
+  e_5.v[1] = const_0.v;
+  e_5.v[2] = const_0.v;
+  e_5.v[3] = const_0.v;
+  e_5.v[4] = const_0.v;
+  e_5.v[5] = const_0.v;
+  e_5.v[6] = const_0.v;
+  e_5.v[7] = const_0.v;
+  e_5.v[8] = const_0.v;
+  e_5.v[9] = const_0.v;
+  e_5.v[10] = const_0.v;
+  e_5.v[11] = const_0.v;
+  e_5.v[12] = const_0.v;
+  e_5.v[13] = const_0.v;
+  e_5.v[14] = const_0.v;
+  e_5.v[15] = const_0.v;
+  e_5.v[16] = const_0.v;
+  e_5.v[17] = const_0.v;
+  e_5.v[18] = const_0.v;
+  e_5.v[19] = const_0.v;
+  e_5.v[20] = const_0.v;
+  e_5.v[21] = const_0.v;
+  e_5.v[22] = const_0.v;
+  e_5.v[23] = const_0.v;
+  e_5.v[24] = const_0.v;
+  e_5.v[25] = const_0.v;
+  e_5.v[26] = const_0.v;
+  e_5.v[27] = const_0.v;
+  e_5.v[28] = const_0.v;
+  e_5.v[29] = const_0.v;
+  e_5.v[30] = const_0.v;
+  e_5.v[31] = const_0.v;
   a1of1 c_3;
-  /* gc cascade, start = 0, end = 0 */
-  syn::bool_notand na_5;
-  na_5.in1 = c_3.r;
-  na_5.out = gc_0.r;
-  gc_0.t = c_3.a;
-  gc_0.f = na_5.in2;
+  /* testpoint 1 */
+  syn::fullseq s_6;
+  c_3.r = s_6.go.r;
+  syn::recv rtv_6[32];
+  syn::expr_vararray<32> e_6;
+  syn::var_init_false tv_6[32];
+  (i:32: e_6.v[i] = tv_6[i].v;)
+  (i:32: e_6.v[i] = rtv_6[i].v;)
+  s_6.r.r = e_5.go_r;
+  /* testpoint 3 */
+  (i:32: s_6.r.r = rtv_6[i].go.r;)
+  syn::ctree<32> ct_6;
+  (i:32: ct_6.in[i] = rtv_6[i].go.a;)
+  s_6.r.a = ct_6.out;
+  (i:32: e_5.out[i].t = rtv_6[i].in.t;
+         e_5.out[i].f = rtv_6[i].in.f;)
+  s_6.go.a = e_6.go_r;
+  syn::recv s_5[32];
+  /* testpoint 5 */
+  (i:32: s_5[i].go.r = c_3.r;)
+  (i:32: s_5[i].in.t = e_6.out[i].t;
+         s_5[i].in.f = e_6.out[i].f;
+         s_5[i].v = var_y[i].v;)
+  syn::ctree<32> ct_5;
+  (i:32: ct_5.in[i] = s_5[i].go.a;)
+  ct_5.out = c_3.a;
+
+  gc_1.r = c_3.r;
+  gc_1.t = c_3.a;
+  gc_1.f = GND;
+  a1of1 c_4;
+  /* gc cascade, start = 0, end = 1 */
+  gc_0.f = gc_1.r;
+  syn::bool_notand na_7;
+  na_7.in1 = c_4.r;
+  na_7.out = gc_0.r;
+  syn::bool_or or_8;
+  or_8.in1 = gc_0.t;
+  or_8.in2 = gc_1.t;
+  or_8.out = c_4.a;
+  gc_1.f = na_7.in2;
   /* end of gc (#0) */
 
-  s_2.s2 = c_3;
+  s_2.s2 = c_4;
 
   go = c_0;
 }

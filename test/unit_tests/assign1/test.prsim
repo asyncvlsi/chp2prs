@@ -33,3 +33,6 @@ assert t.go.r 1
 assert t.var_x.v.t 0
 assert t.var_x.v.f 1
 assert t.go.a 1
+
+set t.go.r 0
+cycle

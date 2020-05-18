@@ -1,0 +1,2801 @@
+import syn;
+
+defproc toplevel (a1of1 go)
+{
+/* Initialize chp vars */
+  syn::var_init_false var_b;
+  syn::var_init_false var_a;
+  syn::var_init_false var_w;
+  syn::var_init_false var_y;
+  syn::var_init_false var_x;
+  syn::var_init_false var_d;
+  syn::var_init_false var_c;
+  syn::var_init_false var_z;
+
+  /* semicolon */
+  a1of1 c_0;
+
+  /* assign */
+  syn::var_init_true const_1;
+  syn::expr_var e_1;
+  e_1.v = const_1.v;
+  a1of1 c_1;
+  /* testpoint 1 */
+  syn::fullseq s_1;
+  c_1.r = s_1.go.r;
+  syn::recv rtv_1;
+  syn::expr_var e_2;
+  syn::var_init_false tv_1;
+  tv_1.v = rtv_1.v;
+  e_2.v = tv_1.v;
+  s_1.r.r = e_1.go_r;
+  s_1.r = rtv_1.go;
+  e_1.out.t = rtv_1.in.t;
+  e_1.out.f = rtv_1.in.f;
+  s_1.go.a = e_2.go_r;
+  syn::recv s_0;
+  s_0.go = c_1;
+  s_0.in.t = e_2.out.t;
+  s_0.in.f = e_2.out.f;
+  s_0.v = var_x.v;
+
+  syn::seq s_2;
+  s_2.go = c_0;
+  s_2.s1 = c_1;
+  a1of1 c_2;
+  s_2.s2 = c_2;
+
+  /* assign */
+  syn::expr_var e_3;
+  e_3.v = const_1.v;
+  a1of1 c_3;
+  /* testpoint 1 */
+  syn::fullseq s_4;
+  c_3.r = s_4.go.r;
+  syn::recv rtv_4;
+  syn::expr_var e_4;
+  syn::var_init_false tv_4;
+  tv_4.v = rtv_4.v;
+  e_4.v = tv_4.v;
+  s_4.r.r = e_3.go_r;
+  s_4.r = rtv_4.go;
+  e_3.out.t = rtv_4.in.t;
+  e_3.out.f = rtv_4.in.f;
+  s_4.go.a = e_4.go_r;
+  syn::recv s_3;
+  s_3.go = c_3;
+  s_3.in.t = e_4.out.t;
+  s_3.in.f = e_4.out.f;
+  s_3.v = var_y.v;
+
+  syn::seq s_5;
+  s_5.go = c_2;
+  s_5.s1 = c_3;
+  a1of1 c_4;
+  s_5.s2 = c_4;
+
+  /* assign */
+  syn::expr_var e_5;
+  e_5.v = const_1.v;
+  a1of1 c_5;
+  /* testpoint 1 */
+  syn::fullseq s_7;
+  c_5.r = s_7.go.r;
+  syn::recv rtv_7;
+  syn::expr_var e_6;
+  syn::var_init_false tv_7;
+  tv_7.v = rtv_7.v;
+  e_6.v = tv_7.v;
+  s_7.r.r = e_5.go_r;
+  s_7.r = rtv_7.go;
+  e_5.out.t = rtv_7.in.t;
+  e_5.out.f = rtv_7.in.f;
+  s_7.go.a = e_6.go_r;
+  syn::recv s_6;
+  s_6.go = c_5;
+  s_6.in.t = e_6.out.t;
+  s_6.in.f = e_6.out.f;
+  s_6.v = var_z.v;
+
+  syn::seq s_8;
+  s_8.go = c_4;
+  s_8.s1 = c_5;
+  a1of1 c_6;
+  s_8.s2 = c_6;
+
+  /* assign */
+  syn::expr_var e_7;
+  e_7.v = const_1.v;
+  a1of1 c_7;
+  /* testpoint 1 */
+  syn::fullseq s_10;
+  c_7.r = s_10.go.r;
+  syn::recv rtv_10;
+  syn::expr_var e_8;
+  syn::var_init_false tv_10;
+  tv_10.v = rtv_10.v;
+  e_8.v = tv_10.v;
+  s_10.r.r = e_7.go_r;
+  s_10.r = rtv_10.go;
+  e_7.out.t = rtv_10.in.t;
+  e_7.out.f = rtv_10.in.f;
+  s_10.go.a = e_8.go_r;
+  syn::recv s_9;
+  s_9.go = c_7;
+  s_9.in.t = e_8.out.t;
+  s_9.in.f = e_8.out.f;
+  s_9.v = var_w.v;
+
+  syn::seq s_11;
+  s_11.go = c_6;
+  s_11.s1 = c_7;
+  a1of1 c_8;
+  s_11.s2 = c_8;
+
+  /* assign */
+  syn::expr_var e_9;
+  e_9.v = const_1.v;
+  a1of1 c_9;
+  /* testpoint 1 */
+  syn::fullseq s_13;
+  c_9.r = s_13.go.r;
+  syn::recv rtv_13;
+  syn::expr_var e_10;
+  syn::var_init_false tv_13;
+  tv_13.v = rtv_13.v;
+  e_10.v = tv_13.v;
+  s_13.r.r = e_9.go_r;
+  s_13.r = rtv_13.go;
+  e_9.out.t = rtv_13.in.t;
+  e_9.out.f = rtv_13.in.f;
+  s_13.go.a = e_10.go_r;
+  syn::recv s_12;
+  s_12.go = c_9;
+  s_12.in.t = e_10.out.t;
+  s_12.in.f = e_10.out.f;
+  s_12.v = var_a.v;
+
+  syn::seq s_14;
+  s_14.go = c_8;
+  s_14.s1 = c_9;
+  a1of1 c_10;
+  s_14.s2 = c_10;
+
+  /* assign */
+  syn::expr_var e_11;
+  e_11.v = const_1.v;
+  a1of1 c_11;
+  /* testpoint 1 */
+  syn::fullseq s_16;
+  c_11.r = s_16.go.r;
+  syn::recv rtv_16;
+  syn::expr_var e_12;
+  syn::var_init_false tv_16;
+  tv_16.v = rtv_16.v;
+  e_12.v = tv_16.v;
+  s_16.r.r = e_11.go_r;
+  s_16.r = rtv_16.go;
+  e_11.out.t = rtv_16.in.t;
+  e_11.out.f = rtv_16.in.f;
+  s_16.go.a = e_12.go_r;
+  syn::recv s_15;
+  s_15.go = c_11;
+  s_15.in.t = e_12.out.t;
+  s_15.in.f = e_12.out.f;
+  s_15.v = var_b.v;
+
+  syn::seq s_17;
+  s_17.go = c_10;
+  s_17.s1 = c_11;
+  a1of1 c_12;
+  s_17.s2 = c_12;
+
+  /* assign */
+  syn::expr_var e_13;
+  e_13.v = const_1.v;
+  a1of1 c_13;
+  /* testpoint 1 */
+  syn::fullseq s_19;
+  c_13.r = s_19.go.r;
+  syn::recv rtv_19;
+  syn::expr_var e_14;
+  syn::var_init_false tv_19;
+  tv_19.v = rtv_19.v;
+  e_14.v = tv_19.v;
+  s_19.r.r = e_13.go_r;
+  s_19.r = rtv_19.go;
+  e_13.out.t = rtv_19.in.t;
+  e_13.out.f = rtv_19.in.f;
+  s_19.go.a = e_14.go_r;
+  syn::recv s_18;
+  s_18.go = c_13;
+  s_18.in.t = e_14.out.t;
+  s_18.in.f = e_14.out.f;
+  s_18.v = var_c.v;
+
+  syn::seq s_20;
+  s_20.go = c_12;
+  s_20.s1 = c_13;
+  a1of1 c_14;
+  s_20.s2 = c_14;
+
+  /* assign */
+  syn::expr_var e_15;
+  e_15.v = const_1.v;
+  a1of1 c_15;
+  /* testpoint 1 */
+  syn::fullseq s_22;
+  c_15.r = s_22.go.r;
+  syn::recv rtv_22;
+  syn::expr_var e_16;
+  syn::var_init_false tv_22;
+  tv_22.v = rtv_22.v;
+  e_16.v = tv_22.v;
+  s_22.r.r = e_15.go_r;
+  s_22.r = rtv_22.go;
+  e_15.out.t = rtv_22.in.t;
+  e_15.out.f = rtv_22.in.f;
+  s_22.go.a = e_16.go_r;
+  syn::recv s_21;
+  s_21.go = c_15;
+  s_21.in.t = e_16.out.t;
+  s_21.in.f = e_16.out.f;
+  s_21.v = var_d.v;
+
+  syn::seq s_23;
+  s_23.go = c_14;
+  s_23.s1 = c_15;
+  a1of1 c_16;
+  s_23.s2 = c_16;
+
+  /* assign */
+  syn::var_init_false const_0;
+  syn::expr_var e_17;
+  e_17.v = const_0.v;
+  a1of1 c_17;
+  /* testpoint 1 */
+  syn::fullseq s_25;
+  c_17.r = s_25.go.r;
+  syn::recv rtv_25;
+  syn::expr_var e_18;
+  syn::var_init_false tv_25;
+  tv_25.v = rtv_25.v;
+  e_18.v = tv_25.v;
+  s_25.r.r = e_17.go_r;
+  s_25.r = rtv_25.go;
+  e_17.out.t = rtv_25.in.t;
+  e_17.out.f = rtv_25.in.f;
+  s_25.go.a = e_18.go_r;
+  syn::recv s_24;
+  s_24.go = c_17;
+  s_24.in.t = e_18.out.t;
+  s_24.in.f = e_18.out.f;
+  s_24.v = var_x.v;
+
+  syn::seq s_26;
+  s_26.go = c_16;
+  s_26.s1 = c_17;
+  a1of1 c_18;
+  s_26.s2 = c_18;
+
+  /* assign */
+  syn::expr_var e_19;
+  e_19.v = const_0.v;
+  a1of1 c_19;
+  /* testpoint 1 */
+  syn::fullseq s_28;
+  c_19.r = s_28.go.r;
+  syn::recv rtv_28;
+  syn::expr_var e_20;
+  syn::var_init_false tv_28;
+  tv_28.v = rtv_28.v;
+  e_20.v = tv_28.v;
+  s_28.r.r = e_19.go_r;
+  s_28.r = rtv_28.go;
+  e_19.out.t = rtv_28.in.t;
+  e_19.out.f = rtv_28.in.f;
+  s_28.go.a = e_20.go_r;
+  syn::recv s_27;
+  s_27.go = c_19;
+  s_27.in.t = e_20.out.t;
+  s_27.in.f = e_20.out.f;
+  s_27.v = var_y.v;
+
+  syn::seq s_29;
+  s_29.go = c_18;
+  s_29.s1 = c_19;
+  a1of1 c_20;
+  s_29.s2 = c_20;
+
+  /* assign */
+  syn::expr_var e_21;
+  e_21.v = const_0.v;
+  a1of1 c_21;
+  /* testpoint 1 */
+  syn::fullseq s_31;
+  c_21.r = s_31.go.r;
+  syn::recv rtv_31;
+  syn::expr_var e_22;
+  syn::var_init_false tv_31;
+  tv_31.v = rtv_31.v;
+  e_22.v = tv_31.v;
+  s_31.r.r = e_21.go_r;
+  s_31.r = rtv_31.go;
+  e_21.out.t = rtv_31.in.t;
+  e_21.out.f = rtv_31.in.f;
+  s_31.go.a = e_22.go_r;
+  syn::recv s_30;
+  s_30.go = c_21;
+  s_30.in.t = e_22.out.t;
+  s_30.in.f = e_22.out.f;
+  s_30.v = var_z.v;
+
+  syn::seq s_32;
+  s_32.go = c_20;
+  s_32.s1 = c_21;
+  a1of1 c_22;
+  s_32.s2 = c_22;
+
+  /* assign */
+  syn::expr_var e_23;
+  e_23.v = const_0.v;
+  a1of1 c_23;
+  /* testpoint 1 */
+  syn::fullseq s_34;
+  c_23.r = s_34.go.r;
+  syn::recv rtv_34;
+  syn::expr_var e_24;
+  syn::var_init_false tv_34;
+  tv_34.v = rtv_34.v;
+  e_24.v = tv_34.v;
+  s_34.r.r = e_23.go_r;
+  s_34.r = rtv_34.go;
+  e_23.out.t = rtv_34.in.t;
+  e_23.out.f = rtv_34.in.f;
+  s_34.go.a = e_24.go_r;
+  syn::recv s_33;
+  s_33.go = c_23;
+  s_33.in.t = e_24.out.t;
+  s_33.in.f = e_24.out.f;
+  s_33.v = var_w.v;
+
+  syn::seq s_35;
+  s_35.go = c_22;
+  s_35.s1 = c_23;
+  a1of1 c_24;
+  s_35.s2 = c_24;
+
+  /* assign */
+  syn::expr_var e_25;
+  e_25.v = const_0.v;
+  a1of1 c_25;
+  /* testpoint 1 */
+  syn::fullseq s_37;
+  c_25.r = s_37.go.r;
+  syn::recv rtv_37;
+  syn::expr_var e_26;
+  syn::var_init_false tv_37;
+  tv_37.v = rtv_37.v;
+  e_26.v = tv_37.v;
+  s_37.r.r = e_25.go_r;
+  s_37.r = rtv_37.go;
+  e_25.out.t = rtv_37.in.t;
+  e_25.out.f = rtv_37.in.f;
+  s_37.go.a = e_26.go_r;
+  syn::recv s_36;
+  s_36.go = c_25;
+  s_36.in.t = e_26.out.t;
+  s_36.in.f = e_26.out.f;
+  s_36.v = var_a.v;
+
+  syn::seq s_38;
+  s_38.go = c_24;
+  s_38.s1 = c_25;
+  a1of1 c_26;
+  s_38.s2 = c_26;
+
+  /* assign */
+  syn::expr_var e_27;
+  e_27.v = const_0.v;
+  a1of1 c_27;
+  /* testpoint 1 */
+  syn::fullseq s_40;
+  c_27.r = s_40.go.r;
+  syn::recv rtv_40;
+  syn::expr_var e_28;
+  syn::var_init_false tv_40;
+  tv_40.v = rtv_40.v;
+  e_28.v = tv_40.v;
+  s_40.r.r = e_27.go_r;
+  s_40.r = rtv_40.go;
+  e_27.out.t = rtv_40.in.t;
+  e_27.out.f = rtv_40.in.f;
+  s_40.go.a = e_28.go_r;
+  syn::recv s_39;
+  s_39.go = c_27;
+  s_39.in.t = e_28.out.t;
+  s_39.in.f = e_28.out.f;
+  s_39.v = var_b.v;
+
+  syn::seq s_41;
+  s_41.go = c_26;
+  s_41.s1 = c_27;
+  a1of1 c_28;
+  s_41.s2 = c_28;
+
+  /* assign */
+  syn::expr_var e_29;
+  e_29.v = const_0.v;
+  a1of1 c_29;
+  /* testpoint 1 */
+  syn::fullseq s_43;
+  c_29.r = s_43.go.r;
+  syn::recv rtv_43;
+  syn::expr_var e_30;
+  syn::var_init_false tv_43;
+  tv_43.v = rtv_43.v;
+  e_30.v = tv_43.v;
+  s_43.r.r = e_29.go_r;
+  s_43.r = rtv_43.go;
+  e_29.out.t = rtv_43.in.t;
+  e_29.out.f = rtv_43.in.f;
+  s_43.go.a = e_30.go_r;
+  syn::recv s_42;
+  s_42.go = c_29;
+  s_42.in.t = e_30.out.t;
+  s_42.in.f = e_30.out.f;
+  s_42.v = var_c.v;
+
+  syn::seq s_44;
+  s_44.go = c_28;
+  s_44.s1 = c_29;
+  a1of1 c_30;
+  s_44.s2 = c_30;
+
+  /* assign */
+  syn::expr_var e_31;
+  e_31.v = const_0.v;
+  a1of1 c_31;
+  /* testpoint 1 */
+  syn::fullseq s_46;
+  c_31.r = s_46.go.r;
+  syn::recv rtv_46;
+  syn::expr_var e_32;
+  syn::var_init_false tv_46;
+  tv_46.v = rtv_46.v;
+  e_32.v = tv_46.v;
+  s_46.r.r = e_31.go_r;
+  s_46.r = rtv_46.go;
+  e_31.out.t = rtv_46.in.t;
+  e_31.out.f = rtv_46.in.f;
+  s_46.go.a = e_32.go_r;
+  syn::recv s_45;
+  s_45.go = c_31;
+  s_45.in.t = e_32.out.t;
+  s_45.in.f = e_32.out.f;
+  s_45.v = var_d.v;
+
+  syn::seq s_47;
+  s_47.go = c_30;
+  s_47.s1 = c_31;
+  a1of1 c_32;
+  s_47.s2 = c_32;
+
+  /* assign */
+  syn::expr_var e_33;
+  e_33.v = const_1.v;
+  a1of1 c_33;
+  /* testpoint 1 */
+  syn::fullseq s_49;
+  c_33.r = s_49.go.r;
+  syn::recv rtv_49;
+  syn::expr_var e_34;
+  syn::var_init_false tv_49;
+  tv_49.v = rtv_49.v;
+  e_34.v = tv_49.v;
+  s_49.r.r = e_33.go_r;
+  s_49.r = rtv_49.go;
+  e_33.out.t = rtv_49.in.t;
+  e_33.out.f = rtv_49.in.f;
+  s_49.go.a = e_34.go_r;
+  syn::recv s_48;
+  s_48.go = c_33;
+  s_48.in.t = e_34.out.t;
+  s_48.in.f = e_34.out.f;
+  s_48.v = var_x.v;
+
+  syn::seq s_50;
+  s_50.go = c_32;
+  s_50.s1 = c_33;
+  a1of1 c_34;
+  s_50.s2 = c_34;
+
+  /* assign */
+  syn::expr_var e_35;
+  e_35.v = const_1.v;
+  a1of1 c_35;
+  /* testpoint 1 */
+  syn::fullseq s_52;
+  c_35.r = s_52.go.r;
+  syn::recv rtv_52;
+  syn::expr_var e_36;
+  syn::var_init_false tv_52;
+  tv_52.v = rtv_52.v;
+  e_36.v = tv_52.v;
+  s_52.r.r = e_35.go_r;
+  s_52.r = rtv_52.go;
+  e_35.out.t = rtv_52.in.t;
+  e_35.out.f = rtv_52.in.f;
+  s_52.go.a = e_36.go_r;
+  syn::recv s_51;
+  s_51.go = c_35;
+  s_51.in.t = e_36.out.t;
+  s_51.in.f = e_36.out.f;
+  s_51.v = var_y.v;
+
+  syn::seq s_53;
+  s_53.go = c_34;
+  s_53.s1 = c_35;
+  a1of1 c_36;
+  s_53.s2 = c_36;
+
+  /* assign */
+  syn::expr_var e_37;
+  e_37.v = const_1.v;
+  a1of1 c_37;
+  /* testpoint 1 */
+  syn::fullseq s_55;
+  c_37.r = s_55.go.r;
+  syn::recv rtv_55;
+  syn::expr_var e_38;
+  syn::var_init_false tv_55;
+  tv_55.v = rtv_55.v;
+  e_38.v = tv_55.v;
+  s_55.r.r = e_37.go_r;
+  s_55.r = rtv_55.go;
+  e_37.out.t = rtv_55.in.t;
+  e_37.out.f = rtv_55.in.f;
+  s_55.go.a = e_38.go_r;
+  syn::recv s_54;
+  s_54.go = c_37;
+  s_54.in.t = e_38.out.t;
+  s_54.in.f = e_38.out.f;
+  s_54.v = var_z.v;
+
+  syn::seq s_56;
+  s_56.go = c_36;
+  s_56.s1 = c_37;
+  a1of1 c_38;
+  s_56.s2 = c_38;
+
+  /* assign */
+  syn::expr_var e_39;
+  e_39.v = const_1.v;
+  a1of1 c_39;
+  /* testpoint 1 */
+  syn::fullseq s_58;
+  c_39.r = s_58.go.r;
+  syn::recv rtv_58;
+  syn::expr_var e_40;
+  syn::var_init_false tv_58;
+  tv_58.v = rtv_58.v;
+  e_40.v = tv_58.v;
+  s_58.r.r = e_39.go_r;
+  s_58.r = rtv_58.go;
+  e_39.out.t = rtv_58.in.t;
+  e_39.out.f = rtv_58.in.f;
+  s_58.go.a = e_40.go_r;
+  syn::recv s_57;
+  s_57.go = c_39;
+  s_57.in.t = e_40.out.t;
+  s_57.in.f = e_40.out.f;
+  s_57.v = var_w.v;
+
+  syn::seq s_59;
+  s_59.go = c_38;
+  s_59.s1 = c_39;
+  a1of1 c_40;
+  s_59.s2 = c_40;
+
+  /* assign */
+  syn::expr_var e_41;
+  e_41.v = const_1.v;
+  a1of1 c_41;
+  /* testpoint 1 */
+  syn::fullseq s_61;
+  c_41.r = s_61.go.r;
+  syn::recv rtv_61;
+  syn::expr_var e_42;
+  syn::var_init_false tv_61;
+  tv_61.v = rtv_61.v;
+  e_42.v = tv_61.v;
+  s_61.r.r = e_41.go_r;
+  s_61.r = rtv_61.go;
+  e_41.out.t = rtv_61.in.t;
+  e_41.out.f = rtv_61.in.f;
+  s_61.go.a = e_42.go_r;
+  syn::recv s_60;
+  s_60.go = c_41;
+  s_60.in.t = e_42.out.t;
+  s_60.in.f = e_42.out.f;
+  s_60.v = var_a.v;
+
+  syn::seq s_62;
+  s_62.go = c_40;
+  s_62.s1 = c_41;
+  a1of1 c_42;
+  s_62.s2 = c_42;
+
+  /* assign */
+  syn::expr_var e_43;
+  e_43.v = const_1.v;
+  a1of1 c_43;
+  /* testpoint 1 */
+  syn::fullseq s_64;
+  c_43.r = s_64.go.r;
+  syn::recv rtv_64;
+  syn::expr_var e_44;
+  syn::var_init_false tv_64;
+  tv_64.v = rtv_64.v;
+  e_44.v = tv_64.v;
+  s_64.r.r = e_43.go_r;
+  s_64.r = rtv_64.go;
+  e_43.out.t = rtv_64.in.t;
+  e_43.out.f = rtv_64.in.f;
+  s_64.go.a = e_44.go_r;
+  syn::recv s_63;
+  s_63.go = c_43;
+  s_63.in.t = e_44.out.t;
+  s_63.in.f = e_44.out.f;
+  s_63.v = var_b.v;
+
+  syn::seq s_65;
+  s_65.go = c_42;
+  s_65.s1 = c_43;
+  a1of1 c_44;
+  s_65.s2 = c_44;
+
+  /* assign */
+  syn::expr_var e_45;
+  e_45.v = const_1.v;
+  a1of1 c_45;
+  /* testpoint 1 */
+  syn::fullseq s_67;
+  c_45.r = s_67.go.r;
+  syn::recv rtv_67;
+  syn::expr_var e_46;
+  syn::var_init_false tv_67;
+  tv_67.v = rtv_67.v;
+  e_46.v = tv_67.v;
+  s_67.r.r = e_45.go_r;
+  s_67.r = rtv_67.go;
+  e_45.out.t = rtv_67.in.t;
+  e_45.out.f = rtv_67.in.f;
+  s_67.go.a = e_46.go_r;
+  syn::recv s_66;
+  s_66.go = c_45;
+  s_66.in.t = e_46.out.t;
+  s_66.in.f = e_46.out.f;
+  s_66.v = var_c.v;
+
+  syn::seq s_68;
+  s_68.go = c_44;
+  s_68.s1 = c_45;
+  a1of1 c_46;
+  s_68.s2 = c_46;
+
+  /* assign */
+  syn::expr_var e_47;
+  e_47.v = const_1.v;
+  a1of1 c_47;
+  /* testpoint 1 */
+  syn::fullseq s_70;
+  c_47.r = s_70.go.r;
+  syn::recv rtv_70;
+  syn::expr_var e_48;
+  syn::var_init_false tv_70;
+  tv_70.v = rtv_70.v;
+  e_48.v = tv_70.v;
+  s_70.r.r = e_47.go_r;
+  s_70.r = rtv_70.go;
+  e_47.out.t = rtv_70.in.t;
+  e_47.out.f = rtv_70.in.f;
+  s_70.go.a = e_48.go_r;
+  syn::recv s_69;
+  s_69.go = c_47;
+  s_69.in.t = e_48.out.t;
+  s_69.in.f = e_48.out.f;
+  s_69.v = var_d.v;
+
+  syn::seq s_71;
+  s_71.go = c_46;
+  s_71.s1 = c_47;
+  a1of1 c_48;
+  s_71.s2 = c_48;
+
+  /* assign */
+  syn::expr_var e_49;
+  e_49.v = const_0.v;
+  a1of1 c_49;
+  /* testpoint 1 */
+  syn::fullseq s_73;
+  c_49.r = s_73.go.r;
+  syn::recv rtv_73;
+  syn::expr_var e_50;
+  syn::var_init_false tv_73;
+  tv_73.v = rtv_73.v;
+  e_50.v = tv_73.v;
+  s_73.r.r = e_49.go_r;
+  s_73.r = rtv_73.go;
+  e_49.out.t = rtv_73.in.t;
+  e_49.out.f = rtv_73.in.f;
+  s_73.go.a = e_50.go_r;
+  syn::recv s_72;
+  s_72.go = c_49;
+  s_72.in.t = e_50.out.t;
+  s_72.in.f = e_50.out.f;
+  s_72.v = var_x.v;
+
+  syn::seq s_74;
+  s_74.go = c_48;
+  s_74.s1 = c_49;
+  a1of1 c_50;
+  s_74.s2 = c_50;
+
+  /* assign */
+  syn::expr_var e_51;
+  e_51.v = const_0.v;
+  a1of1 c_51;
+  /* testpoint 1 */
+  syn::fullseq s_76;
+  c_51.r = s_76.go.r;
+  syn::recv rtv_76;
+  syn::expr_var e_52;
+  syn::var_init_false tv_76;
+  tv_76.v = rtv_76.v;
+  e_52.v = tv_76.v;
+  s_76.r.r = e_51.go_r;
+  s_76.r = rtv_76.go;
+  e_51.out.t = rtv_76.in.t;
+  e_51.out.f = rtv_76.in.f;
+  s_76.go.a = e_52.go_r;
+  syn::recv s_75;
+  s_75.go = c_51;
+  s_75.in.t = e_52.out.t;
+  s_75.in.f = e_52.out.f;
+  s_75.v = var_y.v;
+
+  syn::seq s_77;
+  s_77.go = c_50;
+  s_77.s1 = c_51;
+  a1of1 c_52;
+  s_77.s2 = c_52;
+
+  /* assign */
+  syn::expr_var e_53;
+  e_53.v = const_0.v;
+  a1of1 c_53;
+  /* testpoint 1 */
+  syn::fullseq s_79;
+  c_53.r = s_79.go.r;
+  syn::recv rtv_79;
+  syn::expr_var e_54;
+  syn::var_init_false tv_79;
+  tv_79.v = rtv_79.v;
+  e_54.v = tv_79.v;
+  s_79.r.r = e_53.go_r;
+  s_79.r = rtv_79.go;
+  e_53.out.t = rtv_79.in.t;
+  e_53.out.f = rtv_79.in.f;
+  s_79.go.a = e_54.go_r;
+  syn::recv s_78;
+  s_78.go = c_53;
+  s_78.in.t = e_54.out.t;
+  s_78.in.f = e_54.out.f;
+  s_78.v = var_z.v;
+
+  syn::seq s_80;
+  s_80.go = c_52;
+  s_80.s1 = c_53;
+  a1of1 c_54;
+  s_80.s2 = c_54;
+
+  /* assign */
+  syn::expr_var e_55;
+  e_55.v = const_0.v;
+  a1of1 c_55;
+  /* testpoint 1 */
+  syn::fullseq s_82;
+  c_55.r = s_82.go.r;
+  syn::recv rtv_82;
+  syn::expr_var e_56;
+  syn::var_init_false tv_82;
+  tv_82.v = rtv_82.v;
+  e_56.v = tv_82.v;
+  s_82.r.r = e_55.go_r;
+  s_82.r = rtv_82.go;
+  e_55.out.t = rtv_82.in.t;
+  e_55.out.f = rtv_82.in.f;
+  s_82.go.a = e_56.go_r;
+  syn::recv s_81;
+  s_81.go = c_55;
+  s_81.in.t = e_56.out.t;
+  s_81.in.f = e_56.out.f;
+  s_81.v = var_w.v;
+
+  syn::seq s_83;
+  s_83.go = c_54;
+  s_83.s1 = c_55;
+  a1of1 c_56;
+  s_83.s2 = c_56;
+
+  /* assign */
+  syn::expr_var e_57;
+  e_57.v = const_0.v;
+  a1of1 c_57;
+  /* testpoint 1 */
+  syn::fullseq s_85;
+  c_57.r = s_85.go.r;
+  syn::recv rtv_85;
+  syn::expr_var e_58;
+  syn::var_init_false tv_85;
+  tv_85.v = rtv_85.v;
+  e_58.v = tv_85.v;
+  s_85.r.r = e_57.go_r;
+  s_85.r = rtv_85.go;
+  e_57.out.t = rtv_85.in.t;
+  e_57.out.f = rtv_85.in.f;
+  s_85.go.a = e_58.go_r;
+  syn::recv s_84;
+  s_84.go = c_57;
+  s_84.in.t = e_58.out.t;
+  s_84.in.f = e_58.out.f;
+  s_84.v = var_a.v;
+
+  syn::seq s_86;
+  s_86.go = c_56;
+  s_86.s1 = c_57;
+  a1of1 c_58;
+  s_86.s2 = c_58;
+
+  /* assign */
+  syn::expr_var e_59;
+  e_59.v = const_0.v;
+  a1of1 c_59;
+  /* testpoint 1 */
+  syn::fullseq s_88;
+  c_59.r = s_88.go.r;
+  syn::recv rtv_88;
+  syn::expr_var e_60;
+  syn::var_init_false tv_88;
+  tv_88.v = rtv_88.v;
+  e_60.v = tv_88.v;
+  s_88.r.r = e_59.go_r;
+  s_88.r = rtv_88.go;
+  e_59.out.t = rtv_88.in.t;
+  e_59.out.f = rtv_88.in.f;
+  s_88.go.a = e_60.go_r;
+  syn::recv s_87;
+  s_87.go = c_59;
+  s_87.in.t = e_60.out.t;
+  s_87.in.f = e_60.out.f;
+  s_87.v = var_b.v;
+
+  syn::seq s_89;
+  s_89.go = c_58;
+  s_89.s1 = c_59;
+  a1of1 c_60;
+  s_89.s2 = c_60;
+
+  /* assign */
+  syn::expr_var e_61;
+  e_61.v = const_0.v;
+  a1of1 c_61;
+  /* testpoint 1 */
+  syn::fullseq s_91;
+  c_61.r = s_91.go.r;
+  syn::recv rtv_91;
+  syn::expr_var e_62;
+  syn::var_init_false tv_91;
+  tv_91.v = rtv_91.v;
+  e_62.v = tv_91.v;
+  s_91.r.r = e_61.go_r;
+  s_91.r = rtv_91.go;
+  e_61.out.t = rtv_91.in.t;
+  e_61.out.f = rtv_91.in.f;
+  s_91.go.a = e_62.go_r;
+  syn::recv s_90;
+  s_90.go = c_61;
+  s_90.in.t = e_62.out.t;
+  s_90.in.f = e_62.out.f;
+  s_90.v = var_c.v;
+
+  syn::seq s_92;
+  s_92.go = c_60;
+  s_92.s1 = c_61;
+  a1of1 c_62;
+  s_92.s2 = c_62;
+
+  /* assign */
+  syn::expr_var e_63;
+  e_63.v = const_0.v;
+  a1of1 c_63;
+  /* testpoint 1 */
+  syn::fullseq s_94;
+  c_63.r = s_94.go.r;
+  syn::recv rtv_94;
+  syn::expr_var e_64;
+  syn::var_init_false tv_94;
+  tv_94.v = rtv_94.v;
+  e_64.v = tv_94.v;
+  s_94.r.r = e_63.go_r;
+  s_94.r = rtv_94.go;
+  e_63.out.t = rtv_94.in.t;
+  e_63.out.f = rtv_94.in.f;
+  s_94.go.a = e_64.go_r;
+  syn::recv s_93;
+  s_93.go = c_63;
+  s_93.in.t = e_64.out.t;
+  s_93.in.f = e_64.out.f;
+  s_93.v = var_d.v;
+
+  syn::seq s_95;
+  s_95.go = c_62;
+  s_95.s1 = c_63;
+  a1of1 c_64;
+  s_95.s2 = c_64;
+
+  /* assign */
+  syn::expr_var e_65;
+  e_65.v = const_1.v;
+  a1of1 c_65;
+  /* testpoint 1 */
+  syn::fullseq s_97;
+  c_65.r = s_97.go.r;
+  syn::recv rtv_97;
+  syn::expr_var e_66;
+  syn::var_init_false tv_97;
+  tv_97.v = rtv_97.v;
+  e_66.v = tv_97.v;
+  s_97.r.r = e_65.go_r;
+  s_97.r = rtv_97.go;
+  e_65.out.t = rtv_97.in.t;
+  e_65.out.f = rtv_97.in.f;
+  s_97.go.a = e_66.go_r;
+  syn::recv s_96;
+  s_96.go = c_65;
+  s_96.in.t = e_66.out.t;
+  s_96.in.f = e_66.out.f;
+  s_96.v = var_x.v;
+
+  syn::seq s_98;
+  s_98.go = c_64;
+  s_98.s1 = c_65;
+  a1of1 c_66;
+  s_98.s2 = c_66;
+
+  /* assign */
+  syn::expr_var e_67;
+  e_67.v = const_1.v;
+  a1of1 c_67;
+  /* testpoint 1 */
+  syn::fullseq s_100;
+  c_67.r = s_100.go.r;
+  syn::recv rtv_100;
+  syn::expr_var e_68;
+  syn::var_init_false tv_100;
+  tv_100.v = rtv_100.v;
+  e_68.v = tv_100.v;
+  s_100.r.r = e_67.go_r;
+  s_100.r = rtv_100.go;
+  e_67.out.t = rtv_100.in.t;
+  e_67.out.f = rtv_100.in.f;
+  s_100.go.a = e_68.go_r;
+  syn::recv s_99;
+  s_99.go = c_67;
+  s_99.in.t = e_68.out.t;
+  s_99.in.f = e_68.out.f;
+  s_99.v = var_y.v;
+
+  syn::seq s_101;
+  s_101.go = c_66;
+  s_101.s1 = c_67;
+  a1of1 c_68;
+  s_101.s2 = c_68;
+
+  /* assign */
+  syn::expr_var e_69;
+  e_69.v = const_1.v;
+  a1of1 c_69;
+  /* testpoint 1 */
+  syn::fullseq s_103;
+  c_69.r = s_103.go.r;
+  syn::recv rtv_103;
+  syn::expr_var e_70;
+  syn::var_init_false tv_103;
+  tv_103.v = rtv_103.v;
+  e_70.v = tv_103.v;
+  s_103.r.r = e_69.go_r;
+  s_103.r = rtv_103.go;
+  e_69.out.t = rtv_103.in.t;
+  e_69.out.f = rtv_103.in.f;
+  s_103.go.a = e_70.go_r;
+  syn::recv s_102;
+  s_102.go = c_69;
+  s_102.in.t = e_70.out.t;
+  s_102.in.f = e_70.out.f;
+  s_102.v = var_z.v;
+
+  syn::seq s_104;
+  s_104.go = c_68;
+  s_104.s1 = c_69;
+  a1of1 c_70;
+  s_104.s2 = c_70;
+
+  /* assign */
+  syn::expr_var e_71;
+  e_71.v = const_1.v;
+  a1of1 c_71;
+  /* testpoint 1 */
+  syn::fullseq s_106;
+  c_71.r = s_106.go.r;
+  syn::recv rtv_106;
+  syn::expr_var e_72;
+  syn::var_init_false tv_106;
+  tv_106.v = rtv_106.v;
+  e_72.v = tv_106.v;
+  s_106.r.r = e_71.go_r;
+  s_106.r = rtv_106.go;
+  e_71.out.t = rtv_106.in.t;
+  e_71.out.f = rtv_106.in.f;
+  s_106.go.a = e_72.go_r;
+  syn::recv s_105;
+  s_105.go = c_71;
+  s_105.in.t = e_72.out.t;
+  s_105.in.f = e_72.out.f;
+  s_105.v = var_w.v;
+
+  syn::seq s_107;
+  s_107.go = c_70;
+  s_107.s1 = c_71;
+  a1of1 c_72;
+  s_107.s2 = c_72;
+
+  /* assign */
+  syn::expr_var e_73;
+  e_73.v = const_1.v;
+  a1of1 c_73;
+  /* testpoint 1 */
+  syn::fullseq s_109;
+  c_73.r = s_109.go.r;
+  syn::recv rtv_109;
+  syn::expr_var e_74;
+  syn::var_init_false tv_109;
+  tv_109.v = rtv_109.v;
+  e_74.v = tv_109.v;
+  s_109.r.r = e_73.go_r;
+  s_109.r = rtv_109.go;
+  e_73.out.t = rtv_109.in.t;
+  e_73.out.f = rtv_109.in.f;
+  s_109.go.a = e_74.go_r;
+  syn::recv s_108;
+  s_108.go = c_73;
+  s_108.in.t = e_74.out.t;
+  s_108.in.f = e_74.out.f;
+  s_108.v = var_a.v;
+
+  syn::seq s_110;
+  s_110.go = c_72;
+  s_110.s1 = c_73;
+  a1of1 c_74;
+  s_110.s2 = c_74;
+
+  /* assign */
+  syn::expr_var e_75;
+  e_75.v = const_1.v;
+  a1of1 c_75;
+  /* testpoint 1 */
+  syn::fullseq s_112;
+  c_75.r = s_112.go.r;
+  syn::recv rtv_112;
+  syn::expr_var e_76;
+  syn::var_init_false tv_112;
+  tv_112.v = rtv_112.v;
+  e_76.v = tv_112.v;
+  s_112.r.r = e_75.go_r;
+  s_112.r = rtv_112.go;
+  e_75.out.t = rtv_112.in.t;
+  e_75.out.f = rtv_112.in.f;
+  s_112.go.a = e_76.go_r;
+  syn::recv s_111;
+  s_111.go = c_75;
+  s_111.in.t = e_76.out.t;
+  s_111.in.f = e_76.out.f;
+  s_111.v = var_b.v;
+
+  syn::seq s_113;
+  s_113.go = c_74;
+  s_113.s1 = c_75;
+  a1of1 c_76;
+  s_113.s2 = c_76;
+
+  /* assign */
+  syn::expr_var e_77;
+  e_77.v = const_1.v;
+  a1of1 c_77;
+  /* testpoint 1 */
+  syn::fullseq s_115;
+  c_77.r = s_115.go.r;
+  syn::recv rtv_115;
+  syn::expr_var e_78;
+  syn::var_init_false tv_115;
+  tv_115.v = rtv_115.v;
+  e_78.v = tv_115.v;
+  s_115.r.r = e_77.go_r;
+  s_115.r = rtv_115.go;
+  e_77.out.t = rtv_115.in.t;
+  e_77.out.f = rtv_115.in.f;
+  s_115.go.a = e_78.go_r;
+  syn::recv s_114;
+  s_114.go = c_77;
+  s_114.in.t = e_78.out.t;
+  s_114.in.f = e_78.out.f;
+  s_114.v = var_c.v;
+
+  syn::seq s_116;
+  s_116.go = c_76;
+  s_116.s1 = c_77;
+  a1of1 c_78;
+  s_116.s2 = c_78;
+
+  /* assign */
+  syn::expr_var e_79;
+  e_79.v = const_1.v;
+  a1of1 c_79;
+  /* testpoint 1 */
+  syn::fullseq s_118;
+  c_79.r = s_118.go.r;
+  syn::recv rtv_118;
+  syn::expr_var e_80;
+  syn::var_init_false tv_118;
+  tv_118.v = rtv_118.v;
+  e_80.v = tv_118.v;
+  s_118.r.r = e_79.go_r;
+  s_118.r = rtv_118.go;
+  e_79.out.t = rtv_118.in.t;
+  e_79.out.f = rtv_118.in.f;
+  s_118.go.a = e_80.go_r;
+  syn::recv s_117;
+  s_117.go = c_79;
+  s_117.in.t = e_80.out.t;
+  s_117.in.f = e_80.out.f;
+  s_117.v = var_d.v;
+
+  syn::seq s_119;
+  s_119.go = c_78;
+  s_119.s1 = c_79;
+  a1of1 c_80;
+  s_119.s2 = c_80;
+
+  /* assign */
+  syn::expr_var e_81;
+  e_81.v = const_0.v;
+  a1of1 c_81;
+  /* testpoint 1 */
+  syn::fullseq s_121;
+  c_81.r = s_121.go.r;
+  syn::recv rtv_121;
+  syn::expr_var e_82;
+  syn::var_init_false tv_121;
+  tv_121.v = rtv_121.v;
+  e_82.v = tv_121.v;
+  s_121.r.r = e_81.go_r;
+  s_121.r = rtv_121.go;
+  e_81.out.t = rtv_121.in.t;
+  e_81.out.f = rtv_121.in.f;
+  s_121.go.a = e_82.go_r;
+  syn::recv s_120;
+  s_120.go = c_81;
+  s_120.in.t = e_82.out.t;
+  s_120.in.f = e_82.out.f;
+  s_120.v = var_x.v;
+
+  syn::seq s_122;
+  s_122.go = c_80;
+  s_122.s1 = c_81;
+  a1of1 c_82;
+  s_122.s2 = c_82;
+
+  /* assign */
+  syn::expr_var e_83;
+  e_83.v = const_0.v;
+  a1of1 c_83;
+  /* testpoint 1 */
+  syn::fullseq s_124;
+  c_83.r = s_124.go.r;
+  syn::recv rtv_124;
+  syn::expr_var e_84;
+  syn::var_init_false tv_124;
+  tv_124.v = rtv_124.v;
+  e_84.v = tv_124.v;
+  s_124.r.r = e_83.go_r;
+  s_124.r = rtv_124.go;
+  e_83.out.t = rtv_124.in.t;
+  e_83.out.f = rtv_124.in.f;
+  s_124.go.a = e_84.go_r;
+  syn::recv s_123;
+  s_123.go = c_83;
+  s_123.in.t = e_84.out.t;
+  s_123.in.f = e_84.out.f;
+  s_123.v = var_y.v;
+
+  syn::seq s_125;
+  s_125.go = c_82;
+  s_125.s1 = c_83;
+  a1of1 c_84;
+  s_125.s2 = c_84;
+
+  /* assign */
+  syn::expr_var e_85;
+  e_85.v = const_0.v;
+  a1of1 c_85;
+  /* testpoint 1 */
+  syn::fullseq s_127;
+  c_85.r = s_127.go.r;
+  syn::recv rtv_127;
+  syn::expr_var e_86;
+  syn::var_init_false tv_127;
+  tv_127.v = rtv_127.v;
+  e_86.v = tv_127.v;
+  s_127.r.r = e_85.go_r;
+  s_127.r = rtv_127.go;
+  e_85.out.t = rtv_127.in.t;
+  e_85.out.f = rtv_127.in.f;
+  s_127.go.a = e_86.go_r;
+  syn::recv s_126;
+  s_126.go = c_85;
+  s_126.in.t = e_86.out.t;
+  s_126.in.f = e_86.out.f;
+  s_126.v = var_z.v;
+
+  syn::seq s_128;
+  s_128.go = c_84;
+  s_128.s1 = c_85;
+  a1of1 c_86;
+  s_128.s2 = c_86;
+
+  /* assign */
+  syn::expr_var e_87;
+  e_87.v = const_0.v;
+  a1of1 c_87;
+  /* testpoint 1 */
+  syn::fullseq s_130;
+  c_87.r = s_130.go.r;
+  syn::recv rtv_130;
+  syn::expr_var e_88;
+  syn::var_init_false tv_130;
+  tv_130.v = rtv_130.v;
+  e_88.v = tv_130.v;
+  s_130.r.r = e_87.go_r;
+  s_130.r = rtv_130.go;
+  e_87.out.t = rtv_130.in.t;
+  e_87.out.f = rtv_130.in.f;
+  s_130.go.a = e_88.go_r;
+  syn::recv s_129;
+  s_129.go = c_87;
+  s_129.in.t = e_88.out.t;
+  s_129.in.f = e_88.out.f;
+  s_129.v = var_w.v;
+
+  syn::seq s_131;
+  s_131.go = c_86;
+  s_131.s1 = c_87;
+  a1of1 c_88;
+  s_131.s2 = c_88;
+
+  /* assign */
+  syn::expr_var e_89;
+  e_89.v = const_0.v;
+  a1of1 c_89;
+  /* testpoint 1 */
+  syn::fullseq s_133;
+  c_89.r = s_133.go.r;
+  syn::recv rtv_133;
+  syn::expr_var e_90;
+  syn::var_init_false tv_133;
+  tv_133.v = rtv_133.v;
+  e_90.v = tv_133.v;
+  s_133.r.r = e_89.go_r;
+  s_133.r = rtv_133.go;
+  e_89.out.t = rtv_133.in.t;
+  e_89.out.f = rtv_133.in.f;
+  s_133.go.a = e_90.go_r;
+  syn::recv s_132;
+  s_132.go = c_89;
+  s_132.in.t = e_90.out.t;
+  s_132.in.f = e_90.out.f;
+  s_132.v = var_a.v;
+
+  syn::seq s_134;
+  s_134.go = c_88;
+  s_134.s1 = c_89;
+  a1of1 c_90;
+  s_134.s2 = c_90;
+
+  /* assign */
+  syn::expr_var e_91;
+  e_91.v = const_0.v;
+  a1of1 c_91;
+  /* testpoint 1 */
+  syn::fullseq s_136;
+  c_91.r = s_136.go.r;
+  syn::recv rtv_136;
+  syn::expr_var e_92;
+  syn::var_init_false tv_136;
+  tv_136.v = rtv_136.v;
+  e_92.v = tv_136.v;
+  s_136.r.r = e_91.go_r;
+  s_136.r = rtv_136.go;
+  e_91.out.t = rtv_136.in.t;
+  e_91.out.f = rtv_136.in.f;
+  s_136.go.a = e_92.go_r;
+  syn::recv s_135;
+  s_135.go = c_91;
+  s_135.in.t = e_92.out.t;
+  s_135.in.f = e_92.out.f;
+  s_135.v = var_b.v;
+
+  syn::seq s_137;
+  s_137.go = c_90;
+  s_137.s1 = c_91;
+  a1of1 c_92;
+  s_137.s2 = c_92;
+
+  /* assign */
+  syn::expr_var e_93;
+  e_93.v = const_0.v;
+  a1of1 c_93;
+  /* testpoint 1 */
+  syn::fullseq s_139;
+  c_93.r = s_139.go.r;
+  syn::recv rtv_139;
+  syn::expr_var e_94;
+  syn::var_init_false tv_139;
+  tv_139.v = rtv_139.v;
+  e_94.v = tv_139.v;
+  s_139.r.r = e_93.go_r;
+  s_139.r = rtv_139.go;
+  e_93.out.t = rtv_139.in.t;
+  e_93.out.f = rtv_139.in.f;
+  s_139.go.a = e_94.go_r;
+  syn::recv s_138;
+  s_138.go = c_93;
+  s_138.in.t = e_94.out.t;
+  s_138.in.f = e_94.out.f;
+  s_138.v = var_c.v;
+
+  syn::seq s_140;
+  s_140.go = c_92;
+  s_140.s1 = c_93;
+  a1of1 c_94;
+  s_140.s2 = c_94;
+
+  /* assign */
+  syn::expr_var e_95;
+  e_95.v = const_0.v;
+  a1of1 c_95;
+  /* testpoint 1 */
+  syn::fullseq s_142;
+  c_95.r = s_142.go.r;
+  syn::recv rtv_142;
+  syn::expr_var e_96;
+  syn::var_init_false tv_142;
+  tv_142.v = rtv_142.v;
+  e_96.v = tv_142.v;
+  s_142.r.r = e_95.go_r;
+  s_142.r = rtv_142.go;
+  e_95.out.t = rtv_142.in.t;
+  e_95.out.f = rtv_142.in.f;
+  s_142.go.a = e_96.go_r;
+  syn::recv s_141;
+  s_141.go = c_95;
+  s_141.in.t = e_96.out.t;
+  s_141.in.f = e_96.out.f;
+  s_141.v = var_d.v;
+
+  syn::seq s_143;
+  s_143.go = c_94;
+  s_143.s1 = c_95;
+  a1of1 c_96;
+  s_143.s2 = c_96;
+
+  /* assign */
+  syn::expr_var e_97;
+  e_97.v = const_1.v;
+  a1of1 c_97;
+  /* testpoint 1 */
+  syn::fullseq s_145;
+  c_97.r = s_145.go.r;
+  syn::recv rtv_145;
+  syn::expr_var e_98;
+  syn::var_init_false tv_145;
+  tv_145.v = rtv_145.v;
+  e_98.v = tv_145.v;
+  s_145.r.r = e_97.go_r;
+  s_145.r = rtv_145.go;
+  e_97.out.t = rtv_145.in.t;
+  e_97.out.f = rtv_145.in.f;
+  s_145.go.a = e_98.go_r;
+  syn::recv s_144;
+  s_144.go = c_97;
+  s_144.in.t = e_98.out.t;
+  s_144.in.f = e_98.out.f;
+  s_144.v = var_x.v;
+
+  syn::seq s_146;
+  s_146.go = c_96;
+  s_146.s1 = c_97;
+  a1of1 c_98;
+  s_146.s2 = c_98;
+
+  /* assign */
+  syn::expr_var e_99;
+  e_99.v = const_1.v;
+  a1of1 c_99;
+  /* testpoint 1 */
+  syn::fullseq s_148;
+  c_99.r = s_148.go.r;
+  syn::recv rtv_148;
+  syn::expr_var e_100;
+  syn::var_init_false tv_148;
+  tv_148.v = rtv_148.v;
+  e_100.v = tv_148.v;
+  s_148.r.r = e_99.go_r;
+  s_148.r = rtv_148.go;
+  e_99.out.t = rtv_148.in.t;
+  e_99.out.f = rtv_148.in.f;
+  s_148.go.a = e_100.go_r;
+  syn::recv s_147;
+  s_147.go = c_99;
+  s_147.in.t = e_100.out.t;
+  s_147.in.f = e_100.out.f;
+  s_147.v = var_y.v;
+
+  syn::seq s_149;
+  s_149.go = c_98;
+  s_149.s1 = c_99;
+  a1of1 c_100;
+  s_149.s2 = c_100;
+
+  /* assign */
+  syn::expr_var e_101;
+  e_101.v = const_1.v;
+  a1of1 c_101;
+  /* testpoint 1 */
+  syn::fullseq s_151;
+  c_101.r = s_151.go.r;
+  syn::recv rtv_151;
+  syn::expr_var e_102;
+  syn::var_init_false tv_151;
+  tv_151.v = rtv_151.v;
+  e_102.v = tv_151.v;
+  s_151.r.r = e_101.go_r;
+  s_151.r = rtv_151.go;
+  e_101.out.t = rtv_151.in.t;
+  e_101.out.f = rtv_151.in.f;
+  s_151.go.a = e_102.go_r;
+  syn::recv s_150;
+  s_150.go = c_101;
+  s_150.in.t = e_102.out.t;
+  s_150.in.f = e_102.out.f;
+  s_150.v = var_z.v;
+
+  syn::seq s_152;
+  s_152.go = c_100;
+  s_152.s1 = c_101;
+  a1of1 c_102;
+  s_152.s2 = c_102;
+
+  /* assign */
+  syn::expr_var e_103;
+  e_103.v = const_1.v;
+  a1of1 c_103;
+  /* testpoint 1 */
+  syn::fullseq s_154;
+  c_103.r = s_154.go.r;
+  syn::recv rtv_154;
+  syn::expr_var e_104;
+  syn::var_init_false tv_154;
+  tv_154.v = rtv_154.v;
+  e_104.v = tv_154.v;
+  s_154.r.r = e_103.go_r;
+  s_154.r = rtv_154.go;
+  e_103.out.t = rtv_154.in.t;
+  e_103.out.f = rtv_154.in.f;
+  s_154.go.a = e_104.go_r;
+  syn::recv s_153;
+  s_153.go = c_103;
+  s_153.in.t = e_104.out.t;
+  s_153.in.f = e_104.out.f;
+  s_153.v = var_w.v;
+
+  syn::seq s_155;
+  s_155.go = c_102;
+  s_155.s1 = c_103;
+  a1of1 c_104;
+  s_155.s2 = c_104;
+
+  /* assign */
+  syn::expr_var e_105;
+  e_105.v = const_1.v;
+  a1of1 c_105;
+  /* testpoint 1 */
+  syn::fullseq s_157;
+  c_105.r = s_157.go.r;
+  syn::recv rtv_157;
+  syn::expr_var e_106;
+  syn::var_init_false tv_157;
+  tv_157.v = rtv_157.v;
+  e_106.v = tv_157.v;
+  s_157.r.r = e_105.go_r;
+  s_157.r = rtv_157.go;
+  e_105.out.t = rtv_157.in.t;
+  e_105.out.f = rtv_157.in.f;
+  s_157.go.a = e_106.go_r;
+  syn::recv s_156;
+  s_156.go = c_105;
+  s_156.in.t = e_106.out.t;
+  s_156.in.f = e_106.out.f;
+  s_156.v = var_a.v;
+
+  syn::seq s_158;
+  s_158.go = c_104;
+  s_158.s1 = c_105;
+  a1of1 c_106;
+  s_158.s2 = c_106;
+
+  /* assign */
+  syn::expr_var e_107;
+  e_107.v = const_1.v;
+  a1of1 c_107;
+  /* testpoint 1 */
+  syn::fullseq s_160;
+  c_107.r = s_160.go.r;
+  syn::recv rtv_160;
+  syn::expr_var e_108;
+  syn::var_init_false tv_160;
+  tv_160.v = rtv_160.v;
+  e_108.v = tv_160.v;
+  s_160.r.r = e_107.go_r;
+  s_160.r = rtv_160.go;
+  e_107.out.t = rtv_160.in.t;
+  e_107.out.f = rtv_160.in.f;
+  s_160.go.a = e_108.go_r;
+  syn::recv s_159;
+  s_159.go = c_107;
+  s_159.in.t = e_108.out.t;
+  s_159.in.f = e_108.out.f;
+  s_159.v = var_b.v;
+
+  syn::seq s_161;
+  s_161.go = c_106;
+  s_161.s1 = c_107;
+  a1of1 c_108;
+  s_161.s2 = c_108;
+
+  /* assign */
+  syn::expr_var e_109;
+  e_109.v = const_1.v;
+  a1of1 c_109;
+  /* testpoint 1 */
+  syn::fullseq s_163;
+  c_109.r = s_163.go.r;
+  syn::recv rtv_163;
+  syn::expr_var e_110;
+  syn::var_init_false tv_163;
+  tv_163.v = rtv_163.v;
+  e_110.v = tv_163.v;
+  s_163.r.r = e_109.go_r;
+  s_163.r = rtv_163.go;
+  e_109.out.t = rtv_163.in.t;
+  e_109.out.f = rtv_163.in.f;
+  s_163.go.a = e_110.go_r;
+  syn::recv s_162;
+  s_162.go = c_109;
+  s_162.in.t = e_110.out.t;
+  s_162.in.f = e_110.out.f;
+  s_162.v = var_c.v;
+
+  syn::seq s_164;
+  s_164.go = c_108;
+  s_164.s1 = c_109;
+  a1of1 c_110;
+  s_164.s2 = c_110;
+
+  /* assign */
+  syn::expr_var e_111;
+  e_111.v = const_1.v;
+  a1of1 c_111;
+  /* testpoint 1 */
+  syn::fullseq s_166;
+  c_111.r = s_166.go.r;
+  syn::recv rtv_166;
+  syn::expr_var e_112;
+  syn::var_init_false tv_166;
+  tv_166.v = rtv_166.v;
+  e_112.v = tv_166.v;
+  s_166.r.r = e_111.go_r;
+  s_166.r = rtv_166.go;
+  e_111.out.t = rtv_166.in.t;
+  e_111.out.f = rtv_166.in.f;
+  s_166.go.a = e_112.go_r;
+  syn::recv s_165;
+  s_165.go = c_111;
+  s_165.in.t = e_112.out.t;
+  s_165.in.f = e_112.out.f;
+  s_165.v = var_d.v;
+
+  syn::seq s_167;
+  s_167.go = c_110;
+  s_167.s1 = c_111;
+  a1of1 c_112;
+  s_167.s2 = c_112;
+
+  /* assign */
+  syn::expr_var e_113;
+  e_113.v = const_0.v;
+  a1of1 c_113;
+  /* testpoint 1 */
+  syn::fullseq s_169;
+  c_113.r = s_169.go.r;
+  syn::recv rtv_169;
+  syn::expr_var e_114;
+  syn::var_init_false tv_169;
+  tv_169.v = rtv_169.v;
+  e_114.v = tv_169.v;
+  s_169.r.r = e_113.go_r;
+  s_169.r = rtv_169.go;
+  e_113.out.t = rtv_169.in.t;
+  e_113.out.f = rtv_169.in.f;
+  s_169.go.a = e_114.go_r;
+  syn::recv s_168;
+  s_168.go = c_113;
+  s_168.in.t = e_114.out.t;
+  s_168.in.f = e_114.out.f;
+  s_168.v = var_x.v;
+
+  syn::seq s_170;
+  s_170.go = c_112;
+  s_170.s1 = c_113;
+  a1of1 c_114;
+  s_170.s2 = c_114;
+
+  /* assign */
+  syn::expr_var e_115;
+  e_115.v = const_0.v;
+  a1of1 c_115;
+  /* testpoint 1 */
+  syn::fullseq s_172;
+  c_115.r = s_172.go.r;
+  syn::recv rtv_172;
+  syn::expr_var e_116;
+  syn::var_init_false tv_172;
+  tv_172.v = rtv_172.v;
+  e_116.v = tv_172.v;
+  s_172.r.r = e_115.go_r;
+  s_172.r = rtv_172.go;
+  e_115.out.t = rtv_172.in.t;
+  e_115.out.f = rtv_172.in.f;
+  s_172.go.a = e_116.go_r;
+  syn::recv s_171;
+  s_171.go = c_115;
+  s_171.in.t = e_116.out.t;
+  s_171.in.f = e_116.out.f;
+  s_171.v = var_y.v;
+
+  syn::seq s_173;
+  s_173.go = c_114;
+  s_173.s1 = c_115;
+  a1of1 c_116;
+  s_173.s2 = c_116;
+
+  /* assign */
+  syn::expr_var e_117;
+  e_117.v = const_0.v;
+  a1of1 c_117;
+  /* testpoint 1 */
+  syn::fullseq s_175;
+  c_117.r = s_175.go.r;
+  syn::recv rtv_175;
+  syn::expr_var e_118;
+  syn::var_init_false tv_175;
+  tv_175.v = rtv_175.v;
+  e_118.v = tv_175.v;
+  s_175.r.r = e_117.go_r;
+  s_175.r = rtv_175.go;
+  e_117.out.t = rtv_175.in.t;
+  e_117.out.f = rtv_175.in.f;
+  s_175.go.a = e_118.go_r;
+  syn::recv s_174;
+  s_174.go = c_117;
+  s_174.in.t = e_118.out.t;
+  s_174.in.f = e_118.out.f;
+  s_174.v = var_z.v;
+
+  syn::seq s_176;
+  s_176.go = c_116;
+  s_176.s1 = c_117;
+  a1of1 c_118;
+  s_176.s2 = c_118;
+
+  /* assign */
+  syn::expr_var e_119;
+  e_119.v = const_0.v;
+  a1of1 c_119;
+  /* testpoint 1 */
+  syn::fullseq s_178;
+  c_119.r = s_178.go.r;
+  syn::recv rtv_178;
+  syn::expr_var e_120;
+  syn::var_init_false tv_178;
+  tv_178.v = rtv_178.v;
+  e_120.v = tv_178.v;
+  s_178.r.r = e_119.go_r;
+  s_178.r = rtv_178.go;
+  e_119.out.t = rtv_178.in.t;
+  e_119.out.f = rtv_178.in.f;
+  s_178.go.a = e_120.go_r;
+  syn::recv s_177;
+  s_177.go = c_119;
+  s_177.in.t = e_120.out.t;
+  s_177.in.f = e_120.out.f;
+  s_177.v = var_w.v;
+
+  syn::seq s_179;
+  s_179.go = c_118;
+  s_179.s1 = c_119;
+  a1of1 c_120;
+  s_179.s2 = c_120;
+
+  /* assign */
+  syn::expr_var e_121;
+  e_121.v = const_0.v;
+  a1of1 c_121;
+  /* testpoint 1 */
+  syn::fullseq s_181;
+  c_121.r = s_181.go.r;
+  syn::recv rtv_181;
+  syn::expr_var e_122;
+  syn::var_init_false tv_181;
+  tv_181.v = rtv_181.v;
+  e_122.v = tv_181.v;
+  s_181.r.r = e_121.go_r;
+  s_181.r = rtv_181.go;
+  e_121.out.t = rtv_181.in.t;
+  e_121.out.f = rtv_181.in.f;
+  s_181.go.a = e_122.go_r;
+  syn::recv s_180;
+  s_180.go = c_121;
+  s_180.in.t = e_122.out.t;
+  s_180.in.f = e_122.out.f;
+  s_180.v = var_a.v;
+
+  syn::seq s_182;
+  s_182.go = c_120;
+  s_182.s1 = c_121;
+  a1of1 c_122;
+  s_182.s2 = c_122;
+
+  /* assign */
+  syn::expr_var e_123;
+  e_123.v = const_0.v;
+  a1of1 c_123;
+  /* testpoint 1 */
+  syn::fullseq s_184;
+  c_123.r = s_184.go.r;
+  syn::recv rtv_184;
+  syn::expr_var e_124;
+  syn::var_init_false tv_184;
+  tv_184.v = rtv_184.v;
+  e_124.v = tv_184.v;
+  s_184.r.r = e_123.go_r;
+  s_184.r = rtv_184.go;
+  e_123.out.t = rtv_184.in.t;
+  e_123.out.f = rtv_184.in.f;
+  s_184.go.a = e_124.go_r;
+  syn::recv s_183;
+  s_183.go = c_123;
+  s_183.in.t = e_124.out.t;
+  s_183.in.f = e_124.out.f;
+  s_183.v = var_b.v;
+
+  syn::seq s_185;
+  s_185.go = c_122;
+  s_185.s1 = c_123;
+  a1of1 c_124;
+  s_185.s2 = c_124;
+
+  /* assign */
+  syn::expr_var e_125;
+  e_125.v = const_0.v;
+  a1of1 c_125;
+  /* testpoint 1 */
+  syn::fullseq s_187;
+  c_125.r = s_187.go.r;
+  syn::recv rtv_187;
+  syn::expr_var e_126;
+  syn::var_init_false tv_187;
+  tv_187.v = rtv_187.v;
+  e_126.v = tv_187.v;
+  s_187.r.r = e_125.go_r;
+  s_187.r = rtv_187.go;
+  e_125.out.t = rtv_187.in.t;
+  e_125.out.f = rtv_187.in.f;
+  s_187.go.a = e_126.go_r;
+  syn::recv s_186;
+  s_186.go = c_125;
+  s_186.in.t = e_126.out.t;
+  s_186.in.f = e_126.out.f;
+  s_186.v = var_c.v;
+
+  syn::seq s_188;
+  s_188.go = c_124;
+  s_188.s1 = c_125;
+  a1of1 c_126;
+  s_188.s2 = c_126;
+
+  /* assign */
+  syn::expr_var e_127;
+  e_127.v = const_0.v;
+  a1of1 c_127;
+  /* testpoint 1 */
+  syn::fullseq s_190;
+  c_127.r = s_190.go.r;
+  syn::recv rtv_190;
+  syn::expr_var e_128;
+  syn::var_init_false tv_190;
+  tv_190.v = rtv_190.v;
+  e_128.v = tv_190.v;
+  s_190.r.r = e_127.go_r;
+  s_190.r = rtv_190.go;
+  e_127.out.t = rtv_190.in.t;
+  e_127.out.f = rtv_190.in.f;
+  s_190.go.a = e_128.go_r;
+  syn::recv s_189;
+  s_189.go = c_127;
+  s_189.in.t = e_128.out.t;
+  s_189.in.f = e_128.out.f;
+  s_189.v = var_d.v;
+
+  syn::seq s_191;
+  s_191.go = c_126;
+  s_191.s1 = c_127;
+  a1of1 c_128;
+  s_191.s2 = c_128;
+
+  /* assign */
+  syn::expr_var e_129;
+  e_129.v = const_1.v;
+  a1of1 c_129;
+  /* testpoint 1 */
+  syn::fullseq s_193;
+  c_129.r = s_193.go.r;
+  syn::recv rtv_193;
+  syn::expr_var e_130;
+  syn::var_init_false tv_193;
+  tv_193.v = rtv_193.v;
+  e_130.v = tv_193.v;
+  s_193.r.r = e_129.go_r;
+  s_193.r = rtv_193.go;
+  e_129.out.t = rtv_193.in.t;
+  e_129.out.f = rtv_193.in.f;
+  s_193.go.a = e_130.go_r;
+  syn::recv s_192;
+  s_192.go = c_129;
+  s_192.in.t = e_130.out.t;
+  s_192.in.f = e_130.out.f;
+  s_192.v = var_x.v;
+
+  syn::seq s_194;
+  s_194.go = c_128;
+  s_194.s1 = c_129;
+  a1of1 c_130;
+  s_194.s2 = c_130;
+
+  /* assign */
+  syn::expr_var e_131;
+  e_131.v = const_1.v;
+  a1of1 c_131;
+  /* testpoint 1 */
+  syn::fullseq s_196;
+  c_131.r = s_196.go.r;
+  syn::recv rtv_196;
+  syn::expr_var e_132;
+  syn::var_init_false tv_196;
+  tv_196.v = rtv_196.v;
+  e_132.v = tv_196.v;
+  s_196.r.r = e_131.go_r;
+  s_196.r = rtv_196.go;
+  e_131.out.t = rtv_196.in.t;
+  e_131.out.f = rtv_196.in.f;
+  s_196.go.a = e_132.go_r;
+  syn::recv s_195;
+  s_195.go = c_131;
+  s_195.in.t = e_132.out.t;
+  s_195.in.f = e_132.out.f;
+  s_195.v = var_y.v;
+
+  syn::seq s_197;
+  s_197.go = c_130;
+  s_197.s1 = c_131;
+  a1of1 c_132;
+  s_197.s2 = c_132;
+
+  /* assign */
+  syn::expr_var e_133;
+  e_133.v = const_1.v;
+  a1of1 c_133;
+  /* testpoint 1 */
+  syn::fullseq s_199;
+  c_133.r = s_199.go.r;
+  syn::recv rtv_199;
+  syn::expr_var e_134;
+  syn::var_init_false tv_199;
+  tv_199.v = rtv_199.v;
+  e_134.v = tv_199.v;
+  s_199.r.r = e_133.go_r;
+  s_199.r = rtv_199.go;
+  e_133.out.t = rtv_199.in.t;
+  e_133.out.f = rtv_199.in.f;
+  s_199.go.a = e_134.go_r;
+  syn::recv s_198;
+  s_198.go = c_133;
+  s_198.in.t = e_134.out.t;
+  s_198.in.f = e_134.out.f;
+  s_198.v = var_z.v;
+
+  syn::seq s_200;
+  s_200.go = c_132;
+  s_200.s1 = c_133;
+  a1of1 c_134;
+  s_200.s2 = c_134;
+
+  /* assign */
+  syn::expr_var e_135;
+  e_135.v = const_1.v;
+  a1of1 c_135;
+  /* testpoint 1 */
+  syn::fullseq s_202;
+  c_135.r = s_202.go.r;
+  syn::recv rtv_202;
+  syn::expr_var e_136;
+  syn::var_init_false tv_202;
+  tv_202.v = rtv_202.v;
+  e_136.v = tv_202.v;
+  s_202.r.r = e_135.go_r;
+  s_202.r = rtv_202.go;
+  e_135.out.t = rtv_202.in.t;
+  e_135.out.f = rtv_202.in.f;
+  s_202.go.a = e_136.go_r;
+  syn::recv s_201;
+  s_201.go = c_135;
+  s_201.in.t = e_136.out.t;
+  s_201.in.f = e_136.out.f;
+  s_201.v = var_w.v;
+
+  syn::seq s_203;
+  s_203.go = c_134;
+  s_203.s1 = c_135;
+  a1of1 c_136;
+  s_203.s2 = c_136;
+
+  /* assign */
+  syn::expr_var e_137;
+  e_137.v = const_1.v;
+  a1of1 c_137;
+  /* testpoint 1 */
+  syn::fullseq s_205;
+  c_137.r = s_205.go.r;
+  syn::recv rtv_205;
+  syn::expr_var e_138;
+  syn::var_init_false tv_205;
+  tv_205.v = rtv_205.v;
+  e_138.v = tv_205.v;
+  s_205.r.r = e_137.go_r;
+  s_205.r = rtv_205.go;
+  e_137.out.t = rtv_205.in.t;
+  e_137.out.f = rtv_205.in.f;
+  s_205.go.a = e_138.go_r;
+  syn::recv s_204;
+  s_204.go = c_137;
+  s_204.in.t = e_138.out.t;
+  s_204.in.f = e_138.out.f;
+  s_204.v = var_a.v;
+
+  syn::seq s_206;
+  s_206.go = c_136;
+  s_206.s1 = c_137;
+  a1of1 c_138;
+  s_206.s2 = c_138;
+
+  /* assign */
+  syn::expr_var e_139;
+  e_139.v = const_1.v;
+  a1of1 c_139;
+  /* testpoint 1 */
+  syn::fullseq s_208;
+  c_139.r = s_208.go.r;
+  syn::recv rtv_208;
+  syn::expr_var e_140;
+  syn::var_init_false tv_208;
+  tv_208.v = rtv_208.v;
+  e_140.v = tv_208.v;
+  s_208.r.r = e_139.go_r;
+  s_208.r = rtv_208.go;
+  e_139.out.t = rtv_208.in.t;
+  e_139.out.f = rtv_208.in.f;
+  s_208.go.a = e_140.go_r;
+  syn::recv s_207;
+  s_207.go = c_139;
+  s_207.in.t = e_140.out.t;
+  s_207.in.f = e_140.out.f;
+  s_207.v = var_b.v;
+
+  syn::seq s_209;
+  s_209.go = c_138;
+  s_209.s1 = c_139;
+  a1of1 c_140;
+  s_209.s2 = c_140;
+
+  /* assign */
+  syn::expr_var e_141;
+  e_141.v = const_1.v;
+  a1of1 c_141;
+  /* testpoint 1 */
+  syn::fullseq s_211;
+  c_141.r = s_211.go.r;
+  syn::recv rtv_211;
+  syn::expr_var e_142;
+  syn::var_init_false tv_211;
+  tv_211.v = rtv_211.v;
+  e_142.v = tv_211.v;
+  s_211.r.r = e_141.go_r;
+  s_211.r = rtv_211.go;
+  e_141.out.t = rtv_211.in.t;
+  e_141.out.f = rtv_211.in.f;
+  s_211.go.a = e_142.go_r;
+  syn::recv s_210;
+  s_210.go = c_141;
+  s_210.in.t = e_142.out.t;
+  s_210.in.f = e_142.out.f;
+  s_210.v = var_c.v;
+
+  syn::seq s_212;
+  s_212.go = c_140;
+  s_212.s1 = c_141;
+  a1of1 c_142;
+  s_212.s2 = c_142;
+
+  /* assign */
+  syn::expr_var e_143;
+  e_143.v = const_1.v;
+  a1of1 c_143;
+  /* testpoint 1 */
+  syn::fullseq s_214;
+  c_143.r = s_214.go.r;
+  syn::recv rtv_214;
+  syn::expr_var e_144;
+  syn::var_init_false tv_214;
+  tv_214.v = rtv_214.v;
+  e_144.v = tv_214.v;
+  s_214.r.r = e_143.go_r;
+  s_214.r = rtv_214.go;
+  e_143.out.t = rtv_214.in.t;
+  e_143.out.f = rtv_214.in.f;
+  s_214.go.a = e_144.go_r;
+  syn::recv s_213;
+  s_213.go = c_143;
+  s_213.in.t = e_144.out.t;
+  s_213.in.f = e_144.out.f;
+  s_213.v = var_d.v;
+
+  syn::seq s_215;
+  s_215.go = c_142;
+  s_215.s1 = c_143;
+  a1of1 c_144;
+  s_215.s2 = c_144;
+
+  /* assign */
+  syn::expr_var e_145;
+  e_145.v = const_0.v;
+  a1of1 c_145;
+  /* testpoint 1 */
+  syn::fullseq s_217;
+  c_145.r = s_217.go.r;
+  syn::recv rtv_217;
+  syn::expr_var e_146;
+  syn::var_init_false tv_217;
+  tv_217.v = rtv_217.v;
+  e_146.v = tv_217.v;
+  s_217.r.r = e_145.go_r;
+  s_217.r = rtv_217.go;
+  e_145.out.t = rtv_217.in.t;
+  e_145.out.f = rtv_217.in.f;
+  s_217.go.a = e_146.go_r;
+  syn::recv s_216;
+  s_216.go = c_145;
+  s_216.in.t = e_146.out.t;
+  s_216.in.f = e_146.out.f;
+  s_216.v = var_x.v;
+
+  syn::seq s_218;
+  s_218.go = c_144;
+  s_218.s1 = c_145;
+  a1of1 c_146;
+  s_218.s2 = c_146;
+
+  /* assign */
+  syn::expr_var e_147;
+  e_147.v = const_0.v;
+  a1of1 c_147;
+  /* testpoint 1 */
+  syn::fullseq s_220;
+  c_147.r = s_220.go.r;
+  syn::recv rtv_220;
+  syn::expr_var e_148;
+  syn::var_init_false tv_220;
+  tv_220.v = rtv_220.v;
+  e_148.v = tv_220.v;
+  s_220.r.r = e_147.go_r;
+  s_220.r = rtv_220.go;
+  e_147.out.t = rtv_220.in.t;
+  e_147.out.f = rtv_220.in.f;
+  s_220.go.a = e_148.go_r;
+  syn::recv s_219;
+  s_219.go = c_147;
+  s_219.in.t = e_148.out.t;
+  s_219.in.f = e_148.out.f;
+  s_219.v = var_y.v;
+
+  syn::seq s_221;
+  s_221.go = c_146;
+  s_221.s1 = c_147;
+  a1of1 c_148;
+  s_221.s2 = c_148;
+
+  /* assign */
+  syn::expr_var e_149;
+  e_149.v = const_0.v;
+  a1of1 c_149;
+  /* testpoint 1 */
+  syn::fullseq s_223;
+  c_149.r = s_223.go.r;
+  syn::recv rtv_223;
+  syn::expr_var e_150;
+  syn::var_init_false tv_223;
+  tv_223.v = rtv_223.v;
+  e_150.v = tv_223.v;
+  s_223.r.r = e_149.go_r;
+  s_223.r = rtv_223.go;
+  e_149.out.t = rtv_223.in.t;
+  e_149.out.f = rtv_223.in.f;
+  s_223.go.a = e_150.go_r;
+  syn::recv s_222;
+  s_222.go = c_149;
+  s_222.in.t = e_150.out.t;
+  s_222.in.f = e_150.out.f;
+  s_222.v = var_z.v;
+
+  syn::seq s_224;
+  s_224.go = c_148;
+  s_224.s1 = c_149;
+  a1of1 c_150;
+  s_224.s2 = c_150;
+
+  /* assign */
+  syn::expr_var e_151;
+  e_151.v = const_0.v;
+  a1of1 c_151;
+  /* testpoint 1 */
+  syn::fullseq s_226;
+  c_151.r = s_226.go.r;
+  syn::recv rtv_226;
+  syn::expr_var e_152;
+  syn::var_init_false tv_226;
+  tv_226.v = rtv_226.v;
+  e_152.v = tv_226.v;
+  s_226.r.r = e_151.go_r;
+  s_226.r = rtv_226.go;
+  e_151.out.t = rtv_226.in.t;
+  e_151.out.f = rtv_226.in.f;
+  s_226.go.a = e_152.go_r;
+  syn::recv s_225;
+  s_225.go = c_151;
+  s_225.in.t = e_152.out.t;
+  s_225.in.f = e_152.out.f;
+  s_225.v = var_w.v;
+
+  syn::seq s_227;
+  s_227.go = c_150;
+  s_227.s1 = c_151;
+  a1of1 c_152;
+  s_227.s2 = c_152;
+
+  /* assign */
+  syn::expr_var e_153;
+  e_153.v = const_0.v;
+  a1of1 c_153;
+  /* testpoint 1 */
+  syn::fullseq s_229;
+  c_153.r = s_229.go.r;
+  syn::recv rtv_229;
+  syn::expr_var e_154;
+  syn::var_init_false tv_229;
+  tv_229.v = rtv_229.v;
+  e_154.v = tv_229.v;
+  s_229.r.r = e_153.go_r;
+  s_229.r = rtv_229.go;
+  e_153.out.t = rtv_229.in.t;
+  e_153.out.f = rtv_229.in.f;
+  s_229.go.a = e_154.go_r;
+  syn::recv s_228;
+  s_228.go = c_153;
+  s_228.in.t = e_154.out.t;
+  s_228.in.f = e_154.out.f;
+  s_228.v = var_a.v;
+
+  syn::seq s_230;
+  s_230.go = c_152;
+  s_230.s1 = c_153;
+  a1of1 c_154;
+  s_230.s2 = c_154;
+
+  /* assign */
+  syn::expr_var e_155;
+  e_155.v = const_0.v;
+  a1of1 c_155;
+  /* testpoint 1 */
+  syn::fullseq s_232;
+  c_155.r = s_232.go.r;
+  syn::recv rtv_232;
+  syn::expr_var e_156;
+  syn::var_init_false tv_232;
+  tv_232.v = rtv_232.v;
+  e_156.v = tv_232.v;
+  s_232.r.r = e_155.go_r;
+  s_232.r = rtv_232.go;
+  e_155.out.t = rtv_232.in.t;
+  e_155.out.f = rtv_232.in.f;
+  s_232.go.a = e_156.go_r;
+  syn::recv s_231;
+  s_231.go = c_155;
+  s_231.in.t = e_156.out.t;
+  s_231.in.f = e_156.out.f;
+  s_231.v = var_b.v;
+
+  syn::seq s_233;
+  s_233.go = c_154;
+  s_233.s1 = c_155;
+  a1of1 c_156;
+  s_233.s2 = c_156;
+
+  /* assign */
+  syn::expr_var e_157;
+  e_157.v = const_0.v;
+  a1of1 c_157;
+  /* testpoint 1 */
+  syn::fullseq s_235;
+  c_157.r = s_235.go.r;
+  syn::recv rtv_235;
+  syn::expr_var e_158;
+  syn::var_init_false tv_235;
+  tv_235.v = rtv_235.v;
+  e_158.v = tv_235.v;
+  s_235.r.r = e_157.go_r;
+  s_235.r = rtv_235.go;
+  e_157.out.t = rtv_235.in.t;
+  e_157.out.f = rtv_235.in.f;
+  s_235.go.a = e_158.go_r;
+  syn::recv s_234;
+  s_234.go = c_157;
+  s_234.in.t = e_158.out.t;
+  s_234.in.f = e_158.out.f;
+  s_234.v = var_c.v;
+
+  syn::seq s_236;
+  s_236.go = c_156;
+  s_236.s1 = c_157;
+  a1of1 c_158;
+  s_236.s2 = c_158;
+
+  /* assign */
+  syn::expr_var e_159;
+  e_159.v = const_0.v;
+  a1of1 c_159;
+  /* testpoint 1 */
+  syn::fullseq s_238;
+  c_159.r = s_238.go.r;
+  syn::recv rtv_238;
+  syn::expr_var e_160;
+  syn::var_init_false tv_238;
+  tv_238.v = rtv_238.v;
+  e_160.v = tv_238.v;
+  s_238.r.r = e_159.go_r;
+  s_238.r = rtv_238.go;
+  e_159.out.t = rtv_238.in.t;
+  e_159.out.f = rtv_238.in.f;
+  s_238.go.a = e_160.go_r;
+  syn::recv s_237;
+  s_237.go = c_159;
+  s_237.in.t = e_160.out.t;
+  s_237.in.f = e_160.out.f;
+  s_237.v = var_d.v;
+
+  syn::seq s_239;
+  s_239.go = c_158;
+  s_239.s1 = c_159;
+  a1of1 c_160;
+  s_239.s2 = c_160;
+
+  /* assign */
+  syn::expr_var e_161;
+  e_161.v = const_1.v;
+  a1of1 c_161;
+  /* testpoint 1 */
+  syn::fullseq s_241;
+  c_161.r = s_241.go.r;
+  syn::recv rtv_241;
+  syn::expr_var e_162;
+  syn::var_init_false tv_241;
+  tv_241.v = rtv_241.v;
+  e_162.v = tv_241.v;
+  s_241.r.r = e_161.go_r;
+  s_241.r = rtv_241.go;
+  e_161.out.t = rtv_241.in.t;
+  e_161.out.f = rtv_241.in.f;
+  s_241.go.a = e_162.go_r;
+  syn::recv s_240;
+  s_240.go = c_161;
+  s_240.in.t = e_162.out.t;
+  s_240.in.f = e_162.out.f;
+  s_240.v = var_x.v;
+
+  syn::seq s_242;
+  s_242.go = c_160;
+  s_242.s1 = c_161;
+  a1of1 c_162;
+  s_242.s2 = c_162;
+
+  /* assign */
+  syn::expr_var e_163;
+  e_163.v = const_1.v;
+  a1of1 c_163;
+  /* testpoint 1 */
+  syn::fullseq s_244;
+  c_163.r = s_244.go.r;
+  syn::recv rtv_244;
+  syn::expr_var e_164;
+  syn::var_init_false tv_244;
+  tv_244.v = rtv_244.v;
+  e_164.v = tv_244.v;
+  s_244.r.r = e_163.go_r;
+  s_244.r = rtv_244.go;
+  e_163.out.t = rtv_244.in.t;
+  e_163.out.f = rtv_244.in.f;
+  s_244.go.a = e_164.go_r;
+  syn::recv s_243;
+  s_243.go = c_163;
+  s_243.in.t = e_164.out.t;
+  s_243.in.f = e_164.out.f;
+  s_243.v = var_y.v;
+
+  syn::seq s_245;
+  s_245.go = c_162;
+  s_245.s1 = c_163;
+  a1of1 c_164;
+  s_245.s2 = c_164;
+
+  /* assign */
+  syn::expr_var e_165;
+  e_165.v = const_1.v;
+  a1of1 c_165;
+  /* testpoint 1 */
+  syn::fullseq s_247;
+  c_165.r = s_247.go.r;
+  syn::recv rtv_247;
+  syn::expr_var e_166;
+  syn::var_init_false tv_247;
+  tv_247.v = rtv_247.v;
+  e_166.v = tv_247.v;
+  s_247.r.r = e_165.go_r;
+  s_247.r = rtv_247.go;
+  e_165.out.t = rtv_247.in.t;
+  e_165.out.f = rtv_247.in.f;
+  s_247.go.a = e_166.go_r;
+  syn::recv s_246;
+  s_246.go = c_165;
+  s_246.in.t = e_166.out.t;
+  s_246.in.f = e_166.out.f;
+  s_246.v = var_z.v;
+
+  syn::seq s_248;
+  s_248.go = c_164;
+  s_248.s1 = c_165;
+  a1of1 c_166;
+  s_248.s2 = c_166;
+
+  /* assign */
+  syn::expr_var e_167;
+  e_167.v = const_1.v;
+  a1of1 c_167;
+  /* testpoint 1 */
+  syn::fullseq s_250;
+  c_167.r = s_250.go.r;
+  syn::recv rtv_250;
+  syn::expr_var e_168;
+  syn::var_init_false tv_250;
+  tv_250.v = rtv_250.v;
+  e_168.v = tv_250.v;
+  s_250.r.r = e_167.go_r;
+  s_250.r = rtv_250.go;
+  e_167.out.t = rtv_250.in.t;
+  e_167.out.f = rtv_250.in.f;
+  s_250.go.a = e_168.go_r;
+  syn::recv s_249;
+  s_249.go = c_167;
+  s_249.in.t = e_168.out.t;
+  s_249.in.f = e_168.out.f;
+  s_249.v = var_w.v;
+
+  syn::seq s_251;
+  s_251.go = c_166;
+  s_251.s1 = c_167;
+  a1of1 c_168;
+  s_251.s2 = c_168;
+
+  /* assign */
+  syn::expr_var e_169;
+  e_169.v = const_1.v;
+  a1of1 c_169;
+  /* testpoint 1 */
+  syn::fullseq s_253;
+  c_169.r = s_253.go.r;
+  syn::recv rtv_253;
+  syn::expr_var e_170;
+  syn::var_init_false tv_253;
+  tv_253.v = rtv_253.v;
+  e_170.v = tv_253.v;
+  s_253.r.r = e_169.go_r;
+  s_253.r = rtv_253.go;
+  e_169.out.t = rtv_253.in.t;
+  e_169.out.f = rtv_253.in.f;
+  s_253.go.a = e_170.go_r;
+  syn::recv s_252;
+  s_252.go = c_169;
+  s_252.in.t = e_170.out.t;
+  s_252.in.f = e_170.out.f;
+  s_252.v = var_a.v;
+
+  syn::seq s_254;
+  s_254.go = c_168;
+  s_254.s1 = c_169;
+  a1of1 c_170;
+  s_254.s2 = c_170;
+
+  /* assign */
+  syn::expr_var e_171;
+  e_171.v = const_1.v;
+  a1of1 c_171;
+  /* testpoint 1 */
+  syn::fullseq s_256;
+  c_171.r = s_256.go.r;
+  syn::recv rtv_256;
+  syn::expr_var e_172;
+  syn::var_init_false tv_256;
+  tv_256.v = rtv_256.v;
+  e_172.v = tv_256.v;
+  s_256.r.r = e_171.go_r;
+  s_256.r = rtv_256.go;
+  e_171.out.t = rtv_256.in.t;
+  e_171.out.f = rtv_256.in.f;
+  s_256.go.a = e_172.go_r;
+  syn::recv s_255;
+  s_255.go = c_171;
+  s_255.in.t = e_172.out.t;
+  s_255.in.f = e_172.out.f;
+  s_255.v = var_b.v;
+
+  syn::seq s_257;
+  s_257.go = c_170;
+  s_257.s1 = c_171;
+  a1of1 c_172;
+  s_257.s2 = c_172;
+
+  /* assign */
+  syn::expr_var e_173;
+  e_173.v = const_1.v;
+  a1of1 c_173;
+  /* testpoint 1 */
+  syn::fullseq s_259;
+  c_173.r = s_259.go.r;
+  syn::recv rtv_259;
+  syn::expr_var e_174;
+  syn::var_init_false tv_259;
+  tv_259.v = rtv_259.v;
+  e_174.v = tv_259.v;
+  s_259.r.r = e_173.go_r;
+  s_259.r = rtv_259.go;
+  e_173.out.t = rtv_259.in.t;
+  e_173.out.f = rtv_259.in.f;
+  s_259.go.a = e_174.go_r;
+  syn::recv s_258;
+  s_258.go = c_173;
+  s_258.in.t = e_174.out.t;
+  s_258.in.f = e_174.out.f;
+  s_258.v = var_c.v;
+
+  syn::seq s_260;
+  s_260.go = c_172;
+  s_260.s1 = c_173;
+  a1of1 c_174;
+  s_260.s2 = c_174;
+
+  /* assign */
+  syn::expr_var e_175;
+  e_175.v = const_1.v;
+  a1of1 c_175;
+  /* testpoint 1 */
+  syn::fullseq s_262;
+  c_175.r = s_262.go.r;
+  syn::recv rtv_262;
+  syn::expr_var e_176;
+  syn::var_init_false tv_262;
+  tv_262.v = rtv_262.v;
+  e_176.v = tv_262.v;
+  s_262.r.r = e_175.go_r;
+  s_262.r = rtv_262.go;
+  e_175.out.t = rtv_262.in.t;
+  e_175.out.f = rtv_262.in.f;
+  s_262.go.a = e_176.go_r;
+  syn::recv s_261;
+  s_261.go = c_175;
+  s_261.in.t = e_176.out.t;
+  s_261.in.f = e_176.out.f;
+  s_261.v = var_d.v;
+
+  syn::seq s_263;
+  s_263.go = c_174;
+  s_263.s1 = c_175;
+  a1of1 c_176;
+  s_263.s2 = c_176;
+
+  /* assign */
+  syn::expr_var e_177;
+  e_177.v = const_0.v;
+  a1of1 c_177;
+  /* testpoint 1 */
+  syn::fullseq s_265;
+  c_177.r = s_265.go.r;
+  syn::recv rtv_265;
+  syn::expr_var e_178;
+  syn::var_init_false tv_265;
+  tv_265.v = rtv_265.v;
+  e_178.v = tv_265.v;
+  s_265.r.r = e_177.go_r;
+  s_265.r = rtv_265.go;
+  e_177.out.t = rtv_265.in.t;
+  e_177.out.f = rtv_265.in.f;
+  s_265.go.a = e_178.go_r;
+  syn::recv s_264;
+  s_264.go = c_177;
+  s_264.in.t = e_178.out.t;
+  s_264.in.f = e_178.out.f;
+  s_264.v = var_x.v;
+
+  syn::seq s_266;
+  s_266.go = c_176;
+  s_266.s1 = c_177;
+  a1of1 c_178;
+  s_266.s2 = c_178;
+
+  /* assign */
+  syn::expr_var e_179;
+  e_179.v = const_0.v;
+  a1of1 c_179;
+  /* testpoint 1 */
+  syn::fullseq s_268;
+  c_179.r = s_268.go.r;
+  syn::recv rtv_268;
+  syn::expr_var e_180;
+  syn::var_init_false tv_268;
+  tv_268.v = rtv_268.v;
+  e_180.v = tv_268.v;
+  s_268.r.r = e_179.go_r;
+  s_268.r = rtv_268.go;
+  e_179.out.t = rtv_268.in.t;
+  e_179.out.f = rtv_268.in.f;
+  s_268.go.a = e_180.go_r;
+  syn::recv s_267;
+  s_267.go = c_179;
+  s_267.in.t = e_180.out.t;
+  s_267.in.f = e_180.out.f;
+  s_267.v = var_y.v;
+
+  syn::seq s_269;
+  s_269.go = c_178;
+  s_269.s1 = c_179;
+  a1of1 c_180;
+  s_269.s2 = c_180;
+
+  /* assign */
+  syn::expr_var e_181;
+  e_181.v = const_0.v;
+  a1of1 c_181;
+  /* testpoint 1 */
+  syn::fullseq s_271;
+  c_181.r = s_271.go.r;
+  syn::recv rtv_271;
+  syn::expr_var e_182;
+  syn::var_init_false tv_271;
+  tv_271.v = rtv_271.v;
+  e_182.v = tv_271.v;
+  s_271.r.r = e_181.go_r;
+  s_271.r = rtv_271.go;
+  e_181.out.t = rtv_271.in.t;
+  e_181.out.f = rtv_271.in.f;
+  s_271.go.a = e_182.go_r;
+  syn::recv s_270;
+  s_270.go = c_181;
+  s_270.in.t = e_182.out.t;
+  s_270.in.f = e_182.out.f;
+  s_270.v = var_z.v;
+
+  syn::seq s_272;
+  s_272.go = c_180;
+  s_272.s1 = c_181;
+  a1of1 c_182;
+  s_272.s2 = c_182;
+
+  /* assign */
+  syn::expr_var e_183;
+  e_183.v = const_0.v;
+  a1of1 c_183;
+  /* testpoint 1 */
+  syn::fullseq s_274;
+  c_183.r = s_274.go.r;
+  syn::recv rtv_274;
+  syn::expr_var e_184;
+  syn::var_init_false tv_274;
+  tv_274.v = rtv_274.v;
+  e_184.v = tv_274.v;
+  s_274.r.r = e_183.go_r;
+  s_274.r = rtv_274.go;
+  e_183.out.t = rtv_274.in.t;
+  e_183.out.f = rtv_274.in.f;
+  s_274.go.a = e_184.go_r;
+  syn::recv s_273;
+  s_273.go = c_183;
+  s_273.in.t = e_184.out.t;
+  s_273.in.f = e_184.out.f;
+  s_273.v = var_w.v;
+
+  syn::seq s_275;
+  s_275.go = c_182;
+  s_275.s1 = c_183;
+  a1of1 c_184;
+  s_275.s2 = c_184;
+
+  /* assign */
+  syn::expr_var e_185;
+  e_185.v = const_0.v;
+  a1of1 c_185;
+  /* testpoint 1 */
+  syn::fullseq s_277;
+  c_185.r = s_277.go.r;
+  syn::recv rtv_277;
+  syn::expr_var e_186;
+  syn::var_init_false tv_277;
+  tv_277.v = rtv_277.v;
+  e_186.v = tv_277.v;
+  s_277.r.r = e_185.go_r;
+  s_277.r = rtv_277.go;
+  e_185.out.t = rtv_277.in.t;
+  e_185.out.f = rtv_277.in.f;
+  s_277.go.a = e_186.go_r;
+  syn::recv s_276;
+  s_276.go = c_185;
+  s_276.in.t = e_186.out.t;
+  s_276.in.f = e_186.out.f;
+  s_276.v = var_a.v;
+
+  syn::seq s_278;
+  s_278.go = c_184;
+  s_278.s1 = c_185;
+  a1of1 c_186;
+  s_278.s2 = c_186;
+
+  /* assign */
+  syn::expr_var e_187;
+  e_187.v = const_0.v;
+  a1of1 c_187;
+  /* testpoint 1 */
+  syn::fullseq s_280;
+  c_187.r = s_280.go.r;
+  syn::recv rtv_280;
+  syn::expr_var e_188;
+  syn::var_init_false tv_280;
+  tv_280.v = rtv_280.v;
+  e_188.v = tv_280.v;
+  s_280.r.r = e_187.go_r;
+  s_280.r = rtv_280.go;
+  e_187.out.t = rtv_280.in.t;
+  e_187.out.f = rtv_280.in.f;
+  s_280.go.a = e_188.go_r;
+  syn::recv s_279;
+  s_279.go = c_187;
+  s_279.in.t = e_188.out.t;
+  s_279.in.f = e_188.out.f;
+  s_279.v = var_b.v;
+
+  syn::seq s_281;
+  s_281.go = c_186;
+  s_281.s1 = c_187;
+  a1of1 c_188;
+  s_281.s2 = c_188;
+
+  /* assign */
+  syn::expr_var e_189;
+  e_189.v = const_0.v;
+  a1of1 c_189;
+  /* testpoint 1 */
+  syn::fullseq s_283;
+  c_189.r = s_283.go.r;
+  syn::recv rtv_283;
+  syn::expr_var e_190;
+  syn::var_init_false tv_283;
+  tv_283.v = rtv_283.v;
+  e_190.v = tv_283.v;
+  s_283.r.r = e_189.go_r;
+  s_283.r = rtv_283.go;
+  e_189.out.t = rtv_283.in.t;
+  e_189.out.f = rtv_283.in.f;
+  s_283.go.a = e_190.go_r;
+  syn::recv s_282;
+  s_282.go = c_189;
+  s_282.in.t = e_190.out.t;
+  s_282.in.f = e_190.out.f;
+  s_282.v = var_c.v;
+
+  syn::seq s_284;
+  s_284.go = c_188;
+  s_284.s1 = c_189;
+
+  /* assign */
+  syn::expr_var e_191;
+  e_191.v = const_0.v;
+  a1of1 c_190;
+  /* testpoint 1 */
+  syn::fullseq s_286;
+  c_190.r = s_286.go.r;
+  syn::recv rtv_286;
+  syn::expr_var e_192;
+  syn::var_init_false tv_286;
+  tv_286.v = rtv_286.v;
+  e_192.v = tv_286.v;
+  s_286.r.r = e_191.go_r;
+  s_286.r = rtv_286.go;
+  e_191.out.t = rtv_286.in.t;
+  e_191.out.f = rtv_286.in.f;
+  s_286.go.a = e_192.go_r;
+  syn::recv s_285;
+  s_285.go = c_190;
+  s_285.in.t = e_192.out.t;
+  s_285.in.f = e_192.out.f;
+  s_285.v = var_d.v;
+
+  s_284.s2 = c_190;
+
+  go = c_0;
+}
+
+toplevel t;

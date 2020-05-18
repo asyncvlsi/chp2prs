@@ -1,0 +1,59 @@
+initialize
+watch Reset
+watch _Reset
+watch t.go.r
+watch t.var_x.v.t
+watch t.var_x.v.f
+watch t.var_y.v.t
+watch t.var_y.v.f
+watch t.var_z.v.t
+watch t.var_z.v.f
+watch t.var_w.v.t
+watch t.var_w.v.f
+watch t.go.a
+set_principal t.go.r
+set_principal t.var_x.v.t
+set_principal t.var_x.v.f
+set_principal t.var_y.v.t
+set_principal t.var_y.v.f
+set_principal t.var_z.v.t
+set_principal t.var_z.v.f
+set_principal t.var_w.v.t
+set_principal t.var_w.v.f
+set_principal t.go.a
+
+mode reset
+set Reset 1
+set _Reset 0
+set t.go.r 0
+set t.go.a 0
+cycle
+assert t.go.r 0
+assert t.go.a 0
+set Reset 0
+set _Reset 1
+cycle
+mode run
+cycle
+
+assert t.var_x.v.t 0
+assert t.var_x.v.f 1
+assert t.var_y.v.t 0
+assert t.var_y.v.f 1
+assert t.var_z.v.t 0
+assert t.var_z.v.f 1
+assert t.var_w.v.t 0
+assert t.var_w.v.f 1
+set t.go.r 1
+cycle
+
+assert t.go.r 1
+assert t.var_x.v.t 0
+assert t.var_x.v.f 1
+assert t.var_y.v.t 0
+assert t.var_y.v.f 1
+assert t.var_z.v.t 0
+assert t.var_z.v.f 1
+assert t.var_w.v.t 0
+assert t.var_w.v.f 1
+assert t.go.a 1

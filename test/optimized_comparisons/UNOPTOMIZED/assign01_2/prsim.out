@@ -1,0 +1,68 @@
+	         0 Reset : 1
+	         0 t.go.a : 0
+	         0 t.go.r : 0
+	         0 _Reset : 0
+	        10 t.var_x.v.t : 0  [by Reset:=1]
+	        30 t.var_x.v.f : 1  [by t.c_3.a:=0]
+	        80 Reset : 0
+	        80 _Reset : 1
+	        80 t.go.r : 1
+	       300 t.var_x.v.f : 0  [by t.s_0.in.t:=1]
+	       320 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	       530 t.var_x.v.t : 0  [by t.s_3.in.f:=1]
+	       550 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	       790 t.var_x.v.f : 0  [by t.s_6.in.t:=1]
+	       810 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      1020 t.var_x.v.t : 0  [by t.s_9.in.f:=1]
+	      1040 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      1060 t.go.a : 1  [by t.s_9._goa:=0]
+	      1060 t.go.r : 0
+	      1380 t.go.a : 0  [by t.s_9._goa:=1]
+	      1380 t.go.r : 1
+	      1570 t.var_x.v.f : 0  [by t.s_0.in.t:=1]
+	      1590 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      1800 t.var_x.v.t : 0  [by t.s_3.in.f:=1]
+	      1820 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      2030 t.var_x.v.f : 0  [by t.s_6.in.t:=1]
+	      2050 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      2260 t.var_x.v.t : 0  [by t.s_9.in.f:=1]
+	      2280 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      2300 t.go.a : 1  [by t.s_9._goa:=0]
+	      2300 t.go.r : 0
+	      2620 t.go.a : 0  [by t.s_9._goa:=1]
+	      2620 t.go.r : 1
+	      2810 t.var_x.v.f : 0  [by t.s_0.in.t:=1]
+	      2830 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      3040 t.var_x.v.t : 0  [by t.s_3.in.f:=1]
+	      3060 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      3270 t.var_x.v.f : 0  [by t.s_6.in.t:=1]
+	      3290 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      3500 t.var_x.v.t : 0  [by t.s_9.in.f:=1]
+	      3520 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      3540 t.go.a : 1  [by t.s_9._goa:=0]
+	      3540 t.go.r : 0
+	      3860 t.go.a : 0  [by t.s_9._goa:=1]
+	      3860 t.go.r : 1
+	      4050 t.var_x.v.f : 0  [by t.s_0.in.t:=1]
+	      4070 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      4280 t.var_x.v.t : 0  [by t.s_3.in.f:=1]
+	      4300 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      4510 t.var_x.v.f : 0  [by t.s_6.in.t:=1]
+	      4530 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      4740 t.var_x.v.t : 0  [by t.s_9.in.f:=1]
+	      4760 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      4780 t.go.a : 1  [by t.s_9._goa:=0]
+	      4780 t.go.r : 0
+	      5100 t.go.a : 0  [by t.s_9._goa:=1]
+	      5100 t.go.r : 1
+	      5290 t.var_x.v.f : 0  [by t.s_0.in.t:=1]
+	      5310 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      5520 t.var_x.v.t : 0  [by t.s_3.in.f:=1]
+	      5540 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      5750 t.var_x.v.f : 0  [by t.s_6.in.t:=1]
+	      5770 t.var_x.v.t : 1  [by t.var_x.v.f:=0]
+	      5980 t.var_x.v.t : 0  [by t.s_9.in.f:=1]
+	      6000 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	      6020 t.go.a : 1  [by t.s_9._goa:=0]
+	      6020 t.go.r : 0
+	      6340 t.go.a : 0  [by t.s_9._goa:=1]

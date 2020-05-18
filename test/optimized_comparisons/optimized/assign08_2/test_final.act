@@ -1,0 +1,938 @@
+import syn;
+
+defproc toplevel (a1of1 go)
+{
+/* Initialize chp vars */
+  syn::var_init_false var_b;
+  syn::var_init_false var_a;
+  syn::var_init_false var_w;
+  syn::var_init_false var_y;
+  syn::var_init_false var_x;
+  syn::var_init_false var_d;
+  syn::var_init_false var_c;
+  syn::var_init_false var_z;
+  syn::var_init_false loop0000[4];
+  syn::var_init_false sel0000[4];
+
+  /* semicolon */
+  a1of1 c_0;
+
+  /* YES we need a sequencer here, ns=1, seq_num=1 */
+  /* semicolon */
+  a1of1 c_1;
+  syn::fullseq fs_0;
+  c_1 = fs_0.go;
+
+  /* YES we need a sequencer here, ns=2, seq_num=2 */
+  /* semicolon */
+  a1of1 c_2;
+  syn::fullseq fs_1;
+  c_2 = fs_1.go;
+
+  /* YES we need a sequencer here, ns=3, seq_num=3 */
+  /* semicolon */
+  a1of1 c_3;
+  syn::fullseq fs_2;
+  c_3 = fs_2.go;
+
+  /* YES we need a sequencer here, ns=4, seq_num=4 */
+  /* semicolon */
+  a1of1 c_4;
+  syn::fullseq fs_3;
+  c_4 = fs_3.go;
+
+  /* assign */
+  syn::var_init_true const_1;
+  syn::expr_var e_1;
+  e_1.v = const_1.v;
+  /* assign vars: a=1, b=4 */
+  a1of1 c_5;
+  syn::recv rtv_5;
+  syn::expr_var e_2;
+  syn::var_init_false tv_5;
+  tv_5.v = rtv_5.v;
+  e_2.v = tv_5.v;
+  c_5.r = e_1.go_r;
+  c_5.r = rtv_5.go.r;
+  e_1.out.t = rtv_5.in.t;
+  e_1.out.f = rtv_5.in.f;
+  rtv_5.go.a = e_2.go_r;
+  syn::recv s_4;
+  s_4.go = c_5;
+  s_4.in.t = e_2.out.t;
+  s_4.in.f = e_2.out.f;
+  s_4.v = var_x.v;
+
+  syn::seq s_6;
+  /* is this the place?? ns=4*/
+  s_6.go = fs_3.r;
+  s_6.s1 = c_5;
+  a1of1 c_6;
+  s_6.s2 = c_6;
+
+  /* assign */
+  syn::expr_var e_3;
+  e_3.v = const_1.v;
+  /* assign vars: a=3, b=7 */
+  a1of1 c_7;
+  syn::recv rtv_8;
+  syn::expr_var e_4;
+  syn::var_init_false tv_8;
+  tv_8.v = rtv_8.v;
+  e_4.v = tv_8.v;
+  c_7.r = e_3.go_r;
+  c_7.r = rtv_8.go.r;
+  e_3.out.t = rtv_8.in.t;
+  e_3.out.f = rtv_8.in.f;
+  rtv_8.go.a = e_4.go_r;
+  syn::recv s_7;
+  s_7.go = c_7;
+  s_7.in.t = e_4.out.t;
+  s_7.in.f = e_4.out.f;
+  s_7.v = var_y.v;
+
+  syn::seq s_9;
+  /* is this the place?? ns=4*/
+  s_9.go = c_6;
+  s_9.s1 = c_7;
+  a1of1 c_8;
+  s_9.s2 = c_8;
+
+  /* assign */
+  syn::expr_var e_5;
+  e_5.v = const_1.v;
+  /* assign vars: a=5, b=10 */
+  a1of1 c_9;
+  syn::recv rtv_11;
+  syn::expr_var e_6;
+  syn::var_init_false tv_11;
+  tv_11.v = rtv_11.v;
+  e_6.v = tv_11.v;
+  c_9.r = e_5.go_r;
+  c_9.r = rtv_11.go.r;
+  e_5.out.t = rtv_11.in.t;
+  e_5.out.f = rtv_11.in.f;
+  rtv_11.go.a = e_6.go_r;
+  syn::recv s_10;
+  s_10.go = c_9;
+  s_10.in.t = e_6.out.t;
+  s_10.in.f = e_6.out.f;
+  s_10.v = var_z.v;
+
+  syn::seq s_12;
+  /* is this the place?? ns=4*/
+  s_12.go = c_8;
+  s_12.s1 = c_9;
+  a1of1 c_10;
+  s_12.s2 = c_10;
+
+  /* assign */
+  syn::expr_var e_7;
+  e_7.v = const_1.v;
+  /* assign vars: a=7, b=13 */
+  a1of1 c_11;
+  syn::recv rtv_14;
+  syn::expr_var e_8;
+  syn::var_init_false tv_14;
+  tv_14.v = rtv_14.v;
+  e_8.v = tv_14.v;
+  c_11.r = e_7.go_r;
+  c_11.r = rtv_14.go.r;
+  e_7.out.t = rtv_14.in.t;
+  e_7.out.f = rtv_14.in.f;
+  rtv_14.go.a = e_8.go_r;
+  syn::recv s_13;
+  s_13.go = c_11;
+  s_13.in.t = e_8.out.t;
+  s_13.in.f = e_8.out.f;
+  s_13.v = var_w.v;
+
+  syn::seq s_15;
+  /* is this the place?? ns=4*/
+  s_15.go = c_10;
+  s_15.s1 = c_11;
+  a1of1 c_12;
+  s_15.s2 = c_12;
+
+  /* assign */
+  syn::expr_var e_9;
+  e_9.v = const_1.v;
+  /* assign vars: a=9, b=16 */
+  a1of1 c_13;
+  syn::recv rtv_17;
+  syn::expr_var e_10;
+  syn::var_init_false tv_17;
+  tv_17.v = rtv_17.v;
+  e_10.v = tv_17.v;
+  c_13.r = e_9.go_r;
+  c_13.r = rtv_17.go.r;
+  e_9.out.t = rtv_17.in.t;
+  e_9.out.f = rtv_17.in.f;
+  rtv_17.go.a = e_10.go_r;
+  syn::recv s_16;
+  s_16.go = c_13;
+  s_16.in.t = e_10.out.t;
+  s_16.in.f = e_10.out.f;
+  s_16.v = var_a.v;
+
+  syn::seq s_18;
+  /* is this the place?? ns=4*/
+  s_18.go = c_12;
+  s_18.s1 = c_13;
+  a1of1 c_14;
+  s_18.s2 = c_14;
+
+  /* assign */
+  syn::expr_var e_11;
+  e_11.v = const_1.v;
+  /* assign vars: a=11, b=19 */
+  a1of1 c_15;
+  syn::recv rtv_20;
+  syn::expr_var e_12;
+  syn::var_init_false tv_20;
+  tv_20.v = rtv_20.v;
+  e_12.v = tv_20.v;
+  c_15.r = e_11.go_r;
+  c_15.r = rtv_20.go.r;
+  e_11.out.t = rtv_20.in.t;
+  e_11.out.f = rtv_20.in.f;
+  rtv_20.go.a = e_12.go_r;
+  syn::recv s_19;
+  s_19.go = c_15;
+  s_19.in.t = e_12.out.t;
+  s_19.in.f = e_12.out.f;
+  s_19.v = var_b.v;
+
+  syn::seq s_21;
+  /* is this the place?? ns=4*/
+  s_21.go = c_14;
+  s_21.s1 = c_15;
+  a1of1 c_16;
+  s_21.s2 = c_16;
+
+  /* assign */
+  syn::expr_var e_13;
+  e_13.v = const_1.v;
+  /* assign vars: a=13, b=22 */
+  a1of1 c_17;
+  syn::recv rtv_23;
+  syn::expr_var e_14;
+  syn::var_init_false tv_23;
+  tv_23.v = rtv_23.v;
+  e_14.v = tv_23.v;
+  c_17.r = e_13.go_r;
+  c_17.r = rtv_23.go.r;
+  e_13.out.t = rtv_23.in.t;
+  e_13.out.f = rtv_23.in.f;
+  rtv_23.go.a = e_14.go_r;
+  syn::recv s_22;
+  s_22.go = c_17;
+  s_22.in.t = e_14.out.t;
+  s_22.in.f = e_14.out.f;
+  s_22.v = var_c.v;
+
+  syn::seq s_24;
+  /* is this the place?? ns=4*/
+  s_24.go = c_16;
+  s_24.s1 = c_17;
+
+  /* assign */
+  syn::expr_var e_15;
+  e_15.v = const_1.v;
+  /* assign vars: a=15, b=25 */
+  a1of1 c_18;
+  syn::recv rtv_26;
+  syn::expr_var e_16;
+  syn::var_init_false tv_26;
+  tv_26.v = rtv_26.v;
+  e_16.v = tv_26.v;
+  c_18.r = e_15.go_r;
+  c_18.r = rtv_26.go.r;
+  e_15.out.t = rtv_26.in.t;
+  e_15.out.f = rtv_26.in.f;
+  rtv_26.go.a = e_16.go_r;
+  syn::recv s_25;
+  s_25.go = c_18;
+  s_25.in.t = e_16.out.t;
+  s_25.in.f = e_16.out.f;
+  s_25.v = var_d.v;
+
+  s_24.s2 = c_18;
+
+  syn::seq s_27;
+  /* is this the place?? ns=3*/
+  s_27.go = fs_2.r;
+  s_27.s1 = c_4;
+  a1of1 c_19;
+  s_27.s2 = c_19;
+
+  /* assign */
+  syn::var_init_false const_0;
+  syn::expr_var e_17;
+  e_17.v = const_0.v;
+  /* assign vars: a=17, b=28 */
+  a1of1 c_20;
+  syn::recv rtv_29;
+  syn::expr_var e_18;
+  syn::var_init_false tv_29;
+  tv_29.v = rtv_29.v;
+  e_18.v = tv_29.v;
+  c_20.r = e_17.go_r;
+  c_20.r = rtv_29.go.r;
+  e_17.out.t = rtv_29.in.t;
+  e_17.out.f = rtv_29.in.f;
+  rtv_29.go.a = e_18.go_r;
+  syn::recv s_28;
+  s_28.go = c_20;
+  s_28.in.t = e_18.out.t;
+  s_28.in.f = e_18.out.f;
+  s_28.v = var_x.v;
+
+  syn::seq s_30;
+  /* is this the place?? ns=3*/
+  s_30.go = c_19;
+  s_30.s1 = c_20;
+  a1of1 c_21;
+  s_30.s2 = c_21;
+
+  /* assign */
+  syn::expr_var e_19;
+  e_19.v = const_0.v;
+  /* assign vars: a=19, b=31 */
+  a1of1 c_22;
+  syn::recv rtv_32;
+  syn::expr_var e_20;
+  syn::var_init_false tv_32;
+  tv_32.v = rtv_32.v;
+  e_20.v = tv_32.v;
+  c_22.r = e_19.go_r;
+  c_22.r = rtv_32.go.r;
+  e_19.out.t = rtv_32.in.t;
+  e_19.out.f = rtv_32.in.f;
+  rtv_32.go.a = e_20.go_r;
+  syn::recv s_31;
+  s_31.go = c_22;
+  s_31.in.t = e_20.out.t;
+  s_31.in.f = e_20.out.f;
+  s_31.v = var_y.v;
+
+  syn::seq s_33;
+  /* is this the place?? ns=3*/
+  s_33.go = c_21;
+  s_33.s1 = c_22;
+  a1of1 c_23;
+  s_33.s2 = c_23;
+
+  /* assign */
+  syn::expr_var e_21;
+  e_21.v = const_0.v;
+  /* assign vars: a=21, b=34 */
+  a1of1 c_24;
+  syn::recv rtv_35;
+  syn::expr_var e_22;
+  syn::var_init_false tv_35;
+  tv_35.v = rtv_35.v;
+  e_22.v = tv_35.v;
+  c_24.r = e_21.go_r;
+  c_24.r = rtv_35.go.r;
+  e_21.out.t = rtv_35.in.t;
+  e_21.out.f = rtv_35.in.f;
+  rtv_35.go.a = e_22.go_r;
+  syn::recv s_34;
+  s_34.go = c_24;
+  s_34.in.t = e_22.out.t;
+  s_34.in.f = e_22.out.f;
+  s_34.v = var_z.v;
+
+  syn::seq s_36;
+  /* is this the place?? ns=3*/
+  s_36.go = c_23;
+  s_36.s1 = c_24;
+  a1of1 c_25;
+  s_36.s2 = c_25;
+
+  /* assign */
+  syn::expr_var e_23;
+  e_23.v = const_0.v;
+  /* assign vars: a=23, b=37 */
+  a1of1 c_26;
+  syn::recv rtv_38;
+  syn::expr_var e_24;
+  syn::var_init_false tv_38;
+  tv_38.v = rtv_38.v;
+  e_24.v = tv_38.v;
+  c_26.r = e_23.go_r;
+  c_26.r = rtv_38.go.r;
+  e_23.out.t = rtv_38.in.t;
+  e_23.out.f = rtv_38.in.f;
+  rtv_38.go.a = e_24.go_r;
+  syn::recv s_37;
+  s_37.go = c_26;
+  s_37.in.t = e_24.out.t;
+  s_37.in.f = e_24.out.f;
+  s_37.v = var_w.v;
+
+  syn::seq s_39;
+  /* is this the place?? ns=3*/
+  s_39.go = c_25;
+  s_39.s1 = c_26;
+  a1of1 c_27;
+  s_39.s2 = c_27;
+
+  /* assign */
+  syn::expr_var e_25;
+  e_25.v = const_0.v;
+  /* assign vars: a=25, b=40 */
+  a1of1 c_28;
+  syn::recv rtv_41;
+  syn::expr_var e_26;
+  syn::var_init_false tv_41;
+  tv_41.v = rtv_41.v;
+  e_26.v = tv_41.v;
+  c_28.r = e_25.go_r;
+  c_28.r = rtv_41.go.r;
+  e_25.out.t = rtv_41.in.t;
+  e_25.out.f = rtv_41.in.f;
+  rtv_41.go.a = e_26.go_r;
+  syn::recv s_40;
+  s_40.go = c_28;
+  s_40.in.t = e_26.out.t;
+  s_40.in.f = e_26.out.f;
+  s_40.v = var_a.v;
+
+  syn::seq s_42;
+  /* is this the place?? ns=3*/
+  s_42.go = c_27;
+  s_42.s1 = c_28;
+  a1of1 c_29;
+  s_42.s2 = c_29;
+
+  /* assign */
+  syn::expr_var e_27;
+  e_27.v = const_0.v;
+  /* assign vars: a=27, b=43 */
+  a1of1 c_30;
+  syn::recv rtv_44;
+  syn::expr_var e_28;
+  syn::var_init_false tv_44;
+  tv_44.v = rtv_44.v;
+  e_28.v = tv_44.v;
+  c_30.r = e_27.go_r;
+  c_30.r = rtv_44.go.r;
+  e_27.out.t = rtv_44.in.t;
+  e_27.out.f = rtv_44.in.f;
+  rtv_44.go.a = e_28.go_r;
+  syn::recv s_43;
+  s_43.go = c_30;
+  s_43.in.t = e_28.out.t;
+  s_43.in.f = e_28.out.f;
+  s_43.v = var_b.v;
+
+  syn::seq s_45;
+  /* is this the place?? ns=3*/
+  s_45.go = c_29;
+  s_45.s1 = c_30;
+  a1of1 c_31;
+  s_45.s2 = c_31;
+
+  /* assign */
+  syn::expr_var e_29;
+  e_29.v = const_0.v;
+  /* assign vars: a=29, b=46 */
+  a1of1 c_32;
+  syn::recv rtv_47;
+  syn::expr_var e_30;
+  syn::var_init_false tv_47;
+  tv_47.v = rtv_47.v;
+  e_30.v = tv_47.v;
+  c_32.r = e_29.go_r;
+  c_32.r = rtv_47.go.r;
+  e_29.out.t = rtv_47.in.t;
+  e_29.out.f = rtv_47.in.f;
+  rtv_47.go.a = e_30.go_r;
+  syn::recv s_46;
+  s_46.go = c_32;
+  s_46.in.t = e_30.out.t;
+  s_46.in.f = e_30.out.f;
+  s_46.v = var_c.v;
+
+  syn::seq s_48;
+  /* is this the place?? ns=3*/
+  s_48.go = c_31;
+  s_48.s1 = c_32;
+
+  /* assign */
+  syn::expr_var e_31;
+  e_31.v = const_0.v;
+  /* assign vars: a=31, b=49 */
+  a1of1 c_33;
+  syn::recv rtv_50;
+  syn::expr_var e_32;
+  syn::var_init_false tv_50;
+  tv_50.v = rtv_50.v;
+  e_32.v = tv_50.v;
+  c_33.r = e_31.go_r;
+  c_33.r = rtv_50.go.r;
+  e_31.out.t = rtv_50.in.t;
+  e_31.out.f = rtv_50.in.f;
+  rtv_50.go.a = e_32.go_r;
+  syn::recv s_49;
+  s_49.go = c_33;
+  s_49.in.t = e_32.out.t;
+  s_49.in.f = e_32.out.f;
+  s_49.v = var_d.v;
+
+  s_48.s2 = c_33;
+
+  syn::seq s_51;
+  /* is this the place?? ns=2*/
+  s_51.go = fs_1.r;
+  s_51.s1 = c_3;
+  a1of1 c_34;
+  s_51.s2 = c_34;
+
+  /* assign */
+  syn::expr_var e_33;
+  e_33.v = const_1.v;
+  /* assign vars: a=33, b=52 */
+  a1of1 c_35;
+  syn::recv rtv_53;
+  syn::expr_var e_34;
+  syn::var_init_false tv_53;
+  tv_53.v = rtv_53.v;
+  e_34.v = tv_53.v;
+  c_35.r = e_33.go_r;
+  c_35.r = rtv_53.go.r;
+  e_33.out.t = rtv_53.in.t;
+  e_33.out.f = rtv_53.in.f;
+  rtv_53.go.a = e_34.go_r;
+  syn::recv s_52;
+  s_52.go = c_35;
+  s_52.in.t = e_34.out.t;
+  s_52.in.f = e_34.out.f;
+  s_52.v = var_x.v;
+
+  syn::seq s_54;
+  /* is this the place?? ns=2*/
+  s_54.go = c_34;
+  s_54.s1 = c_35;
+  a1of1 c_36;
+  s_54.s2 = c_36;
+
+  /* assign */
+  syn::expr_var e_35;
+  e_35.v = const_1.v;
+  /* assign vars: a=35, b=55 */
+  a1of1 c_37;
+  syn::recv rtv_56;
+  syn::expr_var e_36;
+  syn::var_init_false tv_56;
+  tv_56.v = rtv_56.v;
+  e_36.v = tv_56.v;
+  c_37.r = e_35.go_r;
+  c_37.r = rtv_56.go.r;
+  e_35.out.t = rtv_56.in.t;
+  e_35.out.f = rtv_56.in.f;
+  rtv_56.go.a = e_36.go_r;
+  syn::recv s_55;
+  s_55.go = c_37;
+  s_55.in.t = e_36.out.t;
+  s_55.in.f = e_36.out.f;
+  s_55.v = var_y.v;
+
+  syn::seq s_57;
+  /* is this the place?? ns=2*/
+  s_57.go = c_36;
+  s_57.s1 = c_37;
+  a1of1 c_38;
+  s_57.s2 = c_38;
+
+  /* assign */
+  syn::expr_var e_37;
+  e_37.v = const_1.v;
+  /* assign vars: a=37, b=58 */
+  a1of1 c_39;
+  syn::recv rtv_59;
+  syn::expr_var e_38;
+  syn::var_init_false tv_59;
+  tv_59.v = rtv_59.v;
+  e_38.v = tv_59.v;
+  c_39.r = e_37.go_r;
+  c_39.r = rtv_59.go.r;
+  e_37.out.t = rtv_59.in.t;
+  e_37.out.f = rtv_59.in.f;
+  rtv_59.go.a = e_38.go_r;
+  syn::recv s_58;
+  s_58.go = c_39;
+  s_58.in.t = e_38.out.t;
+  s_58.in.f = e_38.out.f;
+  s_58.v = var_z.v;
+
+  syn::seq s_60;
+  /* is this the place?? ns=2*/
+  s_60.go = c_38;
+  s_60.s1 = c_39;
+  a1of1 c_40;
+  s_60.s2 = c_40;
+
+  /* assign */
+  syn::expr_var e_39;
+  e_39.v = const_1.v;
+  /* assign vars: a=39, b=61 */
+  a1of1 c_41;
+  syn::recv rtv_62;
+  syn::expr_var e_40;
+  syn::var_init_false tv_62;
+  tv_62.v = rtv_62.v;
+  e_40.v = tv_62.v;
+  c_41.r = e_39.go_r;
+  c_41.r = rtv_62.go.r;
+  e_39.out.t = rtv_62.in.t;
+  e_39.out.f = rtv_62.in.f;
+  rtv_62.go.a = e_40.go_r;
+  syn::recv s_61;
+  s_61.go = c_41;
+  s_61.in.t = e_40.out.t;
+  s_61.in.f = e_40.out.f;
+  s_61.v = var_w.v;
+
+  syn::seq s_63;
+  /* is this the place?? ns=2*/
+  s_63.go = c_40;
+  s_63.s1 = c_41;
+  a1of1 c_42;
+  s_63.s2 = c_42;
+
+  /* assign */
+  syn::expr_var e_41;
+  e_41.v = const_1.v;
+  /* assign vars: a=41, b=64 */
+  a1of1 c_43;
+  syn::recv rtv_65;
+  syn::expr_var e_42;
+  syn::var_init_false tv_65;
+  tv_65.v = rtv_65.v;
+  e_42.v = tv_65.v;
+  c_43.r = e_41.go_r;
+  c_43.r = rtv_65.go.r;
+  e_41.out.t = rtv_65.in.t;
+  e_41.out.f = rtv_65.in.f;
+  rtv_65.go.a = e_42.go_r;
+  syn::recv s_64;
+  s_64.go = c_43;
+  s_64.in.t = e_42.out.t;
+  s_64.in.f = e_42.out.f;
+  s_64.v = var_a.v;
+
+  syn::seq s_66;
+  /* is this the place?? ns=2*/
+  s_66.go = c_42;
+  s_66.s1 = c_43;
+
+  /* assign */
+  syn::expr_var e_43;
+  e_43.v = const_1.v;
+  /* assign vars: a=43, b=67 */
+  a1of1 c_44;
+  syn::recv rtv_68;
+  syn::expr_var e_44;
+  syn::var_init_false tv_68;
+  tv_68.v = rtv_68.v;
+  e_44.v = tv_68.v;
+  c_44.r = e_43.go_r;
+  c_44.r = rtv_68.go.r;
+  e_43.out.t = rtv_68.in.t;
+  e_43.out.f = rtv_68.in.f;
+  rtv_68.go.a = e_44.go_r;
+  syn::recv s_67;
+  s_67.go = c_44;
+  s_67.in.t = e_44.out.t;
+  s_67.in.f = e_44.out.f;
+  s_67.v = var_b.v;
+
+  s_66.s2 = c_44;
+
+  syn::seq s_69;
+  /* is this the place?? ns=1*/
+  s_69.go = fs_0.r;
+  s_69.s1 = c_2;
+  a1of1 c_45;
+  s_69.s2 = c_45;
+
+  /* assign */
+  syn::expr_var e_45;
+  e_45.v = const_1.v;
+  /* assign vars: a=45, b=70 */
+  a1of1 c_46;
+  syn::recv rtv_71;
+  syn::expr_var e_46;
+  syn::var_init_false tv_71;
+  tv_71.v = rtv_71.v;
+  e_46.v = tv_71.v;
+  c_46.r = e_45.go_r;
+  c_46.r = rtv_71.go.r;
+  e_45.out.t = rtv_71.in.t;
+  e_45.out.f = rtv_71.in.f;
+  rtv_71.go.a = e_46.go_r;
+  syn::recv s_70;
+  s_70.go = c_46;
+  s_70.in.t = e_46.out.t;
+  s_70.in.f = e_46.out.f;
+  s_70.v = var_c.v;
+
+  syn::seq s_72;
+  /* is this the place?? ns=1*/
+  s_72.go = c_45;
+  s_72.s1 = c_46;
+  a1of1 c_47;
+  s_72.s2 = c_47;
+
+  /* assign */
+  syn::expr_var e_47;
+  e_47.v = const_1.v;
+  /* assign vars: a=47, b=73 */
+  a1of1 c_48;
+  syn::recv rtv_74;
+  syn::expr_var e_48;
+  syn::var_init_false tv_74;
+  tv_74.v = rtv_74.v;
+  e_48.v = tv_74.v;
+  c_48.r = e_47.go_r;
+  c_48.r = rtv_74.go.r;
+  e_47.out.t = rtv_74.in.t;
+  e_47.out.f = rtv_74.in.f;
+  rtv_74.go.a = e_48.go_r;
+  syn::recv s_73;
+  s_73.go = c_48;
+  s_73.in.t = e_48.out.t;
+  s_73.in.f = e_48.out.f;
+  s_73.v = var_d.v;
+
+  syn::seq s_75;
+  /* is this the place?? ns=1*/
+  s_75.go = c_47;
+  s_75.s1 = c_48;
+  a1of1 c_49;
+  s_75.s2 = c_49;
+
+  /* assign */
+  syn::expr_var e_49;
+  e_49.v = const_0.v;
+  /* assign vars: a=49, b=76 */
+  a1of1 c_50;
+  syn::recv rtv_77;
+  syn::expr_var e_50;
+  syn::var_init_false tv_77;
+  tv_77.v = rtv_77.v;
+  e_50.v = tv_77.v;
+  c_50.r = e_49.go_r;
+  c_50.r = rtv_77.go.r;
+  e_49.out.t = rtv_77.in.t;
+  e_49.out.f = rtv_77.in.f;
+  rtv_77.go.a = e_50.go_r;
+  syn::recv s_76;
+  s_76.go = c_50;
+  s_76.in.t = e_50.out.t;
+  s_76.in.f = e_50.out.f;
+  s_76.v = var_x.v;
+
+  syn::seq s_78;
+  /* is this the place?? ns=1*/
+  s_78.go = c_49;
+  s_78.s1 = c_50;
+  a1of1 c_51;
+  s_78.s2 = c_51;
+
+  /* assign */
+  syn::expr_var e_51;
+  e_51.v = const_0.v;
+  /* assign vars: a=51, b=79 */
+  a1of1 c_52;
+  syn::recv rtv_80;
+  syn::expr_var e_52;
+  syn::var_init_false tv_80;
+  tv_80.v = rtv_80.v;
+  e_52.v = tv_80.v;
+  c_52.r = e_51.go_r;
+  c_52.r = rtv_80.go.r;
+  e_51.out.t = rtv_80.in.t;
+  e_51.out.f = rtv_80.in.f;
+  rtv_80.go.a = e_52.go_r;
+  syn::recv s_79;
+  s_79.go = c_52;
+  s_79.in.t = e_52.out.t;
+  s_79.in.f = e_52.out.f;
+  s_79.v = var_y.v;
+
+  syn::seq s_81;
+  /* is this the place?? ns=1*/
+  s_81.go = c_51;
+  s_81.s1 = c_52;
+  a1of1 c_53;
+  s_81.s2 = c_53;
+
+  /* assign */
+  syn::expr_var e_53;
+  e_53.v = const_0.v;
+  /* assign vars: a=53, b=82 */
+  a1of1 c_54;
+  syn::recv rtv_83;
+  syn::expr_var e_54;
+  syn::var_init_false tv_83;
+  tv_83.v = rtv_83.v;
+  e_54.v = tv_83.v;
+  c_54.r = e_53.go_r;
+  c_54.r = rtv_83.go.r;
+  e_53.out.t = rtv_83.in.t;
+  e_53.out.f = rtv_83.in.f;
+  rtv_83.go.a = e_54.go_r;
+  syn::recv s_82;
+  s_82.go = c_54;
+  s_82.in.t = e_54.out.t;
+  s_82.in.f = e_54.out.f;
+  s_82.v = var_z.v;
+
+  syn::seq s_84;
+  /* is this the place?? ns=1*/
+  s_84.go = c_53;
+  s_84.s1 = c_54;
+  a1of1 c_55;
+  s_84.s2 = c_55;
+
+  /* assign */
+  syn::expr_var e_55;
+  e_55.v = const_0.v;
+  /* assign vars: a=55, b=85 */
+  a1of1 c_56;
+  syn::recv rtv_86;
+  syn::expr_var e_56;
+  syn::var_init_false tv_86;
+  tv_86.v = rtv_86.v;
+  e_56.v = tv_86.v;
+  c_56.r = e_55.go_r;
+  c_56.r = rtv_86.go.r;
+  e_55.out.t = rtv_86.in.t;
+  e_55.out.f = rtv_86.in.f;
+  rtv_86.go.a = e_56.go_r;
+  syn::recv s_85;
+  s_85.go = c_56;
+  s_85.in.t = e_56.out.t;
+  s_85.in.f = e_56.out.f;
+  s_85.v = var_w.v;
+
+  syn::seq s_87;
+  /* is this the place?? ns=1*/
+  s_87.go = c_55;
+  s_87.s1 = c_56;
+  a1of1 c_57;
+  s_87.s2 = c_57;
+
+  /* assign */
+  syn::expr_var e_57;
+  e_57.v = const_0.v;
+  /* assign vars: a=57, b=88 */
+  a1of1 c_58;
+  syn::recv rtv_89;
+  syn::expr_var e_58;
+  syn::var_init_false tv_89;
+  tv_89.v = rtv_89.v;
+  e_58.v = tv_89.v;
+  c_58.r = e_57.go_r;
+  c_58.r = rtv_89.go.r;
+  e_57.out.t = rtv_89.in.t;
+  e_57.out.f = rtv_89.in.f;
+  rtv_89.go.a = e_58.go_r;
+  syn::recv s_88;
+  s_88.go = c_58;
+  s_88.in.t = e_58.out.t;
+  s_88.in.f = e_58.out.f;
+  s_88.v = var_a.v;
+
+  syn::seq s_90;
+  /* is this the place?? ns=1*/
+  s_90.go = c_57;
+  s_90.s1 = c_58;
+
+  /* assign */
+  syn::expr_var e_59;
+  e_59.v = const_0.v;
+  /* assign vars: a=59, b=91 */
+  a1of1 c_59;
+  syn::recv rtv_92;
+  syn::expr_var e_60;
+  syn::var_init_false tv_92;
+  tv_92.v = rtv_92.v;
+  e_60.v = tv_92.v;
+  c_59.r = e_59.go_r;
+  c_59.r = rtv_92.go.r;
+  e_59.out.t = rtv_92.in.t;
+  e_59.out.f = rtv_92.in.f;
+  rtv_92.go.a = e_60.go_r;
+  syn::recv s_91;
+  s_91.go = c_59;
+  s_91.in.t = e_60.out.t;
+  s_91.in.f = e_60.out.f;
+  s_91.v = var_b.v;
+
+  s_90.s2 = c_59;
+
+  syn::seq s_93;
+  /* is this the place?? ns=-1*/
+  s_93.go = c_0;
+  s_93.s1 = c_1;
+  a1of1 c_60;
+  s_93.s2 = c_60;
+
+  /* assign */
+  syn::expr_var e_61;
+  e_61.v = const_0.v;
+  /* assign vars: a=61, b=94 */
+  a1of1 c_61;
+  syn::recv rtv_95;
+  syn::expr_var e_62;
+  syn::var_init_false tv_95;
+  tv_95.v = rtv_95.v;
+  e_62.v = tv_95.v;
+  c_61.r = e_61.go_r;
+  c_61.r = rtv_95.go.r;
+  e_61.out.t = rtv_95.in.t;
+  e_61.out.f = rtv_95.in.f;
+  rtv_95.go.a = e_62.go_r;
+  syn::recv s_94;
+  s_94.go = c_61;
+  s_94.in.t = e_62.out.t;
+  s_94.in.f = e_62.out.f;
+  s_94.v = var_c.v;
+
+  syn::seq s_96;
+  /* is this the place?? ns=-1*/
+  s_96.go = c_60;
+  s_96.s1 = c_61;
+
+  /* assign */
+  syn::expr_var e_63;
+  e_63.v = const_0.v;
+  /* assign vars: a=63, b=97 */
+  a1of1 c_62;
+  syn::recv rtv_98;
+  syn::expr_var e_64;
+  syn::var_init_false tv_98;
+  tv_98.v = rtv_98.v;
+  e_64.v = tv_98.v;
+  c_62.r = e_63.go_r;
+  c_62.r = rtv_98.go.r;
+  e_63.out.t = rtv_98.in.t;
+  e_63.out.f = rtv_98.in.f;
+  rtv_98.go.a = e_64.go_r;
+  syn::recv s_97;
+  s_97.go = c_62;
+  s_97.in.t = e_64.out.t;
+  s_97.in.f = e_64.out.f;
+  s_97.v = var_d.v;
+
+  s_96.s2 = c_62;
+
+  go = c_0;
+}
+
+toplevel t;
