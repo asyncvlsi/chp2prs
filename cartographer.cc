@@ -30,7 +30,7 @@
 #include "cartographer.h"
 #include <act/iter.h>
 #include <act/value.h>
-#include "/Users/amandahansen/Async/chp-optimize/sequencers.h"
+#include <act/chp-opt/optimize.h>
 
 /*
  *
@@ -933,10 +933,10 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
   int ret, a, b, delay;
   InstType *v, *u;
   char buf[MAX_EXPR_SIZE];
-  
+
   if (!c)
     return -1;
-  
+
   switch (c->type)
   {
     case ACT_CHP_SKIP:
@@ -967,7 +967,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
         fprintf(output_stream, "  a1of1 c_%d;\n", ret);
         snprintf(buf, MAX_EXPR_SIZE, "c_%d.r", ret);
       }
-      
+
       if (bundle_data && TypeFactory::bitWidth(v) > 1)
       {
         /* accumulate delay of the last operation */
@@ -1149,7 +1149,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
     case ACT_CHP_SEMI:
     {
 //      fprintf(output_stream, "  /* CHECKING IF SEQUENCER... cspace NULL? %d, seq=%d */\n", (c->space != NULL), (((SequencerInfo *)c->space)->sequence));
-            
+
       if (c->space && ((SequencerInfo *)c->space)->sequence) {
         fprintf(output_stream, "  /* YES we need a sequencer here, ns=%d, seq_num=%d */\n", chan_count, stmt_count+1);
         int s = stmt_count++;
@@ -1164,7 +1164,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
 //        fprintf(output_stream, "  /* ... printchpstmt 5 ...*/\n");
         return print_chp_stmt((act_chp_lang_t *)list_value(list_first(c->u.semi_comma.cmd)), bitwidth, base_var, seq_num, need_sequencer);
       }
-      
+
       fprintf(output_stream, "  /* %s */\n", c->type == ACT_CHP_COMMA ? "comma" : "semicolon");
       a = chan_count++;
       ret = a;
@@ -1189,7 +1189,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
 //        fprintf(output_stream, "  /* ... printchpstmt 0 c_a=%d, c_b=%d, ns=%d... for RIGHT side*/\n", a, b, need_sequencer);
         /* connect the go signal to the statement appropriately */
         fprintf(output_stream, "  syn::%s s_%d;\n", c->type == ACT_CHP_COMMA ? "par" : "seq", s);
-        
+
         fprintf(output_stream, "  /* is this the place?? ns=%d*/\n", need_sequencer);
         // print out statement to rely on sequencer if needed
         if (need_sequencer >= 0 && a == need_sequencer) {
@@ -1254,7 +1254,7 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   bundle_data = bundled;
   optimization = opt;
 
-  /* initialize the output location */ 
+  /* initialize the output location */
   if (output_file)
   {
     char *output_path = (char *)calloc(MAX_PATH_SIZE, sizeof(char));
@@ -1268,12 +1268,12 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   {
     output_stream = stdout;
   }
-  
+
   /* TODO - print wrapper process declaration */
   fprintf(output_stream, "import syn;\n");
   if (bundle_data) fprintf(output_stream, "import bundled.act;\n");
   fprintf(output_stream, "\n");
-  
+
   /* Print params for toplevel from process port list */
 //  printf("TEST: %s has %d ports\n", p->getName(), p->getNumPorts());
   int pnum = p->getNumPorts();
@@ -1288,14 +1288,14 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
     for (int i=0; i<pnum; i++) {
       type = p->getPortType (i);
       bw = TypeFactory::bitWidth(type);
-      
+
       if (TypeFactory::isChanType(type)) {
         if (bw == 1) {
           fprintf(output_stream, "aN1of2 %s", p->getPortName(i));
         } else {
           fprintf(output_stream, "aN1of2<%d> %s", TypeFactory::bitWidth(type), p->getPortName(i));
         }
-        
+
         if (i < pnum-1) {
           fprintf(output_stream, "; ");
         } else {
@@ -1303,19 +1303,19 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
         }
       }
     }
-    
+
   }
-  
+
   /* initialize all variables and channels */
   ActInstiter iter(p->CurScope());
   int bw = 0;
-  
+
   fprintf(output_stream, "/* Initialize chp vars */\n");
 
   /* iterate through Scope Hashtable to find all chp variables */
   for (iter = iter.begin(); iter != iter.end(); iter++) {
     ValueIdx *vx = *iter;
-    
+
     /* chan variable found */
     if (TypeFactory::isChanType (vx->t)) {
       bw = TypeFactory::bitWidth(vx->t);
@@ -1324,7 +1324,7 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
       } else if (bw > 1) {
         fprintf(output_stream, "  aN1of2<%d> chan_%s;\n", bw, vx->getName());
       }
-      
+
     /* int variable found */
     } else if (TypeFactory::isIntType (vx->t)) {
       bw = TypeFactory::bitWidth(vx->t);
@@ -1342,19 +1342,19 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   int *bitwidth = (int *) calloc(1, sizeof(int));
   int *base_var = (int *) calloc(1, sizeof(int));
   if (optimization > 0) evaluated_exprs = hash_new(INITIAL_HASH_SIZE);
-  
+
   /* translate the CHP */
   int i = 0;
   if (chp != NULL && chp->c != NULL) {
 //    fprintf(output_stream, "  /* ... printchpstmt 3 c_%d...*/\n",i);
     print_chp_stmt(chp->c, bitwidth, base_var, -1, -1);
   }
-  
+
   if (bitwidth != NULL)
     free(bitwidth);
   if (base_var != NULL)
     free(base_var);
-  
+
   if (optimization > 0)
   {
     /* free allocated memory for buckets still remaining in the table */

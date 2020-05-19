@@ -23,14 +23,13 @@ BINARY=chp2prs.$(EXT)
 TARGETS=$(BINARY)
 
 OBJS=main.o check_chp.o cartographer.o
-OBJS+=../chp-optimize/chp-opt.o ../chp-optimize/var-table.o ../chp-optimize/lattice.o ../chp-optimize/expr-helpers.o ../chp-optimize/canonical.o ../chp-optimize/sequencers.o ../chp-optimize/deadcode.o
 
 SRCS=$(OBJS:.o=.cc)
 
 include $(VLSI_TOOLS_SRC)/scripts/Makefile.std
 
 $(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
-	$(CXX) $(CFLAGS) $(OBJS) -o $(BINARY) $(LIBACTPASS) 
+	$(CXX) $(CFLAGS) $(OBJS) -o $(BINARY) $(LIBACTPASS) -lchpopt
 
 update: update_channel update_globals update_syn update_bundled
 
@@ -42,7 +41,7 @@ update_channel:
 	else \
 		(echo "Error: no channel file to update") \
 	fi
-	
+
 update_globals:
 	@if [ -d lib/ -a -f lib/globals.act ] ; \
 	then \
@@ -69,7 +68,7 @@ update_syn:
 	else \
 		(echo "Error: no syn file to update") \
 	fi
-	
+
  # BUNDLED File Copy for namespace
 update_bundled:
 	@if [ -d lib/ -a -f lib/bundled.act ] ; \
