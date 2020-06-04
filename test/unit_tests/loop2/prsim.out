@@ -1,0 +1,177 @@
+	         0 Reset : 1
+	         0 t.go.a : 0
+	         0 t.go.r : 0
+	         0 _Reset : 0
+	        10 t.var_sel0[2].v.t : 0  [by Reset:=1]
+	        10 t.var_sel0[1].v.t : 0  [by Reset:=1]
+	        10 t.var_sel0[0].v.t : 0  [by Reset:=1]
+	        10 t.var_x.v.t : 0  [by Reset:=1]
+	        10 t.var_y.v.t : 0  [by Reset:=1]
+	        10 t.var_z.v.t : 0  [by Reset:=1]
+	        10 t.var_w.v.t : 0  [by Reset:=1]
+	        10 t.var_sel0[3].v.t : 0  [by Reset:=1]
+	        30 t.var_y.v.f : 1  [by t.var_y.v.t:=0]
+	        30 t.var_x.v.f : 1  [by t.var_x.v.t:=0]
+	        50 t.var_sel0[1].v.f : 1  [by t.s_1[1].in.t:=0]
+	        50 t.var_z.v.f : 1  [by t.c_3.r:=0]
+	        50 t.var_sel0[2].v.f : 1  [by t.s_1[2].in.t:=0]
+	        50 t.var_sel0[3].v.f : 1  [by t.s_1[3].in.t:=0]
+	        50 t.var_w.v.f : 1  [by t.c_5.r:=0]
+	        50 t.var_sel0[0].v.f : 1  [by t.s_1[0].in.t:=0]
+	       240 Reset : 0
+	       240 _Reset : 1
+	       240 t.go.r : 1
+	       770 t.var_sel0[0].v.f : 0  [by t.s_1[0].in.t:=1]
+	       790 t.var_sel0[0].v.t : 1  [by t.var_sel0[0].v.f:=0]
+WARNING: weak-interference `t.gc_1.r'
+>> cause: t.na_16._in1 (val: 0)
+>> time:        840
+WARNING: weak-interference `t.s_5._gor'
+>> cause: t.gc_1.r (val: X)
+>> time:        850
+WARNING: weak-interference `t.e_7._out.f'
+>> cause: t.e_7.go_r (val: X)
+>> time:        870
+WARNING: weak-interference `t.e_8._out.t'
+>> cause: t.e_7.go_r (val: X)
+>> time:        870
+WARNING: weak-interference `t.e_7.out.f'
+>> cause: t.e_7._out.f (val: X)
+>> time:        880
+WARNING: weak-interference `t.e_8.out.t'
+>> cause: t.e_8._out.t (val: X)
+>> time:        880
+WARNING: weak-interference `t.e_9._out.f'
+>> cause: t.e_8.out.t (val: X)
+>> time:        890
+WARNING: weak-interference `t.e_9.out.f'
+>> cause: t.e_9._out.f (val: X)
+>> time:        900
+WARNING: weak-interference `t.rtv_5._goa'
+>> cause: t.e_9.out.f (val: X)
+>> time:        910
+WARNING: weak-interference `t.s_5.r.a'
+>> cause: t.rtv_5._goa (val: X)
+>> time:        920
+WARNING: weak-interference `t.s_5._ra'
+>> cause: t.s_5.r.a (val: X)
+>> time:        930
+WARNING: weak-interference `t.s_5.x'
+>> cause: t.s_5._ra (val: X)
+>> time:        940
+WARNING: weak-interference `t.s_5._goa'
+>> cause: t.s_5.x (val: X)
+>> time:        950
+WARNING: weak-interference `t.e_10.go_r'
+>> cause: t.s_5._goa (val: X)
+>> time:        960
+WARNING: weak-interference `t.e_10._out.f'
+>> cause: t.e_10.go_r (val: X)
+>> time:        970
+WARNING: weak-interference `t.gc_1.f'
+>> cause: t.e_10._out.f (val: X)
+>> time:        980
+WARNING: weak-interference `t.s_6._gor'
+>> cause: t.gc_1.f (val: X)
+>> time:        990
+WARNING: weak-interference `t.e_11._out.f'
+>> cause: t.e_11.go_r (val: X)
+>> time:       1010
+WARNING: weak-interference `t.e_12._out.t'
+>> cause: t.e_11.go_r (val: X)
+>> time:       1010
+WARNING: weak-interference `t.e_11.out.f'
+>> cause: t.e_11._out.f (val: X)
+>> time:       1020
+WARNING: weak-interference `t.e_12.out.t'
+>> cause: t.e_12._out.t (val: X)
+>> time:       1020
+WARNING: weak-interference `t.e_13._out.f'
+>> cause: t.e_12.out.t (val: X)
+>> time:       1030
+WARNING: weak-interference `t.e_13.out.f'
+>> cause: t.e_13._out.f (val: X)
+>> time:       1040
+WARNING: weak-interference `t.rtv_6._goa'
+>> cause: t.e_13.out.f (val: X)
+>> time:       1050
+WARNING: weak-interference `t.s_6.r.a'
+>> cause: t.rtv_6._goa (val: X)
+>> time:       1060
+WARNING: weak-interference `t.s_6._ra'
+>> cause: t.s_6.r.a (val: X)
+>> time:       1070
+WARNING: weak-interference `t.s_6.x'
+>> cause: t.s_6._ra (val: X)
+>> time:       1080
+WARNING: weak-interference `t.s_6._goa'
+>> cause: t.s_6.x (val: X)
+>> time:       1090
+WARNING: weak-interference `t.e_14.go_r'
+>> cause: t.s_6._goa (val: X)
+>> time:       1100
+WARNING: weak-interference `t.e_14._out.f'
+>> cause: t.e_14.go_r (val: X)
+>> time:       1110
+WARNING: weak-interference `t.c_7.a'
+>> cause: t.e_14._out.f (val: X)
+>> time:       1120
+WARNING: weak-interference `t.or_17._out'
+>> cause: t.c_7.a (val: X)
+>> time:       1130
+WARNING: weak-interference `t.s_10._gor'
+>> cause: t.c_7.a (val: X)
+>> time:       1130
+WARNING: weak-interference `t.or_17.out'
+>> cause: t.or_17._out (val: X)
+>> time:       1140
+WARNING: weak-interference `t.or_18._out'
+>> cause: t.or_17.out (val: X)
+>> time:       1150
+WARNING: weak-interference `t.e_17._out.f'
+>> cause: t.e_17.go_r (val: X)
+>> time:       1150
+WARNING: weak-interference `t.e_18._out.t'
+>> cause: t.e_17.go_r (val: X)
+>> time:       1150
+WARNING: weak-interference `t.go.a'
+>> cause: t.or_18._out (val: X)
+>> time:       1160
+WARNING: weak-interference `t.e_18.out.t'
+>> cause: t.e_18._out.t (val: X)
+>> time:       1160
+WARNING: weak-interference `t.e_17.out.f'
+>> cause: t.e_17._out.f (val: X)
+>> time:       1160
+WARNING: weak-interference `t.e_19._out.f'
+>> cause: t.e_17.out.f (val: X)
+>> time:       1170
+	      1170 t.go.a : X  [by t.or_18._out:=X]
+WARNING: weak-interference `t.e_19.out.f'
+>> cause: t.e_19._out.f (val: X)
+>> time:       1180
+WARNING: weak-interference `t.rtv_10._goa'
+>> cause: t.e_19.out.f (val: X)
+>> time:       1190
+WARNING: weak-interference `t.s_10.r.a'
+>> cause: t.rtv_10._goa (val: X)
+>> time:       1200
+WARNING: weak-interference `t.s_10._ra'
+>> cause: t.s_10.r.a (val: X)
+>> time:       1210
+WARNING: weak-interference `t.s_10.x'
+>> cause: t.s_10._ra (val: X)
+>> time:       1220
+WARNING: weak-interference `t.s_10._goa'
+>> cause: t.s_10.x (val: X)
+>> time:       1230
+WARNING: weak-interference `t.e_20.go_r'
+>> cause: t.s_10._goa (val: X)
+>> time:       1240
+WARNING: weak-interference `t.e_20._out.f'
+>> cause: t.e_20.go_r (val: X)
+>> time:       1250
+WARNING: weak-interference `t.c_8.a'
+>> cause: t.e_20._out.f (val: X)
+>> time:       1260
+WRONG ASSERT:	"t.go.a" has value X and not 0.

@@ -862,7 +862,7 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var)
   gc = gc->next;
   while (gc)
   {
-    fprintf(output_stream, "  /* cascade gc: type=%d */\n", gc->s->type);
+    fprintf("  /* cascade gc: type=%d */\n", gc->s->type);
     end_gc_chan = print_one_gc(gc, bitwidth, base_var);
     gc = gc->next;
   }
@@ -941,9 +941,8 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
   switch (c->type)
   {
     case ACT_CHP_SKIP:
-      fprintf(output_stream, "  /* skip */\n");
-      fprintf(output_stream, "  a1of1 c_%d;\n", chan_count);
-      fprintf(output_stream, "  syn::syn_skip s_%d;\n", stmt_count);
+      fprintf(output_stream, "  /* skip */");
+      fprintf(output_stream, "  syn::skip s_%d;\n", stmt_count);
       fprintf(output_stream, "  s_%d.go = c_%d;\n", stmt_count, chan_count);
       stmt_count++;
       ret = chan_count++;

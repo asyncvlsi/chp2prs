@@ -409,8 +409,8 @@ namespace syn {
     {
       go_r & v.t -> _out.t-
       go_r & v.f -> _out.f-
-      ~_Reset | ~go_r -> _out.t+
-      ~_Reset | ~go_r -> _out.f+
+      ~_Reset | ~go_r <20> -> _out.t+
+      ~_Reset | ~go_r <20> -> _out.f+
 
       _out.t => out.t-
       _out.f => out.f-
