@@ -5,8 +5,7 @@ x86_64*
 *~
 *.deps
 tst/*
-test/unit_tests/*/test.prs
-test/unit_tests/*/test_final.act
-test/unit_tests/*/prsim.out
+test.prs
+test_final.act
+prsim.out
 .DS_Store
-test/.DS_Store
