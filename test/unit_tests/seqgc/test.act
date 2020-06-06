@@ -1,4 +1,4 @@
-defproc SeqGc () {
+defproc seqgc () {
   int<1> x;
   int<1> y;
   int<1> z;
@@ -10,5 +10,5 @@ defproc SeqGc () {
   }
 }
 
-SeqGc c;
+seqgc c;
 
