@@ -1,4 +1,5 @@
 initialize
+random
 watch Reset
 watch _Reset
 watch t.go.r
