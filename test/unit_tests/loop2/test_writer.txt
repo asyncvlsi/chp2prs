@@ -1,8 +1,0 @@
-bool GND  0,0
-bool t.go.r       0,0     1,1
-syn_var t.var_x   n,0     n,0
-syn_var t.var_y   n,0     n,0
-syn_var t.var_z   n,0     n,0
-syn_var t.var_w   n,0     n,0
-syn_var t.var_sel0[4]   nnnn,0000     nnnn,1000
-bool t.go.a       0,0     n,0
