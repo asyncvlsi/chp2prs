@@ -83,4 +83,10 @@ update_bundled:
 		(echo "Error: no bundled file to update") \
 	fi
 
+testseq:
+	@if [ -d test -a -x test/seqgc.sh ]; \
+	then \
+		(cd test; ./seqgc.sh); \
+	fi
+
 -include Makefile.deps

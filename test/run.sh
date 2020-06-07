@@ -104,38 +104,6 @@ then
         echo "* # FAILED DIRECTORS:${normal} $fail ${bold}*"
         echo "* FAILED DIRECTORIES:${normal}$faildirs ${bold}*"
         echo "*********************************${normal}"
-        
-        
-        # repeatedlly prsim on seqgc prs
-        echo ""
-        echo ""
-        echo "${bold}*********************"
-        echo "* seqgc repetitions *"
-        echo "*********************${normal}"
-        i="seqgc"
-        has_failed=0
-        iter=0
-        while [ has_failed=0 -a $iter -lt 100 ]
-        do
-          (echo "\nTEST $iter\n" >> "$i/prsim.out");
-          if (($ACT_HOME/bin/prsim "$i/test.prs" < "$i/test.prsim") >> "$i/prsim.out");
-          then
-            if (cat "$i/prsim.out" | grep -e "WRONG ASSERT" -e "FATAL" -e "not found" -e "WARNING:");
-            then
-                echo ""
-                echo "${bold}==> test #${iter} ${und}FAILED${normal}"
-                has_failed=1
-            else
-                echo "==> passed test #${iter}"
-                iter=`expr $iter + 1`
-            fi
-          else
-            has_failed=1
-          fi
-        done
-        (cd ".."; pwd);
-      
-        
     else
         echo "${bold}Error:${bold} no unit_tests directory."
     fi
