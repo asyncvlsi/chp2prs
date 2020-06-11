@@ -37,9 +37,9 @@ then
             iter=0
             echo "using random_seed"
             echo "\nusing random_seed" >> "$i/prsim.out"
-            while [ has_failed=0 -a $iter -lt 200 ]
+            while [ has_failed=0 -a $iter -lt 15000 ]
             do
-                (echo "random_seed $iter" > "$i/test_rand.prsim");
+                (echo "random_seed $iter \nrandom" > "$i/test_rand.prsim");
                 (cat "$i/test.prsim" >> "$i/test_rand.prsim");
                 (echo "\nTEST $iter\n" >> "$i/prsim.out");
                 if (($ACT_HOME/bin/prsim "$i/test.prs" < "$i/test_rand.prsim") >> "$i/prsim.out");
@@ -51,8 +51,12 @@ then
                         has_failed=1
                     else
                         echo "==> passed test #${iter}"
-                        iter=`expr $iter + 10`
-                    fi
+                        if [ $iter -gt 99 ];
+                        then
+                          iter=`expr $iter + 100`
+                        else
+                          iter=`expr $iter + 2`
+                        fi                    fi
                 else
                     has_failed=1
                 fi
@@ -111,7 +115,8 @@ then
                           iter=`expr $iter + 100`
                         else
                           iter=`expr $iter + 2`
-                        fi                    fi
+                        fi
+                     fi
                 else
                     has_failed=1
                 fi
