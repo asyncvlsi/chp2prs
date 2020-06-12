@@ -1,0 +1,5 @@
+bool t.c_0.r        r,r                1,1
+syn_var t.var_x[32] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,10001000110011110111001010101101 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,10101000110110010110010000110000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,01101110111110110010110100011011
+syn_var t.var_y[32] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,01101110111110110010110100011011
+syn_var t.var_z[32] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,01000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,10000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,11000000000000000000000000000000
+bool t.c_0.a        r,r n,n n,n n,n n,1

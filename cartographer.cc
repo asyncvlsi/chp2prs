@@ -902,10 +902,11 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var)
     /* construct a multi-stage or gate for guard outputs */
     int a, b;
     a = stmt_count++;
+    printf("... start_gc_chan=%d, sgc+2=%d, end_gc_chan=%d\n", start_gc_chan, start_gc_chan+2, end_gc_chan);
     fprintf(output_stream, "  syn::bool_or or_%d;\n", a);
     fprintf(output_stream, "  or_%d.in1 = gc_%d.t;\n", a, start_gc_chan);
     fprintf(output_stream, "  or_%d.in2 = gc_%d.t;\n", a, start_gc_chan + 1);
-    for (int i = start_gc_chan + 2; i < end_gc_chan; i++)
+    for (int i = start_gc_chan + 2; i <= end_gc_chan; i++)
     {
       b = stmt_count++;
       fprintf(output_stream, "  syn::bool_or or_%d;\n", b);
