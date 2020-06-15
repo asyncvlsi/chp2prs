@@ -1,5 +1,5 @@
 bool t.go.r       0,0     1,1
-syn_var t.var_x[32]   nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000
-syn_var t.var_y[32]   nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000
-syn_var t.var_z[32]   nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 
-bool t.go.a       0,0     n,1
+syn_var t.var_x[32]   nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,01000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00100000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00010000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00001000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000001000000000000000000000
+syn_var t.var_y[32]   nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000  nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,10000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,01000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,11000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00100000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,01010000000000000000000000000000
+syn_var t.var_z[32]   nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000
+bool t.go.a 0,0 n,0 n,0 n,0 n,0 n,0 n,0 n,1

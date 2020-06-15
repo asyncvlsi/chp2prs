@@ -1,0 +1,5 @@
+bool t.go.r       0,0     1,1
+syn_var t.var_x[4]   nnnn,0000 nnnn,1000 nnnn,0100 nnnn,0010 nnnn,0001
+syn_var t.var_y[2]   nn,00  nn,00 nn,10 nn,01 nn,11
+syn_var t.var_z[4]   nnnn,0000 nnnn,0000 nnnn,0000 nnnn,0000 nnnn,0000 nnnn,0001
+bool t.go.a 0,0 n,0 n,0 n,0 n,0 n,1
