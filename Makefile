@@ -83,10 +83,15 @@ update_bundled:
 		(echo "Error: no bundled file to update") \
 	fi
 
-testseq:
-	@if [ -d test -a -x test/seqgc.sh ]; \
+testreps:
+	@if [ -d test -a -x test/repeat_unit.sh ]; \
 	then \
-		(cd test; ./seqgc.sh); \
+		if [ -d "test/unit_tests/${unit}" ]; \
+		then \
+			(cd test; ./repeat_unit.sh); \
+		else \
+			(echo "Error: make testreps unit={unit_test} [warning={0/1}]") \
+		fi \
 	fi
 
 -include Makefile.deps

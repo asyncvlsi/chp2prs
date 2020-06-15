@@ -7,5 +7,6 @@ x86_64*
 tst/*
 test.prs
 test_final.act
+test_rand.prsim
 prsim.out
 .DS_Store
