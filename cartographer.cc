@@ -730,7 +730,7 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
   int seq = stmt_count++;
   int evar = expr_count++;
 
-  fprintf(output_stream, "  /* testpoint 1 */\n");
+  fprintf(output_stream, "  /* testpoint 1, bits=%d */\n", bits);
   fprintf(output_stream, "  syn::fullseq s_%d;\n", seq);
   fprintf(output_stream, "  %s = s_%d.go.r;\n", req, seq);
 
@@ -902,12 +902,13 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var)
     /* construct a multi-stage or gate for guard outputs */
     int a, b;
     a = stmt_count++;
-    printf("... start_gc_chan=%d, sgc+2=%d, end_gc_chan=%d\n", start_gc_chan, start_gc_chan+2, end_gc_chan);
+    printf("... ... start_gc_chan=%d, sgc+2=%d, end_gc_chan=%d\n", start_gc_chan, start_gc_chan+2, end_gc_chan);
     fprintf(output_stream, "  syn::bool_or or_%d;\n", a);
     fprintf(output_stream, "  or_%d.in1 = gc_%d.t;\n", a, start_gc_chan);
     fprintf(output_stream, "  or_%d.in2 = gc_%d.t;\n", a, start_gc_chan + 1);
     for (int i = start_gc_chan + 2; i <= end_gc_chan; i++)
     {
+      printf("... ... in sgc+2 loop!\n");
       b = stmt_count++;
       fprintf(output_stream, "  syn::bool_or or_%d;\n", b);
       fprintf(output_stream, "  or_%d.in1 = or_%d.out;\n", b, a);
@@ -934,7 +935,7 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var)
 
 int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
 {
-  int ret, a, b, delay;
+  int ret, a, b, delay, left_bits;
   InstType *v, *u;
   char buf[MAX_EXPR_SIZE];
   if (!c)
@@ -953,14 +954,17 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       fprintf(output_stream, "  /* assign */\n");
       v = P->Lookup(c->u.assign.id);
       *bitwidth = TypeFactory::bitWidth(v);
+      left_bits = TypeFactory::bitWidth(v);
       /* evaluate the RHS statement */
+//      fprintf(output_stream, "  /* ... 1 bits=%d leftbw=%d... */\n", *bitwidth, left_bits);
       a = print_expr(c->u.assign.e, bitwidth, base_var, &delay);
+//      fprintf(output_stream, "  /* ... 2 bits=%d leftbw=%d... */\n", *bitwidth, left_bits);
       ret = chan_count++;
       b = stmt_count++;
       /* create request/acknowledge channel for the statement */
       fprintf(output_stream, "  a1of1 c_%d;\n", ret);
       snprintf(buf, MAX_EXPR_SIZE, "c_%d.r", ret);
-      if (bundle_data && TypeFactory::bitWidth(v) > 1)
+      if (bundle_data && left_bits > 1)
       {
         /* accumulate delay of the last operation */
         delay += get_bundle_delay(*bitwidth, c->u.assign.e->type);
@@ -986,9 +990,9 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
         a = expr_count++;
       }
       /* receive statement output into a latched value */
-      a = print_expr_tmpvar(buf, *base_var, a, *bitwidth);
+      a = print_expr_tmpvar(buf, *base_var, a, left_bits);
       /* receive latched value into assignment variable */
-      if (TypeFactory::bitWidth(v) == 1)
+      if (left_bits == 1)
       {
         fprintf(output_stream, "  syn::recv s_%d;\n", b);
         fprintf(output_stream, "  s_%d.go = c_%d;\n", b, ret);
@@ -1227,7 +1231,7 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   fprintf(output_stream, "\n");
   
   /* Print params for toplevel from process port list */
-  printf("TEST: %s has %d ports\n", p->getName(), p->getNumPorts());
+//  printf("TEST: %s has %d ports\n", p->getName(), p->getNumPorts());
   int pnum = p->getNumPorts();
   
   /* store names of toplevel params so not redeclared below */

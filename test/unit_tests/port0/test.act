@@ -10,4 +10,3 @@ defproc port0(chan(int<32>) a) {
 }
 
 port0 c;
-
