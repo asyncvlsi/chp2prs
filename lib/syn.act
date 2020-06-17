@@ -369,11 +369,15 @@ namespace syn {
     _dualrail _out;
     prs
     {
-      go_r & ((t | f) & _a) => _out.t-
-      go_r & ((_t & _f) | a) => _out.f-
+      /* go_r & ((t | f) & _a) => _out.t- */
+      /* go_r & ((_t & _f) | a) => _out.f- */
+      go_r & (t | f) -> _out.t-
+      go_r & _t & _f -> _out.f-
+      ~go_r -> _out.t+
+      ~go_r -> _out.f+
       t => _t-
       f => _f-
-      a => _a-
+      /* a => _a- */
       _out.t => out.t-
       _out.f => out.f-
     }
@@ -619,18 +623,29 @@ namespace syn {
   /* ========================== COMPARISON OPERATORS ========================== */
 
   /* EQUALITY */
+  defproc base_eq (dualrail in1, in2; dualrail out)
+  {
+    bool _t, _f;
+      prs {
+         (in1.t & in2.t) | (in1.f & in2.f) -> _t-
+         (in1.t & in2.f) | (in1.f & in2.t) -> _f-
+        ~in1.t & ~in1.f & ~in2.t & ~in2.f -> _t+
+        ~in1.t & ~in1.f & ~in2.t & ~in2.f -> _f+
+        _f => out.f-
+        _t => out.t-
+      }
+  }
+  
   export template<pint N>
   defproc expr_eq (dualrail in1[N], in2[N]; dualrail out)
   {
-    _dualrail _out;
-    prs
-    {
-      (&i:N: ((in1[i].t & in2[i].t) | (in1[i].f & in2[i].f))) => _out.t-
-      (|i:N: ((in1[i].t & in2[i].f) | (in1[i].f & in2[i].t))) => _out.f-
-
-      _out.t => out.t-
-      _out.f => out.f-
-    }
+    { N > 0 : "Why bother?" };
+    [ N = 1 -> base_eq base(in1[0],in2[0],out);
+    [] N > 1 ->
+        expr_eq<N/2> left(in1[0..N/2-1], in2[0..N/2-1]);
+        expr_eq<N-N/2> right(in1[N/2..N-1],in2[N/2..N-1]);
+        expr_and res(left.out, right.out, out);
+    ]
   }
 
   /* INEQUALITY */
