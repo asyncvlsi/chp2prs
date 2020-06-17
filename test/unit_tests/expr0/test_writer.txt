@@ -1,5 +1,5 @@
 bool t.go.r 0,0 1,1
 syn_var t.var_x n,0 n,1
-syn_var t.var_y[2] nn,00 nn,01
-syn_var t.var_z[2] nn,00 nn,11
+syn_var t.var_y[32] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000010000000000000000
+syn_var t.var_z[32] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000100000000000000000
 bool t.go.a n,0 n,1
