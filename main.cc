@@ -93,7 +93,8 @@ int main(int argc, char **argv)
     printf("\n");
   }
   
-  check_chp(p);
-  generate_act(p, argv[1], argv[3], false, 0, chpopt);
+  struct Hashtable * chan_sends = check_chp(p);
+  generate_act(p, argv[1], argv[3], false, 0, chpopt, chan_sends);
+  hash_free(chan_sends);
   return 0;
 }

@@ -29,6 +29,9 @@
 #include <act/types.h>
 #include "check_chp.h"
 
+#define MAX_KEY_SIZE 2048
+#define INITIAL_HASH_SIZE 10
+
 static Process *P;
 
 int get_expr_bitwidth (Expr *e)
@@ -168,8 +171,36 @@ int get_expr_bitwidth (Expr *e)
   return -1;
 }
 
-void check (act_chp_lang_t *c)
+int hash_get_chan_send(struct Hashtable *h, const char * c)
 {
+  hash_bucket_t *b;
+  int ret;
+  char * k = (char *) calloc(MAX_KEY_SIZE, sizeof(char));
+  snprintf(k, MAX_KEY_SIZE, "%s", c);
+
+  /* if an entry is in the table, return the integer associated with the value */
+  if ((b = hash_lookup(h, k)))
+  {
+    int count = b->i;
+    b->i = count + 1;
+    printf("Chan %s found! New send count = %d\n", c, count+1);
+  }
+  /* if the key isn't in the table, add it (and its commutative counterpart) */
+  else
+  {
+    hash_bucket_t *b = hash_add(h, c);
+    b->i = 1;
+    printf("No chan %s found. ==> Created with send count = 1\n", c);
+    ret = -1;
+  }
+
+  free(k);
+  return ret;
+}
+
+struct Hashtable * check (act_chp_lang_t *c)
+{
+  struct Hashtable * chan_sends = hash_new(INITIAL_HASH_SIZE);
   int expr_width;
   InstType *it;
 
@@ -225,6 +256,7 @@ void check (act_chp_lang_t *c)
         {
           if (c->type == ACT_CHP_SEND)
           {
+            hash_get_chan_send(chan_sends, c->u.comm.chan->getName());
             Expr *e = (Expr *) list_value (li);
             expr_width = get_expr_bitwidth (e);
             /* ensure correct sub-expressions in the send buffer */
@@ -298,10 +330,11 @@ void check (act_chp_lang_t *c)
       }
       break;
     }
+  return chan_sends;
 }
 
-void check_chp(Process *p)
+struct Hashtable * check_chp(Process *p)
 {
   P = p;
-  check(p->lang->getchp()->c);
+  return check(p->lang->getchp()->c);
 }

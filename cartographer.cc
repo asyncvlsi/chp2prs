@@ -54,7 +54,7 @@ static int optimization = 0;
 static int chpoptimize = 0;
 
 static struct Hashtable *evaluated_exprs;
-
+static struct Hashtable *chan_sends;
 //#define ACT_LIB_PATH "lib/"
 #define ACT_LIB_PATH ""
 
@@ -1074,12 +1074,21 @@ int act_chp_assign(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
 int act_chp_send(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_sequencer, int seq_num) {
   int ret, a, b, delay;
   InstType *v, *u;
-  char buf[MAX_EXPR_SIZE];
+  char buf[MAX_EXPR_SIZE], chan_name[MAX_EXPR_SIZE];
+  hash_bucket_t *b;
+  char * k = (char *) calloc(MAX_KEY_SIZE, sizeof(char));
+  snprintf(k, MAX_KEY_SIZE, "%s", c->u.comm.chan->getName());
+  b = hash_lookup(h, k);
+  
+  if (!b) {
+    printf(stderr, "ERROR: no hash item for chan %s\n", k);
+  }
 
   fprintf(output_stream, "  /* send */\n");
   if (list_length(c->u.comm.rhs) == 1)
   {
     v = P->Lookup(c->u.comm.chan);
+    
     *bitwidth = TypeFactory::bitWidth(v);
     /* evaluate the expression to be sent */
     a = print_expr((Expr *)list_value(list_first(c->u.comm.rhs)), bitwidth, base_var, &delay);
@@ -1115,19 +1124,30 @@ int act_chp_send(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seque
     /* receive statement output into a latched value */
     a = print_expr_tmpvar(buf, *base_var, a, *bitwidth);
     fprintf(output_stream, "  c_%d.a = e_%d.go_r;\n", ret, a);
+    
+    /* get chan name depending on # of channel sends */
+    if (b->i == 1) {
+      snprintf(chan_name, MAX_EXPR_SIZE, "%s", c->u.comm.chan->getName());
+    } else {
+      // TODO: get current send # for this chan 
+//      snprintf(chan_name, MAX_EXPR_SIZE, "%s_%d", c->u.comm.chan->getName(), );
+//      fprintf(output_stream, )
+
+    }
+    
     /* connect latched value to channel */
     if (*bitwidth == 1)
     {
-      fprintf(output_stream, "  %s.t = e_%d.out.t;\n", c->u.comm.chan->getName(), a);
-      fprintf(output_stream, "  %s.f = e_%d.out.f;\n", c->u.comm.chan->getName(), a);
+      fprintf(output_stream, "  %s.t = e_%d.out.t;\n", chan_name, a);
+      fprintf(output_stream, "  %s.f = e_%d.out.f;\n", chan_name, a);
     }
     else if (bundle_data)
     {
-      fprintf(output_stream, "  (i:%d: %s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), c->u.comm.chan->getName(), a);
+      fprintf(output_stream, "  (i:%d: %s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), chan_name, a);
     }
     else
     {
-      fprintf(output_stream, "  (i:%d: %s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), c->u.comm.chan->getName(), a);
+      fprintf(output_stream, "  (i:%d: %s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), chan_name, a);
     }
   }
   fprintf(output_stream, "\n");
@@ -1320,7 +1340,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
   return ret;
 }
 
-void generate_act(Process *p, const char * input_file, const char *output_file, bool bundled, int opt, int chpopt)
+void generate_act(Process *p, const char * input_file, const char *output_file, bool bundled, int opt, int chpopt, struct Hashtable * chans)
 {
   struct act_chp *chp = NULL;
   if (p->lang != NULL && p->lang->getchp() != NULL)
@@ -1331,6 +1351,7 @@ void generate_act(Process *p, const char * input_file, const char *output_file, 
   bundle_data = bundled;
   optimization = opt;
   chpoptimize = chpopt;
+  chan_sends = chans;
 
   /* initialize the output location */ 
   if (output_file)

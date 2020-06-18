@@ -797,3 +797,31 @@ namespace syn {
     }
   }
 }
+
+/* MULTIPLE CHANNEL MERGE: W=chan bitwidth, N=# of chans */
+export template<pint N, W>
+defproc merge_chans (aN1of2<W> c[N]; aN1of2<W> out)
+{
+  _dualrail _out[N];
+  bool _a;
+  bool _acks[N];
+  or<W> v[N];
+  
+  /* (i:N: (j:N: v[i].in1=c[i].d[j].t;
+                 v[i].in2=c[i].d[j].f;)) */
+  
+  prs {
+    /* OR chan dualrail lines together for output */
+    (i:N: (|j:N: c[j].d[i].t) => _out[i].t-)
+    (i:N: (|j:N: c[j].d[i].f) => _out[i].f-)
+    (i:N: _out[i].t => out.d[i].t-)
+    (i:N: _out[i].f => out.d[i].f-)
+    
+    /* get valid ack of each chan: 1 of each t/f data high */
+    (i:N: (&j:N: (c[j].d[j].t | c[j].d[j].f)) => _acks[i]-)
+    
+    /* combine chan acks with celem for final ack */
+    (&i:N: _acks[i]) -> out.a-
+    (&i:N: ~_acks[i]) -> out.a+
+  }
+}

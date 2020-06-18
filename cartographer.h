@@ -410,7 +410,8 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
  *             input_file - the file passed to chp2prs, is imported in the outputted ACT file
  *             output_file - the destination of the output of chp2prs
  *             chpopt - boolean indicating if the "--optimize" was used... enables sequencer optimization by the conversion of the CHP with the tools from the chp-optimize library CHP
+ *             chans - hashtable with # of sends per channel
  */
-void generate_act(Process *p, const char *input_file, const char *output_file, bool bund, int opt, int chpopt);
+void generate_act(Process *p, const char *input_file, const char *output_file, bool bund, int opt, int chpopt, struct Hashtable * chans);
 
 #endif

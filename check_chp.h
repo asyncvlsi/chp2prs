@@ -77,8 +77,8 @@ int get_expr_bitwidth (Expr *e);
  *
  * Parameters: c - a structure representing the CHP program
  */
-void check (act_chp_lang_t *c);
+struct Hashtable * check (act_chp_lang_t *c);
 
-void check_chp (Process *p);
+struct Hashtable * check_chp (Process *p);
 
 #endif
