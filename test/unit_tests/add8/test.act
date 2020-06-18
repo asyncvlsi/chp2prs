@@ -10,4 +10,4 @@ defproc add8() {
   }
 }
 
-add8 a;
+add8 addition;

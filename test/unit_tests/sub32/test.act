@@ -10,4 +10,4 @@ defproc sub32() {
   }
 }
 
-sub32 s;
+sub32 subtract;

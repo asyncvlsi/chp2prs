@@ -7,5 +7,5 @@ defproc loop0 () {
   }
 }
 
-loop0 l;
+loop0 loop;
 /* [] y=0 -> x:=y; y:=0  */

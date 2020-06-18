@@ -19,4 +19,4 @@ defproc assign3 () {
   }
 }
 
-assign3 a;
+assign3 assign;

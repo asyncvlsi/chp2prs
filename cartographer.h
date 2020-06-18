@@ -386,11 +386,13 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var);
  * Parameters: c - object containing the CHP statement
  *             bitwidth - reference to the width of the statement
  *             base_var - reference to the go signal for the statement
+ *             need_sequencer - control signal # if fullseq needed, o.w. = -1
+ *             seq_num - fullseq variable # if fullseq needed, o.w. = -1
  *
  * Return Value: the integer corresponding to the base request channel for the
  *               statement
  */
-int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var);
+int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_sequencer, int seq_num);
 
 
 /*
@@ -405,7 +407,10 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var);
  *    All lines of ACT are printed to the location specified by output_stream.
  *
  * Parameters: c - object containing the CHP program
+ *             input_file - the file passed to chp2prs, is imported in the outputted ACT file
+ *             output_file - the destination of the output of chp2prs
+ *             chpopt - boolean indicating if the "--optimize" was used... enables sequencer optimization by the conversion of the CHP with the tools from the chp-optimize library CHP
  */
-void generate_act(Process *p, const char *output_file, bool bund, int opt);
+void generate_act(Process *p, const char *input_file, const char *output_file, bool bund, int opt, int chpopt);
 
 #endif

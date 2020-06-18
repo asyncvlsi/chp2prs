@@ -10,5 +10,5 @@ defproc comm0() {
   }
 }
 
-comm0 c;
+comm0 com;
 

@@ -30,8 +30,7 @@
 #include "cartographer.h"
 #include <act/iter.h>
 #include <act/value.h>
-
-
+#include <act/chp-opt/optimize.h>
 /*
  *
  *  Core syntax-directed translation code written by Rajit Manohar
@@ -52,6 +51,7 @@ static int gc_chan_count = 0;
 
 static bool bundle_data = false;
 static int optimization = 0;
+static int chpoptimize = 0;
 
 static struct Hashtable *evaluated_exprs;
 
@@ -433,10 +433,18 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
   switch (e->type)
   {
     case E_AND:
-      ret = binop("expr_and", e, bitwidth, base_var, delay, true, false);
+      if (*bitwidth == 1) {
+        ret = binop("expr_and", e, bitwidth, base_var, delay, true, false);
+      } else {
+        ret = binop("and", e, bitwidth, base_var, delay, true, false);
+      }
       break;
     case E_OR:
-      ret = binop("expr_or", e, bitwidth, base_var, delay, true, false);
+      if (*bitwidth == 1) {
+        ret = binop("expr_or", e, bitwidth, base_var, delay, true, false);
+      } else {
+        ret = binop("or", e, bitwidth, base_var, delay, true, false);
+      }
       break;
     case E_XOR:
       ret = binop("expr_xor", e, bitwidth, base_var, delay, true, false);
@@ -731,8 +739,10 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
   int evar = expr_count++;
 
   fprintf(output_stream, "  /* testpoint 1, bits=%d */\n", bits);
-  fprintf(output_stream, "  syn::fullseq s_%d;\n", seq);
-  fprintf(output_stream, "  %s = s_%d.go.r;\n", req, seq);
+  if (!chpoptimize) {
+    fprintf(output_stream, "  syn::fullseq s_%d;\n", seq);
+    fprintf(output_stream, "  %s = s_%d.go.r;\n", req, seq);
+  }
 
   if (bits == 1)
   {
@@ -741,8 +751,17 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
     fprintf(output_stream, "  syn::var_init_false tv_%d;\n", seq);
     fprintf(output_stream, "  tv_%d.v = rtv_%d.v;\n", seq, seq);
     fprintf(output_stream, "  e_%d.v = tv_%d.v;\n", evar, seq);
-    fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
-    fprintf(output_stream, "  s_%d.r = rtv_%d.go;\n", seq, seq);
+    
+    if (chpoptimize){
+      fprintf(output_stream, "  %s = e_%d.go_r;\n", req, ego);
+      fprintf(output_stream, "  %s = rtv_%d.go.r;\n", req, seq);
+      fprintf(output_stream, "  rtv_%d.go.a = e_%d.go_r;\n", seq, evar);
+    } else {
+      fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
+      fprintf(output_stream, "  s_%d.r = rtv_%d.go;\n", seq, seq);
+      fprintf(output_stream, "  s_%d.go.a = e_%d.go_r;\n", seq, evar);
+    }
+    
     fprintf(output_stream, "  e_%d.out.t = rtv_%d.in.t;\n", eout, seq);
     fprintf(output_stream, "  e_%d.out.f = rtv_%d.in.f;\n", eout, seq);
   }
@@ -758,6 +777,11 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
     fprintf(output_stream, "  s_%d.r.a = brtv_%d.go.a;\n", seq, seq);
     fprintf(output_stream, "  (i:%d: e_%d.out[i].t = brtv_%d.in.d[i].t;\n", bits, eout, seq);
     fprintf(output_stream, "       %*ce_%d.out[i].f = brtv_%d.in.d[i].f;)\n", get_bitwidth(bits, 10), ' ', eout, seq);
+    if (chpoptimize) {
+      fprintf(output_stream, "  brtv_%d.go.a = e_%d.go_r;\n", seq, evar);
+    } else {
+      fprintf(output_stream, "  s_%d.go.a = e_%d.go_r;\n", seq, evar);
+    }
   }
   else
   {
@@ -766,16 +790,29 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
     fprintf(output_stream, "  syn::var_init_false tv_%d[%d];\n", seq, bits);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = tv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = rtv_%d[i].v;)\n", bits, evar, seq);
-    fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
-    fprintf(output_stream, "  /* testpoint 3 */\n");
-    fprintf(output_stream, "  (i:%d: s_%d.r.r = rtv_%d[i].go.r;)\n", bits, seq, seq);
+    
+    if (chpoptimize) {
+      fprintf(output_stream, "  %s = e_%d.go_r;\n", req, ego);
+      fprintf(output_stream, "  (i:%d: %s = rtv_%d[i].go.r;)\n", bits, req, seq);
+    } else {
+      fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
+      fprintf(output_stream, "  /* testpoint 3 */\n");
+      fprintf(output_stream, "  (i:%d: s_%d.r.r = rtv_%d[i].go.r;)\n", bits, seq, seq);
+    }
+    
     fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", bits, seq);
     fprintf(output_stream, "  (i:%d: ct_%d.in[i] = rtv_%d[i].go.a;)\n", bits, seq, seq);
-    fprintf(output_stream, "  s_%d.r.a = ct_%d.out;\n", seq, seq);
+    
+    if (chpoptimize) {
+      fprintf(output_stream, "  ct_%d.out = e_%d.go_r;\n", seq, evar);
+    } else {
+      fprintf(output_stream, "  s_%d.r.a = ct_%d.out;\n", seq, seq);
+      fprintf(output_stream, "  s_%d.go.a = e_%d.go_r;\n", seq, evar);
+    }
+    
     fprintf(output_stream, "  (i:%d: e_%d.out[i].t = rtv_%d[i].in.t;\n", bits, eout, seq);
     fprintf(output_stream, "       %*ce_%d.out[i].f = rtv_%d[i].in.f;)\n", get_bitwidth(bits, 10), ' ', eout, seq);
   }
-  fprintf(output_stream, "  s_%d.go.a = e_%d.go_r;\n", seq, evar);
 
   return evar;
 }
@@ -824,7 +861,7 @@ int print_one_gc(act_chp_gc_t *gc, int *bitwidth, int *base_var)
     a = print_expr_tmpvar(buf, *base_var, a, 1);
 
     /* print guarded statement */
-    b = print_chp_stmt(gc->s, bitwidth, base_var);
+    b = print_chp_stmt(gc->s, bitwidth, base_var, -1, -1);
 
     /* empty guard */
     if (b == -1)
@@ -842,7 +879,7 @@ int print_one_gc(act_chp_gc_t *gc, int *bitwidth, int *base_var)
   /* unguarded statement case (implicit true guard) */
   else
   {
-    b = print_chp_stmt(gc->s, bitwidth, base_var);
+    b = print_chp_stmt(gc->s, bitwidth, base_var, -1, -1);
     fprintf(output_stream, "  gc_%d.r = c_%d.r;\n", ret, b);
     fprintf(output_stream, "  gc_%d.t = c_%d.a;\n", ret, b);
     fprintf(output_stream, "  gc_%d.f = GND;\n", ret);
@@ -933,13 +970,318 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var)
   return ret;
 }
 
-int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
-{
+int act_chp_assign(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_sequencer, int seq_num) {
   int ret, a, b, delay, left_bits;
   InstType *v, *u;
   char buf[MAX_EXPR_SIZE];
+    
+  fprintf(output_stream, "  /* assign */\n");
+  v = P->Lookup(c->u.assign.id);
+  *bitwidth = TypeFactory::bitWidth(v);
+  left_bits = TypeFactory::bitWidth(v);
+  
+  /* evaluate the RHS statement */
+  a = print_expr(c->u.assign.e, bitwidth, base_var, &delay);
+  ret = chan_count++;
+  b = stmt_count++;
+  
+  /* create request/acknowledge channel for the statement */
+  if (need_sequencer >=0) {
+    seq_num++;
+    fprintf(output_stream, "  /* YES we need a sequencer in this assignment */\n");
+    fprintf(output_stream, "  a1of1 c_%d;\n", ret);
+    fprintf(output_stream, "  syn::fullseq fs_%d;\n", seq_num);
+    fprintf(output_stream, "  c_%d = fs_%d.go;\n", ret, seq_num);
+    snprintf(buf, MAX_EXPR_SIZE, "fs_%d.r.r", seq_num);
+  } else {
+    fprintf(output_stream, "  a1of1 c_%d;\n", ret);
+    snprintf(buf, MAX_EXPR_SIZE, "c_%d.r", ret);
+  }
+  
+  if (bundle_data && left_bits > 1)
+  {
+    /* accumulate delay of the last operation */
+    delay += get_bundle_delay(*bitwidth, c->u.assign.e->type);
+    /* add a delay wire for the RHS statement */
+    if (delay > 0)
+    {
+      fprintf(output_stream, "  delay<%d> de_%d;\n", delay, a);
+      fprintf(output_stream, "  de_%d.in = %s;\n", a, buf);
+      snprintf(buf, MAX_EXPR_SIZE, "de_%d.out", a);
+    }
+    /* add a delay wire to invert the output of the RHS statement */
+    delay = get_bundle_delay(*bitwidth, E_NOT);
+    fprintf(output_stream, "  delay<%d> dn_%d;\n", delay, a);
+    fprintf(output_stream, "  dn_%d.in = %s;\n", a, buf);
+    /* receive the RHS output into a dualrail node */
+    fprintf(output_stream, "  bundled_vararray_to_dualrail<%d> be_%d;\n", TypeFactory::bitWidth(v), expr_count);
+    fprintf(output_stream, "  be_%d.d = dn_%d.out;\n", expr_count, a);
+    fprintf(output_stream, "  (i:%d: be_%d.in[i] = be_%d.out[i];)\n", TypeFactory::bitWidth(v), expr_count, a);
+    fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(v), expr_count);
+    fprintf(output_stream, "  e_%d.go_r = dn_%d.out;\n", expr_count, a);
+    fprintf(output_stream, "  (i:%d: e_%d.v[i] = be_%d.out[i];)\n", TypeFactory::bitWidth(v), expr_count, expr_count);
+    snprintf(buf, MAX_EXPR_SIZE, "e_%d.go_r", expr_count);
+    a = expr_count++;
+  }
+  /* receive statement output into a latched value */
+  a = print_expr_tmpvar(buf, *base_var, a, left_bits);
+  /* receive latched value into assignment variable */
+  if (left_bits == 1)
+  {
+    fprintf(output_stream, "  syn::recv s_%d;\n", b);
+    fprintf(output_stream, "  s_%d.go = c_%d;\n", b, ret);
+    fprintf(output_stream, "  s_%d.in.t = e_%d.out.t;\n", b, a);
+    fprintf(output_stream, "  s_%d.in.f = e_%d.out.f;\n", b, a);
+    fprintf(output_stream, "  s_%d.v = var_%s.v;\n", b, c->u.assign.id->getName());
+  }
+  else if (bundle_data)
+  {
+    fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), b);
+    fprintf(output_stream, "  /* testpoint 4 */\n");
+    fprintf(output_stream, "  s_%d.go.r = e_%d.go_r;\n", b, a);
+    fprintf(output_stream, "  s_%d.go.a = c_%d.a;\n", b, ret);
+    fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
+    fprintf(output_stream, "       %*cs_%d.in.d[i].f = e_%d.out[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, a);
+    fprintf(output_stream, "       %*cs_%d.v[i] = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, c->u.assign.id->getName());
+  }
+  else
+  {
+    fprintf(output_stream, "  syn::recv s_%d[%d];\n", b, TypeFactory::bitWidth(v));
+    if (need_sequencer >=0) {
+      fprintf(output_stream, "  (i:%d: s_%d[i].go.r = fs_%d.r.r;)\n", TypeFactory::bitWidth(v), b, seq_num);
+    } else {
+      fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), b, ret);
+    }
+    
+    fprintf(output_stream, "  (i:%d: s_%d[i].in.t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
+    fprintf(output_stream, "       %*cs_%d[i].in.f = e_%d.out[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, a);
+    fprintf(output_stream, "       %*cs_%d[i].v = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, c->u.assign.id->getName());
+    fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", TypeFactory::bitWidth(v), b);
+    fprintf(output_stream, "  (i:%d: ct_%d.in[i] = s_%d[i].go.a;)\n", TypeFactory::bitWidth(v), b, b);
+    if (need_sequencer >=0) {
+      fprintf(output_stream, "  ct_%d.out = fs_%d.r.a;\n", b, seq_num);
+    } else {
+      fprintf(output_stream, "  ct_%d.out = c_%d.a;\n", b, ret);
+    }
+  }
+  fprintf(output_stream, "\n");
+  /* clear assigned entry from the list of evaluated expressions */
+  if (optimization > 0) hash_remove_expr(evaluated_exprs, c->u.assign.id->getName());
+  
+  return ret;
+}
+
+int act_chp_send(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_sequencer, int seq_num) {
+  int ret, a, b, delay;
+  InstType *v, *u;
+  char buf[MAX_EXPR_SIZE];
+
+  fprintf(output_stream, "  /* send */\n");
+  if (list_length(c->u.comm.rhs) == 1)
+  {
+    v = P->Lookup(c->u.comm.chan);
+    *bitwidth = TypeFactory::bitWidth(v);
+    /* evaluate the expression to be sent */
+    a = print_expr((Expr *)list_value(list_first(c->u.comm.rhs)), bitwidth, base_var, &delay);
+    ret = chan_count++;
+    /* create request/acknowledge channel for the statement */
+    fprintf(output_stream, "  a1of1 c_%d;\n", ret);
+    snprintf(buf, MAX_EXPR_SIZE, "c_%d.r", ret);
+    if (bundle_data && TypeFactory::bitWidth(v) > 1)
+    {
+      /* accumulate delay of the last operation */
+      delay += get_bundle_delay(*bitwidth, ((Expr *)list_value(list_first(c->u.comm.rhs)))->type);
+      /* add a delay wire for the statement to be sent */
+      if (delay > 0)
+      {
+        fprintf(output_stream, "  delay<%d> de_%d;\n", delay, a);
+        fprintf(output_stream, "  de_%d.in = %s;\n", a, buf);
+        snprintf(buf, MAX_EXPR_SIZE, "de_%d.out", a);
+      }
+      /* add a delay wire to invert the output of the statement to be sent */
+      delay = get_bundle_delay(*bitwidth, E_NOT);
+      fprintf(output_stream, "  delay<%d> dn_%d;\n", delay, a);
+      fprintf(output_stream, "  dn_%d.in = %s;\n", a, buf);
+      /* receive the statement output into a dualrail node */
+      fprintf(output_stream, "  bundled_vararray_to_dualrail<%d> be_%d;\n", TypeFactory::bitWidth(v), expr_count);
+      fprintf(output_stream, "  be_%d.d = dn_%d.out;\n", expr_count, a);
+      fprintf(output_stream, "  (i:%d: be_%d.in = be_%d.out;)\n", TypeFactory::bitWidth(v), expr_count, a);
+      fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(v), expr_count);
+      fprintf(output_stream, "  e_%d.go_r = dn_%d.out;\n", expr_count, a);
+      fprintf(output_stream, "  (i:%d: e_%d.v[i] = be_%d.out[i];)\n", TypeFactory::bitWidth(v), expr_count, expr_count);
+      snprintf(buf, MAX_EXPR_SIZE, "e_%d.go_r", expr_count);
+      a = expr_count++;
+    }
+    /* receive statement output into a latched value */
+    a = print_expr_tmpvar(buf, *base_var, a, *bitwidth);
+    fprintf(output_stream, "  c_%d.a = e_%d.go_r;\n", ret, a);
+    /* connect latched value to channel */
+    if (*bitwidth == 1)
+    {
+      fprintf(output_stream, "  %s.t = e_%d.out.t;\n", c->u.comm.chan->getName(), a);
+      fprintf(output_stream, "  %s.f = e_%d.out.f;\n", c->u.comm.chan->getName(), a);
+    }
+    else if (bundle_data)
+    {
+      fprintf(output_stream, "  (i:%d: %s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), c->u.comm.chan->getName(), a);
+    }
+    else
+    {
+      fprintf(output_stream, "  (i:%d: %s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), c->u.comm.chan->getName(), a);
+    }
+  }
+  fprintf(output_stream, "\n");
+  return ret;
+}
+
+int act_chp_recv(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_sequencer, int seq_num) {
+  int ret, a, b, delay;
+  InstType *v, *u;
+  char buf[MAX_EXPR_SIZE];
+  
+  fprintf(output_stream, "  /* recv */\n");
+  if (list_length(c->u.comm.rhs) == 1)
+  {
+    v = P->Lookup(c->u.comm.chan);
+    u = P->Lookup((ActId *)list_value(list_first(c->u.comm.rhs)));
+    *bitwidth = TypeFactory::bitWidth(v);
+    ret = chan_count++;
+    a = stmt_count++;
+    /* create request/acknowledge channel for the statement */
+    fprintf(output_stream, "  a1of1 c_%d;\n", ret);
+    /* receive channel value into receiving variable */
+    if (TypeFactory::bitWidth(v) == 1)
+    {
+      fprintf(output_stream, "  syn::recv s_%d;\n", a);
+      fprintf(output_stream, "  s_%d.go = c_%d;\n", a, ret);
+      fprintf(output_stream, "  s_%d.in = %s;\n", a, c->u.comm.chan->getName());
+      fprintf(output_stream, "  s_%d.v = var_%s.v;\n", a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
+    }
+    else if (bundle_data)
+    {
+      fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), a);
+      fprintf(output_stream, "  s_%d.go.r = c_%d.r;\n", a, ret);
+      fprintf(output_stream, "  s_%d.go.a = c_%d.a; c_%d.a = %s.a;\n", a, ret, ret, c->u.comm.chan->getName());
+      fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = %s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
+      fprintf(output_stream, "       %*cs_%d.in.d[i].f = %s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
+      fprintf(output_stream, "       %*cs_%d.v[i] = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
+    }
+    else
+    {
+      fprintf(output_stream, "  syn::recv s_%d[%d];\n", a, TypeFactory::bitWidth(v));
+      fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), a, ret);
+      fprintf(output_stream, "  (i:%d: s_%d[i].in.t = %s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
+      fprintf(output_stream, "       %*cs_%d[i].in.f = %s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
+      fprintf(output_stream, "       %*cs_%d[i].v = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
+      fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", TypeFactory::bitWidth(v), a);
+      fprintf(output_stream, "  (i:%d: ct_%d.in[i] = s_%d[i].go.a;)\n", TypeFactory::bitWidth(v), a, a);
+      fprintf(output_stream, "  ct_%d.out = c_%d.a; c_%d.a = %s.a;\n", a, ret, ret, c->u.comm.chan->getName());
+    }
+    /* clear received entry from the list of evaluated expressions */
+    if (optimization > 0) hash_remove_expr(evaluated_exprs, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
+  }
+  fprintf(output_stream, "\n");
+  return ret;
+}
+
+int act_chp_semicomma(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_sequencer, int seq_num) {
+  int ret, a, b, delay;
+  InstType *v, *u;
+  char buf[MAX_EXPR_SIZE];
+  
+  /* check for sequencer if chpoptimize being used */
+  if (chpoptimize && c != NULL && c->space != NULL && ((SequencerInfo *)c->space) != NULL && &(((SequencerInfo *)c->space)->sequence) != NULL) {
+    fprintf(output_stream, "  /* YES we need a sequencer here, ns=%d, seq_num=%d */\n", chan_count, stmt_count+1);
+    int s = stmt_count++;
+    need_sequencer = chan_count;
+    seq_num = s;
+  }
+  
+  listitem_t *li;
+  /* special case for a single (non-composed) statement, generated by parser */
+  if (list_length(c->u.semi_comma.cmd) == 1)
+  {
+    return print_chp_stmt((act_chp_lang_t *)list_value(list_first(c->u.semi_comma.cmd)), bitwidth, base_var, need_sequencer, seq_num);
+  }
+  fprintf(output_stream, "  /* %s */\n", c->type == ACT_CHP_COMMA ? "comma" : "semicolon");
+  a = chan_count++;
+  ret = a;
+  /* create request/acknowledge channel for the sequencer */
+  if (need_sequencer >= 0) {
+    seq_num++;
+    fprintf(output_stream, "  a1of1 c_%d;\n", ret);
+    fprintf(output_stream, "  syn::fullseq fs_%d;\n", seq_num);
+    fprintf(output_stream, "  c_%d = fs_%d.go;\n", ret, seq_num);
+  } else {
+    fprintf(output_stream, "  a1of1 c_%d;\n", ret); // no sequencer needed
+  }
+  
+  /* iterate through all composite statements */
+  for (li = list_first(c->u.semi_comma.cmd); list_next(li); li = list_next(li))
+  {
+    int s;
+    /* print the left statement */
+    b = print_chp_stmt((act_chp_lang_t *)list_value(li), bitwidth, base_var, -1, -1);
+    s = stmt_count++;
+    /* connect the go signal to the statement appropriately */
+    fprintf(output_stream, "  syn::%s s_%d;\n", c->type == ACT_CHP_COMMA ? "par" : "seq", s);
+    
+    if (need_sequencer >= 0 && a == need_sequencer) {
+      fprintf(output_stream, "  s_%d.go = fs_%d.r;\n", s, seq_num);
+    } else {
+      fprintf(output_stream, "  s_%d.go = c_%d;\n", s, a);
+    }
+    
+    fprintf(output_stream, "  s_%d.s1 = c_%d;\n", s, b);
+    /* clear the list of evaluated expressions between sequential statements */
+    /* to be removed once deadlock can be avoided */
+    if (optimization > 0 && c->type == ACT_CHP_SEMI)
+    {
+      hash_bucket_t *b;
+      for (int j = 0; j < evaluated_exprs->size; j++)
+      {
+        for (b = evaluated_exprs->head[j]; b; b = b->next)
+        {
+          free(b->v);
+        }
+      }
+      hash_clear(evaluated_exprs);
+    }
+    /* on the last loop iteration, print the final statement */
+    if (!list_next(list_next(li)))
+    {
+      fprintf(output_stream, "\n");
+      b = print_chp_stmt((act_chp_lang_t *)list_value(list_next(li)), bitwidth, base_var, -1, -1);
+      fprintf(output_stream, "  s_%d.s2 = c_%d;\n", s, b);
+    }
+    /* otherwise, connect the channels appropriately */
+    else
+    {
+      fprintf(output_stream, "  a1of1 c_%d;\n", chan_count);
+      fprintf(output_stream, "  s_%d.s2 = c_%d;\n", s, chan_count);
+      a = chan_count++;
+      fprintf(output_stream, "\n");
+    }
+  }
+  fprintf(output_stream, "\n");
+  
+  return ret;
+}
+
+int act_chp_doloop(act_chp_gc_t *gc, int *bitwidth, int *base_var) {
+  return 0;
+}
+
+
+int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_sequencer, int seq_num)
+{
+  int ret, a, b, delay;
+  InstType *v, *u;
+  char buf[MAX_EXPR_SIZE];
+  
   if (!c)
     return -1;
+  
   switch (c->type)
   {
     case ACT_CHP_SKIP:
@@ -951,246 +1293,25 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
       ret = chan_count++;
       break;
     case ACT_CHP_ASSIGN:
-      fprintf(output_stream, "  /* assign */\n");
-      v = P->Lookup(c->u.assign.id);
-      *bitwidth = TypeFactory::bitWidth(v);
-      left_bits = TypeFactory::bitWidth(v);
-      /* evaluate the RHS statement */
-//      fprintf(output_stream, "  /* ... 1 bits=%d leftbw=%d... */\n", *bitwidth, left_bits);
-      a = print_expr(c->u.assign.e, bitwidth, base_var, &delay);
-//      fprintf(output_stream, "  /* ... 2 bits=%d leftbw=%d... */\n", *bitwidth, left_bits);
-      ret = chan_count++;
-      b = stmt_count++;
-      /* create request/acknowledge channel for the statement */
-      fprintf(output_stream, "  a1of1 c_%d;\n", ret);
-      snprintf(buf, MAX_EXPR_SIZE, "c_%d.r", ret);
-      if (bundle_data && left_bits > 1)
-      {
-        /* accumulate delay of the last operation */
-        delay += get_bundle_delay(*bitwidth, c->u.assign.e->type);
-        /* add a delay wire for the RHS statement */
-        if (delay > 0)
-        {
-          fprintf(output_stream, "  delay<%d> de_%d;\n", delay, a);
-          fprintf(output_stream, "  de_%d.in = %s;\n", a, buf);
-          snprintf(buf, MAX_EXPR_SIZE, "de_%d.out", a);
-        }
-        /* add a delay wire to invert the output of the RHS statement */
-        delay = get_bundle_delay(*bitwidth, E_NOT);
-        fprintf(output_stream, "  delay<%d> dn_%d;\n", delay, a);
-        fprintf(output_stream, "  dn_%d.in = %s;\n", a, buf);
-        /* receive the RHS output into a dualrail node */
-        fprintf(output_stream, "  bundled_vararray_to_dualrail<%d> be_%d;\n", TypeFactory::bitWidth(v), expr_count);
-        fprintf(output_stream, "  be_%d.d = dn_%d.out;\n", expr_count, a);
-        fprintf(output_stream, "  (i:%d: be_%d.in[i] = be_%d.out[i];)\n", TypeFactory::bitWidth(v), expr_count, a);
-        fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(v), expr_count);
-        fprintf(output_stream, "  e_%d.go_r = dn_%d.out;\n", expr_count, a);
-        fprintf(output_stream, "  (i:%d: e_%d.v[i] = be_%d.out[i];)\n", TypeFactory::bitWidth(v), expr_count, expr_count);
-        snprintf(buf, MAX_EXPR_SIZE, "e_%d.go_r", expr_count);
-        a = expr_count++;
-      }
-      /* receive statement output into a latched value */
-      a = print_expr_tmpvar(buf, *base_var, a, left_bits);
-      /* receive latched value into assignment variable */
-      if (left_bits == 1)
-      {
-        fprintf(output_stream, "  syn::recv s_%d;\n", b);
-        fprintf(output_stream, "  s_%d.go = c_%d;\n", b, ret);
-        fprintf(output_stream, "  s_%d.in.t = e_%d.out.t;\n", b, a);
-        fprintf(output_stream, "  s_%d.in.f = e_%d.out.f;\n", b, a);
-        fprintf(output_stream, "  s_%d.v = var_%s.v;\n", b, c->u.assign.id->getName());
-      }
-      else if (bundle_data)
-      {
-        fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), b);
-        fprintf(output_stream, "  /* testpoint 4 */\n");
-        fprintf(output_stream, "  s_%d.go.r = e_%d.go_r;\n", b, a);
-        fprintf(output_stream, "  s_%d.go.a = c_%d.a;\n", b, ret);
-        fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
-        fprintf(output_stream, "       %*cs_%d.in.d[i].f = e_%d.out[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, a);
-        fprintf(output_stream, "       %*cs_%d.v[i] = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, c->u.assign.id->getName());
-      }
-      else
-      {
-        fprintf(output_stream, "  syn::recv s_%d[%d];\n", b, TypeFactory::bitWidth(v));
-        fprintf(output_stream, "  /* testpoint 5 */\n");
-        fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), b, ret);
-        fprintf(output_stream, "  (i:%d: s_%d[i].in.t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
-        fprintf(output_stream, "       %*cs_%d[i].in.f = e_%d.out[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, a);
-        fprintf(output_stream, "       %*cs_%d[i].v = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', b, c->u.assign.id->getName());
-        fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", TypeFactory::bitWidth(v), b);
-        fprintf(output_stream, "  (i:%d: ct_%d.in[i] = s_%d[i].go.a;)\n", TypeFactory::bitWidth(v), b, b);
-        fprintf(output_stream, "  ct_%d.out = c_%d.a;\n", b, ret);
-      }
-      fprintf(output_stream, "\n");
-      /* clear assigned entry from the list of evaluated expressions */
-      if (optimization > 0) hash_remove_expr(evaluated_exprs, c->u.assign.id->getName());
+      ret = act_chp_assign(c, bitwidth, base_var, need_sequencer, seq_num);
       break;
     case ACT_CHP_SEND:
-      fprintf(output_stream, "  /* send */\n");
-      if (list_length(c->u.comm.rhs) == 1)
-      {
-        v = P->Lookup(c->u.comm.chan);
-        *bitwidth = TypeFactory::bitWidth(v);
-        /* evaluate the expression to be sent */
-        a = print_expr((Expr *)list_value(list_first(c->u.comm.rhs)), bitwidth, base_var, &delay);
-        ret = chan_count++;
-        /* create request/acknowledge channel for the statement */
-        fprintf(output_stream, "  a1of1 c_%d;\n", ret);
-        snprintf(buf, MAX_EXPR_SIZE, "c_%d.r", ret);
-        if (bundle_data && TypeFactory::bitWidth(v) > 1)
-        {
-          /* accumulate delay of the last operation */
-          delay += get_bundle_delay(*bitwidth, ((Expr *)list_value(list_first(c->u.comm.rhs)))->type);
-          /* add a delay wire for the statement to be sent */
-          if (delay > 0)
-          {
-            fprintf(output_stream, "  delay<%d> de_%d;\n", delay, a);
-            fprintf(output_stream, "  de_%d.in = %s;\n", a, buf);
-            snprintf(buf, MAX_EXPR_SIZE, "de_%d.out", a);
-          }
-          /* add a delay wire to invert the output of the statement to be sent */
-          delay = get_bundle_delay(*bitwidth, E_NOT);
-          fprintf(output_stream, "  delay<%d> dn_%d;\n", delay, a);
-          fprintf(output_stream, "  dn_%d.in = %s;\n", a, buf);
-          /* receive the statement output into a dualrail node */
-          fprintf(output_stream, "  bundled_vararray_to_dualrail<%d> be_%d;\n", TypeFactory::bitWidth(v), expr_count);
-          fprintf(output_stream, "  be_%d.d = dn_%d.out;\n", expr_count, a);
-          fprintf(output_stream, "  (i:%d: be_%d.in = be_%d.out;)\n", TypeFactory::bitWidth(v), expr_count, a);
-          fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(v), expr_count);
-          fprintf(output_stream, "  e_%d.go_r = dn_%d.out;\n", expr_count, a);
-          fprintf(output_stream, "  (i:%d: e_%d.v[i] = be_%d.out[i];)\n", TypeFactory::bitWidth(v), expr_count, expr_count);
-          snprintf(buf, MAX_EXPR_SIZE, "e_%d.go_r", expr_count);
-          a = expr_count++;
-        }
-        /* receive statement output into a latched value */
-        a = print_expr_tmpvar(buf, *base_var, a, *bitwidth);
-        fprintf(output_stream, "  c_%d.a = e_%d.go_r;\n", ret, a);
-        /* connect latched value to channel */
-        if (*bitwidth == 1)
-        {
-          fprintf(output_stream, "  %s.t = e_%d.out.t;\n", c->u.comm.chan->getName(), a);
-          fprintf(output_stream, "  %s.f = e_%d.out.f;\n", c->u.comm.chan->getName(), a);
-        }
-        else if (bundle_data)
-        {
-          fprintf(output_stream, "  (i:%d: %s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), c->u.comm.chan->getName(), a);
-        }
-        else
-        {
-          fprintf(output_stream, "  (i:%d: %s.d[i] = e_%d.out[i];)\n", TypeFactory::bitWidth(v), c->u.comm.chan->getName(), a);
-        }
-      }
-      fprintf(output_stream, "\n");
+      ret = act_chp_send(c, bitwidth, base_var, need_sequencer, seq_num);
       break;
     case ACT_CHP_RECV:
-      fprintf(output_stream, "  /* recv */\n");
-      if (list_length(c->u.comm.rhs) == 1)
-      {
-        v = P->Lookup(c->u.comm.chan);
-        u = P->Lookup((ActId *)list_value(list_first(c->u.comm.rhs)));
-        *bitwidth = TypeFactory::bitWidth(v);
-        ret = chan_count++;
-        a = stmt_count++;
-        /* create request/acknowledge channel for the statement */
-        fprintf(output_stream, "  a1of1 c_%d;\n", ret);
-        /* receive channel value into receiving variable */
-        if (TypeFactory::bitWidth(v) == 1)
-        {
-          fprintf(output_stream, "  syn::recv s_%d;\n", a);
-          fprintf(output_stream, "  s_%d.go = c_%d;\n", a, ret);
-          fprintf(output_stream, "  s_%d.in = %s;\n", a, c->u.comm.chan->getName());
-          fprintf(output_stream, "  s_%d.v = var_%s.v;\n", a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
-        }
-        else if (bundle_data)
-        {
-          fprintf(output_stream, "  bundled_recv<%d> s_%d;\n", TypeFactory::bitWidth(v), a);
-          fprintf(output_stream, "  /* testpoint 6 */\n");
-          fprintf(output_stream, "  s_%d.go.r = c_%d.r;\n", a, ret);
-          fprintf(output_stream, "  s_%d.go.a = c_%d.a; c_%d.a = %s.a;\n", a, ret, ret, c->u.comm.chan->getName());
-          fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = %s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
-          fprintf(output_stream, "       %*cs_%d.in.d[i].f = %s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
-          fprintf(output_stream, "       %*cs_%d.v[i] = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
-        }
-        else
-        {
-          fprintf(output_stream, "  syn::recv s_%d[%d];\n", a, TypeFactory::bitWidth(v));
-          fprintf(output_stream, "  /* testpoint 7 */\n");
-          fprintf(output_stream, "  (i:%d: s_%d[i].go.r = c_%d.r;)\n", TypeFactory::bitWidth(v), a, ret);
-          fprintf(output_stream, "  (i:%d: s_%d[i].in.t = %s.d[i].t;\n", TypeFactory::bitWidth(v), a, c->u.comm.chan->getName());
-          fprintf(output_stream, "       %*cs_%d[i].in.f = %s.d[i].f;\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, c->u.comm.chan->getName());
-          fprintf(output_stream, "       %*cs_%d[i].v = var_%s[i].v;)\n", get_bitwidth(TypeFactory::bitWidth(v), 10), ' ', a, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
-          fprintf(output_stream, "  syn::ctree<%d> ct_%d;\n", TypeFactory::bitWidth(v), a);
-          fprintf(output_stream, "  (i:%d: ct_%d.in[i] = s_%d[i].go.a;)\n", TypeFactory::bitWidth(v), a, a);
-          fprintf(output_stream, "  ct_%d.out = c_%d.a; c_%d.a = %s.a;\n", a, ret, ret, c->u.comm.chan->getName());
-        }
-        /* clear received entry from the list of evaluated expressions */
-        if (optimization > 0) hash_remove_expr(evaluated_exprs, ((ActId *)list_value(list_first(c->u.comm.rhs)))->getName());
-      }
-      fprintf(output_stream, "\n");
+      ret = act_chp_recv(c, bitwidth, base_var, need_sequencer, seq_num);
       break;
     case ACT_CHP_COMMA:
     case ACT_CHP_SEMI:
-    {
-      listitem_t *li;
-      /* special case for a single (non-composed) statement, generated by parser */
-      if (list_length(c->u.semi_comma.cmd) == 1)
-      {
-        return print_chp_stmt((act_chp_lang_t *)list_value(list_first(c->u.semi_comma.cmd)), bitwidth, base_var);
-      }
-      fprintf(output_stream, "  /* %s */\n", c->type == ACT_CHP_COMMA ? "comma" : "semicolon");
-      a = chan_count++;
-      ret = a;
-      /* create request/acknowledge channel for the sequencer */
-      fprintf(output_stream, "  a1of1 c_%d;\n", ret);
-      fprintf(output_stream, "\n");
-      /* iterate through all composite statements */
-      for (li = list_first(c->u.semi_comma.cmd); list_next(li); li = list_next(li))
-      {
-        int s;
-        /* print the left statement */
-        b = print_chp_stmt((act_chp_lang_t *)list_value(li), bitwidth, base_var);
-        s = stmt_count++;
-        /* connect the go signal to the statement appropriately */
-        fprintf(output_stream, "  syn::%s s_%d;\n", c->type == ACT_CHP_COMMA ? "par" : "seq", s);
-        fprintf(output_stream, "  s_%d.go = c_%d;\n", s, a);
-        fprintf(output_stream, "  s_%d.s1 = c_%d;\n", s, b);
-        /* clear the list of evaluated expressions between sequential statements */
-        /* to be removed once deadlock can be avoided */
-        if (optimization > 0 && c->type == ACT_CHP_SEMI)
-        {
-          hash_bucket_t *b;
-          for (int j = 0; j < evaluated_exprs->size; j++)
-          {
-            for (b = evaluated_exprs->head[j]; b; b = b->next)
-            {
-              free(b->v);
-            }
-          }
-          hash_clear(evaluated_exprs);
-        }
-        /* on the last loop iteration, print the final statement */
-        if (!list_next(list_next(li)))
-        {
-          fprintf(output_stream, "\n");
-          b = print_chp_stmt((act_chp_lang_t *)list_value(list_next(li)), bitwidth, base_var);
-          fprintf(output_stream, "  s_%d.s2 = c_%d;\n", s, b);
-        }
-        /* otherwise, connect the channels appropriately */
-        else
-        {
-          fprintf(output_stream, "  a1of1 c_%d;\n", chan_count);
-          fprintf(output_stream, "  s_%d.s2 = c_%d;\n", s, chan_count);
-          a = chan_count++;
-          fprintf(output_stream, "\n");
-        }
-      }
-      fprintf(output_stream, "\n");
-    }
-    break;
+      ret = act_chp_semicomma(c, bitwidth, base_var, need_sequencer, seq_num);
+      break;
     case ACT_CHP_LOOP:
     case ACT_CHP_SELECT:
       ret = print_gc((c->type == ACT_CHP_LOOP) ? true : false, c->u.gc, bitwidth, base_var);
+      break;
+    case ACT_CHP_DOLOOP:
+      printf("Do loop in the works.");
+      ret = act_chp_doloop(c->u.gc, bitwidth, base_var);
       break;
     default:
       fprintf(stderr, "chp2prs: unsupported token: %d\n", c->type);
@@ -1199,7 +1320,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var)
   return ret;
 }
 
-void generate_act(Process *p, const char *output_file, bool bundled, int opt)
+void generate_act(Process *p, const char * input_file, const char *output_file, bool bundled, int opt, int chpopt)
 {
   struct act_chp *chp = NULL;
   if (p->lang != NULL && p->lang->getchp() != NULL)
@@ -1209,6 +1330,7 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   P = p;
   bundle_data = bundled;
   optimization = opt;
+  chpoptimize = chpopt;
 
   /* initialize the output location */ 
   if (output_file)
@@ -1225,7 +1347,15 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
     output_stream = stdout;
   }
   
-  /* TODO - print wrapper process declaration */
+  /* get procname */
+  size_t pn_len = strlen(p->getName());
+  char procName[pn_len-1];
+  strncpy(procName, p->getName(), pn_len-2);
+  procName[pn_len-2] = '\0';
+  
+  /* print header import of input_file */
+  fprintf(output_stream, "import \"%s\";\n", input_file);
+  
   fprintf(output_stream, "import syn;\n");
   if (bundle_data) fprintf(output_stream, "import bundled.act;\n");
   fprintf(output_stream, "\n");
@@ -1233,52 +1363,52 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   /* Print params for toplevel from process port list */
 //  printf("TEST: %s has %d ports\n", p->getName(), p->getNumPorts());
   int pnum = p->getNumPorts();
+  bool has_overrides = false;
+     
+  fprintf(output_stream, "defproc sdt_%s <: %s (a1of1 go)\n", procName, procName);
   
-  /* store names of toplevel params so not redeclared below */
-  int tl_p = 0;
-  char ** toplevel_params = (char**)malloc(sizeof(char*) * pnum);
-  if (toplevel_params == NULL) {
-    fprintf(stderr, "Error: could not malloc for toplevel params\n");
-    return;
-  }
-  
-  if (pnum == 0) {
-    fprintf(output_stream, "defproc toplevel (a1of1 go)\n{\n");
-  }
-  else {
-    InstType * type;
-    int bw;
-
-    fprintf(output_stream, "defproc toplevel (a1of1 go; ");
-    for (int i=0; i<pnum; i++) {
-      type = p->getPortType (i);
-      bw = TypeFactory::bitWidth(type);
-      
-      if (TypeFactory::isChanType(type)) {
-        /* store name in toplevel params */
-        toplevel_params[tl_p] = strdup(p->getPortName(i));
-        printf("tl_p[%d]=%s , ", tl_p); // TESTING TODO -- REMOVE LATER
-        tl_p++;
-        
-        if (bw == 1) {
-          fprintf(output_stream, "aN1of2 %s", p->getPortName(i));
-        } else {
-          fprintf(output_stream, "aN1of2<%d> %s", TypeFactory::bitWidth(type), p->getPortName(i));
+  /* check for variable overrides */
+  ActInstiter iter(p->CurScope());
+  int bw = 0;
+    
+  for (iter = iter.begin(); iter != iter.end(); iter++) {
+     ValueIdx *vx = *iter;
+     /* chan variable found */
+     if (TypeFactory::isChanType (vx->t)) {
+       if (!has_overrides) {
+         fprintf(output_stream, "+{\n");
+         has_overrides = true;
+       }
+       bw = TypeFactory::bitWidth(vx->t);
+       if (bw == 1) {
+         fprintf(output_stream, "  aN1of2<1> %s;\n", vx->getName());
+       } else if (bw > 1) {
+         fprintf(output_stream, "  aN1of2<%d> %s;\n", bw, vx->getName());
+       }
+     }
+    /* int variable found */
+    if (TypeFactory::isIntType (vx->t)) {
+      /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
+      if (strncmp(vx->getName(), "sel", 3) != 0 && strncmp(vx->getName(), "loop", 5) != 0) {
+        if (!has_overrides) {
+          fprintf(output_stream, "+{\n");
+          has_overrides = true;
         }
-        
-        if (i < pnum-1) {
-          fprintf(output_stream, "; ");
+        bw = TypeFactory::bitWidth(vx->t);
+        if (bw == 1) {
+          fprintf(output_stream, "  dualrail %s;\n", vx->getName());
         } else {
-          fprintf(output_stream, ") {\n");
+          fprintf(output_stream, "  dualrails<%d> %s;\n", bw, vx->getName());
         }
       }
     }
-    printf("\n"); // TESTING TODO -- REMOVE LATER
   }
-  
-  /* initialize all variables and channels */
-  ActInstiter iter(p->CurScope());
-  int bw = 0;
+  /* end param declaration */
+  if (has_overrides) {
+    fprintf(output_stream, "}\n{\n");
+  } else {
+    fprintf(output_stream, "{\n");
+  }
   
   fprintf(output_stream, "/* Initialize chp vars */\n");
 
@@ -1286,34 +1416,20 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   for (iter = iter.begin(); iter != iter.end(); iter++) {
     ValueIdx *vx = *iter;
     
-    /* chan variable found */
-    if (TypeFactory::isChanType (vx->t)) {
-      bw = TypeFactory::bitWidth(vx->t);
-      
-      /* check that is not a toplevel param */
-      bool is_toplevel = false;
-      for (int t=0; t<tl_p && !is_toplevel; t++) {
-        if (strcmp(vx->getName(), toplevel_params[t]) == 0) {
-          is_toplevel = true;
-        }
-      }
-      printf("Test-->%s is toplevel? %d\n", vx->getName(), is_toplevel);
-        
-      if (!is_toplevel){
-        if (bw == 1) {
-          fprintf(output_stream, "  aN1of2 %s;\n", vx->getName());
-        } else if (bw > 1) {
-          fprintf(output_stream, "  aN1of2<%d> %s;\n", bw, vx->getName());
-        }
-      }
-      
     /* int variable found */
-    } else if (TypeFactory::isIntType (vx->t)) {
-      bw = TypeFactory::bitWidth(vx->t);
+    if (TypeFactory::isIntType (vx->t)) {
       if (bw == 1) {
-        fprintf(output_stream, "  syn::var_init_false var_%s;\n", vx->getName());
+        if (strncmp(vx->getName(), "sel", 2) == 0 || strncmp(vx->getName(), "loop", 5) == 0) {
+          fprintf(output_stream, "  syn::var_init_false var_%s;\n", vx->getName());
+        } else {
+          fprintf(output_stream, "  syn::var_init_false var_%s(%s);\n", vx->getName(), vx->getName());
+        }
       } else if (bw > 1) {
         fprintf(output_stream, "  syn::var_init_false var_%s[%d];\n", vx->getName(), bw);
+        /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
+        if (strncmp(vx->getName(), "sel", 2) != 0 && strncmp(vx->getName(), "loop", 2) != 0) {
+          fprintf(output_stream, "  ( i:%d: var_%s[i](%s.r[i]); )\n", bw, vx->getName(), vx->getName());
+        }
       }
     }
   }
@@ -1326,7 +1442,7 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   /* translate the CHP */
   int i = 0;
   if (chp != NULL && chp->c != NULL)
-    print_chp_stmt(chp->c, bitwidth, base_var);
+    print_chp_stmt(chp->c, bitwidth, base_var, -1, -1);
   
   if (bitwidth != NULL)
     free(bitwidth);
@@ -1351,7 +1467,7 @@ void generate_act(Process *p, const char *output_file, bool bundled, int opt)
   /* connect toplevel "go" signal and print wrapper process instantiation */
   fprintf(output_stream, "  go = c_%d;\n", i);
   fprintf(output_stream, "}\n\n");
-  fprintf(output_stream, "toplevel t;\n");
+  fprintf(output_stream, "sdt_%s t;\n", procName);
 
   if (output_file) fclose(output_stream);
 }

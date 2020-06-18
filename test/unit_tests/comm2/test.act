@@ -9,5 +9,5 @@ defproc comm2() {
   }
 }
 
-comm2 c;
+comm2 com;
 

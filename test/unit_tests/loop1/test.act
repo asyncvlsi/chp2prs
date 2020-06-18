@@ -11,4 +11,4 @@ defproc loop1() {
   }
 }
 
-loop1 l;
+loop1 loop;

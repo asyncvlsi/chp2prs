@@ -13,4 +13,4 @@ defproc assign2 () {
   }
 }
 
-assign2 a;
+assign2 assign;

@@ -14,5 +14,5 @@ defproc select0() {
   }
 }
 
-select0 s;
+select0 sel;
 

@@ -10,4 +10,4 @@ defproc sub8() {
   }
 }
 
-sub8 s;
+sub8 subtract;

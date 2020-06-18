@@ -10,4 +10,4 @@ defproc add32 () {
   }
 }
 
-add32 a;
+add32 addition;

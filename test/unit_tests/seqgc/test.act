@@ -10,5 +10,5 @@ defproc seqgc () {
   }
 }
 
-seqgc c;
+seqgc seq;
 

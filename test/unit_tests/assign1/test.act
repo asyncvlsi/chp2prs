@@ -6,4 +6,4 @@ defproc assign1 () {
   }
 }
 
-assign1 a;
+assign1 assign;

@@ -29,10 +29,11 @@
 #include "config.h"
 #include "check_chp.h"
 #include "cartographer.h"
+#include <act/chp-opt/optimize.h>
 
 static void usage(char *name)
 {
-  fprintf(stderr, "Usage: %s <actfile> <process> <outfile>\n", name);
+  fprintf(stderr, "Usage: %s <actfile> <process> <outfile> [--optimize]\n", name);
   exit(1);
 }
 
@@ -40,14 +41,21 @@ int main(int argc, char **argv)
 {
   Act *a;
   char *proc;
+  bool chpopt = false;
 
   /* initialize ACT library */
   Act::Init(&argc, &argv);
 
   /* some usage check */
-  if (argc != 4)
+  if (argc < 4 || argc > 5)
   {
     usage(argv[0]);
+  }
+  
+  /* check if optimize */
+  if (argc == 5 && strcmp(argv[4], "--optimize") == 0) {
+    chpopt = true;
+    printf("> Optimization turned ON\n");
   }
 
   /* read in the ACT file */
@@ -78,8 +86,14 @@ int main(int argc, char **argv)
     fatal_error("Input file `%s' does not have any chp.", argv[2]);
   }
 
+  if (chpopt) {
+    ChpOpt::optimize(p, a->getTypeFactory());
+    printf("> Optimized CHP:\n");
+    chp_print(stdout, p->lang->getchp()->c);
+    printf("\n");
+  }
+  
   check_chp(p);
-  generate_act(p, argv[3], false, 0);
-
+  generate_act(p, argv[1], argv[3], false, 0, chpopt);
   return 0;
 }
