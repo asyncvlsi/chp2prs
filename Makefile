@@ -40,7 +40,8 @@ update_channel:
 		then \
 			(cp lib/channel.act $(ACT_HOME)/act); \
 			(echo "Copied channel.act to ACT_HOME") \
-		else if [ -d $(ACT_PATH) ] \
+		elif [ -d $(ACT_PATH) ] \
+		then \
 			(cp lib/channel.act $(ACT_PATH)); \
 			(echo "Copied channel.act to ACT_PATH") \
 		fi \
@@ -55,7 +56,8 @@ update_globals:
 		then \
 			(cp lib/globals.act $(ACT_HOME)/act); \
 			(echo "Copied globals.act to ACT_HOME") \
-		else if [ -d $(ACT_PATH) ] \
+		elif [ -d $(ACT_PATH) ] \
+		then \
 			(cp lib/globals.act $(ACT_PATH)); \
 			(echo "Copied globals.act to ACT_PATH") \
 		else \
@@ -73,10 +75,12 @@ update_syn:
 		then \
 			cp lib/syn.act $(ACT_HOME)/act/syn/_all_.act; \
 			echo "Copied syn.act to ACT_HOME/act/syn/_all_.act"; \
-		else if [ -d $(ACT_HOME) ]; \
+		elif [ -d $(ACT_HOME) ]; \
+		then \
 			(mkdir $(ACT_HOME)/act/syn; cp lib/syn.act $(ACT_HOME)/act/syn/_all_.act); \
 			(echo "Copied syn.act to ACT_HOME/act/syn/_all_.act") \
-		else if [ -d $(ACT_PATH) ]; \
+		elif [ -d $(ACT_PATH) ]; \
+		then \
 			(mkdir $(ACT_PATH)/syn; cp lib/syn.act $(ACT_PATH)/syn/_all_.act); \
 			(echo "Copied syn.act to ACT_PATH/syn/_all_.act") \
 		else \
@@ -94,10 +98,12 @@ update_bundled:
 		then \
 			cp lib/bundled.act $(ACT_HOME)/act/bundled/_all_.act; \
 			echo "Copied bundled.act to ACT_HOME/act/bundled/_all_.act"; \
-		else if [ -d $(ACT_HOME) ]; \
+		elif [ -d $(ACT_HOME) ]; \
+		then \
 			(mkdir $(ACT_HOME)/act/bundled; cp lib/bundled.act $(ACT_HOME)/act/bundled/_all_.act); \
 			(echo "Copied bundled.act to ACT_HOME/act/bundled/_all_.act") \
-		else if [ -d $(ACT_PATH) ]; \
+		elif [ -d $(ACT_PATH) ]; \
+		then \
 			(mkdir $(ACT_PATH)/bundled; cp lib/bundled.act $(ACT_PATH)/bundled/_all_.act); \
 			(echo "Copied bundled.act to ACT_PATH/bundled/_all_.act") \
 		else \
@@ -116,6 +122,41 @@ testreps:
 		else \
 			(echo "Error: make testreps unit={unit_test} [warning={0/1}]") \
 		fi \
+	fi
+	
+prsimscr:
+	@if [ -x ${ACT_HOME}/bin/test_writer -a -d test -a -d test/unit_tests -a -d test/unit_tests/${unit} ] ; \
+	then \
+		if [ -f test/unit_tests/${unit}/test_writer.txt ] ; \
+		then \
+			(echo "Creating ${unit} prsim script..."); \
+			(${ACT_HOME}/bin/test_writer test/unit_tests/${unit}/test_writer.txt test/unit_tests/${unit}/test.prsim --prsim --reset --_reset --random); \
+		fi \
+	else \
+		(echo "ERROR: no test writer executable or correct unit folder"); \
+	fi
+
+debug: obj_main obj_cartographer obj_checkchp start_lldb
+
+obj_cartographer:
+	@if [ -d $(EXT) -a -f $(EXT)/cartographer.o ] ; \
+	then \
+		(mv $(EXT)/cartographer.o cartographer.o); \
+	fi
+obj_main:
+	@if [ -d $(EXT) -a -f $(EXT)/main.o ] ; \
+	then \
+		(mv $(EXT)/main.o main.o); \
+	fi
+obj_checkchp:
+	@if [ -d $(EXT) -a -f $(EXT)/check_chp.o ] ; \
+	then \
+		(mv $(EXT)/check_chp.o check_chp.o); \
+	fi
+start_lldb:
+	@if [ -x ${BINARY} ] ; \
+	then \
+		(lldb ./$(BINARY)); \
 	fi
 
 -include Makefile.deps

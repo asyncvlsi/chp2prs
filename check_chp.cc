@@ -33,6 +33,7 @@
 #define INITIAL_HASH_SIZE 10
 
 static Process *P;
+static Hashtable *chan_sends;
 
 int get_expr_bitwidth (Expr *e)
 {
@@ -171,7 +172,7 @@ int get_expr_bitwidth (Expr *e)
   return -1;
 }
 
-int hash_get_chan_send(struct Hashtable *h, const char * c)
+int hash_get_chan(const char * c)
 {
   hash_bucket_t *b;
   int ret;
@@ -179,7 +180,7 @@ int hash_get_chan_send(struct Hashtable *h, const char * c)
   snprintf(k, MAX_KEY_SIZE, "%s", c);
 
   /* if an entry is in the table, return the integer associated with the value */
-  if ((b = hash_lookup(h, k)))
+  if ((b = hash_lookup(chan_sends, k)))
   {
     int count = b->i;
     b->i = count + 1;
@@ -188,19 +189,17 @@ int hash_get_chan_send(struct Hashtable *h, const char * c)
   /* if the key isn't in the table, add it (and its commutative counterpart) */
   else
   {
-    hash_bucket_t *b = hash_add(h, c);
+    b = hash_add(chan_sends, k);
     b->i = 1;
-    printf("No chan %s found. ==> Created with send count = 1\n", c);
+    printf("No chan %s found. ==> Created bkt=%s w/ send count = 1\n", k, c);
     ret = -1;
   }
 
-  free(k);
   return ret;
 }
 
-struct Hashtable * check (act_chp_lang_t *c)
+void check (act_chp_lang_t *c)
 {
-  struct Hashtable * chan_sends = hash_new(INITIAL_HASH_SIZE);
   int expr_width;
   InstType *it;
 
@@ -256,7 +255,7 @@ struct Hashtable * check (act_chp_lang_t *c)
         {
           if (c->type == ACT_CHP_SEND)
           {
-            hash_get_chan_send(chan_sends, c->u.comm.chan->getName());
+            hash_get_chan(c->u.comm.chan->getName());
             Expr *e = (Expr *) list_value (li);
             expr_width = get_expr_bitwidth (e);
             /* ensure correct sub-expressions in the send buffer */
@@ -330,11 +329,16 @@ struct Hashtable * check (act_chp_lang_t *c)
       }
       break;
     }
-  return chan_sends;
+  return;
 }
 
 struct Hashtable * check_chp(Process *p)
 {
   P = p;
-  return check(p->lang->getchp()->c);
+  chan_sends = hash_new(INITIAL_HASH_SIZE);
+  int it;
+  hash_bucket_t *b;
+  
+  check(p->lang->getchp()->c);
+  return chan_sends;
 }

@@ -33,7 +33,7 @@
 
 static void usage(char *name)
 {
-  fprintf(stderr, "Usage: %s <actfile> <process> <outfile> [--optimize]\n", name);
+  fprintf(stderr, "Usage: %s <actfile> <process> <outfile> [--optimize] [--bundled]\n", name);
   exit(1);
 }
 
@@ -42,22 +42,40 @@ int main(int argc, char **argv)
   Act *a;
   char *proc;
   bool chpopt = false;
+  bool bundled = false;
 
   /* initialize ACT library */
   Act::Init(&argc, &argv);
 
   /* some usage check */
-  if (argc < 4 || argc > 5)
+  if (argc < 4 || argc > 6)
   {
     usage(argv[0]);
   }
-  
+    
   /* check if optimize */
-  if (argc == 5 && strcmp(argv[4], "--optimize") == 0) {
+  if ((argc == 5 && strcmp(argv[4], "--optimize") == 0)
+       || (argc == 6 && strcmp(argv[5], "--optimize") == 0)) {
     chpopt = true;
-    printf("> Optimization turned ON\n");
+    printf("> Sequencer Optimization turned ON\n");
   }
-
+  else
+  {
+    printf("> Sequencer Optimization turned OFF\n");
+  }
+  
+  /* check if bundled data */
+  if ((argc == 5 && strcmp(argv[4], "--bundled") == 0)
+       || (argc == 6 && strcmp(argv[5], "--bundled") == 0))
+  {
+    bundled = true;
+    printf("> Bundled data turned ON\n");
+  }
+  else
+  {
+    printf("> Bundled data turned OFF\n");
+  }
+  
   /* read in the ACT file */
   a = new Act(argv[1]);
 
@@ -86,7 +104,8 @@ int main(int argc, char **argv)
     fatal_error("Input file `%s' does not have any chp.", argv[2]);
   }
 
-  if (chpopt) {
+  if (chpopt)
+  {
     ChpOpt::optimize(p, a->getTypeFactory());
     printf("> Optimized CHP:\n");
     chp_print(stdout, p->lang->getchp()->c);
@@ -94,7 +113,7 @@ int main(int argc, char **argv)
   }
   
   struct Hashtable * chan_sends = check_chp(p);
-  generate_act(p, argv[1], argv[3], false, 0, chpopt, chan_sends);
+  generate_act(p, argv[1], argv[3], bundled, 0, chpopt, chan_sends);
   hash_free(chan_sends);
   return 0;
 }

@@ -39,7 +39,7 @@ namespace bundled {
     }
   }
 
-  template<pint D>
+  export template<pint D>
   defproc delay (bool in, out)
   {
     delaybuf d[D];
@@ -473,7 +473,7 @@ namespace bundled {
 
   /* EQUALITY */
   export template<pint N>
-  defproc eq (bool in1[N], in2[N]; bool out)
+  defproc expr_eq (bool in1[N], in2[N]; bool out)
   {
     bool _in1[N], _in2[N];
     prs
@@ -486,7 +486,7 @@ namespace bundled {
 
   /* INEQUALITY */
   export template<pint N>
-  defproc ne (bool in1[N], in2[N]; bool out)
+  defproc expr_ne (bool in1[N], in2[N]; bool out)
   {
     bool _in1[N], _in2[N];
     prs
@@ -499,10 +499,10 @@ namespace bundled {
 
   /* LESS THAN OR EQUALS */
   export template<pint N>
-  defproc le (bool in1[N], in2[N]; bool out)
+  defproc expr_le (bool in1[N], in2[N]; bool out)
   {
     sub<N> sub (in1, in2);
-    eq<N> eq (in1, in2);
+    expr_eq<N> eq (in1, in2);
 
     bool _out;
     prs
@@ -514,7 +514,7 @@ namespace bundled {
 
   /* GREATER THAN OR EQUALS */
   export template<pint N>
-  defproc ge (bool in1[N], in2[N]; bool out)
+  defproc expr_ge (bool in1[N], in2[N]; bool out)
   {
     sub<N> sub (in1, in2);
 
@@ -526,7 +526,7 @@ namespace bundled {
 
   /* LESS THAN */
   export template<pint N>
-  defproc lt (bool in1[N], in2[N]; bool out)
+  defproc expr_lt (bool in1[N], in2[N]; bool out)
   {
     sub<N> sub (in1, in2);
 
@@ -540,10 +540,10 @@ namespace bundled {
 
   /* GREATER THAN */
   export template<pint N>
-  defproc gt (bool in1[N], in2[N]; bool out)
+  defproc expr_gt (bool in1[N], in2[N]; bool out)
   {
     sub<N> sub (in1, in2);
-    eq<N> eq (in1, in2);
+    expr_eq<N> eq (in1, in2);
 
     prs
     {
