@@ -361,7 +361,7 @@ int unop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay)
   int l = _print_expr(e->u.e.l, bitwidth, base_var, delay);
 
   /* print ACT module for boolean unary operations */
-  if (*bitwidth == 1)
+  if (*bitwidth == 1 && !bundle_data)
   {
     if (optimization > 0)
     {
@@ -371,6 +371,13 @@ int unop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay)
 //    printf("TEST1: potential problem=expr_%s\n", s);
     fprintf(output_stream, "  syn::expr_%s e_%d;\n", s, expr_count);
     fprintf(output_stream, "  e_%d.in = e_%d.out;\n", expr_count, l);
+  }
+  else if (*bitwidth == 1)
+  {
+    /* accumulate delay */
+    *delay += get_bundle_delay(*bitwidth, e->u.e.l->type);
+    fprintf(output_stream, "  bundled::%s be_%d;\n", s, expr_count);
+    fprintf(output_stream, "  be_%d.in = be_%d.out;\n", expr_count, l);
   }
   /* print ACT module for multi-bit unary operations with the bundle data protocol */
   else if (bundle_data)
@@ -401,7 +408,7 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
   int r = _print_expr(e->u.e.r, bitwidth, base_var, delay);
 
   /* Handle expr_ with only template<N> declarations */
-  if (alwayssize && *bitwidth == 1)
+  if (alwayssize && *bitwidth == 1 && !bundle_data)
   {
     if (optimization > 0)
     {
@@ -413,8 +420,14 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
     fprintf(output_stream, "  e_%d.in1 = {e_%d.out};\n", expr_count, l);
     fprintf(output_stream, "  e_%d.in2 = {e_%d.out};\n", expr_count, r);
   }
+  else if (alwayssize && *bitwidth == 1)
+  {
+    fprintf(output_stream, "  bundled::%s<1> be_%d;\n", s, expr_count); // changed expr_%s to %s
+    fprintf(output_stream, "  be_%d.in1 = {be_%d.out};\n", expr_count, l);
+    fprintf(output_stream, "  be_%d.in2 = {be_%d.out};\n", expr_count, r);
+  }
   /* print ACT module for boolean binary operations */
-  else if (*bitwidth == 1)
+  else if (*bitwidth == 1 && !bundle_data)
   {
     if (optimization > 0)
     {
@@ -425,6 +438,11 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
     fprintf(output_stream, "  syn::%s e_%d;\n", s, expr_count); // changed expr_%s to %s
     fprintf(output_stream, "  e_%d.in1 = e_%d.out;\n", expr_count, l);
     fprintf(output_stream, "  e_%d.in2 = e_%d.out;\n", expr_count, r);
+  }
+  else if (*bitwidth == 1) {
+    fprintf(output_stream, "  bundled::%s be_%d;\n", s, expr_count);
+    fprintf(output_stream, "  be_%d.in1 = be_%d.out;\n", expr_count, l);
+    fprintf(output_stream, "  be_%d.in2 = be_%d.out;\n", expr_count, r);
   }
   /* print ACT module for multi-bit binary operations with the bundle data protocol */
   else if (bundle_data)
@@ -457,7 +475,7 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
 int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
 {
   int ret;
-//  printf("e->type=%d\n", e->type);
+  fprintf(output_stream, "  /* e->type=%d */\n", e->type);
   switch (e->type)
   {
     case E_AND:
@@ -532,7 +550,7 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
           }
           */
       /* receive variable into a boolean latch */
-      if (TypeFactory::bitWidth(it) == 1)
+      if (TypeFactory::bitWidth(it) == 1 && !bundle_data)
       {
         fprintf(output_stream, "  syn::expr_var e_%d;\n", expr_count);
         fprintf(output_stream, "  e_%d.v = var_%s.v;\n", expr_count, ((ActId *) e->u.e.l)->getName());
@@ -548,15 +566,22 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
           fprintf(output_stream, "  e_%d.go_r = e_%d.go_r;\n", expr_count, *base_var); // replaced go.r with go_r 4/8
         }
       }
+      else if (TypeFactory::bitWidth(it) == 1)
+      {
+        fprintf(output_stream, "  bundled::expr_var be_%d;\n", expr_count);
+        fprintf(output_stream, "  be_%d.v = var_%s.v;\n", expr_count, ((ActId *) e->u.e.l)->getName());
+      }
       /* recieve variable into a mult-bit bundled latch */
       else if (bundle_data)
       {
+        fprintf(output_stream, "  /* testpoint 8.5 */\n");
         fprintf(output_stream, "  bundled::expr_vararray<%d> be_%d;\n", TypeFactory::bitWidth(it), expr_count);
         fprintf(output_stream, "  (i:%d: be_%d.v[i] = var_%s[i].v;)\n", TypeFactory::bitWidth(it), expr_count, ((ActId *) e->u.e.l)->getName());
       }
       /* receive variable into a multi-bit delay-insensitive latch */
       else
       {
+        fprintf(output_stream, "  /* testpoint 8.75 */\n");
         fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(it), expr_count);
         fprintf(output_stream, "  (i:%d: e_%d.v[i] = var_%s[i].v;)\n", TypeFactory::bitWidth(it), expr_count, ((ActId *) e->u.e.l)->getName());
         /* the current expression becomes the base go signal, if none is set */
@@ -583,7 +608,7 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         }
         */
       /* receive a boolean value into a latch */
-      if (*bitwidth == 1)
+      if (*bitwidth == 1 && !bundle_data)
       {
         if (e->u.v == 0)
         {
@@ -607,6 +632,21 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         {
           fprintf(output_stream, "  /* testpoint 9 */\n");
           fprintf(output_stream, "  e_%d.go_r = e_%d.go_r;\n", expr_count, *base_var); // replaced go.r with go_r 4/8
+        }
+      }
+      else if (*bitwidth == 1)
+      {
+        if (e->u.v == 0)
+        {
+          emit_const_0();
+          fprintf(output_stream, "  bundled::expr_var be_%d;\n", expr_count);
+          fprintf(output_stream, "  be_%d.v = const_0.v;\n", expr_count);
+        }
+        else
+        {
+          emit_const_1();
+          fprintf(output_stream, "  bundled::expr_var be_%d;\n", expr_count);
+          fprintf(output_stream, "  be_%d.v = const_1.v;\n", expr_count);
         }
       }
       /* initialize a multi-bit bundled latch */
@@ -775,7 +815,7 @@ int print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
 //  printf("final print expr type=%d bw=%d\n", e->type, *bitwidth);
 }
 
-int print_expr_tmpvar(char *req, int ego, int eout, int bits)
+int print_expr_tmpvar(char *req, int ego, int eout, int bits, int multi_to_one_bit_expr)
 {
   int seq = stmt_count++;
   int evar = expr_count++;
@@ -800,13 +840,23 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits)
       fprintf(output_stream, "  %s = rtv_%d.go.r;\n", req, seq);
       fprintf(output_stream, "  rtv_%d.go.a = e_%d.go_r;\n", seq, evar);
     } else {
-      fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
+      if (!bundle_data)
+        fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
       fprintf(output_stream, "  s_%d.r = rtv_%d.go;\n", seq, seq);
       fprintf(output_stream, "  s_%d.go.a = e_%d.go_r;\n", seq, evar);
     }
-    
-    fprintf(output_stream, "  e_%d.out.t = rtv_%d.in.t;\n", eout, seq);
-    fprintf(output_stream, "  e_%d.out.f = rtv_%d.in.f;\n", eout, seq);
+    if (bundle_data)
+    {
+      fprintf(output_stream, "  be_%d.out = rtv_%d.in.t;\n", eout, seq);
+          fprintf(output_stream, "  bundled::expr_not n_%d;\n", seq);
+      fprintf(output_stream, "  n_%d.in = be_%d.out;\n", seq, eout);
+      fprintf(output_stream, "  n_%d.out = rtv_%d.in.f;\n", seq, seq);
+    }
+    else
+    {
+      fprintf(output_stream, "  e_%d.out.t = rtv_%d.in.t;\n", eout, seq);
+      fprintf(output_stream, "  e_%d.out.f = rtv_%d.in.f;\n", eout, seq);
+    }
   }
   else if (bundle_data)
   {
@@ -867,16 +917,18 @@ int print_one_gc(act_chp_gc_t *gc, int *bitwidth, int *base_var)
 {
   int a, b;
   int ret = gc_chan_count++;
-//  printf("init base_var=%d\n", *base_var);
-
+  fprintf(output_stream, "  /* init base_var=%d */\n", *base_var);
+  int init_basevar = *base_var;
   fprintf(output_stream, "  r1of2 gc_%d;\n", ret);
   /* guarded statement case */
   if (gc->g)
   {
+    int multi_to_one_bit_expr = (gc->g->type == E_EQ || gc->g->type == E_NE || gc->g->type == E_LT || gc->g->type == E_GT || gc->g->type == E_LE || gc->g->type == E_GE);
     int delay;
     char buf[MAX_EXPR_SIZE];
     a = print_expr(gc->g, bitwidth, base_var, &delay);
     snprintf(buf, MAX_EXPR_SIZE, "gc_%d.r", ret);
+    fprintf(output_stream, "  /* mid base_var=%d */\n", *base_var);
 
     if (bundle_data && *bitwidth > 1)
     {
@@ -905,8 +957,8 @@ int print_one_gc(act_chp_gc_t *gc, int *bitwidth, int *base_var)
     }
 
     /* replace guard output with latched value */
-//    printf("base_var 2=%d\n", *base_var);
-    a = print_expr_tmpvar(buf, *base_var, a, 1);
+    fprintf(output_stream, "  /* base_var 2=%d */\n", *base_var);
+    a = print_expr_tmpvar(buf, *base_var, a, 1, multi_to_one_bit_expr);
 
     /* print guarded statement */
     b = print_chp_stmt(gc->s, bitwidth, base_var, -1, -1);
@@ -1074,7 +1126,7 @@ int act_chp_assign(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
     a = expr_count++;
   }
   /* receive statement output into a latched value */
-  a = print_expr_tmpvar(buf, *base_var, a, left_bits);
+  a = print_expr_tmpvar(buf, *base_var, a, left_bits, 0);
   /* receive latched value into assignment variable */
   if (left_bits == 1)
   {
@@ -1183,7 +1235,7 @@ int act_chp_send(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seque
       a = expr_count++;
     }
     /* receive statement output into a latched value */
-    a = print_expr_tmpvar(buf, *base_var, a, *bitwidth);
+    a = print_expr_tmpvar(buf, *base_var, a, *bitwidth, 0);
     fprintf(output_stream, "  c_%d.a = e_%d.go_r;\n", ret, a);
     
     /* get chan name depending on # of channel sends */
@@ -1200,10 +1252,14 @@ int act_chp_send(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seque
     }
     
     /* connect latched value to channel */
-    if (*bitwidth == 1)
+    if (*bitwidth == 1 && !bundle_data)
     {
       fprintf(output_stream, "  %s.t = e_%d.out.t;\n", chan_name, a);
       fprintf(output_stream, "  %s.f = e_%d.out.f;\n", chan_name, a);
+    }
+    else if (*bitwidth == 1)
+    {
+      fprintf(output_stream, "  %s.d = e_%d.out;)\n", chan_name, a);
     }
     else if (bundle_data)
     {
@@ -1288,7 +1344,7 @@ int act_chp_semicomma(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_
   char buf[MAX_EXPR_SIZE];
   
   /* check for sequencer if chpoptimize being used */
-  if (chpoptimize && c != NULL && c->space != NULL && ((SequencerInfo *)c->space) != NULL && &(((SequencerInfo *)c->space)->sequence) != NULL) {
+  if (chpoptimize && need_sequencer < 0 && seq_num < 0 && c != NULL && c->space != NULL && ((SequencerInfo *)c->space) != NULL && &(((SequencerInfo *)c->space)->sequence) != NULL) {
     fprintf(output_stream, "  /* YES we need a sequencer here, ns=%d, seq_num=%d */\n", chan_count, stmt_count+1);
     int s = stmt_count++;
     need_sequencer = chan_count;

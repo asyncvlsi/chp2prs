@@ -18,13 +18,13 @@ echo "*   ${bold}Testing chp2prs library${normal}   *"
 echo "*******************************"
 echo
 
-if [ -x $ACT_HOME/bin/aflat -a -x $ACT_HOME/bin/prsim ]
+if [ -x $ACT_HOME/bin/aflat -a -x $ACT_HOME/bin/prsim ];
 then
     if [ -d "unit_tests" ];
     then
         cd "unit_tests"
         
-        if [ $optimize = 1 ];
+        if [ "1" == "$optimize" ];
         then
             ### run OPTIMIZED unit test
             for i in *
@@ -51,6 +51,13 @@ then
                 then
                     echo "... creating output_opt.act"
                     touch "$i/output_opt/output.act"
+                fi
+                
+                ### REMOVE TESTING LATER
+                if [ -f $i/"output_opt/output.act" ];
+                then
+                    echo "... REMOVING output_opt/output.act"
+                    rm $i/"output_opt/output.act"
                 fi
                 
                 if [ -d $i -a -f $i/"test.act" -a -f $i/"test.prsim" ];
@@ -98,13 +105,12 @@ then
                         fi
                     fi
                 else
-        #            echo ""
                     echo "${und}ERROR${normal}: missing test.act or test.prsim in test folder $i"
                     fail=`expr $fail + 1`
                     faildirs="$faildirs ${i}_opt"
                 fi
             done
-        elif [ $bundled = 1 ];
+        elif [ "1" == "$bundled" ];
         then
             # run BUNDLED unit test
             for i in *
@@ -136,7 +142,6 @@ then
                 if [ -d $i -a -f $i/"test.act" -a -f $i/"test.prsim" ];
                 then
                     # run chp2prs
-    #                proc=$(cat "$i/proc.txt")
                     proc="$i<>"
                     echo "... checking chp2prs for proc $proc"
                     if ($ACTTOOL "$i/test.act" $proc "$i/output_bundled/output_bundled.act" "--bundled");
@@ -178,7 +183,6 @@ then
                         fi
                     fi
                 else
-        #            echo ""
                     echo "${und}ERROR${normal}: missing test.act or test.prsim in test folder $i"
                     fail=`expr $fail + 1`
                     faildirs="$faildirs ${i}_bundled"
@@ -223,7 +227,6 @@ then
                 if [ -d $i -a -f $i/"test.act" -a -f $i/"test.prsim" ];
                 then
                     # run chp2prs
-    #                proc=$(cat "$i/proc.txt")
                     proc="$i<>"
                     echo "... checking chp2prs for proc $proc"
                     if ($ACTTOOL "$i/test.act" $proc "$i/output/output.act");
@@ -265,7 +268,6 @@ then
                         fi
                     fi
                 else
-        #            echo ""
                     echo "${und}ERROR${normal}: missing test.act or test.prsim in test folder $i"
                     fail=`expr $fail + 1`
                     faildirs="$faildirs $i"
