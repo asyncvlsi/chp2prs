@@ -54,17 +54,6 @@ defchan e1of <: chan(int<N>) (bool d[N]; bool e)
 {
 }
 
-
-export defchan a1of2 <: chan(bool) (bool d[2]; bool t, f, a)
-{
-  d[0] = f;
-  d[1] = t;
-  spec {
-    exclhi (t, f)
-  }
-}
-
-
 export deftype dualrail <: int<1> (bool d[2]; bool t, f)
 {
   d[0] = f;
@@ -85,6 +74,14 @@ defchan aN1of2 <: chan(int<N>) (dualrail d[N]; bool a)
 {
 }
 
+export defchan a1of2 <: aN1of2<1> (bool t, f)
+{
+  d[0].t = f;
+  d[0].f = t;
+  spec {
+    exclhi (t, f)
+  }
+}
 
 export deftype _dualrail <: int<1> (bool d[2]; bool t, f)
 {
