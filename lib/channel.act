@@ -64,6 +64,7 @@ export defchan a1of2 <: chan(bool) (bool d[2]; bool t, f, a)
   }
 }
 
+
 export deftype dualrail <: int<1> (bool d[2]; bool t, f)
 {
   d[0] = f;
@@ -71,6 +72,12 @@ export deftype dualrail <: int<1> (bool d[2]; bool t, f)
   spec {
     exclhi (t,f)
   }
+}
+
+export template<pint N>
+deftype dualrails <: int<N> (dualrail r[N])
+{
+
 }
 
 export template<pint N>

@@ -29,94 +29,14 @@ SRCS=$(OBJS:.o=.cc)
 CHPOPT=
 #CHPOPT=-lchpopt
 
+SUBDIRS=lib
+
 include $(VLSI_TOOLS_SRC)/scripts/Makefile.std
 
 #DFLAGS+=-DCHP_OPTIMIZE
 
 $(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
 	$(CXX) $(CFLAGS) $(OBJS) -o $(BINARY) $(LIBACTPASS) $(CHPOPT)
-
-update: update_channel update_globals update_syn update_bundled
-
-update_channel:
-	@if [ -d lib/ -a -f lib/channel.act ] ; \
-	then \
-		if [ -d $(ACT_HOME) ]; \
-		then \
-			(cp lib/channel.act $(ACT_HOME)/act); \
-			(echo "Copied channel.act to ACT_HOME") \
-		elif [ -d $(ACT_PATH) ] \
-		then \
-			(cp lib/channel.act $(ACT_PATH)); \
-			(echo "Copied channel.act to ACT_PATH") \
-		fi \
-	else \
-		(echo "Error: no channel file to update") \
-	fi
-
-update_globals:
-	@if [ -d lib/ -a -f lib/globals.act ] ; \
-	then \
-		if [ -d $(ACT_HOME) ]; \
-		then \
-			(cp lib/globals.act $(ACT_HOME)/act); \
-			(echo "Copied globals.act to ACT_HOME") \
-		elif [ -d $(ACT_PATH) ] \
-		then \
-			(cp lib/globals.act $(ACT_PATH)); \
-			(echo "Copied globals.act to ACT_PATH") \
-		else \
-			(echo "Error: ACT_HOME and ACT_PATH undefined") \
-		fi \
-	else \
-		(echo "Error: no globals file to update") \
-	fi
-
- # SYN File Copy for Syn Namespace
-update_syn:
-	@if [ -d lib/ -a -f lib/syn.act ] ; \
-	then \
-		if [ -d $(ACT_HOME) -a -d $(ACT_HOME)/act/syn ]; \
-		then \
-			cp lib/syn.act $(ACT_HOME)/act/syn/_all_.act; \
-			echo "Copied syn.act to ACT_HOME/act/syn/_all_.act"; \
-		elif [ -d $(ACT_HOME) ]; \
-		then \
-			(mkdir $(ACT_HOME)/act/syn; cp lib/syn.act $(ACT_HOME)/act/syn/_all_.act); \
-			(echo "Copied syn.act to ACT_HOME/act/syn/_all_.act") \
-		elif [ -d $(ACT_PATH) ]; \
-		then \
-			(mkdir $(ACT_PATH)/syn; cp lib/syn.act $(ACT_PATH)/syn/_all_.act); \
-			(echo "Copied syn.act to ACT_PATH/syn/_all_.act") \
-		else \
-			(echo "Error: ACT_HOME and ACT_PATH undefined") \
-		fi \
-	else \
-		(echo "Error: no syn file to update") \
-	fi
-
-# BUNDLED File Copy for namespace
-update_bundled:
-	@if [ -d lib/ -a -f lib/bundled.act ] ; \
-	then \
-		if [ -d $(ACT_HOME) -a -d $(ACT_HOME)/act/bundled ]; \
-		then \
-			cp lib/bundled.act $(ACT_HOME)/act/bundled/_all_.act; \
-			echo "Copied bundled.act to ACT_HOME/act/bundled/_all_.act"; \
-		elif [ -d $(ACT_HOME) ]; \
-		then \
-			(mkdir $(ACT_HOME)/act/bundled; cp lib/bundled.act $(ACT_HOME)/act/bundled/_all_.act); \
-			(echo "Copied bundled.act to ACT_HOME/act/bundled/_all_.act") \
-		elif [ -d $(ACT_PATH) ]; \
-		then \
-			(mkdir $(ACT_PATH)/bundled; cp lib/bundled.act $(ACT_PATH)/bundled/_all_.act); \
-			(echo "Copied bundled.act to ACT_PATH/bundled/_all_.act") \
-		else \
-			(echo "Error: ACT_HOME and ACT_PATH undefined") \
-		fi \
-	else \
-		(echo "Error: no bundled file to update") \
-	fi
 
 testreps:
 	@if [ -d test -a -x test/repeat_unit.sh ]; \
@@ -125,7 +45,7 @@ testreps:
 		then \
 			(cd test; ./repeat_unit.sh); \
 		else \
-			(echo "Error: make testreps unit={unit_test} [warning={0/1}]") \
+			echo "Error: make testreps unit={unit_test} [warning={0/1}]"; \
 		fi \
 	fi
 
