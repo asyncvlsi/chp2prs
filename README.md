@@ -41,8 +41,6 @@ This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act)
    * Build this program using the standard ACT tool install instructions [here](https://github.com/asyncvlsi/act/blob/master/README_tool.md).
 
 ### Test Suite
-Run:
-
 ```
 make runtest
 ```
