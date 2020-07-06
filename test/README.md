@@ -15,9 +15,7 @@ will test the correctness of the repository by iterating through the the test/un
 `make runtest bundled=1` will place the outputted files into a `output_bundled` folder within the unit_test
 
 ### Unit Test File Structure
-Each test has a dedicated directory.
-
-In each directory, there are the following files:
+Each test has a dedicated directory. In each directory, there are the following files:
 
 [ Necessary Inputs ]
  * test.act = the file to be conerted via the chp2prs executable into prs
