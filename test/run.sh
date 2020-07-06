@@ -53,17 +53,9 @@ then
                     touch "$i/output_opt/output.act"
                 fi
                 
-                ### REMOVE TESTING LATER
-                if [ -f $i/"output_opt/output.act" ];
-                then
-                    echo "... REMOVING output_opt/output.act"
-                    rm $i/"output_opt/output.act"
-                fi
-                
                 if [ -d $i -a -f $i/"test.act" -a -f $i/"test.prsim" ];
                 then
                     # run chp2prs
-    #                proc=$(cat "$i/proc.txt")
                     proc="$i<>"
                     echo "... checking chp2prs for proc $proc"
                     if ($ACTTOOL "$i/test.act" $proc "$i/output_opt/output_opt.act" "--optimize");
@@ -80,7 +72,7 @@ then
                             if (cat "$i/output_opt/prsim.out" | grep -e "WRONG ASSERT" -e "FATAL" -e "not found")
                             then
                                 echo ""
-                                echo "==> test ${und}FAILED${normal} prsim running aflat prs."
+                                echo "==> test ${bold}FAILED${normal} prsim running aflat prs."
                                 fail=`expr $fail + 1`
                                 faildirs="$faildirs ${i}_opt"
                             else
@@ -105,7 +97,7 @@ then
                         fi
                     fi
                 else
-                    echo "${und}ERROR${normal}: missing test.act or test.prsim in test folder $i"
+                    echo "${bold}ERROR${normal}: missing test.act or test.prsim in test folder $i"
                     fail=`expr $fail + 1`
                     faildirs="$faildirs ${i}_opt"
                 fi
@@ -158,7 +150,7 @@ then
                             if (cat "$i/output_bundled/prsim.out" | grep -e "WRONG ASSERT" -e "FATAL" -e "not found")
                             then
                                 echo ""
-                                echo "==> test ${und}FAILED${normal} prsim running aflat prs."
+                                echo "==> test ${bold}FAILED${normal} prsim running aflat prs."
                                 fail=`expr $fail + 1`
                                 faildirs="$faildirs ${i}_bundled"
                             else
@@ -183,7 +175,7 @@ then
                         fi
                     fi
                 else
-                    echo "${und}ERROR${normal}: missing test.act or test.prsim in test folder $i"
+                    echo "${bold}ERROR${normal}: missing test.act or test.prsim in test folder $i"
                     fail=`expr $fail + 1`
                     faildirs="$faildirs ${i}_bundled"
                 fi
@@ -194,13 +186,6 @@ then
             do
                 echo "=================================================="
                 echo "${bold}$i Test${normal}"
-                
-                ### REMOVE TESTING LATER
-                if [ -f $i/"output_bundled/output.act" ];
-                then
-                    echo "... REMOVING output_bundled/output.act"
-                    rm $i/"output_bundled/output.act"
-                fi
                             
                 ### run regular tests
                 if [ ! -d $i/"output" ];
@@ -243,7 +228,7 @@ then
                             if (cat "$i/output/prsim.out" | grep -e "WRONG ASSERT" -e "FATAL" -e "not found")
                             then
                                 echo ""
-                                echo "==> test ${und}FAILED${normal} prsim running aflat prs."
+                                echo "==> test ${bold}FAILED${normal} prsim running aflat prs."
                                 fail=`expr $fail + 1`
                                 faildirs="$faildirs $i"
                             else
@@ -268,7 +253,7 @@ then
                         fi
                     fi
                 else
-                    echo "${und}ERROR${normal}: missing test.act or test.prsim in test folder $i"
+                    echo "${bold}ERROR${normal}: missing test.act or test.prsim in test folder $i"
                     fail=`expr $fail + 1`
                     faildirs="$faildirs $i"
                 fi

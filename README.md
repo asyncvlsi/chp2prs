@@ -40,6 +40,16 @@ This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act)
    * Please install the ACT toolkit first; installation instructions are [here](https://github.com/asyncvlsi/act/blob/master/README.md).
    * Build this program using the standard ACT tool install instructions [here](https://github.com/asyncvlsi/act/blob/master/README_tool.md).
 
+### Test Suite
+Run:
+
+```
+make runtest
+```
+will test the correctness of the repository by iterating through the the test/unit_tests folder and reporting the number of passing or failing tests.
+`make runtest optimize=1` will pass the "--optimize" flag to the chp2prs executable to check the correctness of the unit tests with sequencer optimizations.
+`make runtest bundled=1` will pass the "--bundled" flag to the chp2prs executable to check the correctness of the unit tests with bundled data.
+
 
 ### License
 
