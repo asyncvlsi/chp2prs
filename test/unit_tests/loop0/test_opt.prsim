@@ -2,6 +2,7 @@ initialize
 random
 watch Reset
 watch _Reset
+watch GND
 watch t.go.r
 watch t.var_x.v.t
 watch t.var_x.v.f
@@ -18,6 +19,7 @@ set_principal t.go.a
 mode reset
 set Reset 1
 set _Reset 0
+set GND 0
 set t.go.r 0
 set t.go.a 0
 cycle

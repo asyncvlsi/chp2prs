@@ -1,0 +1,1261 @@
+initialize
+random
+watch Reset
+watch _Reset
+watch GND
+watch t.go.r
+watch t.var_x[0].v.t
+watch t.var_x[0].v.f
+watch t.var_x[1].v.t
+watch t.var_x[1].v.f
+watch t.var_x[2].v.t
+watch t.var_x[2].v.f
+watch t.var_x[3].v.t
+watch t.var_x[3].v.f
+watch t.var_x[4].v.t
+watch t.var_x[4].v.f
+watch t.var_x[5].v.t
+watch t.var_x[5].v.f
+watch t.var_x[6].v.t
+watch t.var_x[6].v.f
+watch t.var_x[7].v.t
+watch t.var_x[7].v.f
+watch t.var_x[8].v.t
+watch t.var_x[8].v.f
+watch t.var_x[9].v.t
+watch t.var_x[9].v.f
+watch t.var_x[10].v.t
+watch t.var_x[10].v.f
+watch t.var_x[11].v.t
+watch t.var_x[11].v.f
+watch t.var_x[12].v.t
+watch t.var_x[12].v.f
+watch t.var_x[13].v.t
+watch t.var_x[13].v.f
+watch t.var_x[14].v.t
+watch t.var_x[14].v.f
+watch t.var_x[15].v.t
+watch t.var_x[15].v.f
+watch t.var_x[16].v.t
+watch t.var_x[16].v.f
+watch t.var_x[17].v.t
+watch t.var_x[17].v.f
+watch t.var_x[18].v.t
+watch t.var_x[18].v.f
+watch t.var_x[19].v.t
+watch t.var_x[19].v.f
+watch t.var_x[20].v.t
+watch t.var_x[20].v.f
+watch t.var_x[21].v.t
+watch t.var_x[21].v.f
+watch t.var_x[22].v.t
+watch t.var_x[22].v.f
+watch t.var_x[23].v.t
+watch t.var_x[23].v.f
+watch t.var_x[24].v.t
+watch t.var_x[24].v.f
+watch t.var_x[25].v.t
+watch t.var_x[25].v.f
+watch t.var_x[26].v.t
+watch t.var_x[26].v.f
+watch t.var_x[27].v.t
+watch t.var_x[27].v.f
+watch t.var_x[28].v.t
+watch t.var_x[28].v.f
+watch t.var_x[29].v.t
+watch t.var_x[29].v.f
+watch t.var_x[30].v.t
+watch t.var_x[30].v.f
+watch t.var_x[31].v.t
+watch t.var_x[31].v.f
+watch t.var_y[0].v.t
+watch t.var_y[0].v.f
+watch t.var_y[1].v.t
+watch t.var_y[1].v.f
+watch t.var_y[2].v.t
+watch t.var_y[2].v.f
+watch t.var_y[3].v.t
+watch t.var_y[3].v.f
+watch t.var_y[4].v.t
+watch t.var_y[4].v.f
+watch t.var_y[5].v.t
+watch t.var_y[5].v.f
+watch t.var_y[6].v.t
+watch t.var_y[6].v.f
+watch t.var_y[7].v.t
+watch t.var_y[7].v.f
+watch t.var_y[8].v.t
+watch t.var_y[8].v.f
+watch t.var_y[9].v.t
+watch t.var_y[9].v.f
+watch t.var_y[10].v.t
+watch t.var_y[10].v.f
+watch t.var_y[11].v.t
+watch t.var_y[11].v.f
+watch t.var_y[12].v.t
+watch t.var_y[12].v.f
+watch t.var_y[13].v.t
+watch t.var_y[13].v.f
+watch t.var_y[14].v.t
+watch t.var_y[14].v.f
+watch t.var_y[15].v.t
+watch t.var_y[15].v.f
+watch t.var_y[16].v.t
+watch t.var_y[16].v.f
+watch t.var_y[17].v.t
+watch t.var_y[17].v.f
+watch t.var_y[18].v.t
+watch t.var_y[18].v.f
+watch t.var_y[19].v.t
+watch t.var_y[19].v.f
+watch t.var_y[20].v.t
+watch t.var_y[20].v.f
+watch t.var_y[21].v.t
+watch t.var_y[21].v.f
+watch t.var_y[22].v.t
+watch t.var_y[22].v.f
+watch t.var_y[23].v.t
+watch t.var_y[23].v.f
+watch t.var_y[24].v.t
+watch t.var_y[24].v.f
+watch t.var_y[25].v.t
+watch t.var_y[25].v.f
+watch t.var_y[26].v.t
+watch t.var_y[26].v.f
+watch t.var_y[27].v.t
+watch t.var_y[27].v.f
+watch t.var_y[28].v.t
+watch t.var_y[28].v.f
+watch t.var_y[29].v.t
+watch t.var_y[29].v.f
+watch t.var_y[30].v.t
+watch t.var_y[30].v.f
+watch t.var_y[31].v.t
+watch t.var_y[31].v.f
+watch t.var_z[0].v.t
+watch t.var_z[0].v.f
+watch t.var_z[1].v.t
+watch t.var_z[1].v.f
+watch t.var_z[2].v.t
+watch t.var_z[2].v.f
+watch t.var_z[3].v.t
+watch t.var_z[3].v.f
+watch t.var_z[4].v.t
+watch t.var_z[4].v.f
+watch t.var_z[5].v.t
+watch t.var_z[5].v.f
+watch t.var_z[6].v.t
+watch t.var_z[6].v.f
+watch t.var_z[7].v.t
+watch t.var_z[7].v.f
+watch t.var_z[8].v.t
+watch t.var_z[8].v.f
+watch t.var_z[9].v.t
+watch t.var_z[9].v.f
+watch t.var_z[10].v.t
+watch t.var_z[10].v.f
+watch t.var_z[11].v.t
+watch t.var_z[11].v.f
+watch t.var_z[12].v.t
+watch t.var_z[12].v.f
+watch t.var_z[13].v.t
+watch t.var_z[13].v.f
+watch t.var_z[14].v.t
+watch t.var_z[14].v.f
+watch t.var_z[15].v.t
+watch t.var_z[15].v.f
+watch t.var_z[16].v.t
+watch t.var_z[16].v.f
+watch t.var_z[17].v.t
+watch t.var_z[17].v.f
+watch t.var_z[18].v.t
+watch t.var_z[18].v.f
+watch t.var_z[19].v.t
+watch t.var_z[19].v.f
+watch t.var_z[20].v.t
+watch t.var_z[20].v.f
+watch t.var_z[21].v.t
+watch t.var_z[21].v.f
+watch t.var_z[22].v.t
+watch t.var_z[22].v.f
+watch t.var_z[23].v.t
+watch t.var_z[23].v.f
+watch t.var_z[24].v.t
+watch t.var_z[24].v.f
+watch t.var_z[25].v.t
+watch t.var_z[25].v.f
+watch t.var_z[26].v.t
+watch t.var_z[26].v.f
+watch t.var_z[27].v.t
+watch t.var_z[27].v.f
+watch t.var_z[28].v.t
+watch t.var_z[28].v.f
+watch t.var_z[29].v.t
+watch t.var_z[29].v.f
+watch t.var_z[30].v.t
+watch t.var_z[30].v.f
+watch t.var_z[31].v.t
+watch t.var_z[31].v.f
+watch t.go.a
+watch t.e_7.out.t
+watch t.e_7.out.f
+set_principal t.go.r
+set_principal t.var_x[0].v.t
+set_principal t.var_x[0].v.f
+set_principal t.var_x[1].v.t
+set_principal t.var_x[1].v.f
+set_principal t.var_x[2].v.t
+set_principal t.var_x[2].v.f
+set_principal t.var_x[3].v.t
+set_principal t.var_x[3].v.f
+set_principal t.var_x[4].v.t
+set_principal t.var_x[4].v.f
+set_principal t.var_x[5].v.t
+set_principal t.var_x[5].v.f
+set_principal t.var_x[6].v.t
+set_principal t.var_x[6].v.f
+set_principal t.var_x[7].v.t
+set_principal t.var_x[7].v.f
+set_principal t.var_x[8].v.t
+set_principal t.var_x[8].v.f
+set_principal t.var_x[9].v.t
+set_principal t.var_x[9].v.f
+set_principal t.var_x[10].v.t
+set_principal t.var_x[10].v.f
+set_principal t.var_x[11].v.t
+set_principal t.var_x[11].v.f
+set_principal t.var_x[12].v.t
+set_principal t.var_x[12].v.f
+set_principal t.var_x[13].v.t
+set_principal t.var_x[13].v.f
+set_principal t.var_x[14].v.t
+set_principal t.var_x[14].v.f
+set_principal t.var_x[15].v.t
+set_principal t.var_x[15].v.f
+set_principal t.var_x[16].v.t
+set_principal t.var_x[16].v.f
+set_principal t.var_x[17].v.t
+set_principal t.var_x[17].v.f
+set_principal t.var_x[18].v.t
+set_principal t.var_x[18].v.f
+set_principal t.var_x[19].v.t
+set_principal t.var_x[19].v.f
+set_principal t.var_x[20].v.t
+set_principal t.var_x[20].v.f
+set_principal t.var_x[21].v.t
+set_principal t.var_x[21].v.f
+set_principal t.var_x[22].v.t
+set_principal t.var_x[22].v.f
+set_principal t.var_x[23].v.t
+set_principal t.var_x[23].v.f
+set_principal t.var_x[24].v.t
+set_principal t.var_x[24].v.f
+set_principal t.var_x[25].v.t
+set_principal t.var_x[25].v.f
+set_principal t.var_x[26].v.t
+set_principal t.var_x[26].v.f
+set_principal t.var_x[27].v.t
+set_principal t.var_x[27].v.f
+set_principal t.var_x[28].v.t
+set_principal t.var_x[28].v.f
+set_principal t.var_x[29].v.t
+set_principal t.var_x[29].v.f
+set_principal t.var_x[30].v.t
+set_principal t.var_x[30].v.f
+set_principal t.var_x[31].v.t
+set_principal t.var_x[31].v.f
+set_principal t.var_y[0].v.t
+set_principal t.var_y[0].v.f
+set_principal t.var_y[1].v.t
+set_principal t.var_y[1].v.f
+set_principal t.var_y[2].v.t
+set_principal t.var_y[2].v.f
+set_principal t.var_y[3].v.t
+set_principal t.var_y[3].v.f
+set_principal t.var_y[4].v.t
+set_principal t.var_y[4].v.f
+set_principal t.var_y[5].v.t
+set_principal t.var_y[5].v.f
+set_principal t.var_y[6].v.t
+set_principal t.var_y[6].v.f
+set_principal t.var_y[7].v.t
+set_principal t.var_y[7].v.f
+set_principal t.var_y[8].v.t
+set_principal t.var_y[8].v.f
+set_principal t.var_y[9].v.t
+set_principal t.var_y[9].v.f
+set_principal t.var_y[10].v.t
+set_principal t.var_y[10].v.f
+set_principal t.var_y[11].v.t
+set_principal t.var_y[11].v.f
+set_principal t.var_y[12].v.t
+set_principal t.var_y[12].v.f
+set_principal t.var_y[13].v.t
+set_principal t.var_y[13].v.f
+set_principal t.var_y[14].v.t
+set_principal t.var_y[14].v.f
+set_principal t.var_y[15].v.t
+set_principal t.var_y[15].v.f
+set_principal t.var_y[16].v.t
+set_principal t.var_y[16].v.f
+set_principal t.var_y[17].v.t
+set_principal t.var_y[17].v.f
+set_principal t.var_y[18].v.t
+set_principal t.var_y[18].v.f
+set_principal t.var_y[19].v.t
+set_principal t.var_y[19].v.f
+set_principal t.var_y[20].v.t
+set_principal t.var_y[20].v.f
+set_principal t.var_y[21].v.t
+set_principal t.var_y[21].v.f
+set_principal t.var_y[22].v.t
+set_principal t.var_y[22].v.f
+set_principal t.var_y[23].v.t
+set_principal t.var_y[23].v.f
+set_principal t.var_y[24].v.t
+set_principal t.var_y[24].v.f
+set_principal t.var_y[25].v.t
+set_principal t.var_y[25].v.f
+set_principal t.var_y[26].v.t
+set_principal t.var_y[26].v.f
+set_principal t.var_y[27].v.t
+set_principal t.var_y[27].v.f
+set_principal t.var_y[28].v.t
+set_principal t.var_y[28].v.f
+set_principal t.var_y[29].v.t
+set_principal t.var_y[29].v.f
+set_principal t.var_y[30].v.t
+set_principal t.var_y[30].v.f
+set_principal t.var_y[31].v.t
+set_principal t.var_y[31].v.f
+set_principal t.var_z[0].v.t
+set_principal t.var_z[0].v.f
+set_principal t.var_z[1].v.t
+set_principal t.var_z[1].v.f
+set_principal t.var_z[2].v.t
+set_principal t.var_z[2].v.f
+set_principal t.var_z[3].v.t
+set_principal t.var_z[3].v.f
+set_principal t.var_z[4].v.t
+set_principal t.var_z[4].v.f
+set_principal t.var_z[5].v.t
+set_principal t.var_z[5].v.f
+set_principal t.var_z[6].v.t
+set_principal t.var_z[6].v.f
+set_principal t.var_z[7].v.t
+set_principal t.var_z[7].v.f
+set_principal t.var_z[8].v.t
+set_principal t.var_z[8].v.f
+set_principal t.var_z[9].v.t
+set_principal t.var_z[9].v.f
+set_principal t.var_z[10].v.t
+set_principal t.var_z[10].v.f
+set_principal t.var_z[11].v.t
+set_principal t.var_z[11].v.f
+set_principal t.var_z[12].v.t
+set_principal t.var_z[12].v.f
+set_principal t.var_z[13].v.t
+set_principal t.var_z[13].v.f
+set_principal t.var_z[14].v.t
+set_principal t.var_z[14].v.f
+set_principal t.var_z[15].v.t
+set_principal t.var_z[15].v.f
+set_principal t.var_z[16].v.t
+set_principal t.var_z[16].v.f
+set_principal t.var_z[17].v.t
+set_principal t.var_z[17].v.f
+set_principal t.var_z[18].v.t
+set_principal t.var_z[18].v.f
+set_principal t.var_z[19].v.t
+set_principal t.var_z[19].v.f
+set_principal t.var_z[20].v.t
+set_principal t.var_z[20].v.f
+set_principal t.var_z[21].v.t
+set_principal t.var_z[21].v.f
+set_principal t.var_z[22].v.t
+set_principal t.var_z[22].v.f
+set_principal t.var_z[23].v.t
+set_principal t.var_z[23].v.f
+set_principal t.var_z[24].v.t
+set_principal t.var_z[24].v.f
+set_principal t.var_z[25].v.t
+set_principal t.var_z[25].v.f
+set_principal t.var_z[26].v.t
+set_principal t.var_z[26].v.f
+set_principal t.var_z[27].v.t
+set_principal t.var_z[27].v.f
+set_principal t.var_z[28].v.t
+set_principal t.var_z[28].v.f
+set_principal t.var_z[29].v.t
+set_principal t.var_z[29].v.f
+set_principal t.var_z[30].v.t
+set_principal t.var_z[30].v.f
+set_principal t.var_z[31].v.t
+set_principal t.var_z[31].v.f
+set_principal t.go.a
+set_principal t.e_7.out.t
+set_principal t.e_7.out.f
+set_principal GND
+
+mode reset
+set Reset 1
+set _Reset 0
+set GND 0
+set t.go.r 0
+set t.go.a 0
+cycle
+set Reset 0
+set _Reset 1
+cycle
+mode run
+
+assert t.go.r 0
+assert t.var_x[0].v.t 0
+assert t.var_x[0].v.f 1
+assert t.var_x[1].v.t 0
+assert t.var_x[1].v.f 1
+assert t.var_x[2].v.t 0
+assert t.var_x[2].v.f 1
+assert t.var_x[3].v.t 0
+assert t.var_x[3].v.f 1
+assert t.var_x[4].v.t 0
+assert t.var_x[4].v.f 1
+assert t.var_x[5].v.t 0
+assert t.var_x[5].v.f 1
+assert t.var_x[6].v.t 0
+assert t.var_x[6].v.f 1
+assert t.var_x[7].v.t 0
+assert t.var_x[7].v.f 1
+assert t.var_x[8].v.t 0
+assert t.var_x[8].v.f 1
+assert t.var_x[9].v.t 0
+assert t.var_x[9].v.f 1
+assert t.var_x[10].v.t 0
+assert t.var_x[10].v.f 1
+assert t.var_x[11].v.t 0
+assert t.var_x[11].v.f 1
+assert t.var_x[12].v.t 0
+assert t.var_x[12].v.f 1
+assert t.var_x[13].v.t 0
+assert t.var_x[13].v.f 1
+assert t.var_x[14].v.t 0
+assert t.var_x[14].v.f 1
+assert t.var_x[15].v.t 0
+assert t.var_x[15].v.f 1
+assert t.var_x[16].v.t 0
+assert t.var_x[16].v.f 1
+assert t.var_x[17].v.t 0
+assert t.var_x[17].v.f 1
+assert t.var_x[18].v.t 0
+assert t.var_x[18].v.f 1
+assert t.var_x[19].v.t 0
+assert t.var_x[19].v.f 1
+assert t.var_x[20].v.t 0
+assert t.var_x[20].v.f 1
+assert t.var_x[21].v.t 0
+assert t.var_x[21].v.f 1
+assert t.var_x[22].v.t 0
+assert t.var_x[22].v.f 1
+assert t.var_x[23].v.t 0
+assert t.var_x[23].v.f 1
+assert t.var_x[24].v.t 0
+assert t.var_x[24].v.f 1
+assert t.var_x[25].v.t 0
+assert t.var_x[25].v.f 1
+assert t.var_x[26].v.t 0
+assert t.var_x[26].v.f 1
+assert t.var_x[27].v.t 0
+assert t.var_x[27].v.f 1
+assert t.var_x[28].v.t 0
+assert t.var_x[28].v.f 1
+assert t.var_x[29].v.t 0
+assert t.var_x[29].v.f 1
+assert t.var_x[30].v.t 0
+assert t.var_x[30].v.f 1
+assert t.var_x[31].v.t 0
+assert t.var_x[31].v.f 1
+assert t.var_y[0].v.t 0
+assert t.var_y[0].v.f 1
+assert t.var_y[1].v.t 0
+assert t.var_y[1].v.f 1
+assert t.var_y[2].v.t 0
+assert t.var_y[2].v.f 1
+assert t.var_y[3].v.t 0
+assert t.var_y[3].v.f 1
+assert t.var_y[4].v.t 0
+assert t.var_y[4].v.f 1
+assert t.var_y[5].v.t 0
+assert t.var_y[5].v.f 1
+assert t.var_y[6].v.t 0
+assert t.var_y[6].v.f 1
+assert t.var_y[7].v.t 0
+assert t.var_y[7].v.f 1
+assert t.var_y[8].v.t 0
+assert t.var_y[8].v.f 1
+assert t.var_y[9].v.t 0
+assert t.var_y[9].v.f 1
+assert t.var_y[10].v.t 0
+assert t.var_y[10].v.f 1
+assert t.var_y[11].v.t 0
+assert t.var_y[11].v.f 1
+assert t.var_y[12].v.t 0
+assert t.var_y[12].v.f 1
+assert t.var_y[13].v.t 0
+assert t.var_y[13].v.f 1
+assert t.var_y[14].v.t 0
+assert t.var_y[14].v.f 1
+assert t.var_y[15].v.t 0
+assert t.var_y[15].v.f 1
+assert t.var_y[16].v.t 0
+assert t.var_y[16].v.f 1
+assert t.var_y[17].v.t 0
+assert t.var_y[17].v.f 1
+assert t.var_y[18].v.t 0
+assert t.var_y[18].v.f 1
+assert t.var_y[19].v.t 0
+assert t.var_y[19].v.f 1
+assert t.var_y[20].v.t 0
+assert t.var_y[20].v.f 1
+assert t.var_y[21].v.t 0
+assert t.var_y[21].v.f 1
+assert t.var_y[22].v.t 0
+assert t.var_y[22].v.f 1
+assert t.var_y[23].v.t 0
+assert t.var_y[23].v.f 1
+assert t.var_y[24].v.t 0
+assert t.var_y[24].v.f 1
+assert t.var_y[25].v.t 0
+assert t.var_y[25].v.f 1
+assert t.var_y[26].v.t 0
+assert t.var_y[26].v.f 1
+assert t.var_y[27].v.t 0
+assert t.var_y[27].v.f 1
+assert t.var_y[28].v.t 0
+assert t.var_y[28].v.f 1
+assert t.var_y[29].v.t 0
+assert t.var_y[29].v.f 1
+assert t.var_y[30].v.t 0
+assert t.var_y[30].v.f 1
+assert t.var_y[31].v.t 0
+assert t.var_y[31].v.f 1
+assert t.var_z[0].v.t 0
+assert t.var_z[0].v.f 1
+assert t.var_z[1].v.t 0
+assert t.var_z[1].v.f 1
+assert t.var_z[2].v.t 0
+assert t.var_z[2].v.f 1
+assert t.var_z[3].v.t 0
+assert t.var_z[3].v.f 1
+assert t.var_z[4].v.t 0
+assert t.var_z[4].v.f 1
+assert t.var_z[5].v.t 0
+assert t.var_z[5].v.f 1
+assert t.var_z[6].v.t 0
+assert t.var_z[6].v.f 1
+assert t.var_z[7].v.t 0
+assert t.var_z[7].v.f 1
+assert t.var_z[8].v.t 0
+assert t.var_z[8].v.f 1
+assert t.var_z[9].v.t 0
+assert t.var_z[9].v.f 1
+assert t.var_z[10].v.t 0
+assert t.var_z[10].v.f 1
+assert t.var_z[11].v.t 0
+assert t.var_z[11].v.f 1
+assert t.var_z[12].v.t 0
+assert t.var_z[12].v.f 1
+assert t.var_z[13].v.t 0
+assert t.var_z[13].v.f 1
+assert t.var_z[14].v.t 0
+assert t.var_z[14].v.f 1
+assert t.var_z[15].v.t 0
+assert t.var_z[15].v.f 1
+assert t.var_z[16].v.t 0
+assert t.var_z[16].v.f 1
+assert t.var_z[17].v.t 0
+assert t.var_z[17].v.f 1
+assert t.var_z[18].v.t 0
+assert t.var_z[18].v.f 1
+assert t.var_z[19].v.t 0
+assert t.var_z[19].v.f 1
+assert t.var_z[20].v.t 0
+assert t.var_z[20].v.f 1
+assert t.var_z[21].v.t 0
+assert t.var_z[21].v.f 1
+assert t.var_z[22].v.t 0
+assert t.var_z[22].v.f 1
+assert t.var_z[23].v.t 0
+assert t.var_z[23].v.f 1
+assert t.var_z[24].v.t 0
+assert t.var_z[24].v.f 1
+assert t.var_z[25].v.t 0
+assert t.var_z[25].v.f 1
+assert t.var_z[26].v.t 0
+assert t.var_z[26].v.f 1
+assert t.var_z[27].v.t 0
+assert t.var_z[27].v.f 1
+assert t.var_z[28].v.t 0
+assert t.var_z[28].v.f 1
+assert t.var_z[29].v.t 0
+assert t.var_z[29].v.f 1
+assert t.var_z[30].v.t 0
+assert t.var_z[30].v.f 1
+assert t.var_z[31].v.t 0
+assert t.var_z[31].v.f 1
+assert t.go.a 0
+set t.go.r 1
+cycle t.var_x[0].v.t
+assert t.var_x[0].v.t 1
+assert t.var_y[0].v.t 0
+
+cycle t.var_x[1].v.t
+
+assert t.go.r 1
+assert t.var_x[1].v.t 1
+assert t.var_x[1].v.f 0
+assert t.var_x[2].v.t 0
+assert t.var_x[2].v.f 1
+assert t.var_x[3].v.t 0
+assert t.var_x[3].v.f 1
+assert t.var_x[4].v.t 0
+assert t.var_x[4].v.f 1
+assert t.var_x[5].v.t 0
+assert t.var_x[5].v.f 1
+assert t.var_x[6].v.t 0
+assert t.var_x[6].v.f 1
+assert t.var_x[7].v.t 0
+assert t.var_x[7].v.f 1
+assert t.var_x[8].v.t 0
+assert t.var_x[8].v.f 1
+assert t.var_x[9].v.t 0
+assert t.var_x[9].v.f 1
+assert t.var_x[10].v.t 0
+assert t.var_x[10].v.f 1
+assert t.var_x[11].v.t 0
+assert t.var_x[11].v.f 1
+assert t.var_x[12].v.t 0
+assert t.var_x[12].v.f 1
+assert t.var_x[13].v.t 0
+assert t.var_x[13].v.f 1
+assert t.var_x[14].v.t 0
+assert t.var_x[14].v.f 1
+assert t.var_x[15].v.t 0
+assert t.var_x[15].v.f 1
+assert t.var_x[16].v.t 0
+assert t.var_x[16].v.f 1
+assert t.var_x[17].v.t 0
+assert t.var_x[17].v.f 1
+assert t.var_x[18].v.t 0
+assert t.var_x[18].v.f 1
+assert t.var_x[19].v.t 0
+assert t.var_x[19].v.f 1
+assert t.var_x[20].v.t 0
+assert t.var_x[20].v.f 1
+assert t.var_x[21].v.t 0
+assert t.var_x[21].v.f 1
+assert t.var_x[22].v.t 0
+assert t.var_x[22].v.f 1
+assert t.var_x[23].v.t 0
+assert t.var_x[23].v.f 1
+assert t.var_x[24].v.t 0
+assert t.var_x[24].v.f 1
+assert t.var_x[25].v.t 0
+assert t.var_x[25].v.f 1
+assert t.var_x[26].v.t 0
+assert t.var_x[26].v.f 1
+assert t.var_x[27].v.t 0
+assert t.var_x[27].v.f 1
+assert t.var_x[28].v.t 0
+assert t.var_x[28].v.f 1
+assert t.var_x[29].v.t 0
+assert t.var_x[29].v.f 1
+assert t.var_x[30].v.t 0
+assert t.var_x[30].v.f 1
+assert t.var_x[31].v.t 0
+assert t.var_x[31].v.f 1
+assert t.var_y[0].v.t 1
+assert t.var_y[0].v.f 0
+assert t.var_y[1].v.t 0
+assert t.var_y[1].v.f 1
+assert t.var_y[2].v.t 0
+assert t.var_y[2].v.f 1
+assert t.var_y[3].v.t 0
+assert t.var_y[3].v.f 1
+assert t.var_y[4].v.t 0
+assert t.var_y[4].v.f 1
+assert t.var_y[5].v.t 0
+assert t.var_y[5].v.f 1
+assert t.var_y[6].v.t 0
+assert t.var_y[6].v.f 1
+assert t.var_y[7].v.t 0
+assert t.var_y[7].v.f 1
+assert t.var_y[8].v.t 0
+assert t.var_y[8].v.f 1
+assert t.var_y[9].v.t 0
+assert t.var_y[9].v.f 1
+assert t.var_y[10].v.t 0
+assert t.var_y[10].v.f 1
+assert t.var_y[11].v.t 0
+assert t.var_y[11].v.f 1
+assert t.var_y[12].v.t 0
+assert t.var_y[12].v.f 1
+assert t.var_y[13].v.t 0
+assert t.var_y[13].v.f 1
+assert t.var_y[14].v.t 0
+assert t.var_y[14].v.f 1
+assert t.var_y[15].v.t 0
+assert t.var_y[15].v.f 1
+assert t.var_y[16].v.t 0
+assert t.var_y[16].v.f 1
+assert t.var_y[17].v.t 0
+assert t.var_y[17].v.f 1
+assert t.var_y[18].v.t 0
+assert t.var_y[18].v.f 1
+assert t.var_y[19].v.t 0
+assert t.var_y[19].v.f 1
+assert t.var_y[20].v.t 0
+assert t.var_y[20].v.f 1
+assert t.var_y[21].v.t 0
+assert t.var_y[21].v.f 1
+assert t.var_y[22].v.t 0
+assert t.var_y[22].v.f 1
+assert t.var_y[23].v.t 0
+assert t.var_y[23].v.f 1
+assert t.var_y[24].v.t 0
+assert t.var_y[24].v.f 1
+assert t.var_y[25].v.t 0
+assert t.var_y[25].v.f 1
+assert t.var_y[26].v.t 0
+assert t.var_y[26].v.f 1
+assert t.var_y[27].v.t 0
+assert t.var_y[27].v.f 1
+assert t.var_y[28].v.t 0
+assert t.var_y[28].v.f 1
+assert t.var_y[29].v.t 0
+assert t.var_y[29].v.f 1
+assert t.var_y[30].v.t 0
+assert t.var_y[30].v.f 1
+assert t.var_y[31].v.t 0
+assert t.var_y[31].v.f 1
+assert t.go.a 0
+cycle t.var_x[2].v.t
+
+assert t.var_x[0].v.t 0
+assert t.var_x[0].v.f 1
+assert t.var_x[2].v.t 1
+assert t.var_x[2].v.f 0
+assert t.var_x[3].v.t 0
+assert t.var_x[3].v.f 1
+assert t.var_x[4].v.t 0
+assert t.var_x[4].v.f 1
+assert t.var_x[5].v.t 0
+assert t.var_x[5].v.f 1
+assert t.var_x[6].v.t 0
+assert t.var_x[6].v.f 1
+assert t.var_x[7].v.t 0
+assert t.var_x[7].v.f 1
+assert t.var_x[8].v.t 0
+assert t.var_x[8].v.f 1
+assert t.var_x[9].v.t 0
+assert t.var_x[9].v.f 1
+assert t.var_x[10].v.t 0
+assert t.var_x[10].v.f 1
+assert t.var_x[11].v.t 0
+assert t.var_x[11].v.f 1
+assert t.var_x[12].v.t 0
+assert t.var_x[12].v.f 1
+assert t.var_x[13].v.t 0
+assert t.var_x[13].v.f 1
+assert t.var_x[14].v.t 0
+assert t.var_x[14].v.f 1
+assert t.var_x[15].v.t 0
+assert t.var_x[15].v.f 1
+assert t.var_x[16].v.t 0
+assert t.var_x[16].v.f 1
+assert t.var_x[17].v.t 0
+assert t.var_x[17].v.f 1
+assert t.var_x[18].v.t 0
+assert t.var_x[18].v.f 1
+assert t.var_x[19].v.t 0
+assert t.var_x[19].v.f 1
+assert t.var_x[20].v.t 0
+assert t.var_x[20].v.f 1
+assert t.var_x[21].v.t 0
+assert t.var_x[21].v.f 1
+assert t.var_x[22].v.t 0
+assert t.var_x[22].v.f 1
+assert t.var_x[23].v.t 0
+assert t.var_x[23].v.f 1
+assert t.var_x[24].v.t 0
+assert t.var_x[24].v.f 1
+assert t.var_x[25].v.t 0
+assert t.var_x[25].v.f 1
+assert t.var_x[26].v.t 0
+assert t.var_x[26].v.f 1
+assert t.var_x[27].v.t 0
+assert t.var_x[27].v.f 1
+assert t.var_x[28].v.t 0
+assert t.var_x[28].v.f 1
+assert t.var_x[29].v.t 0
+assert t.var_x[29].v.f 1
+assert t.var_x[30].v.t 0
+assert t.var_x[30].v.f 1
+assert t.var_x[31].v.t 0
+assert t.var_x[31].v.f 1
+assert t.var_y[0].v.t 0
+assert t.var_y[0].v.f 1
+assert t.var_y[1].v.t 1
+assert t.var_y[1].v.f 0
+assert t.var_y[2].v.t 0
+assert t.var_y[2].v.f 1
+assert t.var_y[3].v.t 0
+assert t.var_y[3].v.f 1
+assert t.var_y[4].v.t 0
+assert t.var_y[4].v.f 1
+assert t.var_y[5].v.t 0
+assert t.var_y[5].v.f 1
+assert t.var_y[6].v.t 0
+assert t.var_y[6].v.f 1
+assert t.var_y[7].v.t 0
+assert t.var_y[7].v.f 1
+assert t.var_y[8].v.t 0
+assert t.var_y[8].v.f 1
+assert t.var_y[9].v.t 0
+assert t.var_y[9].v.f 1
+assert t.var_y[10].v.t 0
+assert t.var_y[10].v.f 1
+assert t.var_y[11].v.t 0
+assert t.var_y[11].v.f 1
+assert t.var_y[12].v.t 0
+assert t.var_y[12].v.f 1
+assert t.var_y[13].v.t 0
+assert t.var_y[13].v.f 1
+assert t.var_y[14].v.t 0
+assert t.var_y[14].v.f 1
+assert t.var_y[15].v.t 0
+assert t.var_y[15].v.f 1
+assert t.var_y[16].v.t 0
+assert t.var_y[16].v.f 1
+assert t.var_y[17].v.t 0
+assert t.var_y[17].v.f 1
+assert t.var_y[18].v.t 0
+assert t.var_y[18].v.f 1
+assert t.var_y[19].v.t 0
+assert t.var_y[19].v.f 1
+assert t.var_y[20].v.t 0
+assert t.var_y[20].v.f 1
+assert t.var_y[21].v.t 0
+assert t.var_y[21].v.f 1
+assert t.var_y[22].v.t 0
+assert t.var_y[22].v.f 1
+assert t.var_y[23].v.t 0
+assert t.var_y[23].v.f 1
+assert t.var_y[24].v.t 0
+assert t.var_y[24].v.f 1
+assert t.var_y[25].v.t 0
+assert t.var_y[25].v.f 1
+assert t.var_y[26].v.t 0
+assert t.var_y[26].v.f 1
+assert t.var_y[27].v.t 0
+assert t.var_y[27].v.f 1
+assert t.var_y[28].v.t 0
+assert t.var_y[28].v.f 1
+assert t.var_y[29].v.t 0
+assert t.var_y[29].v.f 1
+assert t.var_y[30].v.t 0
+assert t.var_y[30].v.f 1
+assert t.var_y[31].v.t 0
+assert t.var_y[31].v.f 1
+assert t.go.a 0
+cycle t.var_x[3].v.t
+
+assert t.var_x[0].v.t 0
+assert t.var_x[0].v.f 1
+assert t.var_x[1].v.t 0
+assert t.var_x[1].v.f 1
+assert t.var_x[3].v.t 1
+assert t.var_x[3].v.f 0
+assert t.var_x[4].v.t 0
+assert t.var_x[4].v.f 1
+assert t.var_x[5].v.t 0
+assert t.var_x[5].v.f 1
+assert t.var_x[6].v.t 0
+assert t.var_x[6].v.f 1
+assert t.var_x[7].v.t 0
+assert t.var_x[7].v.f 1
+assert t.var_x[8].v.t 0
+assert t.var_x[8].v.f 1
+assert t.var_x[9].v.t 0
+assert t.var_x[9].v.f 1
+assert t.var_x[10].v.t 0
+assert t.var_x[10].v.f 1
+assert t.var_x[11].v.t 0
+assert t.var_x[11].v.f 1
+assert t.var_x[12].v.t 0
+assert t.var_x[12].v.f 1
+assert t.var_x[13].v.t 0
+assert t.var_x[13].v.f 1
+assert t.var_x[14].v.t 0
+assert t.var_x[14].v.f 1
+assert t.var_x[15].v.t 0
+assert t.var_x[15].v.f 1
+assert t.var_x[16].v.t 0
+assert t.var_x[16].v.f 1
+assert t.var_x[17].v.t 0
+assert t.var_x[17].v.f 1
+assert t.var_x[18].v.t 0
+assert t.var_x[18].v.f 1
+assert t.var_x[19].v.t 0
+assert t.var_x[19].v.f 1
+assert t.var_x[20].v.t 0
+assert t.var_x[20].v.f 1
+assert t.var_x[21].v.t 0
+assert t.var_x[21].v.f 1
+assert t.var_x[22].v.t 0
+assert t.var_x[22].v.f 1
+assert t.var_x[23].v.t 0
+assert t.var_x[23].v.f 1
+assert t.var_x[24].v.t 0
+assert t.var_x[24].v.f 1
+assert t.var_x[25].v.t 0
+assert t.var_x[25].v.f 1
+assert t.var_x[26].v.t 0
+assert t.var_x[26].v.f 1
+assert t.var_x[27].v.t 0
+assert t.var_x[27].v.f 1
+assert t.var_x[28].v.t 0
+assert t.var_x[28].v.f 1
+assert t.var_x[29].v.t 0
+assert t.var_x[29].v.f 1
+assert t.var_x[30].v.t 0
+assert t.var_x[30].v.f 1
+assert t.var_x[31].v.t 0
+assert t.var_x[31].v.f 1
+assert t.var_y[0].v.t 1
+assert t.var_y[0].v.f 0
+assert t.var_y[1].v.t 1
+assert t.var_y[1].v.f 0
+assert t.var_y[2].v.t 0
+assert t.var_y[2].v.f 1
+assert t.var_y[3].v.t 0
+assert t.var_y[3].v.f 1
+assert t.var_y[4].v.t 0
+assert t.var_y[4].v.f 1
+assert t.var_y[5].v.t 0
+assert t.var_y[5].v.f 1
+assert t.var_y[6].v.t 0
+assert t.var_y[6].v.f 1
+assert t.var_y[7].v.t 0
+assert t.var_y[7].v.f 1
+assert t.var_y[8].v.t 0
+assert t.var_y[8].v.f 1
+assert t.var_y[9].v.t 0
+assert t.var_y[9].v.f 1
+assert t.var_y[10].v.t 0
+assert t.var_y[10].v.f 1
+assert t.var_y[11].v.t 0
+assert t.var_y[11].v.f 1
+assert t.var_y[12].v.t 0
+assert t.var_y[12].v.f 1
+assert t.var_y[13].v.t 0
+assert t.var_y[13].v.f 1
+assert t.var_y[14].v.t 0
+assert t.var_y[14].v.f 1
+assert t.var_y[15].v.t 0
+assert t.var_y[15].v.f 1
+assert t.var_y[16].v.t 0
+assert t.var_y[16].v.f 1
+assert t.var_y[17].v.t 0
+assert t.var_y[17].v.f 1
+assert t.var_y[18].v.t 0
+assert t.var_y[18].v.f 1
+assert t.var_y[19].v.t 0
+assert t.var_y[19].v.f 1
+assert t.var_y[20].v.t 0
+assert t.var_y[20].v.f 1
+assert t.var_y[21].v.t 0
+assert t.var_y[21].v.f 1
+assert t.var_y[22].v.t 0
+assert t.var_y[22].v.f 1
+assert t.var_y[23].v.t 0
+assert t.var_y[23].v.f 1
+assert t.var_y[24].v.t 0
+assert t.var_y[24].v.f 1
+assert t.var_y[25].v.t 0
+assert t.var_y[25].v.f 1
+assert t.var_y[26].v.t 0
+assert t.var_y[26].v.f 1
+assert t.var_y[27].v.t 0
+assert t.var_y[27].v.f 1
+assert t.var_y[28].v.t 0
+assert t.var_y[28].v.f 1
+assert t.var_y[29].v.t 0
+assert t.var_y[29].v.f 1
+assert t.var_y[30].v.t 0
+assert t.var_y[30].v.f 1
+assert t.var_y[31].v.t 0
+assert t.var_y[31].v.f 1
+assert t.go.a 0
+cycle t.var_x[4].v.t
+
+assert t.var_x[0].v.t 0
+assert t.var_x[0].v.f 1
+assert t.var_x[1].v.t 0
+assert t.var_x[1].v.f 1
+assert t.var_x[2].v.t 0
+assert t.var_x[2].v.f 1
+assert t.var_x[4].v.t 1
+assert t.var_x[4].v.f 0
+assert t.var_x[5].v.t 0
+assert t.var_x[5].v.f 1
+assert t.var_x[6].v.t 0
+assert t.var_x[6].v.f 1
+assert t.var_x[7].v.t 0
+assert t.var_x[7].v.f 1
+assert t.var_x[8].v.t 0
+assert t.var_x[8].v.f 1
+assert t.var_x[9].v.t 0
+assert t.var_x[9].v.f 1
+assert t.var_x[10].v.t 0
+assert t.var_x[10].v.f 1
+assert t.var_x[11].v.t 0
+assert t.var_x[11].v.f 1
+assert t.var_x[12].v.t 0
+assert t.var_x[12].v.f 1
+assert t.var_x[13].v.t 0
+assert t.var_x[13].v.f 1
+assert t.var_x[14].v.t 0
+assert t.var_x[14].v.f 1
+assert t.var_x[15].v.t 0
+assert t.var_x[15].v.f 1
+assert t.var_x[16].v.t 0
+assert t.var_x[16].v.f 1
+assert t.var_x[17].v.t 0
+assert t.var_x[17].v.f 1
+assert t.var_x[18].v.t 0
+assert t.var_x[18].v.f 1
+assert t.var_x[19].v.t 0
+assert t.var_x[19].v.f 1
+assert t.var_x[20].v.t 0
+assert t.var_x[20].v.f 1
+assert t.var_x[21].v.t 0
+assert t.var_x[21].v.f 1
+assert t.var_x[22].v.t 0
+assert t.var_x[22].v.f 1
+assert t.var_x[23].v.t 0
+assert t.var_x[23].v.f 1
+assert t.var_x[24].v.t 0
+assert t.var_x[24].v.f 1
+assert t.var_x[25].v.t 0
+assert t.var_x[25].v.f 1
+assert t.var_x[26].v.t 0
+assert t.var_x[26].v.f 1
+assert t.var_x[27].v.t 0
+assert t.var_x[27].v.f 1
+assert t.var_x[28].v.t 0
+assert t.var_x[28].v.f 1
+assert t.var_x[29].v.t 0
+assert t.var_x[29].v.f 1
+assert t.var_x[30].v.t 0
+assert t.var_x[30].v.f 1
+assert t.var_x[31].v.t 0
+assert t.var_x[31].v.f 1
+assert t.var_y[0].v.t 0
+assert t.var_y[0].v.f 1
+assert t.var_y[1].v.t 0
+assert t.var_y[1].v.f 1
+assert t.var_y[2].v.t 1
+assert t.var_y[2].v.f 0
+assert t.var_y[3].v.t 0
+assert t.var_y[3].v.f 1
+assert t.var_y[4].v.t 0
+assert t.var_y[4].v.f 1
+assert t.var_y[5].v.t 0
+assert t.var_y[5].v.f 1
+assert t.var_y[6].v.t 0
+assert t.var_y[6].v.f 1
+assert t.var_y[7].v.t 0
+assert t.var_y[7].v.f 1
+assert t.var_y[8].v.t 0
+assert t.var_y[8].v.f 1
+assert t.var_y[9].v.t 0
+assert t.var_y[9].v.f 1
+assert t.var_y[10].v.t 0
+assert t.var_y[10].v.f 1
+assert t.var_y[11].v.t 0
+assert t.var_y[11].v.f 1
+assert t.var_y[12].v.t 0
+assert t.var_y[12].v.f 1
+assert t.var_y[13].v.t 0
+assert t.var_y[13].v.f 1
+assert t.var_y[14].v.t 0
+assert t.var_y[14].v.f 1
+assert t.var_y[15].v.t 0
+assert t.var_y[15].v.f 1
+assert t.var_y[16].v.t 0
+assert t.var_y[16].v.f 1
+assert t.var_y[17].v.t 0
+assert t.var_y[17].v.f 1
+assert t.var_y[18].v.t 0
+assert t.var_y[18].v.f 1
+assert t.var_y[19].v.t 0
+assert t.var_y[19].v.f 1
+assert t.var_y[20].v.t 0
+assert t.var_y[20].v.f 1
+assert t.var_y[21].v.t 0
+assert t.var_y[21].v.f 1
+assert t.var_y[22].v.t 0
+assert t.var_y[22].v.f 1
+assert t.var_y[23].v.t 0
+assert t.var_y[23].v.f 1
+assert t.var_y[24].v.t 0
+assert t.var_y[24].v.f 1
+assert t.var_y[25].v.t 0
+assert t.var_y[25].v.f 1
+assert t.var_y[26].v.t 0
+assert t.var_y[26].v.f 1
+assert t.var_y[27].v.t 0
+assert t.var_y[27].v.f 1
+assert t.var_y[28].v.t 0
+assert t.var_y[28].v.f 1
+assert t.var_y[29].v.t 0
+assert t.var_y[29].v.f 1
+assert t.var_y[30].v.t 0
+assert t.var_y[30].v.f 1
+assert t.var_y[31].v.t 0
+assert t.var_y[31].v.f 1
+assert t.go.a 0
+cycle t.var_x[10].v.t
+
+assert t.var_x[0].v.t 0
+assert t.var_x[0].v.f 1
+assert t.var_x[1].v.t 0
+assert t.var_x[1].v.f 1
+assert t.var_x[2].v.t 0
+assert t.var_x[2].v.f 1
+assert t.var_x[3].v.t 0
+assert t.var_x[3].v.f 1
+assert t.var_x[4].v.t 0
+assert t.var_x[4].v.f 1
+assert t.var_x[5].v.t 0
+assert t.var_x[5].v.f 1
+assert t.var_x[6].v.t 0
+assert t.var_x[6].v.f 1
+assert t.var_x[7].v.t 0
+assert t.var_x[7].v.f 1
+assert t.var_x[8].v.t 0
+assert t.var_x[8].v.f 1
+assert t.var_x[10].v.t 1
+assert t.var_x[10].v.f 0
+assert t.var_x[11].v.t 0
+assert t.var_x[11].v.f 1
+assert t.var_x[12].v.t 0
+assert t.var_x[12].v.f 1
+assert t.var_x[13].v.t 0
+assert t.var_x[13].v.f 1
+assert t.var_x[14].v.t 0
+assert t.var_x[14].v.f 1
+assert t.var_x[15].v.t 0
+assert t.var_x[15].v.f 1
+assert t.var_x[16].v.t 0
+assert t.var_x[16].v.f 1
+assert t.var_x[17].v.t 0
+assert t.var_x[17].v.f 1
+assert t.var_x[18].v.t 0
+assert t.var_x[18].v.f 1
+assert t.var_x[19].v.t 0
+assert t.var_x[19].v.f 1
+assert t.var_x[20].v.t 0
+assert t.var_x[20].v.f 1
+assert t.var_x[21].v.t 0
+assert t.var_x[21].v.f 1
+assert t.var_x[22].v.t 0
+assert t.var_x[22].v.f 1
+assert t.var_x[23].v.t 0
+assert t.var_x[23].v.f 1
+assert t.var_x[24].v.t 0
+assert t.var_x[24].v.f 1
+assert t.var_x[25].v.t 0
+assert t.var_x[25].v.f 1
+assert t.var_x[26].v.t 0
+assert t.var_x[26].v.f 1
+assert t.var_x[27].v.t 0
+assert t.var_x[27].v.f 1
+assert t.var_x[28].v.t 0
+assert t.var_x[28].v.f 1
+assert t.var_x[29].v.t 0
+assert t.var_x[29].v.f 1
+assert t.var_x[30].v.t 0
+assert t.var_x[30].v.f 1
+assert t.var_x[31].v.t 0
+assert t.var_x[31].v.f 1
+assert t.var_y[0].v.t 0
+assert t.var_y[0].v.f 1
+assert t.var_y[1].v.t 1
+assert t.var_y[1].v.f 0
+assert t.var_y[2].v.t 0
+assert t.var_y[2].v.f 1
+assert t.var_y[3].v.t 1
+assert t.var_y[3].v.f 0
+assert t.var_y[4].v.t 0
+assert t.var_y[4].v.f 1
+assert t.var_y[5].v.t 0
+assert t.var_y[5].v.f 1
+assert t.var_y[6].v.t 0
+assert t.var_y[6].v.f 1
+assert t.var_y[7].v.t 0
+assert t.var_y[7].v.f 1
+assert t.var_y[8].v.t 0
+assert t.var_y[8].v.f 1
+assert t.var_y[9].v.t 0
+assert t.var_y[9].v.f 1
+assert t.var_y[10].v.t 0
+assert t.var_y[10].v.f 1
+assert t.var_y[11].v.t 0
+assert t.var_y[11].v.f 1
+assert t.var_y[12].v.t 0
+assert t.var_y[12].v.f 1
+assert t.var_y[13].v.t 0
+assert t.var_y[13].v.f 1
+assert t.var_y[14].v.t 0
+assert t.var_y[14].v.f 1
+assert t.var_y[15].v.t 0
+assert t.var_y[15].v.f 1
+assert t.var_y[16].v.t 0
+assert t.var_y[16].v.f 1
+assert t.var_y[17].v.t 0
+assert t.var_y[17].v.f 1
+assert t.var_y[18].v.t 0
+assert t.var_y[18].v.f 1
+assert t.var_y[19].v.t 0
+assert t.var_y[19].v.f 1
+assert t.var_y[20].v.t 0
+assert t.var_y[20].v.f 1
+assert t.var_y[21].v.t 0
+assert t.var_y[21].v.f 1
+assert t.var_y[22].v.t 0
+assert t.var_y[22].v.f 1
+assert t.var_y[23].v.t 0
+assert t.var_y[23].v.f 1
+assert t.var_y[24].v.t 0
+assert t.var_y[24].v.f 1
+assert t.var_y[25].v.t 0
+assert t.var_y[25].v.f 1
+assert t.var_y[26].v.t 0
+assert t.var_y[26].v.f 1
+assert t.var_y[27].v.t 0
+assert t.var_y[27].v.f 1
+assert t.var_y[28].v.t 0
+assert t.var_y[28].v.f 1
+assert t.var_y[29].v.t 0
+assert t.var_y[29].v.f 1
+assert t.var_y[30].v.t 0
+assert t.var_y[30].v.f 1
+assert t.var_y[31].v.t 0
+assert t.var_y[31].v.f 1
+assert t.go.a 0
+cycle
+
+assert t.go.a 1
+assert t.var_x[9].v.t 0
+assert t.var_x[9].v.f 1

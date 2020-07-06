@@ -155,7 +155,7 @@ then
                             
                           # run prsim on prs
                             (($ACT_HOME/bin/prsim "$i/output_bundled/test.prs" < "$i/test.prsim") > "$i/output_bundled/prsim.out");
-                            if (cat "$i/prsim.out" | grep -e "WRONG ASSERT" -e "FATAL" -e "not found")
+                            if (cat "$i/output_bundled/prsim.out" | grep -e "WRONG ASSERT" -e "FATAL" -e "not found")
                             then
                                 echo ""
                                 echo "==> test ${und}FAILED${normal} prsim running aflat prs."

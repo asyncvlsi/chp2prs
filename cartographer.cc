@@ -562,7 +562,6 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         /* otherwise, the current expression is connected to the base go signal */
         else
         {
-          fprintf(output_stream, "  /* testpoint 8 */\n");
           fprintf(output_stream, "  e_%d.go_r = e_%d.go_r;\n", expr_count, *base_var); // replaced go.r with go_r 4/8
         }
       }
@@ -574,14 +573,12 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       /* recieve variable into a mult-bit bundled latch */
       else if (bundle_data)
       {
-        fprintf(output_stream, "  /* testpoint 8.5 */\n");
         fprintf(output_stream, "  bundled::expr_vararray<%d> be_%d;\n", TypeFactory::bitWidth(it), expr_count);
         fprintf(output_stream, "  (i:%d: be_%d.v[i] = var_%s[i].v;)\n", TypeFactory::bitWidth(it), expr_count, ((ActId *) e->u.e.l)->getName());
       }
       /* receive variable into a multi-bit delay-insensitive latch */
       else
       {
-        fprintf(output_stream, "  /* testpoint 8.75 */\n");
         fprintf(output_stream, "  syn::expr_vararray<%d> e_%d;\n", TypeFactory::bitWidth(it), expr_count);
         fprintf(output_stream, "  (i:%d: e_%d.v[i] = var_%s[i].v;)\n", TypeFactory::bitWidth(it), expr_count, ((ActId *) e->u.e.l)->getName());
         /* the current expression becomes the base go signal, if none is set */
@@ -630,7 +627,6 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
         /* otherwise, the current expression is connected to the base go signal */
         else
         {
-          fprintf(output_stream, "  /* testpoint 9 */\n");
           fprintf(output_stream, "  e_%d.go_r = e_%d.go_r;\n", expr_count, *base_var); // replaced go.r with go_r 4/8
         }
       }
@@ -793,7 +789,6 @@ int _print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
       /* otherwise, the current expression is connected to the base go signal */
       else
       {
-        fprintf(output_stream, "  /* testpoint 10 */\n");
         fprintf(output_stream, "  e_%d.go_r = e_%d.go.r;\n", expr_count, *base_var);
       }
       ret = expr_count++;
@@ -865,7 +860,6 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits, int multi_to_one_b
     fprintf(output_stream, "  syn::var_init_false tv_%d[%d];\n", seq, bits);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = tv_%d[i].v;)\n", bits, evar, seq);
     fprintf(output_stream, "  (i:%d: e_%d.v[i] = brtv_%d.v[i];)\n", bits, evar, seq);
-    fprintf(output_stream, "  /* testpoint 2 */\n");
     fprintf(output_stream, "  s_%d.r.r = brtv_%d.go.r;\n", seq, seq);
     fprintf(output_stream, "  s_%d.r.a = brtv_%d.go.a;\n", seq, seq);
     fprintf(output_stream, "  (i:%d: e_%d.out[i].t = brtv_%d.in.d[i].t;\n", bits, eout, seq);
@@ -891,7 +885,6 @@ int print_expr_tmpvar(char *req, int ego, int eout, int bits, int multi_to_one_b
       fprintf(output_stream, "  (i:%d: %s = rtv_%d[i].go.r;)\n", bits, req, seq);
     } else {
       fprintf(output_stream, "  s_%d.r.r = e_%d.go_r;\n", seq, ego);
-      fprintf(output_stream, "  /* testpoint 3 */\n");
       fprintf(output_stream, "  (i:%d: s_%d.r.r = rtv_%d[i].go.r;)\n", bits, seq, seq);
     }
     
@@ -917,7 +910,6 @@ int print_one_gc(act_chp_gc_t *gc, int *bitwidth, int *base_var)
 {
   int a, b;
   int ret = gc_chan_count++;
-  fprintf(output_stream, "  /* init base_var=%d */\n", *base_var);
   int init_basevar = *base_var;
   fprintf(output_stream, "  r1of2 gc_%d;\n", ret);
   /* guarded statement case */
@@ -928,7 +920,6 @@ int print_one_gc(act_chp_gc_t *gc, int *bitwidth, int *base_var)
     char buf[MAX_EXPR_SIZE];
     a = print_expr(gc->g, bitwidth, base_var, &delay);
     snprintf(buf, MAX_EXPR_SIZE, "gc_%d.r", ret);
-    fprintf(output_stream, "  /* mid base_var=%d */\n", *base_var);
 
     if (bundle_data && *bitwidth > 1)
     {
@@ -957,7 +948,6 @@ int print_one_gc(act_chp_gc_t *gc, int *bitwidth, int *base_var)
     }
 
     /* replace guard output with latched value */
-    fprintf(output_stream, "  /* base_var 2=%d */\n", *base_var);
     a = print_expr_tmpvar(buf, *base_var, a, 1, multi_to_one_bit_expr);
 
     /* print guarded statement */
@@ -1139,7 +1129,6 @@ int act_chp_assign(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
   else if (bundle_data)
   {
     fprintf(output_stream, "  bundled::recv<%d> s_%d;\n", TypeFactory::bitWidth(v), b);
-    fprintf(output_stream, "  /* testpoint 4 */\n");
     fprintf(output_stream, "  s_%d.go.r = e_%d.go_r;\n", b, a);
     fprintf(output_stream, "  s_%d.go.a = c_%d.a;\n", b, ret);
     fprintf(output_stream, "  (i:%d: s_%d.in.d[i].t = e_%d.out[i].t;\n", TypeFactory::bitWidth(v), b, a);
@@ -1192,9 +1181,9 @@ int act_chp_send(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seque
   }
   if (!bkt)
   {
-//    printf("chan %s has only 1 send\n", k);
+    printf("chan %s has only 1 send\n", k);
   } else {
-//    printf("chan %s has @ index %d\n", k, bkt->i);
+    printf("chan %s is @ index %d\n", k, bkt->i);
   }
 
   fprintf(output_stream, "  /* send */\n");
@@ -1247,6 +1236,7 @@ int act_chp_send(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seque
     else
     {
       snprintf(chan_name, MAX_EXPR_SIZE, "%s_chans[%d]", k,  bkt->i);
+      printf("CALLING MERGE CHAN SENDS\n");
       merge_chan_sends(bkt, TypeFactory::bitWidth(v));
       bkt->i = bkt->i + 1;
     }
@@ -1422,8 +1412,100 @@ int act_chp_semicomma(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_
   return ret;
 }
 
-int act_chp_doloop(act_chp_gc_t *gc, int *bitwidth, int *base_var) {
-  return 0;
+int act_chp_doloop(act_chp_gc_t *gc, int *bitwidth, int *base_var, int need_sequencer, int seq_num) {
+  int a, b, na;
+  int this_gc = gc_chan_count++;
+  int ret = chan_count++;
+  fprintf(output_stream, "\n  /* start do loop w/ base_var=%d */\n", *base_var);
+  
+  /* create request/acknowledge channel for do loop w/ or w/o sequencer */
+  if (need_sequencer >= 0)
+  {
+    seq_num++;
+    fprintf(output_stream, "  a1of1 c_%d;\n", ret);
+    fprintf(output_stream, "  syn::fullseq fs_%d;\n", seq_num);
+    fprintf(output_stream, "  c_%d = fs_%d.go;\n", ret, seq_num);
+  } else {
+    fprintf(output_stream, "  a1of1 c_%d;\n", ret); // no sequencer needed
+  }
+  
+  /* print statment -- do loop initiates statement at least once */
+  b = print_chp_stmt(gc->s, bitwidth, base_var, -1, -1);
+  fprintf(output_stream, "  /* do loop: b for stmt1 = %d */\n", b);
+  fprintf(output_stream, "  r1of2 gc_%d;\n", this_gc);
+  
+  /* print expr for the guard */
+  if (gc->g)
+  {
+    int multi_to_one_bit_expr = (gc->g->type == E_EQ || gc->g->type == E_NE || gc->g->type == E_LT || gc->g->type == E_GT || gc->g->type == E_LE || gc->g->type == E_GE);
+    int delay;
+    char buf[MAX_EXPR_SIZE];
+    a = print_expr(gc->g, bitwidth, base_var, &delay);
+    snprintf(buf, MAX_EXPR_SIZE, "gc_%d.r", this_gc);
+
+    if (bundle_data && *bitwidth > 1)
+    {
+      /* accumulate delay of the last operation */
+      delay += get_bundle_delay(*bitwidth, gc->g->type);
+      /* add a delay wire for the guard statement */
+      if (delay > 0)
+      {
+        fprintf(output_stream, "  bundled::delay<%d> de_%d;\n", delay, a);
+        fprintf(output_stream, "  de_%d.in = %s;\n", a, buf);
+        snprintf(buf, MAX_EXPR_SIZE, "de_%d.out", a);
+      }
+      /* add a delay wire to invert the output of the guard statement */
+      delay = get_bundle_delay(1, E_NOT);
+      fprintf(output_stream, "  bundled::delay<%d> dn_%d;\n", delay, a);
+      fprintf(output_stream, "  dn_%d.in = %s;\n", a, buf);
+      /* receive the guard output into a dualrail node */
+      fprintf(output_stream, "  bundled::var_to_dualrail be_%d;\n", expr_count);
+      fprintf(output_stream, "  be_%d.d = dn_%d.out;\n", expr_count, a);
+      fprintf(output_stream, "  be_%d.in = be_%d.out;\n", expr_count, a);
+      fprintf(output_stream, "  syn::expr_var e_%d;\n", expr_count);
+      fprintf(output_stream, "  e_%d.v = be_%d.out;\n", expr_count, expr_count);
+      snprintf(buf, MAX_EXPR_SIZE, "dn_%d.out", a);
+      a = expr_count++;
+      *base_var = a;
+    }
+
+    /* replace guard output with latched value */
+    a = print_expr_tmpvar(buf, *base_var, a, 1, 0);
+
+    /* connect truthfulness of expr to guard true rail*/
+    fprintf(output_stream, "  gc_%d.t = e_%d.out.t;\n", this_gc, a);
+    fprintf(output_stream, "  gc_%d.f = e_%d.out.f;\n", this_gc, a);
+  }
+  /* if no guard: implicit true */
+  else
+  {
+    b = print_chp_stmt(gc->s, bitwidth, base_var, -1, -1);
+    fprintf(output_stream, "  gc_%d.r = c_%d.a;\n", this_gc, b);
+    fprintf(output_stream, "  gc_%d.t = c_%d.r;\n", this_gc, b);
+    fprintf(output_stream, "  gc_%d.f = GND;\n", this_gc);
+  }
+  
+  /* connect statment to guard with notand to allow resetting of loop */
+  fprintf(output_stream, "  /* do loop cntd... */\n", b);
+  na = stmt_count++;
+  fprintf(output_stream, "  c_%d.a = gc_%d.r;\n", b, this_gc);
+  fprintf(output_stream, "  syn::bool_notand na_%d;\n", na);
+  fprintf(output_stream, "  na_%d.out = c_%d.r;\n", na, b);
+  fprintf(output_stream, "  na_%d.in2 = gc_%d.t;\n", na, this_gc);
+
+  if (need_sequencer >= 0)
+  {
+    fprintf(output_stream, "  na_%d.in1 = fs_%d.r.r;\n", na, seq_num);
+    fprintf(output_stream, "  gc_%d.f = fs_%d.r.a;\n", this_gc, seq_num);
+  }
+  else
+  {
+    fprintf(output_stream, "  na_%d.in1 = c_%d.r;\n", na, ret);
+    fprintf(output_stream, "  gc_%d.f = c_%d.a;\n", this_gc, ret);
+  }
+  
+  fprintf(output_stream, "  /* end do loop: ret = %d */\n", ret);
+  return ret;
 }
 
 /* Recursively called fn to handle different chp statement types */
@@ -1432,12 +1514,12 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
   int ret, a, b, delay;
   InstType *v, *u;
   char buf[MAX_EXPR_SIZE];
-  
-  // printf("base_var=%d need_seq=%d, seq_num=%d\n", *base_var, need_sequencer, seq_num);
-  
+    
   if (!c)
     return -1;
   
+  fprintf(output_stream, "  /* type=%d */\n", c->type);
+
   switch (c->type)
   {
     case ACT_CHP_SKIP:
@@ -1467,7 +1549,7 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
       break;
     case ACT_CHP_DOLOOP:
 //      printf("Do loop in the works.");
-      ret = act_chp_doloop(c->u.gc, bitwidth, base_var);
+      ret = act_chp_doloop(c->u.gc, bitwidth, base_var, need_sequencer, seq_num);
       break;
     default:
       fprintf(stderr, "chp2prs: unsupported token: %d\n", c->type);
@@ -1593,12 +1675,20 @@ void generate_act(Process *p, const char * input_file, const char *output_file, 
   /* hash table to track multiple sends */
   int it;
   hash_bucket_t *b, *cb;
-
-  if (chan_sends != NULL && chan_sends->size > 0 && chan_sends->head[0] != NULL) {
-    for (it = 0; it < chan_sends->size; it++) {
-      for (b = chan_sends->head[it]; b; b = b->next) {
-//        printf("... hash bkt=%s, count=%d\n", b->key, b->i);
-        if (b->i > 1) {
+  
+  /* TODO: get current chan sends table initialized by data from chan_sends */
+  //  printf("hash... %d, %d, %d\n", chan_sends != NULL, chan_sends->size > 0, chan_sends->head[0] != NULL);
+  if (chan_sends != NULL && chan_sends->size > 0 && chan_sends->head[0] != NULL)
+  {
+    // printf("creating current chan sends\n");
+    for (it = 0; it < chan_sends->size; it++)
+    {
+      // printf("it=%d\n", it);
+      for (b = chan_sends->head[it]; b; b = b->next)
+      {
+        // printf("... hash bkt=%s, count=%d\n", b->key, b->i);
+        if (b->i > 1)
+        {
           cb = hash_add(current_chan_sends, b->key);
           cb->i = 0;
         }
