@@ -29,7 +29,9 @@
 #include "config.h"
 #include "check_chp.h"
 #include "cartographer.h"
+#ifdef CHP_OPTIMIZE
 #include <act/chp-opt/optimize.h>
+#endif
 
 static void usage(char *name)
 {
@@ -99,17 +101,21 @@ int main(int argc, char **argv)
   }
 
   /* extract the chp */
-  if (p->lang == NULL || p->lang->getchp() == NULL)
+  if (p->getlang() == NULL || p->getlang()->getchp() == NULL)
   {
     fatal_error("Input file `%s' does not have any chp.", argv[2]);
   }
 
   if (chpopt)
   {
+#ifdef CHP_OPTIMIZE    
     ChpOpt::optimize(p, a->getTypeFactory());
     printf("> Optimized CHP:\n");
-    chp_print(stdout, p->lang->getchp()->c);
+    chp_print(stdout, p->getlang()->getchp()->c);
     printf("\n");
+#else
+    fatal_error ("Optimize flag is not currently enabled in the build.");
+#endif
   }
   
   struct Hashtable * chan_sends = check_chp(p);

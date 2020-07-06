@@ -337,6 +337,6 @@ struct Hashtable * check_chp(Process *p)
   int it;
   hash_bucket_t *b;
   
-  check(p->lang->getchp()->c);
+  check(p->getlang()->getchp()->c);
   return chan_sends;
 }
