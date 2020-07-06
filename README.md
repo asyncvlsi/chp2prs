@@ -48,6 +48,11 @@ will test the correctness of the repository by iterating through the the test/un
 `make runtest optimize=1` will pass the "--optimize" flag to the chp2prs executable to check the correctness of the unit tests with sequencer optimizations.
 `make runtest bundled=1` will pass the "--bundled" flag to the chp2prs executable to check the correctness of the unit tests with bundled data.
 
+```
+make testreps unit={unit_test_name}
+```
+can be used to test the robustness of a test in terms of random timing. The command repeatedly runs the prsim script of unit test and feeds a different random_seed number each time. The output of the prsim tests are fed into a unit_test's `test_rand.prsim` file. The script will stop when it encounters a prsim failure.
+
 
 ### License
 

@@ -123,18 +123,6 @@ testreps:
 			(echo "Error: make testreps unit={unit_test} [warning={0/1}]") \
 		fi \
 	fi
-	
-prsimscr:
-	@if [ -x ${ACT_HOME}/bin/test_writer -a -d test -a -d test/unit_tests -a -d test/unit_tests/${unit} ] ; \
-	then \
-		if [ -f test/unit_tests/${unit}/test_writer.txt ] ; \
-		then \
-			(echo "Creating ${unit} prsim script..."); \
-			(${ACT_HOME}/bin/test_writer test/unit_tests/${unit}/test_writer.txt test/unit_tests/${unit}/test.prsim --prsim --reset --_reset --random); \
-		fi \
-	else \
-		(echo "ERROR: no test writer executable or correct unit folder"); \
-	fi
 
 debug: obj_main obj_cartographer obj_checkchp start_lldb
 
