@@ -345,11 +345,9 @@ void merge_chan_sends(hash_bucket_t * curr, int bw) {
   }
   else if (curr->i != (b->i - 1))
   {
-//    printf("not time to merge yet...\n");
     return;
   }
 
-//  printf("time to merge!\n");
   fprintf(output_stream, "  syn::merge_chans<%d, %d> m_%s;\n", b->i, bw, b->key);
   fprintf(output_stream, "  (i:%d: m_%s.c[i] = %s_chans[i];)\n", b->i, b->key, b->key);
   fprintf(output_stream, "  m_%s.out = %s;\n", b->key, b->key);
@@ -368,7 +366,6 @@ int unop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay)
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, NULL, l, -1, false);
       if (ret > 0) return ret;
     }
-//    printf("TEST1: potential problem=expr_%s\n", s);
     fprintf(output_stream, "  syn::expr_%s e_%d;\n", s, expr_count);
     fprintf(output_stream, "  e_%d.in = e_%d.out;\n", expr_count, l);
   }
@@ -415,7 +412,6 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-//    printf("TEST2: potential problem=%s\n", s);
     fprintf(output_stream, "  syn::%s<1> e_%d;\n", s, expr_count); // changed expr_%s to %s
     fprintf(output_stream, "  e_%d.in1 = {e_%d.out};\n", expr_count, l);
     fprintf(output_stream, "  e_%d.in2 = {e_%d.out};\n", expr_count, r);
@@ -434,7 +430,6 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-//    printf("TEST3: potential problem=%s\n", s);
     fprintf(output_stream, "  syn::%s e_%d;\n", s, expr_count); // changed expr_%s to %s
     fprintf(output_stream, "  e_%d.in1 = e_%d.out;\n", expr_count, l);
     fprintf(output_stream, "  e_%d.in2 = e_%d.out;\n", expr_count, r);
@@ -463,7 +458,6 @@ int binop(const char *s, Expr *e, int *bitwidth, int *base_var, int *delay, bool
       int ret = hash_get_or_add(evaluated_exprs, s, e->u.e.l, e->u.e.r, l, r, commutative);
       if (ret > 0) return ret;
     }
-//    printf("TEST4: potential problem=%s\n", s);
     fprintf(output_stream, "  syn::%s<%d> e_%d;\n", s, *bitwidth, expr_count); // left as %s
     fprintf(output_stream, "  (i:%d: e_%d.in1[i] = e_%d.out[i];)\n", *bitwidth, expr_count, l);
     fprintf(output_stream, "  (i:%d: e_%d.in2[i] = e_%d.out[i];)\n", *bitwidth, expr_count, r);
@@ -805,9 +799,7 @@ int print_expr(Expr *e, int *bitwidth, int *base_var, int *delay)
 {
   *base_var = -1;
   *delay = 0;
-//  printf("initial print expr type=%d bw=%d\n", e->type, *bitwidth);
   return _print_expr(e, bitwidth, base_var, delay);
-//  printf("final print expr type=%d bw=%d\n", e->type, *bitwidth);
 }
 
 int print_expr_tmpvar(char *req, int ego, int eout, int bits, int multi_to_one_bit_expr)
@@ -1029,13 +1021,11 @@ int print_gc(bool loop, act_chp_gc_t *gc, int *bitwidth, int *base_var)
     /* construct a multi-stage or gate for guard outputs */
     int a, b;
     a = stmt_count++;
-//    printf("... ... start_gc_chan=%d, sgc+2=%d, end_gc_chan=%d\n", start_gc_chan, start_gc_chan+2, end_gc_chan);
     fprintf(output_stream, "  syn::bool_or or_%d;\n", a);
     fprintf(output_stream, "  or_%d.in1 = gc_%d.t;\n", a, start_gc_chan);
     fprintf(output_stream, "  or_%d.in2 = gc_%d.t;\n", a, start_gc_chan + 1);
     for (int i = start_gc_chan + 2; i <= end_gc_chan; i++)
     {
-//      printf("... ... in sgc+2 loop!\n");
       b = stmt_count++;
       fprintf(output_stream, "  syn::bool_or or_%d;\n", b);
       fprintf(output_stream, "  or_%d.in1 = or_%d.out;\n", b, a);
@@ -1179,12 +1169,6 @@ int act_chp_send(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seque
   {
     fprintf(stderr, "ERROR: no chan HASH TABLE\n");
   }
-  if (!bkt)
-  {
-    printf("chan %s has only 1 send\n", k);
-  } else {
-    printf("chan %s is @ index %d\n", k, bkt->i);
-  }
 
   fprintf(output_stream, "  /* send */\n");
   if (list_length(c->u.comm.rhs) == 1)
@@ -1236,7 +1220,6 @@ int act_chp_send(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seque
     else
     {
       snprintf(chan_name, MAX_EXPR_SIZE, "%s_chans[%d]", k,  bkt->i);
-      printf("CALLING MERGE CHAN SENDS\n");
       merge_chan_sends(bkt, TypeFactory::bitWidth(v));
       bkt->i = bkt->i + 1;
     }
@@ -1279,9 +1262,7 @@ int act_chp_recv(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seque
   } else {
     snprintf(chan_name, MAX_EXPR_SIZE, "%s_chans[%d]", k,  bkt->i);
   }
-  
-//  printf("CHAN NAME: %s ... k=%s\n", chan_name, k);
-  
+    
   fprintf(output_stream, "  /* recv */\n");
   if (list_length(c->u.comm.rhs) == 1)
   {
@@ -1548,7 +1529,6 @@ int print_chp_stmt(act_chp_lang_t *c, int *bitwidth, int *base_var, int need_seq
       ret = print_gc((c->type == ACT_CHP_LOOP) ? true : false, c->u.gc, bitwidth, base_var);
       break;
     case ACT_CHP_DOLOOP:
-//      printf("Do loop in the works.");
       ret = act_chp_doloop(c->u.gc, bitwidth, base_var, need_sequencer, seq_num);
       break;
     default:

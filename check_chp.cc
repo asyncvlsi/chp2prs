@@ -184,14 +184,12 @@ int hash_get_chan(const char * c)
   {
     int count = b->i;
     b->i = count + 1;
-    printf("Chan %s found! New send count = %d\n", c, count+1);
   }
   /* if the key isn't in the table, add it (and its commutative counterpart) */
   else
   {
     b = hash_add(chan_sends, k);
     b->i = 1;
-    printf("No chan %s found. ==> Created bkt=%s w/ send count = 1\n", k, c);
     ret = -1;
   }
 

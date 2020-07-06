@@ -3,9 +3,11 @@
 ### Usage
 
 ```
-Usage: [executable] <actfile> <process> <outfile>
+Usage: [executable] <actfile> <process> <outfile> [--optimize] [--bundled]
 ```
 Note that `process` should be of the form `"[procname]<>"` to ensure correct execution.
+The `--optimize` flag will add sequencer optimization to the chp2prs compilation.
+The `--bundled` flag will use bundled data instead of dualrails to represent data.
 
 ### Overview
 
