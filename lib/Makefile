@@ -18,7 +18,7 @@
 #  Boston, MA  02110-1301, USA.
 #
 #-------------------------------------------------------------------------
-TARGETACT=globals.act channel.act
+TARGETACT=syn.act
 
 include $(VLSI_TOOLS_SRC)/scripts/Makefile.std
 
@@ -27,5 +27,3 @@ include $(VLSI_TOOLS_SRC)/scripts/Makefile.std
 install: install_act
 	@if [ ! -d $(ACT_HOME)/act/syn ]; then mkdir $(ACT_HOME)/act/syn; fi
 	@$(VLSI_TOOLS_SRC)/scripts/install syn.act $(ACT_HOME)/act/syn/_all_.act
-	@if [ ! -d $(ACT_HOME)/act/bundled ]; then mkdir $(ACT_HOME)/act/bundled; fi
-	@$(VLSI_TOOLS_SRC)/scripts/install bundled.act $(ACT_HOME)/act/bundled/_all_.act

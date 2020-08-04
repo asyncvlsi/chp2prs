@@ -79,6 +79,6 @@ int get_expr_bitwidth (Expr *e);
  */
 void check (act_chp_lang_t *c);
 
-struct Hashtable * check_chp (Process *p);
+void check_chp (Process *p);
 
 #endif

@@ -33,6 +33,9 @@
 #include <act/chp-opt/optimize.h>
 #endif
 
+#include "basicsdt.h"
+
+
 static void usage(char *name)
 {
   fprintf(stderr, "Usage: %s <actfile> <process> <outfile> [--optimize] [--bundled]\n", name);
@@ -117,9 +120,12 @@ int main(int argc, char **argv)
     fatal_error ("Optimize flag is not currently enabled in the build.");
 #endif
   }
+
+  check_chp(p);
+  BasicSDT *sdt = new BasicSDT(argv[1], bundled, chpopt);
+  sdt->run_sdt (p);
   
-  struct Hashtable * chan_sends = check_chp(p);
-  generate_act(p, argv[1], argv[3], bundled, 0, chpopt, chan_sends);
-  hash_free(chan_sends);
+  //generate_act(p, argv[1], argv[3], bundled, 0, chpopt, chan_sends);
+  
   return 0;
 }
