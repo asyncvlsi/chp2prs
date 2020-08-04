@@ -1,0 +1,183 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2020 Rajit Manohar
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+import "globals.act";
+
+
+/* Syntax directed translation */
+  
+namespace syn {
+
+export
+defchan a1of1 <: chan(bool) (bool r, a) { }
+
+export template<pint N>
+deftype dualrail <: int<1> (bool d[2],t,f)
+{
+  d[0] = t;
+  d[1] = f;
+  spec {
+    exclhi(t,f)
+  }
+}
+
+export template<pint N>
+deftype dualrails <: int<N> (dualrail r[N]) { }
+
+export template<pint N>
+defchan ax1of2 <: chan(int<N>) (dualrails<N> d; bool a) { }
+
+export template<pint N>
+defchan rx1of2 <: chan(int<N>) (bool r; dualrails<N> d) { }
+
+export defchan sdtchan <: ax1of2 () { } 
+
+
+export defchan a1of2 <: ax1of2<1> ()  { }
+export defchan r1of2 <: rx1of2<1> () { }
+
+/*-- variable state --*/
+export template<pint W; pbool I>
+defproc var_init(dualrails<W> v);
+
+  
+/*-- basic statements --*/
+export
+defproc sskip(a1of1 c);
+
+export template<pint W>
+defproc send(a1of1 c; rx1of2<W> e; ax1of2<W> ch);
+
+export template<pint W>
+defproc recv(a1of1 c; ax1of2<W> ch; dualrails<W> var);
+
+  
+/*-- compound statements --*/
+export template<pint N>
+defproc loop(a1of1 c; r1of2 g[N]; a1of1 s[N]);
+
+export template<pint N;pbool has_else>
+defproc select(a1of1 c; r1of2 g[N-int(has_else)]; a1of1 s[N]);
+
+export template<pint N;pbool has_else>
+defproc arb_select(a1of1 c; r1of2 g[N-int(has_else)]; a1of1 s[N]);
+
+export 
+defproc doloop(a1of1 c; r1of2 g; a1of1 s);
+
+/*-- composition --*/
+export template<pint N>
+defproc comma(a1of1 c; a1of1 stmts[N]);
+
+export template<pint N>
+defproc semi(a1of1 c; a1of1 stmts[N]);
+
+  
+export namespace expr {
+
+function max(pint a, b) : pint
+{
+ chp {
+      [ a > b -> self := a [] else -> self := b ]
+ }     
+}
+
+export template<pint W1,W2>
+defproc and(rx1of2<W1> a; rx1of2<W2> b; rx1of2<max(W1,W2)> out);
+
+export template<pint W1,W2>
+defproc or(rx1of2<W1> a; rx1of2<W2> b; rx1of2<max(W1,W2)> out);
+
+export template<pint W1,W2>
+defproc xor(rx1of2<W1> a; rx1of2<W2> b; rx1of2<max(W1,W2)> out);
+
+  
+export template<pint W1,W2>
+defproc add(rx1of2<W1> a; rx1of2<W2> b; rx1of2<max(W1,W2)+1> out);
+
+export template<pint W1,W2>
+defproc sub(rx1of2<W1> a; rx1of2<W2> b; rx1of2<max(W1,W2)+1> out);
+
+export template<pint W1,W2>
+defproc mult(rx1of2<W1> a; rx1of2<W2> b; rx1of2<W1+W2+1> out);
+
+export template<pint W1,W2>
+defproc div(rx1of2<W1> a; rx1of2<W2> b; rx1of2<W1> out);
+  
+export template<pint W1,W2>
+defproc mod(rx1of2<W1> a; rx1of2<W2> b; rx1of2<W2> out);
+  
+export template<pint W1,W2>
+defproc lsl(rx1of2<W1> a; rx1of2<W2> b; rx1of2<W1+(1<<W2)> out);
+
+export template<pint W1,W2>
+defproc lsr(rx1of2<W1> a; rx1of2<W2> b; rx1of2<W1> out);
+  
+export template<pint W1,W2>
+defproc asr(rx1of2<W1> a; rx1of2<W2> b; rx1of2<W1> out);
+
+export template<pint W1,W2>
+defproc lt(rx1of2<W1> a; rx1of2<W2> b; r1of2 out);
+
+export template<pint W1,W2>
+defproc gt(rx1of2<W1> a; rx1of2<W2> b; r1of2 out);
+  
+export template<pint W1,W2>
+defproc le(rx1of2<W1> a; rx1of2<W2> b; r1of2 out);
+
+export template<pint W1,W2>
+defproc ge(rx1of2<W1> a; rx1of2<W2> b; r1of2 out);
+  
+export template<pint W1,W2>
+defproc lt(rx1of2<W1> a; rx1of2<W2> b; r1of2 out);
+
+export template<pint W1,W2>
+defproc eq(rx1of2<W1> a; rx1of2<W2> b; r1of2 out);
+
+export template<pint W1,W2>
+defproc ne(rx1of2<W1> a; rx1of2<W2> b; r1of2 out);
+
+export template<pint W>
+defproc uminus(rx1of2<W> a; rx1of2<W> out);
+  
+export template<pint W>
+defproc not(rx1of2<W> a; rx1of2<W> out);
+  
+export template<pint W1,W2>
+defproc ite(r1of2 a; rx1of2<W1> opt1; rx1of2<W2> opt2; rx1of2<max(W1,W2)> out);
+
+export template<pint W1, W2>
+defproc widthconv(rx1of2<W1> a; rx1of2<W2> out);
+
+export template<pint W,V>
+defproc const(rx1of2<W> out);
+
+/*-- we need to fix this for variables ---*/
+export template<pint W>
+defproc writevar(rx1of2<W> a; dualrails<W> var);
+
+export template<pint W>
+defproc readvar(dualrails<W> var; rx1of2<W> out);
+
+}
+
+
+}
