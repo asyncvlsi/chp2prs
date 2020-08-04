@@ -786,12 +786,12 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
     }								\
     else if ((ex)->type == E_TRUE || (ex)->type == E_FALSE) {	\
       myid = list_ivalue (_booliter);				\
-      _booliter = list_next (list_next (_booliter));		\
+      _booliter = list_next (_booliter);			\
       myw = 1;							\
     }								\
     else if ((ex)->type == E_INT) {				\
       myid = list_ivalue (_intiter);				\
-      _intiter = list_next(list_next (_intiter));		\
+      _intiter = list_next (_intiter);				\
       myw = list_ivalue (_intiter);				\
       _intiter = list_next (_intiter);				\
     }								\
