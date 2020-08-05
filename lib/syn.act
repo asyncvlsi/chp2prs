@@ -40,15 +40,15 @@ export template<pint W>
 defproc send(a1of1 c; sdtexprchan<W> e; sdtchan<W> ch)
 {
   c.r = e.r;
-  ch.a = c.a;
   sdt_connect_data<W> conn(e,ch);
+  ch.a = c.a;
 }
 
 export template<pint W>
 defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);
 
 /*
- * Build an OR-gate tree (NOR/NAND)
+ * Build an OR-gate tree (NOR/NAND/optional INV)
  */
 export template<pint N>
 defproc ortree (bool in[N]; bool out)
@@ -112,8 +112,6 @@ defproc ortree (bool in[N]; bool out)
   ]
 }
   
-
-  
 /*-- compound statements --*/
 export template<pint N>
 defproc loop(a1of1 c; r1of2 g[N]; a1of1 s[N])
@@ -122,27 +120,33 @@ defproc loop(a1of1 c; r1of2 g[N]; a1of1 s[N])
   (i:N-1: g[i].f = g[i+1].r;)
   g[N-1].f = c.a;
     
-  ortree<N> t;
-  (i:N: s[i](.r=g[i].t, .a=t.in[i]); )
+  ortree<N> ot;
+  (i:N: s[i](.r=g[i].t, .a=ot.in[i]); )
 
   bool _r;
 
   prs {
     c.r => _r-
-    _r | t.out => g[0].r-
+    _r | ot.out => g[0].r-
   }
 }
 
 export template<pint N;pbool has_else>
 defproc select(a1of1 c; r1of2 g[N-int(has_else)]; a1of1 s[N])
 {
-  (i:N-1: g[i].f = g[i+1].r;)
+  [ has_else -> (i:N-2: g[i].f = g[i+1].r;)
+                s[N-1].r = g[N-2].f;
+  [] ~has_else -> (i:N-1: g[i].f = g[i+1].r;)
+  ]
 
-  ortree<N> t;
-
-  (i:N:  s[i](.r=g[i].t, .a=t.in[i]); )
+  ortree<N> ot;
+  [ has_else -> (i:N-1:  s[i](.r=g[i].t, .a=ot.in[i]); )
+                s[N-1].a = ot.in[N-1];
+  [] ~has_else ->
+      (i:N:  s[i](.r=g[i].t, .a=ot.in[i]); )
+  ]
    
-  t.out = c.a;    
+  ot.out = c.a;    
 }
 
 export template<pint N;pbool has_else>
@@ -228,7 +232,7 @@ defproc ctree (bool in[N]; bool out)
 export template<pint N>
 defproc comma(a1of1 c; a1of1 stmts[N])
 {
-  (i:N: c.r = stmts[i].r;)
+  (i:N: c.r = stmts[i].r;)   // XXX: probably need buffers here? 
   /* completion tree */
   ctree<N> ct(,c.a);
   (i:N: ct.in[i] = stmts[i].a;)
@@ -288,7 +292,7 @@ export template<pint W1,W2>
 defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out);
 
 export template<pint W1,W2>
-defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2+1> out);
+defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out);
 
 export template<pint W1,W2>
 defproc div(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);

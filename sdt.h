@@ -37,6 +37,9 @@ struct varmap_info {
   int iread, iwrite;
 };
 
+/*
+ *  Generic abstract base class for syntax-directed translation
+ */
 class SDTEngine {
  public:
   SDTEngine() {
@@ -79,8 +82,17 @@ private:
 
   /* building blocks */
 
+  /*-- the unique identifier used to control the execution of a
+        statement --*/
   virtual int _gen_stmt_id () = 0;
+
+  /*-- the unique identifier used to control the evaluation of an
+    expression. Use non-negative integers only. -1 is used as a
+    special case
+    --*/
   virtual int _gen_expr_id () = 0;
+
+  /*-- unique instance identifier --*/
   virtual int _gen_inst_id () = 0;
   
   /* id = stmt_id for skip */
@@ -102,8 +114,6 @@ private:
   virtual void _emit_expr_unary (int id, int width, int type,
 				 int lid, int lw) = 0;
 
-
-  
   virtual void _emit_expr_const (int eid, int width, int val) = 0;
 
   virtual void _emit_expr_width_conv (int from_id, int from_width,
@@ -115,15 +125,22 @@ private:
   /* id = variable port for this identifier */
   virtual void _emit_var_write (int eid, varmap_info *v) = 0;
   virtual void _emit_var_read   (int eid, varmap_info *v) = 0;
-  
+
   virtual void _emit_send (int cid, varmap_info *ch, int eid) = 0;
   virtual void _emit_recv (int cid, varmap_info *ch, varmap_info *v) = 0;
+
+  /*
+     cid  : initiate command id
+    stmts : a list of integers, corresponding to the statements being
+            composed
+  */
   virtual void _emit_comma (int cid, list_t *stmts) = 0;
   virtual void _emit_semi (int cid, list_t *stmts) = 0;
 
   virtual void _emit_loop (int cid, list_t *guards, list_t *stmts) = 0;
   virtual void _emit_doloop (int cid, int guard, int stmt) = 0;
   virtual void _emit_select (int is_nondet, int cid, list_t *guards, list_t *stmts) = 0;
+  /*--- need emit_select_probe: guards, probes, stmts ---*/
 
   /*-- header and footer --*/
   virtual void _emit_begin () = 0;

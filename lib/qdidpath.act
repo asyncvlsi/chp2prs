@@ -75,7 +75,7 @@ export template<pint W1,W2>
 defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out);
 
 export template<pint W1,W2>
-defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2+1> out);
+defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out);
 
 export template<pint W1,W2>
 defproc div(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
