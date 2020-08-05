@@ -26,14 +26,14 @@
 
 class BasicSDT : public SDTEngine {
  public:
-  BasicSDT (const char *input, int isbundled, int isopt) {
+  BasicSDT (const char *input, int isbundled, int isopt, char *out) {
     bundled_data = isbundled;
     optimize = isopt;
     _expr_id = 0;
     _stmt_id = 0;
     _inst_id = 0;
     output_stream = NULL;
-    output_file = NULL;
+    output_file = out;
     input_file = Strdup (input);
   }
   

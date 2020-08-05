@@ -122,10 +122,8 @@ int main(int argc, char **argv)
   }
 
   check_chp(p);
-  BasicSDT *sdt = new BasicSDT(argv[1], bundled, chpopt);
+  BasicSDT *sdt = new BasicSDT(argv[1], bundled, chpopt, argv[3]);
   sdt->run_sdt (p);
-  
-  //generate_act(p, argv[1], argv[3], bundled, 0, chpopt, chan_sends);
-  
+
   return 0;
 }
