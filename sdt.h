@@ -30,6 +30,9 @@ struct varmap_info {
 
   unsigned int fcurexpr:1;	// flag (found in current expression)
   unsigned int fischan:1;	// channel or int?
+  unsigned int fisinport:1;	// 1 if input, 0 if output
+
+  int muxid;			// muxid
   
   int width;			// bitwidth
 
@@ -82,11 +85,14 @@ private:
 
   /* building blocks */
 
-  /*-- the unique identifier used to control the execution of a
-        statement --*/
+  /*-- 
+    The unique identifier used to control the execution of a
+    statement 
+    --*/
   virtual int _gen_stmt_id () = 0;
 
-  /*-- the unique identifier used to control the evaluation of an
+  /*-- 
+    The unique identifier used to control the evaluation of an
     expression. Use non-negative integers only. -1 is used as a
     special case
     --*/
@@ -119,15 +125,15 @@ private:
   virtual void _emit_expr_width_conv (int from_id, int from_width,
 				      int to_id, int to_width) = 0;
 
-  virtual void _emit_expr_go_conn (int e1, int e2) = 0;
-
-  
   /* id = variable port for this identifier */
-  virtual void _emit_var_write (int eid, varmap_info *v) = 0;
   virtual void _emit_var_read   (int eid, varmap_info *v) = 0;
 
-  virtual void _emit_send (int cid, varmap_info *ch, int eid) = 0;
+  /* transfer expression to channel or variable */
+  virtual void _emit_transfer (int cid, int eid, varmap_info *v) = 0;
   virtual void _emit_recv (int cid, varmap_info *ch, varmap_info *v) = 0;
+
+  virtual void _emit_channel_mux (varmap_info *v) = 0;
+
 
   /*
      cid  : initiate command id

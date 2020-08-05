@@ -22,11 +22,11 @@ TARGETACT=syn.act qdichan.act qdidpath.act _all_.act
 
 include $(VLSI_TOOLS_SRC)/scripts/Makefile.std
 
--include Makefile.deps
-
 all:
 	@echo "Done"
 
 install: install_act
 	@if [ ! -d $(ACT_HOME)/act/syn ]; then mkdir $(ACT_HOME)/act/syn; fi
 	@for i in $(TARGETACT); do $(VLSI_TOOLS_SRC)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
+
+-include Makefile.deps

@@ -144,6 +144,16 @@ varmap_info *SDTEngine::_var_getinfo (ActId *id)
     v->width = TypeFactory::bitWidth (it);
     if (TypeFactory::isChanType (it)) {
       v->fischan = 1;
+      if (it->getDir() == Type::direction::IN) {
+	v->fisinport = 1;
+      }
+      else if (it->getDir() == Type::direction::OUT) {
+	v->fisinport = 0;
+      }
+      else {
+	warning ("Please provide direction flags to channels! Assuming input.");
+	v->fisinport = 1;
+      }
     }
     else {
       v->fischan = 0;
@@ -390,12 +400,8 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
       /* evaluate expression */
       _emit_expr (&eid, v->width, c->u.assign.e);
       vid = _gen_stmt_id ();
-      _emit_var_write (eid, v);
-      list_t *l = list_new ();
-      list_iappend (l, eid);
-      list_iappend (l, vid);
-      _emit_comma (id, l);
-      list_free (l);
+      _emit_transfer (vid, eid, v);
+      v->iwrite++;
     }
     break;
 
@@ -420,7 +426,7 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
 	eid = -1;
       }
       vid = _gen_stmt_id ();
-      _emit_send (vid, v, eid);
+      _emit_transfer (vid, eid, v);
     }
     break;
 
@@ -538,6 +544,17 @@ void SDTEngine::run_sdt (Process *p)
   _construct_varmap (chp->c);
 
   _emit_begin ();
+
+  /*-- emit all the variable ports and channel muxes --*/
+  for (int i=0; i < _varmap->size; i++) {
+    for (ihash_bucket_t *b = _varmap->head[i]; b; b = b->next) {
+      varmap_info *v = (varmap_info *) b->v;
+      if (v->fischan) {
+	_emit_channel_mux (v);
+      }
+    }
+  }
+  
   int toplev = _gen_stmt_id ();
   _run_sdt_helper (toplev, chp->c);
   _emit_end (toplev);
@@ -760,9 +777,9 @@ void BasicSDT::_emit_expr_const (int id, int width, int val)
 
 void BasicSDT::_emit_var_read (int eid, varmap_info *v)
 {
-  fprintf (output_stream, "   syn::expr::readvar<%d> e%d(", v->width, eid);
+  fprintf (output_stream, "   syn::expr::readport<%d> e%d(", v->width, eid);
   v->id->Print (output_stream);
-  fprintf (output_stream, ") /* %d */ ;\n", v->iread);
+  fprintf (output_stream, ");\n");
   v->iread++;
 }
 
@@ -1111,19 +1128,7 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
   list_free (_boolconst);
   _boolconst = NULL;
 
-  if (list_length (eval) > 1) {
-    if (_shared_expr_var)  {
-      /*-- NOTE: handle this recursively within the expression please! --*/
-    }
-    else {
-      for (listitem_t *li = list_first (eval); li; li = list_next (li)) {
-	_emit_expr_go_conn (myid, list_ivalue (li));
-      }
-    }
-  }
-  else if (list_length (eval) == 1) {
-    *id = list_ivalue (list_first (eval));
-  }
+  /*-- eval = the list of base cases you need --*/
 
   /*-- width-conversion --*/
   if (width != tgt_width) {
@@ -1143,21 +1148,28 @@ void BasicSDT::_emit_expr_width_conv (int from, int from_w,
 }
 
 
-  /* id = variable port for this identifier */
-void BasicSDT::_emit_var_write (int eid, varmap_info *v)
-{
-  fprintf (output_stream, "   syn::expr::writevar<%d> e_%d(e%d.out,",
-	   v->width, _gen_inst_id(), eid);
-  v->id->Print (output_stream);
-  fprintf (output_stream, "); /* %d */ \n", v->iwrite);
-  v->iwrite++;
-}
 
-void BasicSDT::_emit_send (int cid, varmap_info *ch, int exprid)
+void BasicSDT::_emit_transfer (int cid, int eid, varmap_info *ch)
 {
-  fprintf (output_stream, "   syn::send<%d> s_%d(c%d, e%d.out,",
-	   ch->width, _gen_inst_id(), cid, exprid);
-  ch->id->Print (output_stream);
+  int wport = 0;
+  if (!ch->fischan) {
+    /* emit a write port */
+    wport = _gen_inst_id ();
+    fprintf (output_stream, "   syn::expr::writeport<%d> w_%d(", ch->width, wport);
+    ch->id->Print (output_stream);
+    fprintf (output_stream, ");\n");
+  }
+  fprintf (output_stream, "   syn::transfer<%d> s_%d(c%d, e%d.out,",
+	   ch->width, _gen_inst_id(), cid, eid);
+  if (ch->fischan) {
+    /* pick the channel mux */
+    ch->id->Print (output_stream);
+    fprintf (output_stream, "_mux.m[%d]",
+	     ch->fisinport ? ch->iread++ : ch->iwrite++);
+  }
+  else {
+    fprintf (output_stream, "w_%d.in", wport);
+  }
   fprintf (output_stream, ");\n");
 }
 
@@ -1198,11 +1210,6 @@ void BasicSDT::_emit_semi (int cid, list_t *stmts)
     fprintf (output_stream, "c%d", list_ivalue (li));
   }
   fprintf (output_stream, "});\n");
-}
-
-void BasicSDT::_emit_expr_go_conn (int e1, int e2)
-{
-  fprintf (output_stream, "   e%d.out.r = e%d.out.r;\n", e1, e2);
 }
 
 void BasicSDT::_emit_loop (int cid, list_t *guards, list_t *stmts)
@@ -1274,3 +1281,16 @@ void BasicSDT::_emit_doloop (int cid, int guard, int stmt)
 	   _gen_inst_id(), cid, guard, stmt);
 }
 
+void BasicSDT::_emit_channel_mux (varmap_info *v)
+{
+  if (v->fisinport) {
+    fprintf (output_stream, "   syn::muxinport<%d,%d> ", v->width, v->nread);
+  }
+  else {
+    fprintf (output_stream, "   syn::muxoutport<%d,%d> ", v->width, v->nwrite);
+  }
+  v->id->Print (output_stream);
+  fprintf (output_stream, "_mux(");
+  v->id->Print (output_stream);
+  fprintf (output_stream, ");\n");
+}

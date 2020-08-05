@@ -36,17 +36,6 @@ defproc sskip(a1of1 c)
   c.r = c.a;
 }
 
-export template<pint W>
-defproc send(a1of1 c; sdtexprchan<W> e; sdtchan<W> ch)
-{
-  c.r = e.r;
-  sdt_connect_data<W> conn(e,ch);
-  ch.a = c.a;
-}
-
-export template<pint W>
-defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);
-
 /*
  * Build an OR-gate tree (NOR/NAND/optional INV)
  */
@@ -266,6 +255,25 @@ defproc semi(a1of1 c; a1of1 stmts[N])
   c.a = f[N-1].go.a;
 }
 
+
+export template<pint W>
+defproc transfer(a1of1 c; sdtexprchan<W> e; sdtchan<W> ch)
+{
+  c.r = e.r;
+  sdt_connect_data<W> conn(e,ch);
+  ch.a = c.a;
+}
+
+export template<pint W>
+defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);
+
+
+export template<pint W,N>
+defproc muxinport(sdtchan<W> c; sdtchan<W> m[N]);
+
+export template<pint W,N>
+defproc muxoutport(sdtchan<W> c; sdtchan<W> m[N]);
+
 export namespace expr {
 
 function max(pint a, b) : pint
@@ -347,12 +355,11 @@ defproc const(sdtexprchan<W> out);
 
 /*-- we need to fix this for variables ---*/
 export template<pint W>
-defproc writevar(sdtexprchan<W> a; sdtvar<W> var);
+defproc writeport(sdtvar<W> var; sdtchan<W> in);
 
 export template<pint W>
-defproc readvar(sdtvar<W> var; sdtexprchan<W> out);
+defproc readport(sdtvar<W> var; sdtexprchan<W> out);
 
 }
-
 
 }

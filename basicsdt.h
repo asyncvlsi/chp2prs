@@ -70,14 +70,15 @@ class BasicSDT : public SDTEngine {
 
   void _emit_expr_const (int eid, int width, int val);
 
-  void _emit_expr_go_conn (int e1, int e2);
-  
   /* id = variable port for this identifier */
-  void _emit_var_write (int eid, varmap_info *v);
   void _emit_var_read   (int eid, varmap_info *v);
   
-  void _emit_send (int cid, varmap_info *ch, int exprid);
+  void _emit_transfer (int cid, int eid, varmap_info *v);
   void _emit_recv (int cid, varmap_info *ch, varmap_info *v);
+
+  void _emit_channel_mux (varmap_info *ch);
+
+  
   void _emit_comma (int cid, list_t *stmts);
   void _emit_semi (int cid, list_t *stmts);
 
