@@ -50,4 +50,6 @@ defchan rx1of2 <: chan(int<N>) (bool r; dualrails<N> d) { }
 export defchan sdtchan <: ax1of2 () { }
 export defchan sdtexprchan <: rx1of2 () { }
 
+export defchan r1of2 <: chan(bool) (bool r, t, f) { }
+
 }  

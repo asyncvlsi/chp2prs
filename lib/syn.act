@@ -25,9 +25,6 @@ import "globals.act";
   
 namespace syn {
 
-export defchan a1of2 <: sdtchan<1> ()  { }
-export defchan r1of2 <: sdtexprchan<1> () { }
-
 /*-- variable state --*/
 export template<pint W; pbool I>
 defproc var_init(sdtvar<W> v);
@@ -45,35 +42,183 @@ defproc send(a1of1 c; sdtexprchan<W> e; sdtchan<W> ch);
 export template<pint W>
 defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);
 
+/*
+ * Build an OR-gate tree (NOR/NAND)
+ */
+export template<pint N>
+defproc ortree (bool in[N]; bool out)
+{
+  bool tout;
+
+  { N > 0 : "What?" };
+
+  pint i, end, j;
+  pbool isinv;
+  isinv = false;
+  i = 0;
+  end = N-1;
+
+  /* dynamic array that holds all the nodes in the completion tree */
+  bool tmp[N];
+  (k:N:tmp[k] = in[k];)
+
+  /* Invariant: i <= end */
+    
+  *[ i != end ->
+     /* 
+      * Invariant: tmp[i..end] has the current signals that need to be
+      * combined together, and "isinv" specifies if they are the inverted
+      * sense or not
+      */
+     j = 0;
+     *[ i < end ->
+	/*-- there are still signals that need to be combined --*/
+	j = j + 1;
+	bool tmp[end+j..end+j];
+	[ i+2 >= end ->
+	  /*-- last piece: use either a 2 or 3 input C-element --*/
+	  [isinv -> 
+	     prs { (&k:i..end:tmp[k]) => tmp[end+j]- }
+	  [] else ->
+	     prs { (|k:i..end:tmp[k]) => tmp[end+j]- }
+          ]	      
+	  i = end;
+        [] else ->
+	  /*-- more to come; so use a two input C-element --*/
+	  [isinv -> 
+	     prs { (&k:i..i+1:tmp[k]) => tmp[end+j]- }
+	  [] else ->
+	     prs { (|k:i..i+1:tmp[k]) => tmp[end+j]- }
+          ]	      
+	  i = i + 2;
+	]
+      ]
+      /*-- we just added an inverting layer --*/
+      isinv = ~isinv;
+
+      /*-- update range that has to be combined --*/
+      i = end+1;
+      end = end+j;
+      j = 0;
+  ]
+  /*-- invert the signal if needed --*/
+  [isinv -> prs { tmp[end] => out- } 
+  [] else -> tmp[end] = out;
+  ]
+}
+  
+
   
 /*-- compound statements --*/
 export template<pint N>
-defproc loop(a1of1 c; r1of2 g[N]; a1of1 s[N]);
-
-export template<pint N;pbool has_else>
-defproc select(a1of1 c; r1of2 g[N-int(has_else)]; a1of1 s[N]);
-
-export template<pint N;pbool has_else>
-defproc arb_select(a1of1 c; r1of2 g[N-int(has_else)]; a1of1 s[N]);
-
-export 
-defproc doloop(a1of1 c; r1of2 g; a1of1 s);
-
-/*-- mixed completion tree --*/
-  
-export template<pint N>
-defproc ctree (bool in[N]; bool out)
+defproc loop(a1of1 c; r1of2 g[N]; a1of1 s[N])
 {
-  bool _out;
-  
+  /* loop: evaluate guards serially */
+  (i:N-1: g[i].f = g[i+1].r;)
+  g[N-1].f = c.a;
+    
+  ortree<N> t;
+  (i:N: s[i](.r=g[i].t, .a=t.in[i]); )
+
+  bool _r;
+
   prs {
-    (&i:N: in[i]) #> _out-
-    _out => out-
+    c.r => _r-
+    _r | t.out => g[0].r-
   }
 }
 
-  
+export template<pint N;pbool has_else>
+defproc select(a1of1 c; r1of2 g[N-int(has_else)]; a1of1 s[N])
+{
+  (i:N-1: g[i].f = g[i+1].r;)
 
+  ortree<N> t;
+
+  (i:N:  s[i](.r=g[i].t, .a=t.in[i]); )
+   
+  t.out = c.a;    
+}
+
+export template<pint N;pbool has_else>
+defproc arb_select(a1of1 c; r1of2 g[N-int(has_else)]; a1of1 s[N])
+{
+  { false : "Need to implement non-deterministic selection!" };
+}
+
+export 
+defproc doloop(a1of1 c; r1of2 g; a1of1 s)
+{
+  bool _r;
+
+  s.a = g.r;
+  c.a = g.f;
+
+  prs {
+    c.r => _r-
+    _r | g.t => s.r-
+  }
+}
+
+
+/*
+ * Build a completion tree using a combination of 2-input and 3-input
+ * C-elements 
+ */
+export template<pint N>
+defproc ctree (bool in[N]; bool out)
+{
+  bool tout;
+
+  { N > 0 : "What?" };
+
+  pint i, end, j;
+  pbool isinv;
+  isinv = false;
+  i = 0;
+  end = N-1;
+
+  /* dynamic array that holds all the nodes in the completion tree */
+  bool tmp[N];
+  (k:N:tmp[k] = in[k];)
+
+  /* Invariant: i <= end */
+    
+  *[ i != end ->
+     /* 
+      * Invariant: tmp[i..end] has the current signals that need to be
+      * combined together, and "isinv" specifies if they are the inverted
+      * sense or not
+      */
+     j = 0;
+     *[ i < end ->
+	/*-- there are still signals that need to be combined --*/
+	j = j + 1;
+	bool tmp[end+j..end+j];
+	[ i+2 >= end ->
+	  /*-- last piece: use either a 2 or 3 input C-element --*/
+	  prs { (&k:i..end:tmp[k]) #> tmp[end+j]- }
+	  i = end;
+        [] else ->
+	  /*-- more to come; so use a two input C-element --*/
+          prs { (&k:i..i+1:tmp[k]) #> tmp[end+j]- }
+	  i = i + 2;
+	]
+      ]
+      /*-- we just added an inverting layer --*/
+      isinv = ~isinv;
+
+      /*-- update range that has to be combined --*/
+      i = end+1;
+      end = end+j;
+      j = 0;
+  ]
+  /*-- invert the signal if needed --*/
+  [isinv -> prs { tmp[end] => out- } 
+  [] else -> tmp[end] = out;
+  ]
+}
+    
 /*-- composition --*/
 export template<pint N>
 defproc comma(a1of1 c; a1of1 stmts[N])
@@ -84,20 +229,40 @@ defproc comma(a1of1 c; a1of1 stmts[N])
   (i:N: ct.in[i] = stmts[i].a;)
 }
 
+
+/*-- full sequencer --*/
+export defproc fullseq (a1of1 go; a1of1 r)
+{
+  bool x, _gor, _goa, _ra;
+  prs {
+      ~x & ~_gor -> r.r+
+      ~_ra -> x+
+      Reset | x -> r.r-
+      x & _ra -> _goa-
+      _gor -> x-
+      ~x -> _goa+
+      go.r => _gor-
+      _goa => go.a-
+      r.a => _ra-
+ }
+}
+  
 export template<pint N>
 defproc semi(a1of1 c; a1of1 stmts[N])
 {
-  (i:N-1: stmts[i].a = stmts[i+1].r;)
-  c.r = stmts[0].r;
-  c.a = stmts[N-1].a;
-}  
-   
+  fullseq f[N];
+  (i:N: f[i].r = stmts[i];)
+  (i:N-1: f[i].go.a = f[i+1].go.r;)
+  c.r = f[0].go.r;
+  c.a = f[N-1].go.a;
+}
+
 export namespace expr {
 
 function max(pint a, b) : pint
 {
  chp {
-      [ a > b -> self := a [] else -> self := b ]
+   self := (a > b) ? a : b
  }     
 }
 
