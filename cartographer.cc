@@ -391,16 +391,12 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
 
   case ACT_CHP_ASSIGN:
     {
-      int eid, vid;
-      InstType *it;
+      int eid;
       varmap_info *v;
 
       v = _var_getinfo (c->u.assign.id);
-
-      /* evaluate expression */
       _emit_expr (&eid, v->width, c->u.assign.e);
-      vid = _gen_stmt_id ();
-      _emit_transfer (vid, eid, v);
+      _emit_transfer (id, eid, v);
       v->iwrite++;
     }
     break;
@@ -425,8 +421,7 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
       else {
 	eid = -1;
       }
-      vid = _gen_stmt_id ();
-      _emit_transfer (vid, eid, v);
+      _emit_transfer (id, eid, v);
     }
     break;
 

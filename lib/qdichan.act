@@ -58,5 +58,13 @@ defproc sdt_connect_data(sdtexprchan<W> ex; sdtchan<W> ch)
   ex.d = ch.d;
 }
 
+export
+defproc sdt_connect_r1of2(r1of2 r; sdtexprchan<1> c)
+{
+  r.r = c.r;
+  r.t = c.d.r[0].t;
+  r.f = c.d.r[0].f;
+}
+
   
 }  
