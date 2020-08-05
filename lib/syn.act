@@ -37,7 +37,12 @@ defproc sskip(a1of1 c)
 }
 
 export template<pint W>
-defproc send(a1of1 c; sdtexprchan<W> e; sdtchan<W> ch);
+defproc send(a1of1 c; sdtexprchan<W> e; sdtchan<W> ch)
+{
+  c.r = e.r;
+  ch.a = c.a;
+  sdt_connect_data<W> conn(e,ch);
+}
 
 export template<pint W>
 defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);

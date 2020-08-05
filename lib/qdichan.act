@@ -52,4 +52,11 @@ export defchan sdtexprchan <: rx1of2 () { }
 
 export defchan r1of2 <: chan(bool) (bool r, t, f) { }
 
+export template<pint W>
+defproc sdt_connect_data(sdtexprchan<W> ex; sdtchan<W> ch)
+{
+  ex.d = ch.d;
+}
+
+  
 }  
