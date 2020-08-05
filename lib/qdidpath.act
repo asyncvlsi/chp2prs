@@ -21,23 +21,34 @@
  */
 import "globals.act";
 
-/* Syntax directed translation */
-  
 namespace syn {
 
-export defchan a1of2 <: sdtchan<1> ()  { }
-export defchan r1of2 <: sdtexprchan<1> () { }
+/*
+ * Datapath elements
+ *
+ *   Need to define:
+ *      - variables
+ *      - send
+ *      - receive
+ *      - expression evaluation
+ *
+ */
 
-/*-- variable state --*/
 export template<pint W; pbool I>
-defproc var_init(sdtvar<W> v);
-  
-/*-- basic statements --*/
-export
-defproc sskip(a1of1 c)
+defproc var_init(sdtvar<W> v) 
 {
-  c.r = c.a;
+  prs {
+    (i:W:
+       v.r[i].f<8> -> v.r[i].t-
+       v.r[i].t<8> -> v.r[i].f-
+      [weak=1] ~v.r[i].t<4,4> -> v.r[i].f+
+      [weak=1] ~v.r[i].f<4,4> -> v.r[i].t+
+
+      Reset -> v.r[i].d[int(~I)]-
+     )
+  }
 }
+
 
 export template<pint W>
 defproc send(a1of1 c; sdtexprchan<W> e; sdtchan<W> ch);
@@ -45,61 +56,7 @@ defproc send(a1of1 c; sdtexprchan<W> e; sdtchan<W> ch);
 export template<pint W>
 defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);
 
-  
-/*-- compound statements --*/
-export template<pint N>
-defproc loop(a1of1 c; r1of2 g[N]; a1of1 s[N]);
-
-export template<pint N;pbool has_else>
-defproc select(a1of1 c; r1of2 g[N-int(has_else)]; a1of1 s[N]);
-
-export template<pint N;pbool has_else>
-defproc arb_select(a1of1 c; r1of2 g[N-int(has_else)]; a1of1 s[N]);
-
-export 
-defproc doloop(a1of1 c; r1of2 g; a1of1 s);
-
-/*-- mixed completion tree --*/
-  
-export template<pint N>
-defproc ctree (bool in[N]; bool out)
-{
-  bool _out;
-  
-  prs {
-    (&i:N: in[i]) #> _out-
-    _out => out-
-  }
-}
-
-  
-
-/*-- composition --*/
-export template<pint N>
-defproc comma(a1of1 c; a1of1 stmts[N])
-{
-  (i:N: c.r = stmts[i].r;)
-  /* completion tree */
-  ctree<N> ct(,c.a);
-  (i:N: ct.in[i] = stmts[i].a;)
-}
-
-export template<pint N>
-defproc semi(a1of1 c; a1of1 stmts[N])
-{
-  (i:N-1: stmts[i].a = stmts[i+1].r;)
-  c.r = stmts[0].r;
-  c.a = stmts[N-1].a;
-}  
-   
 export namespace expr {
-
-function max(pint a, b) : pint
-{
- chp {
-      [ a > b -> self := a [] else -> self := b ]
- }     
-}
 
 export template<pint W1,W2>
 defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out);
@@ -178,7 +135,7 @@ defproc writevar(sdtexprchan<W> a; sdtvar<W> var);
 export template<pint W>
 defproc readvar(sdtvar<W> var; sdtexprchan<W> out);
 
-}
 
+}
 
 }

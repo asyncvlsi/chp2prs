@@ -84,7 +84,7 @@ bool write_process_definition(FILE *fp, Process * p, const char * proc_name)
 	fprintf(fp, "+{\n");
 	has_overrides = true;
       }
-      fprintf(fp, "  syn::dualrails<%d> %s;\n", bw, vx->getName());
+      fprintf(fp, "  syn::sdtvar<%d> %s;\n", bw, vx->getName());
     }
   }
   /* end param declaration */
