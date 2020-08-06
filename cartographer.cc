@@ -439,7 +439,7 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
       else {
 	wv = NULL;
       }
-      _emit_recv (id, v,wv);
+      _emit_recv (id, v, wv);
     }
     break;
 
@@ -581,10 +581,14 @@ void BasicSDT::_emit_begin ()
   /* initialize the output location */ 
   if (output_file) {
     output_stream = fopen(output_file, "w");
+    if (!output_stream) {
+      fatal_error ("Could not open file `%s' for reading", output_file);
+    }
   }
   else {
     output_stream = stdout;
   }
+
 
   /* get proc_name */
   size_t pn_len = strlen(P->getName());
@@ -593,7 +597,6 @@ void BasicSDT::_emit_begin ()
   proc_name[pn_len-1] = '\0';
   
   /* print imports */
-  fprintf(output_stream, "import \"%s\";\n", input_file);
   fprintf(output_stream, "import syn;\n");
   if (bundled_data) fprintf(output_stream, "import bundled;\n");
   fprintf(output_stream, "\n");
@@ -1024,6 +1027,10 @@ void SDTEngine::_expr_collect_vars (Expr *e)
     {
       int w = 0;
       int val = e->u.v;
+      if (val < 0) {
+	val = -val;
+	w = 1;
+      }
       while (val) {
 	val >>= 1;
 	w++;
@@ -1173,8 +1180,12 @@ void BasicSDT::_emit_recv (int cid, varmap_info *ch, varmap_info *v)
   fprintf (output_stream, "   syn::recv<%d> s_%d(c%d,", ch->width,
 	   _gen_inst_id(), cid);
   ch->id->Print (output_stream);
+  fprintf (output_stream, "_mux.m[%d]", ch->fisinport ? ch->iread++ :
+	   ch->iwrite++);
   fprintf (output_stream, ",");
-  v->id->Print (output_stream);
+  if (v) {
+    v->id->Print (output_stream);
+  }
   fprintf (output_stream, ");\n");
 }
 

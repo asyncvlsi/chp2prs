@@ -122,7 +122,7 @@ int main(int argc, char **argv)
   }
 
   check_chp(p);
-  BasicSDT *sdt = new BasicSDT(argv[1], bundled, chpopt, argv[3]);
+  BasicSDT *sdt = new BasicSDT(bundled, chpopt, argv[3]);
   sdt->run_sdt (p);
 
   return 0;

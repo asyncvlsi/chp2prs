@@ -26,7 +26,7 @@
 
 class BasicSDT : public SDTEngine {
  public:
-  BasicSDT (const char *input, int isbundled, int isopt, char *out) {
+  BasicSDT (int isbundled, int isopt, char *out) {
     bundled_data = isbundled;
     optimize = isopt;
     _expr_id = 0;
@@ -34,14 +34,12 @@ class BasicSDT : public SDTEngine {
     _inst_id = 0;
     output_stream = NULL;
     output_file = out;
-    input_file = Strdup (input);
   }
   
  protected:
   int optimize;
   int bundled_data;
   FILE *output_stream;
-  const  char *input_file;
   char *output_file;
 
 

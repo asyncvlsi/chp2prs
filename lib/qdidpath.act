@@ -51,16 +51,60 @@ defproc var_init(sdtvar<W> v)
 
 
 export template<pint W>
-defproc transfer(a1of1 c; sdtexprchan<W> e; sdtchan<W> ch);
+defproc transfer(a1of1? c; sdtexprchan?<W> e; sdtchan!<W> ch)
+{
+  c.r = e.r;
+  e.d = ch.d;
+  c.a = ch.a;
+}
 
 export template<pint W>
-defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);
+defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
+{
+  bool cr;
+  sigbuf<2*W> s(c.r,cr);
+
+  bool wack[W];
+    
+  prs {
+    (i:W:
+       [keeper=0] cr & ch.d.r[i].t -> var.r[i].f-
+       [keeper=0] cr & ch.d.r[i].f -> var.r[i].t-
+
+      cr & ((var.r[i].t & ch.d.r[i].t) | (var.r[i].f & ch.d.r[i].f)) -> wack[i]-
+      ~cr  & ~ch.d.r[i].t & ~ch.d.r[i].f -> wack[i]+
+     )
+  }
+
+  ctree<W> ct(wack);
+  
+  prs {
+    Reset | ct.out => c.a-
+  }
+}
+
 
 export template<pint W,N>
-defproc muxinport(sdtchan<W> c; sdtchan<W> m[N]);
+defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N])
+{
+  { N > 0 : "Parameter out of range" };
+
+  [ N = 1 -> m[0] = c;
+  [] else ->
+       { false : "FIXME" };
+  ]
+}
 
 export template<pint W,N>
-defproc muxoutport(sdtchan<W> c; sdtchan<W> m[N]);
+defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
+{
+  { N > 0 : "Parameter out of range" };
+
+  [ N = 1 -> m[0] = c;
+  [] else ->
+       { false : "FIXME" };
+  ]
+}
 
 
 export namespace expr {
@@ -100,25 +144,25 @@ export template<pint W1,W2>
 defproc asr(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
 
 export template<pint W1,W2>
-defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; r1of2 out);
+defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
 export template<pint W1,W2>
-defproc gt(sdtexprchan<W1> a; sdtexprchan<W2> b; r1of2 out);
+defproc gt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
   
 export template<pint W1,W2>
-defproc le(sdtexprchan<W1> a; sdtexprchan<W2> b; r1of2 out);
+defproc le(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
 export template<pint W1,W2>
-defproc ge(sdtexprchan<W1> a; sdtexprchan<W2> b; r1of2 out);
+defproc ge(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
   
 export template<pint W1,W2>
-defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; r1of2 out);
+defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
 export template<pint W1,W2>
-defproc eq(sdtexprchan<W1> a; sdtexprchan<W2> b; r1of2 out);
+defproc eq(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
 export template<pint W1,W2>
-defproc ne(sdtexprchan<W1> a; sdtexprchan<W2> b; r1of2 out);
+defproc ne(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
 export template<pint W>
 defproc uminus(sdtexprchan<W> a; sdtexprchan<W> out);
@@ -127,7 +171,7 @@ export template<pint W>
 defproc not(sdtexprchan<W> a; sdtexprchan<W> out);
   
 export template<pint W1,W2>
-defproc ite(r1of2 a; sdtexprchan<W1> opt1; sdtexprchan<W2> opt2; sdtexprchan<max(W1,W2)> out);
+defproc ite(sdtexprchan<1> a; sdtexprchan<W1> opt1; sdtexprchan<W2> opt2; sdtexprchan<max(W1,W2)> out);
 
 export template<pint W1, W2>
 defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out);
@@ -137,10 +181,19 @@ defproc const(sdtexprchan<W> out);
 
 /*-- we need to fix this for variables ---*/
 export template<pint W>
-defproc writeport(sdtvar<W> var; sdtchan<W> in);
+defproc writeport(sdtvar<W> var; sdtchan<W> in)
+{
+  
+
+}
 
 export template<pint W>
-defproc readport(sdtvar<W> var; sdtexprchan<W> out);
+defproc readport(sdtvar<W> var; sdtexprchan<W> out)
+{
+
+
+}
+
 
 }
 
