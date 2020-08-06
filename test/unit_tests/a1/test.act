@@ -1,0 +1,6 @@
+defproc a1() {
+
+  chp {
+	skip; skip; skip; skip
+  }
+}

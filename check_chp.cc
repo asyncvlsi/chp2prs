@@ -106,11 +106,12 @@ int get_expr_bitwidth (Expr *e)
       }
       /* base case: bitwidth for an expression is determined by its constituent variables */
       return TypeFactory::bitWidth(it);
-    case E_TRUE:
-    case E_FALSE:
-      left_bitwidth = get_expr_bitwidth (e->u.e.l);
-      /* E_TRUE/E_FALSE are only valid operations on boolean variables */
-      return left_bitwidth == 1 ? 1 : -1;
+
+  case E_TRUE:
+  case E_FALSE:
+    return 1;
+    break;
+    
     case E_PROBE:
       it = P->Lookup((ActId *) e->u.e.l);
       /* ensure the probed channel exists */

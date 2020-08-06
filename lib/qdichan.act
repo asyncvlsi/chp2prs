@@ -38,7 +38,9 @@ deftype dualrail <: int<1> (bool d[2],t,f)
 export template<pint N>
 deftype dualrails <: int<N> (dualrail r[N]) { }
 
-export deftype sdtvar <: dualrails() { } 
+export deftype sdtvar <: dualrails() { }
+
+export deftype sdtboolvar <: bool (sdtvar<1> x) { }
   
 export template<pint N>
 defchan ax1of2 <: chan(int<N>) (dualrails<N> d; bool a) { }
@@ -65,5 +67,10 @@ defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c)
   e.d = c.d;
 }
 
+export
+defproc varconnect (sdtboolvar v; sdtvar<1> vi)
+{
+  v.x = vi;
+}
   
 }  

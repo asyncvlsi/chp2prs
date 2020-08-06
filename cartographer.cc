@@ -56,6 +56,7 @@
 bool write_process_definition(FILE *fp, Process * p, const char * proc_name)
 {
   bool has_overrides = 0;
+  bool has_bool_overrides = 0;
 
   fprintf(fp, "defproc sdt_%s <: %s ()\n", proc_name, proc_name);
 
@@ -86,6 +87,14 @@ bool write_process_definition(FILE *fp, Process * p, const char * proc_name)
       }
       fprintf(fp, "  syn::sdtvar<%d> %s;\n", bw, vx->getName());
     }
+    else if (TypeFactory::isBoolType (vx->t)) {
+      if (!has_overrides) {
+	fprintf(fp, "+{\n");
+	has_overrides = true;
+      }
+      fprintf (fp, " syn::sdtboolvar %s;\n", vx->getName());
+      has_bool_overrides = 1;
+    }
   }
   /* end param declaration */
   if (has_overrides) {
@@ -93,6 +102,18 @@ bool write_process_definition(FILE *fp, Process * p, const char * proc_name)
   }
   else {
     fprintf(fp, "{\n");
+  }
+
+  if (has_bool_overrides) {
+    int vconnect = 0;
+    for (iter = iter.begin(); iter != iter.end(); iter++) {
+      ValueIdx *vx = *iter;
+      if (TypeFactory::isBoolType (vx->t)) {
+	fprintf (fp, " syn::sdtvar<1> b_%s;\n", vx->getName());
+	fprintf (fp, " syn::varconnect vc_%d(%s,b_%s);\n",
+		 vconnect++, vx->getName(), vx->getName());
+      }
+    }
   }
   return has_overrides;
 }
@@ -113,6 +134,10 @@ void initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
     if (TypeFactory::isIntType (vx->t)) {
       bw = TypeFactory::bitWidth(vx->t);
       fprintf(fp, "  syn::var_init<%d,false> var_%s(%s);\n", bw,
+	      vx->getName(), vx->getName());
+    }
+    else if (TypeFactory::isBoolType (vx->t)) {
+      fprintf(fp, "  syn::var_init<1,false> var_%s(b_%s);\n",
 	      vx->getName(), vx->getName());
     }
   }
@@ -142,6 +167,7 @@ varmap_info *SDTEngine::_var_getinfo (ActId *id)
     v->id = id;
     it = P->Lookup (id);
     v->width = TypeFactory::bitWidth (it);
+    v->fisbool = 0;
     if (TypeFactory::isChanType (it)) {
       v->fischan = 1;
       if (it->getDir() == Type::direction::IN) {
@@ -157,6 +183,9 @@ varmap_info *SDTEngine::_var_getinfo (ActId *id)
     }
     else {
       v->fischan = 0;
+      if (TypeFactory::isBoolType (it)) {
+	v->fisbool = 1;
+      }
     }
     b->v = v;
   }
@@ -1158,6 +1187,9 @@ void BasicSDT::_emit_transfer (int cid, int eid, varmap_info *ch)
     /* emit a write port */
     wport = _gen_inst_id ();
     fprintf (output_stream, "   syn::expr::writeport<%d> w_%d(", ch->width, wport);
+    if (ch->fisbool) {
+      fprintf (output_stream, "b_");
+    }
     ch->id->Print (output_stream);
     fprintf (output_stream, ");\n");
   }
@@ -1184,6 +1216,9 @@ void BasicSDT::_emit_recv (int cid, varmap_info *ch, varmap_info *v)
 	   ch->iwrite++);
   fprintf (output_stream, ",");
   if (v) {
+    if (v->fisbool) {
+      fprintf (output_stream, "b_");
+    }
     v->id->Print (output_stream);
   }
   fprintf (output_stream, ");\n");
@@ -1289,6 +1324,7 @@ void BasicSDT::_emit_doloop (int cid, int guard, int stmt)
 
 void BasicSDT::_emit_channel_mux (varmap_info *v)
 {
+  Assert (v->fischan, "What?");
   if (v->fisinport) {
     fprintf (output_stream, "   syn::muxinport<%d,%d> ", v->width, v->nread);
   }

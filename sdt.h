@@ -31,6 +31,7 @@ struct varmap_info {
   unsigned int fcurexpr:1;	// flag (found in current expression)
   unsigned int fischan:1;	// channel or int?
   unsigned int fisinport:1;	// 1 if input, 0 if output
+  unsigned int fisbool:1;	// bool variable
 
   int muxid;			// muxid
   

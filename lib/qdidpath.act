@@ -76,7 +76,7 @@ defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
      )
   }
 
-  ctree<W> ct(wack);
+  ctree<W,true> ct(wack);
   
   prs {
     Reset | ct.out => c.a-
@@ -177,20 +177,40 @@ export template<pint W1, W2>
 defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out);
 
 export template<pint W,V>
-defproc const(sdtexprchan<W> out);
+defproc const(sdtexprchan<W> out)
+{
+  bool _req;
+  sigbuf<W> s(_req);
+  prs {
+    out.r => _req-
+    (i:W: ~_req => out.d.r[i].d[(V >> i) & 1]+
+          Reset -> out.d.r[i].d[1-((V >> i) & 1)]-
+    )
+  }
+}
 
 /*-- we need to fix this for variables ---*/
 export template<pint W>
 defproc writeport(sdtvar<W> var; sdtchan<W> in)
 {
-  
+  bool _wack[W];
+  prs {
+    (i:W: [keeper=0] in.d.r[i].t -> var.r[i].f-
+          [keeper=0] in.d.r[i].f -> var.r[i].t-
 
+       (in.d.r[i].t & var.r[i].t) | (in.d.r[i].f & var.r[i].f) -> _wack[i]-
+       ~in.d.r[i].t & ~in.d.r[i].f -> _wack[i]+
+     )
+  }
+  ctree<W,false> wa(_wack);
+  prs {
+    Reset | wa.out => in.a-
+  }
 }
 
 export template<pint W>
 defproc readport(sdtvar<W> var; sdtexprchan<W> out)
 {
-
 
 }
 
