@@ -28,8 +28,8 @@ export defchan a1of1 <: chan(bool) (bool?! r; bool!? a) { }
 export template<pint N>
 deftype dualrail <: int<1> (bool d[2],t,f)
 {
-  d[0] = t;
-  d[1] = f;
+  d[0] = f;
+  d[1] = t;
   spec {
     exclhi(t,f)
   }

@@ -181,10 +181,12 @@ defproc const(sdtexprchan<W> out)
 {
   bool _req;
   sigbuf<W> s(_req);
+
   prs {
     out.r => _req-
-    (i:W: ~_req => out.d.r[i].d[(V >> i) & 1]+
-          Reset -> out.d.r[i].d[1-((V >> i) & 1)]-
+    (i:W:
+          ~_req => out.d.r[i].d[((V >> i) & 1)]+
+          Reset -> out.d.r[i].d[1-(V >> i) & 1]-
     )
   }
 }
