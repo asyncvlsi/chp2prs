@@ -1,0 +1,24 @@
+initialize
+random
+watch Reset
+watch t.c0.a
+mode reset
+set Reset 1
+cycle
+status U
+assert t.c0.r 0
+set Reset 0
+mode run
+cycle
+assert t.c0.a 1
+
+assert t.x.r[0].f 0
+assert t.x.r[0].t 1
+assert t.x.r[1].f 1
+assert t.x.r[1].t 0
+assert t.x.r[2].f 1
+assert t.x.r[2].t 0
+assert t.x.r[3].f 1
+assert t.x.r[3].t 0
+assert t.x.r[4].f 0
+assert t.x.r[4].t 1
