@@ -44,13 +44,19 @@ sdt_$1 t;
 EOF
     if aflat $1/run/tst2.act > $1/run/test.prs
     then
-	echo
+	prsim -r $1/run/test.prs < $1/test.prsim > $1/run/prsim.out
+	if egrep '(WRONG|WARNING)' $1/run/prsim.out >/dev/null
+	then
+	    echo "${bold}*** simulation failed ***${normal}"
+	    faildirs="${faildirs} ${1}-sim"
+	    failed=1
+	fi
     else
-	echo "${bold}*** failed ***${normal}"
-	echo
-	faildirs="${faildirs} $1"
+	echo "${bold}*** circuit construction failed ***${normal}"
+	faildirs="${faildirs} ${1}-ckt"
 	failed=1
     fi
+    echo
 }
 
 echo
