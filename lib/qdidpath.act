@@ -113,7 +113,7 @@ export namespace expr {
 export template<pint W1,W2>
 defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
 {
-  pint wmin = (W1 < W2 ? W1 : W2);
+  pint wmin = min(W1,W2);
   pint wmax = max(W1,W2);
 
   bool _t[wmax], _f[wmax];
@@ -153,7 +153,7 @@ defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
 export template<pint W1,W2>
 defproc or(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
 {
-  pint wmin = (W1 < W2 ? W1 : W2);
+  pint wmin = min(W1,W2);
   pint wmax = max(W1,W2);
 
   bool _t[wmax], _f[wmax];
@@ -181,7 +181,7 @@ defproc or(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
 export template<pint W1,W2>
 defproc xor(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
 {
-  pint wmin = (W1 < W2 ? W1 : W2);
+  pint wmin = min(W1,W2);
   pint wmax = max(W1,W2);
 
   bool _t[wmax], _f[wmax];
@@ -215,20 +215,162 @@ defproc not(sdtexprchan<W> a; sdtexprchan<W> out)
    )
 }
 
+defproc fadd(dualrail a, b, cin; dualrail s, cout)
+{
+  bool _st, _sf, _ct, _cf;
+  prs {
+    a.t & b.t | (a.t | b.t) & cin.t -> _ct-
+    ~a.t & ~a.f & ~b.t & ~b.f -> _ct+
+
+    a.f & b.f | (a.f | b.f) & cin.f -> _cf-
+    ~a.t & ~a.f & ~b.t & ~b.f -> _cf+
+
+      cin.t & (a.t & b.t | a.f & b.f) |
+      cin.f & (a.t & b.f | a.f & b.t) -> _st-
+      ~cin.t & ~cin.f -> _st+
+
+      cin.t & (a.f & b.t | a.t & b.f) |
+      cin.f & (a.f & b.f | a.t & b.t) -> _sf-
+      ~cin.t & ~cin.f -> _sf+
+
+    _ct => cout.t-
+    _cf => cout.f-
+    _st => s.t-
+    _sf => s.f-
+ }
+}
+
+defproc hadd(dualrail a, b; dualrail s, cout)
+{
+  bool _st, _sf, _ct, _cf;
+  prs {
+    a.t & b.t -> _ct-
+    ~a.t & ~a.f -> _ct+
+
+    a.f & (b.t | b.f) | b.f & a.t -> _cf-
+    ~a.t & ~a.f -> _cf+
+
+    a.t & b.f | a.f & b.t -> _st-
+    ~b.t & ~b.f -> _st+
+
+    a.f & b.f | a.t & b.t -> _sf-
+   ~b.t & ~b.f -> _sf+
+
+    _ct => cout.t-
+    _cf => cout.f-
+    _st => s.t-
+    _sf => s.f-
+ }
+}
+
+defproc hadd1(dualrail a, b; dualrail s, cout)
+{
+  bool _st, _sf, _ct, _cf;
+  prs {
+    a.t & (b.t|b.f) | a.f & b.t -> _ct-
+    ~a.t & ~a.f -> _ct+
+
+    a.f & b.f -> _cf-
+    ~a.t & ~a.f -> _cf+
+
+    a.t & b.f | a.f & b.t -> _sf-
+    ~b.t & ~b.f -> _sf+
+
+    a.f & b.f | a.t & b.t -> _st-
+   ~b.t & ~b.f -> _st+
+
+    _ct => cout.t-
+    _cf => cout.f-
+    _st => s.t-
+    _sf => s.f-
+ }
+}
+
+template<pint W1,W2>
+defproc addfblock(dualrails<W1> a; dualrails<W2> b; dualrail cin;
+		  dualrails<max(W1,W2)> s; dualrail cout)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  { wmin > 0 : "addfblock: minimum width is zero?" };
+
+  fadd fa[wmin];
+  [ wmax > wmin -> hadd ha[wmin..wmax-1]; ]
+
+  /* wire up primary inputs and outputs */
+
+  (i:wmin: fa[i](.a=a.r[i], .b=b.r[i], .s=s.r[i]);)
+  [ W1 > W2 -> (i:wmin..wmax-1: ha[i](.a=a.r[i],.s=s.r[i]);)
+ [] W2 > W1 -> (i:wmin..wmax-1: ha[i](.a=b.r[i],.s=s.r[i]);)
+  ]
+
+  /* carries */
+  fa[0].cin = cin;
+  (i:wmin-1: fa[i].cout = fa[i+1].cin;)
+
+  [wmax > wmin -> ha[wmax-1].cout = cout;
+ [] else -> fa[wmax-1].cout = cout;
+  ]   
+}
+
 export template<pint W1,W2>
-defproc add(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out);
+defproc add(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  { wmin > 0 : "add: minimum width is zero?" };
+
+  out.r = a.r;
+  out.r = b.r;
+
+  [ wmin = 1 ->
+    // this is only a half adder
+    hadd ha[wmax];
+    [ W1 > W2 ->  (i:wmax: ha[i](.a=a.d.r[i],.s=out.d.r[i]);)
+                  ha[0].b=b.d.r[0];
+                 (i:1..wmax-1: ha[i].b=ha[i-1].cout;)
+                 ha[wmax-1].cout=out.d.r[wmax];
+   [] W2 > W1 ->  (i:wmax: ha[i](.a=b.d.r[i],.s=out.d.r[i]);)
+                  ha[0].b=a.d.r[0];
+                 (i:1..wmax-1: ha[i].b=ha[i-1].cout;)
+                 ha[wmax-1].cout=out.d.r[wmax];
+      [] else -> ha[0](.a = a.d.r[0], .b = b.d.r[0], .s = out.d.r[0],
+		       .cout = out.d.r[1]);
+    ]
+  [] else ->
+       /* lsb is a half adder */
+       hadd ha[1];
+       addfblock<W1-1,W2-1> fb;
+       fb.a.r = a.d.r[1..W1-1];
+       fb.b.r = b.d.r[1..W2-1];
+       fb.s.r = out.d.r[1..wmax-1];
+       fb.cout = out.d.r[wmax];
+       ha[0](.a=a.d.r[0],.b=b.d.r[0],.s=out.d.r[0],.cout=fb.cin);
+  ]
+}
 
 export template<pint W1,W2>
 defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out);
 
 export template<pint W1,W2>
-defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out);
+defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out)
+{
+  { false : "Multiplication not yet implemented" };
+}
 
 export template<pint W1,W2>
-defproc div(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
+defproc div(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out)
+{
+  { false : "Division operator not yet implemented" };
+}
   
 export template<pint W1,W2>
-defproc mod(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W2> out);
+defproc mod(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W2> out)
+{
+  { false : "Modulo operator not yet implemented" };
+}
   
 export template<pint W1,W2>
 defproc lsl(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+(1<<W2)> out);
@@ -283,6 +425,7 @@ defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
    (i:W1..W2-1: GND = out.d.r[i].t;)
     
   [] W1 > W2 ->
+     out.r = a.r;
      a.d.r[0..W2-1] = out.d.r;
      // XXX: dangling signals!
  ]

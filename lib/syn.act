@@ -306,6 +306,13 @@ function max(pint a, b) : pint
  }     
 }
 
+function min(pint a, b) : pint
+{
+ chp {
+   self := (a < b) ? a : b
+ }     
+}
+
 export template<pint W1,W2>
 defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out);
 
