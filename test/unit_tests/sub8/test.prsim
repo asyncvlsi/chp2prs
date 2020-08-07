@@ -1,220 +1,55 @@
-initialize
-random
-watch Reset
-watch _Reset
-watch t.c_0.r
-watch t.var_x[0].v.t
-watch t.var_x[0].v.f
-watch t.var_x[1].v.t
-watch t.var_x[1].v.f
-watch t.var_x[2].v.t
-watch t.var_x[2].v.f
-watch t.var_x[3].v.t
-watch t.var_x[3].v.f
-watch t.var_x[4].v.t
-watch t.var_x[4].v.f
-watch t.var_x[5].v.t
-watch t.var_x[5].v.f
-watch t.var_x[6].v.t
-watch t.var_x[6].v.f
-watch t.var_x[7].v.t
-watch t.var_x[7].v.f
-watch t.var_y[0].v.t
-watch t.var_y[0].v.f
-watch t.var_y[1].v.t
-watch t.var_y[1].v.f
-watch t.var_y[2].v.t
-watch t.var_y[2].v.f
-watch t.var_y[3].v.t
-watch t.var_y[3].v.f
-watch t.var_y[4].v.t
-watch t.var_y[4].v.f
-watch t.var_y[5].v.t
-watch t.var_y[5].v.f
-watch t.var_y[6].v.t
-watch t.var_y[6].v.f
-watch t.var_y[7].v.t
-watch t.var_y[7].v.f
-watch t.var_z[0].v.t
-watch t.var_z[0].v.f
-watch t.var_z[1].v.t
-watch t.var_z[1].v.f
-watch t.var_z[2].v.t
-watch t.var_z[2].v.f
-watch t.var_z[3].v.t
-watch t.var_z[3].v.f
-watch t.var_z[4].v.t
-watch t.var_z[4].v.f
-watch t.var_z[5].v.t
-watch t.var_z[5].v.f
-watch t.var_z[6].v.t
-watch t.var_z[6].v.f
-watch t.var_z[7].v.t
-watch t.var_z[7].v.f
-watch t.c_0.a
-set_principal t.c_0.r
-set_principal t.var_x[0].v.t
-set_principal t.var_x[0].v.f
-set_principal t.var_x[1].v.t
-set_principal t.var_x[1].v.f
-set_principal t.var_x[2].v.t
-set_principal t.var_x[2].v.f
-set_principal t.var_x[3].v.t
-set_principal t.var_x[3].v.f
-set_principal t.var_x[4].v.t
-set_principal t.var_x[4].v.f
-set_principal t.var_x[5].v.t
-set_principal t.var_x[5].v.f
-set_principal t.var_x[6].v.t
-set_principal t.var_x[6].v.f
-set_principal t.var_x[7].v.t
-set_principal t.var_x[7].v.f
-set_principal t.var_y[0].v.t
-set_principal t.var_y[0].v.f
-set_principal t.var_y[1].v.t
-set_principal t.var_y[1].v.f
-set_principal t.var_y[2].v.t
-set_principal t.var_y[2].v.f
-set_principal t.var_y[3].v.t
-set_principal t.var_y[3].v.f
-set_principal t.var_y[4].v.t
-set_principal t.var_y[4].v.f
-set_principal t.var_y[5].v.t
-set_principal t.var_y[5].v.f
-set_principal t.var_y[6].v.t
-set_principal t.var_y[6].v.f
-set_principal t.var_y[7].v.t
-set_principal t.var_y[7].v.f
-set_principal t.var_z[0].v.t
-set_principal t.var_z[0].v.f
-set_principal t.var_z[1].v.t
-set_principal t.var_z[1].v.f
-set_principal t.var_z[2].v.t
-set_principal t.var_z[2].v.f
-set_principal t.var_z[3].v.t
-set_principal t.var_z[3].v.f
-set_principal t.var_z[4].v.t
-set_principal t.var_z[4].v.f
-set_principal t.var_z[5].v.t
-set_principal t.var_z[5].v.f
-set_principal t.var_z[6].v.t
-set_principal t.var_z[6].v.f
-set_principal t.var_z[7].v.t
-set_principal t.var_z[7].v.f
-set_principal t.c_0.a
+source std_init.prsim
 
-mode reset
-set Reset 1
-set _Reset 0
-set t.c_0.r 0
-set t.c_0.a 0
-cycle
-assert t.c_0.r 0
-assert t.c_0.a 0
 set Reset 0
-set _Reset 1
-cycle
-mode run
 cycle
 
-assert t.var_x[0].v.t 0
-assert t.var_x[0].v.f 1
-assert t.var_x[1].v.t 0
-assert t.var_x[1].v.f 1
-assert t.var_x[2].v.t 0
-assert t.var_x[2].v.f 1
-assert t.var_x[3].v.t 0
-assert t.var_x[3].v.f 1
-assert t.var_x[4].v.t 0
-assert t.var_x[4].v.f 1
-assert t.var_x[5].v.t 0
-assert t.var_x[5].v.f 1
-assert t.var_x[6].v.t 0
-assert t.var_x[6].v.f 1
-assert t.var_x[7].v.t 0
-assert t.var_x[7].v.f 1
-assert t.var_y[0].v.t 0
-assert t.var_y[0].v.f 1
-assert t.var_y[1].v.t 0
-assert t.var_y[1].v.f 1
-assert t.var_y[2].v.t 0
-assert t.var_y[2].v.f 1
-assert t.var_y[3].v.t 0
-assert t.var_y[3].v.f 1
-assert t.var_y[4].v.t 0
-assert t.var_y[4].v.f 1
-assert t.var_y[5].v.t 0
-assert t.var_y[5].v.f 1
-assert t.var_y[6].v.t 0
-assert t.var_y[6].v.f 1
-assert t.var_y[7].v.t 0
-assert t.var_y[7].v.f 1
-assert t.var_z[0].v.t 0
-assert t.var_z[0].v.f 1
-assert t.var_z[1].v.t 0
-assert t.var_z[1].v.f 1
-assert t.var_z[2].v.t 0
-assert t.var_z[2].v.f 1
-assert t.var_z[3].v.t 0
-assert t.var_z[3].v.f 1
-assert t.var_z[4].v.t 0
-assert t.var_z[4].v.f 1
-assert t.var_z[5].v.t 0
-assert t.var_z[5].v.f 1
-assert t.var_z[6].v.t 0
-assert t.var_z[6].v.f 1
-assert t.var_z[7].v.t 0
-assert t.var_z[7].v.f 1
-set t.c_0.r 1
-cycle
+assert t.c0.a 1
 
-assert t.c_0.r 1
-assert t.var_x[0].v.t 0
-assert t.var_x[0].v.f 1
-assert t.var_x[1].v.t 0
-assert t.var_x[1].v.f 1
-assert t.var_x[2].v.t 1
-assert t.var_x[2].v.f 0
-assert t.var_x[3].v.t 1
-assert t.var_x[3].v.f 0
-assert t.var_x[4].v.t 1
-assert t.var_x[4].v.f 0
-assert t.var_x[5].v.t 1
-assert t.var_x[5].v.f 0
-assert t.var_x[6].v.t 0
-assert t.var_x[6].v.f 1
-assert t.var_x[7].v.t 0
-assert t.var_x[7].v.f 1
-assert t.var_y[0].v.t 1
-assert t.var_y[0].v.f 0
-assert t.var_y[1].v.t 0
-assert t.var_y[1].v.f 1
-assert t.var_y[2].v.t 0
-assert t.var_y[2].v.f 1
-assert t.var_y[3].v.t 0
-assert t.var_y[3].v.f 1
-assert t.var_y[4].v.t 1
-assert t.var_y[4].v.f 0
-assert t.var_y[5].v.t 0
-assert t.var_y[5].v.f 1
-assert t.var_y[6].v.t 0
-assert t.var_y[6].v.f 1
-assert t.var_y[7].v.t 0
-assert t.var_y[7].v.f 1
-assert t.var_z[0].v.t 1
-assert t.var_z[0].v.f 0
-assert t.var_z[1].v.t 0
-assert t.var_z[1].v.f 1
-assert t.var_z[2].v.t 1
-assert t.var_z[2].v.f 0
-assert t.var_z[3].v.t 0
-assert t.var_z[3].v.f 1
-assert t.var_z[4].v.t 1
-assert t.var_z[4].v.f 0
-assert t.var_z[5].v.t 0
-assert t.var_z[5].v.f 1
-assert t.var_z[6].v.t 1
-assert t.var_z[6].v.f 0
-assert t.var_z[7].v.t 1
-assert t.var_z[7].v.f 0
-assert t.c_0.a 1
+assert t.x.r[0].t 0
+assert t.x.r[0].f 1
+assert t.x.r[1].t 0
+assert t.x.r[1].f 1
+assert t.x.r[2].t 1
+assert t.x.r[2].f 0
+assert t.x.r[3].t 1
+assert t.x.r[3].f 0
+assert t.x.r[4].t 1
+assert t.x.r[4].f 0
+assert t.x.r[5].t 1
+assert t.x.r[5].f 0
+assert t.x.r[6].t 0
+assert t.x.r[6].f 1
+assert t.x.r[7].t 0
+assert t.x.r[7].f 1
+assert t.y.r[0].t 1
+assert t.y.r[0].f 0
+assert t.y.r[1].t 0
+assert t.y.r[1].f 1
+assert t.y.r[2].t 0
+assert t.y.r[2].f 1
+assert t.y.r[3].t 0
+assert t.y.r[3].f 1
+assert t.y.r[4].t 1
+assert t.y.r[4].f 0
+assert t.y.r[5].t 0
+assert t.y.r[5].f 1
+assert t.y.r[6].t 0
+assert t.y.r[6].f 1
+assert t.y.r[7].t 0
+assert t.y.r[7].f 1
+assert t.z.r[0].t 1
+assert t.z.r[0].f 0
+assert t.z.r[1].t 0
+assert t.z.r[1].f 1
+assert t.z.r[2].t 1
+assert t.z.r[2].f 0
+assert t.z.r[3].t 0
+assert t.z.r[3].f 1
+assert t.z.r[4].t 1
+assert t.z.r[4].f 0
+assert t.z.r[5].t 0
+assert t.z.r[5].f 1
+assert t.z.r[6].t 1
+assert t.z.r[6].f 0
+assert t.z.r[7].t 1
+assert t.z.r[7].f 0

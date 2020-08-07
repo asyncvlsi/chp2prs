@@ -352,7 +352,54 @@ defproc add(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out)
 }
 
 export template<pint W1,W2>
-defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out);
+defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  { wmin > 0 : "add: minimum width is zero?" };
+
+  out.r = a.r;
+  out.r = b.r;
+
+  dualrails<W2> bc;
+
+  (i:W2: bc.r[i].t = b.d.r[i].f;  bc.r[i].f = b.d.r[i].t; )
+
+  [ wmin = 1 ->
+    hadd1 ha0;
+    hadd ha[1..wmax];
+    [ W1 > W2 ->  (i:1..wmax: ha[i](.a=a.d.r[i],.s=out.d.r[i]);)
+                  ha0(.a=a.d.r[0],.s=out.d.r[0]);
+                  ha0.b=bc.r[0];
+                  [ wmax > 1 -> ha[1].b=ha0.cout; ]
+                 (i:2..wmax-1: ha[i].b=ha[i-1].cout;)
+                 [ wmax = 1 -> ha0.cout=out.d.r[wmax];
+		 [] else ->  ha[wmax-1].cout=out.d.r[wmax];
+		 ]
+
+    [] W2 > W1 ->  (i:1..wmax: ha[i](.a=bc.r[i],.s=out.d.r[i]);)
+                  ha0(.a=bc.r[0],.s=out.d.r[0]);
+                  ha0.b=a.d.r[0];
+                  [ wmax > 1 -> ha[1].b=ha0.cout; ]
+                 (i:2..wmax-1: ha[i].b=ha[i-1].cout;)
+                 [ wmax = 1 -> ha0.cout=out.d.r[wmax];
+		 [] else ->  ha[wmax-1].cout=out.d.r[wmax];
+		 ]
+      [] else -> ha0(.a = a.d.r[0], .b = bc.r[0], .s = out.d.r[0],
+		       .cout = out.d.r[1]);
+    ]
+  [] else ->
+       /* lsb is a half adder */
+       hadd1 ha1;
+       addfblock<W1-1,W2-1> fb;
+       fb.a.r = a.d.r[1..W1-1];
+       fb.b.r = bc.r[1..W2-1];
+       fb.s.r = out.d.r[1..wmax-1];
+       fb.cout = out.d.r[wmax];
+       ha1(.a=a.d.r[0],.b=bc.r[0],.s=out.d.r[0],.cout=fb.cin);
+  ]
+}
 
 export template<pint W1,W2>
 defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out)
