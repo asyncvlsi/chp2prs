@@ -1,0 +1,8 @@
+defproc a5(chan!(int) x) {
+
+  int y;
+
+  chp {
+	y:=65;x!y;skip
+  }
+}

@@ -76,11 +76,12 @@ defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
      )
   }
 
-  ctree<W,true> ct(wack);
+  ctree<W,false> ct(wack);
   
   prs {
     Reset | ct.out => c.a-
   }
+  c.a = ch.a;
 }
 
 
@@ -189,6 +190,7 @@ defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
    }
   [] W1 > W2 ->
      a.d.r[0..W2-1] = out.d.r;
+     // XXX: dangling signals!
  ]
 }
 
@@ -229,9 +231,21 @@ defproc writeport(sdtvar<W> var; sdtchan<W> in)
 export template<pint W>
 defproc readport(sdtvar<W> var; sdtexprchan<W> out)
 {
+  bool xout, _xout;
 
+  sigbuf<2*W> s(xout,_xout);
+  
+  prs {
+    out.r => xout-
+      
+    (i:W:
+     ~_xout & ~var.r[i].t -> out.d.r[i].f+
+     ~_xout & ~var.r[i].f -> out.d.r[i].t+
+     _xout -> out.d.r[i].f-
+     _xout -> out.d.r[i].t-
+     )
+  }
 }
-
 
 }
 

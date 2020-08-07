@@ -81,7 +81,10 @@ cd "unit_tests"
 
 for i in *
 do
-    run_test $i
+    if [ -d $i ]
+    then
+	run_test $i
+    fi
 done
 
 if [ $failed -eq 1 ]

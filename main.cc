@@ -62,11 +62,11 @@ int main(int argc, char **argv)
   if ((argc == 5 && strcmp(argv[4], "--optimize") == 0)
        || (argc == 6 && strcmp(argv[5], "--optimize") == 0)) {
     chpopt = true;
-    printf("> Sequencer Optimization turned ON\n");
+    //printf("> Sequencer Optimization turned ON\n");
   }
   else
   {
-    printf("> Sequencer Optimization turned OFF\n");
+    //printf("> Sequencer Optimization turned OFF\n");
   }
   
   /* check if bundled data */
@@ -74,11 +74,11 @@ int main(int argc, char **argv)
        || (argc == 6 && strcmp(argv[5], "--bundled") == 0))
   {
     bundled = true;
-    printf("> Bundled data turned ON\n");
+    //printf("> Bundled data turned ON\n");
   }
   else
   {
-    printf("> Bundled data turned OFF\n");
+    //printf("> Bundled data turned OFF\n");
   }
   
   /* read in the ACT file */
