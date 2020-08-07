@@ -12,5 +12,3 @@ defproc assign2 () {
     x:=0
   }
 }
-
-assign2 assign;
