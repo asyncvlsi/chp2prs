@@ -1,0 +1,10 @@
+initialize
+random
+
+mode reset
+set Reset 1
+cycle
+status U
+
+mode run
+

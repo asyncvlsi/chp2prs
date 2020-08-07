@@ -4,7 +4,6 @@ watch Reset
 watch t.c0.a
 mode reset
 
-set GND 0
 set Reset 1
 source res_x.prsim
 cycle

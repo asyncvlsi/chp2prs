@@ -1,0 +1,11 @@
+initialize
+random
+
+mode reset
+set GND 0
+set Reset 1
+cycle
+status U
+
+mode run
+

@@ -45,7 +45,7 @@ EOF
     if aflat $1/run/tst2.act > $1/run/test.prs
     then
 	prsim -r $1/run/test.prs < $1/test.prsim > $1/run/prsim.out
-	if egrep '(WRONG|WARNING)' $1/run/prsim.out >/dev/null
+	if egrep '(WRONG|WARNING|Node)' $1/run/prsim.out >/dev/null
 	then
 	    echo "${bold}*** simulation failed ***${normal}"
 	    faildirs="${faildirs} ${1}-sim"

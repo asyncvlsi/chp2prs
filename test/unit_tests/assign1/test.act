@@ -5,5 +5,3 @@ defproc assign1 () {
     x:=0
   }
 }
-
-assign1 assign;
