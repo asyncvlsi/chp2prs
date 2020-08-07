@@ -301,8 +301,12 @@ defproc addfblock(dualrails<W1> a; dualrails<W2> b; dualrail cin;
   /* wire up primary inputs and outputs */
 
   (i:wmin: fa[i](.a=a.r[i], .b=b.r[i], .s=s.r[i]);)
-  [ W1 > W2 -> (i:wmin..wmax-1: ha[i](.a=a.r[i],.s=s.r[i]);)
- [] W2 > W1 -> (i:wmin..wmax-1: ha[i](.a=b.r[i],.s=s.r[i]);)
+  [ W1 > W2 -> (i:wmin..wmax-1: ha[i](.a=a.r[i],.s=s.r[i]);
+		[ i != wmin -> ha[i-1].cout=ha[i].b; ]
+		)
+ [] W2 > W1 -> (i:wmin..wmax-1: ha[i](.a=b.r[i],.s=s.r[i]);
+		[ i != wmin -> ha[i-1].cout=ha[i].b; ]
+		)
   ]
 
   /* carries */
@@ -368,8 +372,8 @@ defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out)
 
   [ wmin = 1 ->
     hadd1 ha0;
-    hadd ha[1..wmax];
-    [ W1 > W2 ->  (i:1..wmax: ha[i](.a=a.d.r[i],.s=out.d.r[i]);)
+    hadd ha[1..wmax-1];
+    [ W1 > W2 ->  (i:1..wmax-1: ha[i](.a=a.d.r[i],.s=out.d.r[i]);)
                   ha0(.a=a.d.r[0],.s=out.d.r[0]);
                   ha0.b=bc.r[0];
                   [ wmax > 1 -> ha[1].b=ha0.cout; ]
@@ -378,7 +382,7 @@ defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out)
 		 [] else ->  ha[wmax-1].cout=out.d.r[wmax];
 		 ]
 
-    [] W2 > W1 ->  (i:1..wmax: ha[i](.a=bc.r[i],.s=out.d.r[i]);)
+    [] W2 > W1 ->  (i:1..wmax-1: ha[i](.a=bc.r[i],.s=out.d.r[i]);)
                   ha0(.a=bc.r[0],.s=out.d.r[0]);
                   ha0.b=a.d.r[0];
                   [ wmax > 1 -> ha[1].b=ha0.cout; ]
@@ -428,8 +432,139 @@ defproc lsr(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
 export template<pint W1,W2>
 defproc asr(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
 
+/*------------------------------------------------------------------------*/
+
+defproc fsubcmp(dualrail a, b, cin; dualrail cout)
+{
+  bool _ct, _cf;
+  bool _av, _bv, _cv, v;
+  prs {
+    a.t | a.f => _av-
+    b.t | b.f => _bv-
+    cin.t | cin.f => _cv-
+    _av & _bv & _cv #> v-
+     
+    v & (a.t & b.f | (a.t | b.f) & cin.t) -> _ct-
+    ~v -> _ct+
+
+    v & (a.f & b.t | (a.f | b.t) & cin.f) -> _cf-
+    ~v -> _cf+
+
+    _ct => cout.t-
+    _cf => cout.f-
+ }
+}
+
+defproc hcmp1(dualrail a, b; dualrail cout)
+{
+  bool _ct, _cf;
+  bool _av, _bv, v;
+  prs {
+    a.t | a.f => _av-
+    b.t | b.f => _bv-
+    _av & _bv #> v-
+      
+     v & (a.t | b.t) -> _ct-
+    ~v -> _ct+
+
+    v & a.f & b.f -> _cf-
+    ~v -> _cf+
+
+    _ct => cout.t-
+    _cf => cout.f-
+ }
+}
+
+/*
+  a + ~b
+*/
+defproc hcmp(dualrail a, b; dualrail cout)
+{
+  bool _ct, _cf;
+  bool _av, _bv, v;
+  prs {
+    a.t | a.f => _av-
+    b.t | b.f => _bv-
+    _av & _bv #> v-
+      
+    v & (a.t & b.f) -> _ct-
+    ~v -> _ct+
+
+    v & (a.f | b.t) -> _cf-
+    ~v -> _cf+
+
+    _ct => cout.t-
+    _cf => cout.f-
+ }
+}
+
+template<pint W1,W2>
+defproc cmpblock(dualrails<W1> a; dualrails<W2> b; dualrail cin; dualrail cout)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  { wmin > 0 : "cmpblock: needs at least one bit" };
+
+  fsubcmp f[wmin];
+
+   (i:wmin: f[i](.a=a.r[i],.b=b.r[i]);)
+   [ W1 > W2 ->
+     hadd ha[wmin..wmax-1];
+     (i:wmin..wmax-1: ha[i](.a=a.r[i]);
+                     [ i != wmin -> ha[i-1].cout=ha[i].b; ]
+      )
+     ha[wmax-1].cout = cout;
+   [] W2 > W1 ->
+     hcmp hc[wmin..wmax-1];
+     (i:wmin..wmax-1: hc[i](.b=b.r[i]);
+        [ i != wmin -> hc[i-1].cout=hc[i].a; ]
+      )
+     hc[wmax-1].cout = cout;
+   [] else ->
+	f[wmax-1].cout = cout;
+   ]
+
+   f[0].cin=cin;
+   (i:wmin-1: f[i].cout=f[i+1].cin;)
+
+}
+
 export template<pint W1,W2>
-defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  { wmin > 0 : "lt with no bits?" };
+
+  out.r = a.r;
+  out.r = b.r;
+
+  [ wmin = 1 ->
+       hcmp1 h0(.a=a.d.r[0],.b=b.d.r[0]);
+    [ W1 > W2 -> hadd h[1..wmax-1];
+                 (i:1..wmax-1: h[i](.a=a.d.r[i]);)
+                 (i:2..wmax-1: h[i].b=h[i-1].cout;) 
+                 [ wmax = 1 -> h0.cout = out.d.r[0];
+ 	        [] else -> h0.cout=h[1].b;
+		           h[wmax-1].cout = out.d.r[0];
+		 ]
+   [] W1 < W2 -> hcmp hc[1..wmax-1];
+                 (i:1..wmax-1: hc[i](.b=b.d.r[i]);)
+                 (i:2..wmax-1:hc[i].a=hc[i-1].cout;) 
+                 [ wmax = 1 -> h0.cout = out.d.r[0];
+ 	        [] else -> h0.cout=hc[1].a;
+		           hc[wmax-1].cout = out.d.r[0];
+		 ]
+   [] else ->
+       h0.cout = out.d.r[0];
+   ]
+ [] else ->
+      { false : "Hi" };
+  ]
+       
+}
 
 export template<pint W1,W2>
 defproc gt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
