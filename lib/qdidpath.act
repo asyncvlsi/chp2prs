@@ -203,7 +203,7 @@ defproc xor(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
     (i:wmin..wmax-1: b.d.r[i].d = out.d.r[i].d;)
   ]
   out.r = a.r;
-  out.r = b.r;  
+  out.r = b.r;
 }
   
 export template<pint W>
@@ -541,8 +541,8 @@ defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
   out.r = a.r;
   out.r = b.r;
 
+  hcmp1 h0(.a=a.d.r[0],.b=b.d.r[0]);
   [ wmin = 1 ->
-       hcmp1 h0(.a=a.d.r[0],.b=b.d.r[0]);
     [ W1 > W2 -> hadd h[1..wmax-1];
                  (i:1..wmax-1: h[i](.a=a.d.r[i]);)
                  (i:2..wmax-1: h[i].b=h[i-1].cout;) 
@@ -561,28 +561,103 @@ defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
        h0.cout = out.d.r[0];
    ]
  [] else ->
-      { false : "Hi" };
+      cmpblock<W1-1,W2-1> cb;
+      cb.a.r = a.d.r[1..W1-1];
+      cb.b.r = b.d.r[1..W2-1];
+      cb.cout = out.d.r[0];
+      cb.cin=h0.cout;
   ]
-       
 }
 
 export template<pint W1,W2>
-defproc gt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+defproc gt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  lt<W2,W1> l(b,a,out);
+}
   
 export template<pint W1,W2>
-defproc le(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+defproc le(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  gt<W1,W2> g(a,b);
+  g.out.r = out.r;
+  g.out.d.r[0].t=out.d.r[0].f;
+  g.out.d.r[0].f=out.d.r[0].t;
+}
 
 export template<pint W1,W2>
-defproc ge(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
-  
-export template<pint W1,W2>
-defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+defproc ge(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  lt<W1,W2> l(a,b);
+  l.out.r = out.r;
+  l.out.d.r[0].t=out.d.r[0].f;
+  l.out.d.r[0].f=out.d.r[0].t;
+}
+
+template<pint N>
+defproc dror(dualrails<N> d; dualrails<1> out)
+{
+  { N > 0 : "What?" };
+
+  pint i, end, j;
+  i = 0;
+  end = N-1;
+
+  /* dynamic array that holds all the nodes in the completion tree */
+  dualrail tmp[N];
+  (k:N:tmp[k] = d.r[k];)
+
+  /* Invariant: i <= end */
+    
+  *[ i != end ->
+     /* 
+      * Invariant: tmp[i..end] has the current signals that need to be
+      * combined together, and "isinv" specifies if they are the inverted
+      * sense or not
+      */
+     j = 0;
+     *[ i < end ->
+	/*-- there are still signals that need to be combined --*/
+	j = j + 1;
+	dualrail tmp[end+j..end+j];
+	bool _tt[end+j..end+j], _ff[end+j..end+j];
+	prs {
+	  tmp[i].t & (tmp[i+1].t | tmp[i+1].f) | tmp[i+1].t & tmp[i].f -> _tt[end+j]-
+         ~tmp[i].t & ~tmp[i].f & ~tmp[i+1].t & ~tmp[i+1].f -> _tt[end+j]+
+	 
+	  tmp[i].f & tmp[i+1].f -> _ff[end+j]-
+         ~tmp[i].f & ~tmp[i+1].f -> _ff[end+j]+
+
+	 _tt[end+j] => tmp[end+j].t-
+	 _ff[end+j] => tmp[end+j].f-
+         }
+	i = i + 2;
+     ]
+      /*-- update range that has to be combined --*/
+      end = end+j;
+      j = 0;
+  ]
+  tmp[end] = out.r[0];
+}
 
 export template<pint W1,W2>
-defproc eq(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+defproc eq(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  a.r = out.r;
+  b.r = out.r;
+  xor<W1,W2> x(a,b);
+  out.r = x.out.r;
+  dror<max(W1,W2)> ot(x.out.d);
+  ot.out = out.d;
+}
 
 export template<pint W1,W2>
-defproc ne(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+defproc ne(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  eq<W1,W2> x(a,b);
+  x.out.d.r[0].t = out.d.r[0].f;
+  x.out.d.r[0].f = out.d.r[0].t;
+  x.out.r = out.r;
+}
 
 export template<pint W>
 defproc uminus(sdtexprchan<W> a; sdtexprchan<W> out);

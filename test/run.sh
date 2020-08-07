@@ -50,13 +50,14 @@ EOF
 	    echo "${bold}*** simulation failed ***${normal}"
 	    faildirs="${faildirs} ${1}-sim"
 	    failed=1
+	    echo	
 	fi
     else
 	echo "${bold}*** circuit construction failed ***${normal}"
 	faildirs="${faildirs} ${1}-ckt"
 	failed=1
+        echo
     fi
-    echo
 }
 
 echo
