@@ -111,7 +111,30 @@ defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
 export namespace expr {
 
 export template<pint W1,W2>
-defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out);
+defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
+{
+  pint wmin = (W1 < W2 ? W1 : W2);
+  pint wmax = max(W1,W2);
+
+  bool _t[wmax], _f[wmax];
+
+  prs {
+    (i:wmin: a.d.r[i].t & b.d.r[i].t -> _t[i]-
+     a.d.r[i].f & (b.d.r[i].t | b.d.r[i].f) | a.d.r[i].t & b.d.r[i].f -> _f[i]-
+     ~a.d.r[i].t & ~b.d.r[i].t -> _t[i]+
+     ~a.d.r[i].t & ~b.d.r[i].t & ~a.d.r[i].f & ~b.d.r[i].f -> _f[i]+
+
+     _t[i] => out.d.r[i].t-
+     _f[i] => out.d.r[i].f-
+     )
+
+    (i:wmin..wmax-1:  out.r -> _f[i]-
+                     ~out.r -> _f[i]+
+                      _f[i] => out.d.r[i].f-
+    )
+  }
+  (i:wmin..wmax-1: GND = out.d.r[i].t;)
+}
 
 export template<pint W1,W2>
 defproc or(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out);
@@ -174,6 +197,7 @@ defproc not(sdtexprchan<W> a; sdtexprchan<W> out);
 export template<pint W1,W2>
 defproc ite(sdtexprchan<1> a; sdtexprchan<W1> opt1; sdtexprchan<W2> opt2; sdtexprchan<max(W1,W2)> out);
 
+
 export template<pint W1, W2>
 defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
 {
@@ -184,10 +208,10 @@ defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
     a.d.r = out.d.r[0..W1-1];
     prs {
       a.d.r[W1-1].t | a.d.r[W1-1].t => _xv-
-     (i:W1..W2-1: Reset -> out.d.r[i].t-
-     		  _xv => out.d.r[i].f-
-     )		  
+      (i:W1..W2-1:  _xv => out.d.r[i].f- )
    }
+   (i:W1..W2-1: GND = out.d.r[i].t;)
+    
   [] W1 > W2 ->
      a.d.r[0..W2-1] = out.d.r;
      // XXX: dangling signals!
@@ -203,13 +227,15 @@ defproc const(sdtexprchan<W> out)
   prs {
     out.r => _req-
     (i:W:
-          ~_req => out.d.r[i].d[((V >> i) & 1)]+
-          Reset -> out.d.r[i].d[1-(V >> i) & 1]-
+      ~_req => out.d.r[i].d[((V >> i) & 1)]+
+      Reset -> out.d.r[i].d[1-(V >> i) & 1]-
     )
   }
 }
 
-/*-- we need to fix this for variables ---*/
+
+/*-- variable access ports --*/
+	 
 export template<pint W>
 defproc writeport(sdtvar<W> var; sdtchan<W> in)
 {
