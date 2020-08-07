@@ -18,5 +18,3 @@ defproc assign3 () {
     y:=1
   }
 }
-
-assign3 assign;
