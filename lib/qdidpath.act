@@ -127,22 +127,94 @@ defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
      _t[i] => out.d.r[i].t-
      _f[i] => out.d.r[i].f-
      )
-
-    (i:wmin..wmax-1:  out.r -> _f[i]-
-                     ~out.r -> _f[i]+
-                      _f[i] => out.d.r[i].f-
-    )
   }
+  
+  [ W1 > W2 ->
+    prs {
+        (i:wmin..wmax-1:  a.d.r[i].t | a.d.r[i].f -> _f[i]-
+                         ~a.d.r[i].t & ~a.d.r[i].f -> _f[i]+
+                          _f[i] => out.d.r[i].f-
+        )
+    }
+ [] else ->
+    prs {
+      (i:wmin..wmax-1:  b.d.r[i].t | b.d.r[i].f -> _f[i]-
+                     ~b.d.r[i].t & ~b.d.r[i].f -> _f[i]+
+                      _f[i] => out.d.r[i].f-
+      )
+    }
+  ]
   (i:wmin..wmax-1: GND = out.d.r[i].t;)
+
+  out.r = a.r;
+  out.r = b.r;  
 }
 
 export template<pint W1,W2>
-defproc or(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out);
+defproc or(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
+{
+  pint wmin = (W1 < W2 ? W1 : W2);
+  pint wmax = max(W1,W2);
+
+  bool _t[wmax], _f[wmax];
+
+  prs {
+    (i:wmin: a.d.r[i].f & b.d.r[i].f  -> _f[i]-
+     a.d.r[i].t & (b.d.r[i].t | b.d.r[i].f) | a.d.r[i].f & b.d.r[i].t -> _t[i]-
+     ~a.d.r[i].f & ~b.d.r[i].f -> _f[i]+
+     ~a.d.r[i].t & ~b.d.r[i].t & ~a.d.r[i].f & ~b.d.r[i].f -> _t[i]+
+
+     _t[i] => out.d.r[i].t-
+     _f[i] => out.d.r[i].f-
+    )
+  }
+  
+  [ W1 > W2 ->
+    (i:wmin..wmax-1: a.d.r[i].d = out.d.r[i].d;)
+ [] else ->
+    (i:wmin..wmax-1: b.d.r[i].d = out.d.r[i].d;)
+  ]
+  out.r = a.r;
+  out.r = b.r;  
+}
 
 export template<pint W1,W2>
-defproc xor(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out);
+defproc xor(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
+{
+  pint wmin = (W1 < W2 ? W1 : W2);
+  pint wmax = max(W1,W2);
 
+  bool _t[wmax], _f[wmax];
+
+  prs {
+    (i:wmin: a.d.r[i].f & b.d.r[i].t | a.d.r[i].t & b.d.r[i].f -> _t[i]-
+     a.d.r[i].t & b.d.r[i].t | a.d.r[i].f & b.d.r[i].f -> _f[i]-
+     ~a.d.r[i].t & ~b.d.r[i].t & ~a.d.r[i].f & ~b.d.r[i].f -> _t[i]+
+     ~a.d.r[i].t & ~b.d.r[i].t & ~a.d.r[i].f & ~b.d.r[i].f -> _f[i]+
+
+     _t[i] => out.d.r[i].t-
+     _f[i] => out.d.r[i].f-
+    )
+  }
   
+  [ W1 > W2 ->
+    (i:wmin..wmax-1: a.d.r[i].d = out.d.r[i].d;)
+ [] else ->
+    (i:wmin..wmax-1: b.d.r[i].d = out.d.r[i].d;)
+  ]
+  out.r = a.r;
+  out.r = b.r;  
+}
+  
+export template<pint W>
+defproc not(sdtexprchan<W> a; sdtexprchan<W> out)
+{
+  a.r = out.r;
+  (i:W: a.d.r[i].t = out.d.r[i].f;
+        a.d.r[i].f = out.d.r[i].t;
+   )
+}
+
 export template<pint W1,W2>
 defproc add(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out);
 
@@ -191,9 +263,7 @@ defproc ne(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 export template<pint W>
 defproc uminus(sdtexprchan<W> a; sdtexprchan<W> out);
   
-export template<pint W>
-defproc not(sdtexprchan<W> a; sdtexprchan<W> out);
-  
+
 export template<pint W1,W2>
 defproc ite(sdtexprchan<1> a; sdtexprchan<W1> opt1; sdtexprchan<W2> opt2; sdtexprchan<max(W1,W2)> out);
 

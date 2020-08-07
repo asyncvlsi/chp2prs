@@ -1,0 +1,8 @@
+defproc a6(chan!(int) x) {
+
+  int y, z;
+
+  chp {
+	y:=65;z:=31; x!(y&z);skip
+  }
+}

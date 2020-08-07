@@ -1,0 +1,29 @@
+initialize
+random
+watch Reset
+watch t.c0.a
+mode reset
+
+set GND 0
+set Reset 1
+set t.x.a 0
+cycle
+
+status U
+
+assert t.c0.r 0
+source assert_x_res.prsim
+
+mode run
+set Reset 0
+cycle
+
+source assert_x_65.prsim 
+set t.x.a 1
+cycle
+
+source assert_x_res.prsim
+set t.x.a 0
+cycle
+
+assert t.c0.a 1
