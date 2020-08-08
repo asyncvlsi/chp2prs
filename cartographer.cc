@@ -1097,11 +1097,13 @@ void SDTEngine::_expr_collect_vars (Expr *e)
       int val = e->u.v;
       if (val < 0) {
 	val = -val;
-	w = 2;
+	w = 32;
       }
+      else {
       while (val) {
 	val >>= 1;
 	w++;
+      }
       }
       if (w == 0) {
 	w = 1;
