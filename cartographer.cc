@@ -37,6 +37,8 @@
 
 #include "basicsdt.h"
 
+#define ACT_CHP_ASSIGNSELF (ACT_CHP_STMTEND+1)
+
 /*
  *
  *  Core syntax-directed translation code written by Rajit Manohar
@@ -305,6 +307,7 @@ void SDTEngine::_clear_var_flags ()
 void SDTEngine::_construct_varmap (act_chp_lang_t *c)
 {
   varmap_info *v;
+  int x;
   if (!c) return;
 
   switch (c->type) {
@@ -312,9 +315,13 @@ void SDTEngine::_construct_varmap (act_chp_lang_t *c)
     break;
   case ACT_CHP_ASSIGN:
     v = _var_getinfo (c->u.assign.id);
+    x = v->nread;
     v->nwrite++;
     _clear_var_flags ();
     _construct_varmap_expr (c->u.assign.e);
+    if (x != v->nread) {
+      c->type = ACT_CHP_ASSIGNSELF;
+    }
     break;
   case ACT_CHP_SEND:
     v = _var_getinfo (c->u.comm.chan);
@@ -418,14 +425,21 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
     _emit_skip (id);
     break;
 
+  case ACT_CHP_ASSIGNSELF:
   case ACT_CHP_ASSIGN:
     {
       int eid;
       varmap_info *v;
+      varmap_info xv;
 
       v = _var_getinfo (c->u.assign.id);
       _emit_expr (&eid, v->width, c->u.assign.e);
+
+      if (c->type == ACT_CHP_ASSIGNSELF) {
+	warning ("We need to fix this!");
+      }
       _emit_transfer (id, eid, v);
+      
       v->iwrite++;
     }
     break;

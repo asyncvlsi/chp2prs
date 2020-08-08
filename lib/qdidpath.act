@@ -434,139 +434,125 @@ defproc asr(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
 
 /*------------------------------------------------------------------------*/
 
-defproc fsubcmp(dualrail a, b, cin; dualrail cout)
+defchan d1of3 <: chan(enum<3>) (bool gt, lt, eq) { }
+
+
+/*
+  one bit a cmp b
+*/
+defproc fcmpgen(dualrail a, b; d1of3 out)
 {
-  bool _ct, _cf;
-  bool _av, _bv, _cv, v;
+  bool _cgt, _clt, _ceq;
   prs {
-    a.t | a.f => _av-
-    b.t | b.f => _bv-
-    cin.t | cin.f => _cv-
-    _av & _bv & _cv #> v-
-     
-    v & (a.t & b.f | (a.t | b.f) & cin.t) -> _ct-
-    ~v -> _ct+
+    a.t & b.f -> _cgt-
+    a.f & b.t -> _clt-
+    a.t & b.t | a.f & b.f -> _ceq-
+    ~a.t & ~b.f -> _cgt+
+    ~a.f & ~b.t -> _clt+
+    ~a.t & ~a.f & ~b.t & ~b.f -> _ceq+
 
-    v & (a.f & b.t | (a.f | b.t) & cin.f) -> _cf-
-    ~v -> _cf+
-
-    _ct => cout.t-
-    _cf => cout.f-
- }
-}
-
-defproc hcmp1(dualrail a, b; dualrail cout)
-{
-  bool _ct, _cf;
-  bool _av, _bv, v;
-  prs {
-    a.t | a.f => _av-
-    b.t | b.f => _bv-
-    _av & _bv #> v-
-      
-     v & (a.t | b.t) -> _ct-
-    ~v -> _ct+
-
-    v & a.f & b.f -> _cf-
-    ~v -> _cf+
-
-    _ct => cout.t-
-    _cf => cout.f-
- }
+   _cgt => out.gt-
+   _clt => out.lt-
+   _ceq => out.eq-
+  }
 }
 
 /*
-  a + ~b
+  a cmp 0
 */
-defproc hcmp(dualrail a, b; dualrail cout)
+defproc fcmpa0(dualrail a; d1of3 out)
 {
-  bool _ct, _cf;
-  bool _av, _bv, v;
-  prs {
-    a.t | a.f => _av-
-    b.t | b.f => _bv-
-    _av & _bv #> v-
-      
-    v & (a.t & b.f) -> _ct-
-    ~v -> _ct+
-
-    v & (a.f | b.t) -> _cf-
-    ~v -> _cf+
-
-    _ct => cout.t-
-    _cf => cout.f-
- }
+  bool _cgt, _clt, _ceq;
+  a.t = out.gt;
+  a.f = out.eq;
+  GND = out.lt;
 }
 
-template<pint W1,W2>
-defproc cmpblock(dualrails<W1> a; dualrails<W2> b; dualrail cin; dualrail cout)
+/*
+  0 cmp b
+*/
+defproc fcmpb0(dualrail b; d1of3 out)
+{
+  bool _cgt, _clt, _ceq;
+  b.t = out.lt;
+  b.f = out.eq;
+  GND = out.gt;
+}
+
+
+defproc fcmpmerge (d1of3 msb, lsb; d1of3 out)
+{
+  bool _gt, _lt, _eq;
+  prs {
+    (msb.gt | msb.eq) & lsb.gt | msb.gt & (lsb.eq | lsb.lt) -> _gt-
+    (msb.lt | msb.eq) & lsb.lt | msb.lt & (lsb.eq | lsb.gt) -> _lt-
+    msb.eq & lsb.eq -> _eq-
+
+   ~msb.gt & ~msb.eq & ~lsb.gt & ~lsb.eq & ~lsb.lt -> _gt+
+   ~msb.lt & ~msb.eq & ~lsb.gt & ~lsb.eq & ~lsb.lt -> _lt+
+   ~msb.eq & ~lsb.eq -> _eq+
+
+   _lt => out.lt-
+   _gt => out.gt-
+   _eq => out.eq-
+  }
+}
+
+/* higher index is msb */
+template<pint N>
+defproc fcmptree(d1of3 in[N]; d1of3 out)
+{
+  { N > 0 : "fcmptree: needs to be positive!" };
+  [ N = 1 -> out = in[0];
+  [] else -> fcmptree<N/2> t1(in[0..N/2-1]);
+             fcmptree<N-N/2> t2(in[N/2..N-1]);
+             fcmpmerge m(.msb=t2.out, .lsb=t1.out, .out=out);
+  ]
+}
+
+
+export template<pint W1, W2>
+defproc cmp(dualrails<W1> a; dualrails<W2> b; d1of3 out)
 {
   pint wmin = min(W1,W2);
   pint wmax = max(W1,W2);
 
-  { wmin > 0 : "cmpblock: needs at least one bit" };
+ 
+  { wmin > 0 : "lt with no bits?" };
 
-  fsubcmp f[wmin];
+  d1of3 cr[wmax];
+    
+  fcmpgen gen[wmin];
+  (i:wmin: gen[i](.a = a.r[i], .b=b.r[i], .out=cr[i]);)
 
-   (i:wmin: f[i](.a=a.r[i],.b=b.r[i]);)
-   [ W1 > W2 ->
-     hadd ha[wmin..wmax-1];
-     (i:wmin..wmax-1: ha[i](.a=a.r[i]);
-                     [ i != wmin -> ha[i-1].cout=ha[i].b; ]
-      )
-     ha[wmax-1].cout = cout;
-   [] W2 > W1 ->
-     hcmp hc[wmin..wmax-1];
-     (i:wmin..wmax-1: hc[i](.b=b.r[i]);
-        [ i != wmin -> hc[i-1].cout=hc[i].a; ]
-      )
-     hc[wmax-1].cout = cout;
-   [] else ->
-	f[wmax-1].cout = cout;
-   ]
-
-   f[0].cin=cin;
-   (i:wmin-1: f[i].cout=f[i+1].cin;)
-
+  [ W1 < W2 ->
+    fcmpa0 ra[W2-W1];
+    (i:W2-W1: ra[i](.a=a.r[i+wmin], .out=cr[i+wmin]);)
+ [] W2 > W1 -> 
+    fcmpb0 rb[W2-W1];
+    (i:W2-W1: rb[i](.b=b.r[i+wmin], .out=cr[i+wmin]);)
+  ]
+  fcmptree<wmax> t(cr,out);
 }
 
 export template<pint W1,W2>
 defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
 {
   pint wmin = min(W1,W2);
-  pint wmax = max(W1,W2);
-
+  
   { wmin > 0 : "lt with no bits?" };
 
   out.r = a.r;
   out.r = b.r;
 
-  hcmp1 h0(.a=a.d.r[0],.b=b.d.r[0]);
-  [ wmin = 1 ->
-    [ W1 > W2 -> hadd h[1..wmax-1];
-                 (i:1..wmax-1: h[i](.a=a.d.r[i]);)
-                 (i:2..wmax-1: h[i].b=h[i-1].cout;) 
-                 [ wmax = 1 -> h0.cout = out.d.r[0];
- 	        [] else -> h0.cout=h[1].b;
-		           h[wmax-1].cout = out.d.r[0];
-		 ]
-   [] W1 < W2 -> hcmp hc[1..wmax-1];
-                 (i:1..wmax-1: hc[i](.b=b.d.r[i]);)
-                 (i:2..wmax-1:hc[i].a=hc[i-1].cout;) 
-                 [ wmax = 1 -> h0.cout = out.d.r[0];
- 	        [] else -> h0.cout=hc[1].a;
-		           hc[wmax-1].cout = out.d.r[0];
-		 ]
-   [] else ->
-       h0.cout = out.d.r[0];
-   ]
- [] else ->
-      cmpblock<W1-1,W2-1> cb;
-      cb.a.r = a.d.r[1..W1-1];
-      cb.b.r = b.d.r[1..W2-1];
-      cb.cout = out.d.r[0];
-      cb.cin=h0.cout;
-  ]
+  cmp<W1,W2> c(a.d,b.d);
+
+  bool _of;
+  out.d.r[0].t = c.out.lt;
+  prs {
+    c.out.gt | c.out.eq => _of-
+    _of => out.d.r[0].f-
+  }
 }
 
 export template<pint W1,W2>
@@ -642,12 +628,21 @@ defproc dror(dualrails<N> d; dualrails<1> out)
 export template<pint W1,W2>
 defproc eq(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
 {
-  a.r = out.r;
-  b.r = out.r;
-  xor<W1,W2> x(a,b);
-  out.r = x.out.r;
-  dror<max(W1,W2)> ot(x.out.d);
-  ot.out = out.d;
+  pint wmin = min(W1,W2);
+  
+  { wmin > 0 : "lt with no bits?" };
+
+  out.r = a.r;
+  out.r = b.r;
+
+  cmp<W1,W2> c(a.d,b.d);
+
+  bool _of;
+  out.d.r[0].t = c.out.eq;
+  prs {
+    c.out.gt | c.out.lt => _of-
+    _of => out.d.r[0].f-
+  }
 }
 
 export template<pint W1,W2>
