@@ -1,7 +1,0 @@
-import syn;
-
-defproc nochp0() {
-  syn::expr_and a;
-}
-
-nochp0 n;

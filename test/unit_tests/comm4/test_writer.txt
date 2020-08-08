@@ -1,6 +1,0 @@
-bool t.go.r 0,0 1,1
-syn_var t.var_x[32]   nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00010000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,11101010010101001110101010010000 
-syn_var t.var_y[32]   nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00000000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,00010000000000000000000000000000 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,11101010010101001110101010010000
-bool t.go.a n,0 n,0 n,1
-dualrail t.a.d[32] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
-dualrail t.m_a.out.d[32] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn,nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
