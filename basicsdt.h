@@ -79,6 +79,9 @@ class BasicSDT : public SDTEngine {
   
   void _emit_comma (int cid, list_t *stmts);
   void _emit_semi (int cid, list_t *stmts);
+  void _emit_trueseq (int cid, int sid);
+
+  void _gen_fresh_var (varmap_info *v);
 
   void _emit_loop (int cid, list_t *guards, list_t *stmts);
   void _emit_doloop (int cid, int guard, int stmt);

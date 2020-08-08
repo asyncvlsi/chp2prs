@@ -5,12 +5,10 @@ defproc assign3 () {
   int<1> v;
   int<1> a;
   int<1> b;
-  int<1> t;
 
   chp { 
     y:=1;
-    t:=(y = x);
-    x:=t;         // 0
+    x:=(y = x);   // 0
     v:=(x < y);   // 1
     z:=(x > y);   // 0
     a:=(v >= y);  // 1

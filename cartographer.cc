@@ -436,10 +436,34 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
       _emit_expr (&eid, v->width, c->u.assign.e);
 
       if (c->type == ACT_CHP_ASSIGNSELF) {
-	warning ("We need to fix this!");
+	int fseq = _gen_stmt_id ();
+
+	/*-- generate a fresh variable --*/
+	xv = *v;
+	_gen_fresh_var (&xv);
+
+	int tstmt = _gen_stmt_id ();
+
+	_emit_trueseq (fseq, tstmt);
+	_emit_transfer (tstmt, eid, &xv);
+
+	tstmt = _gen_stmt_id ();
+
+	eid = _gen_expr_id ();
+	_emit_var_read (eid, &xv);
+	_emit_transfer (tstmt, eid, v);
+
+	list_t *l = list_new ();
+	list_iappend (l, fseq);
+	list_iappend (l, tstmt);
+
+	_emit_semi (id, l);
+
+	list_free (l);
       }
-      _emit_transfer (id, eid, v);
-      
+      else {
+	_emit_transfer (id, eid, v);
+      }
       v->iwrite++;
     }
     break;
@@ -1349,4 +1373,23 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
   fprintf (output_stream, "_mux(");
   v->id->Print (output_stream);
   fprintf (output_stream, ");\n");
+}
+
+
+void BasicSDT::_emit_trueseq (int cid, int sid)
+{
+  fprintf (output_stream, "   syn::fullseq s_%d(c%d,c%d);\n",
+	   _gen_inst_id(), cid, sid);
+}
+
+void BasicSDT::_gen_fresh_var (varmap_info *v)
+{
+  static int vid = 0;
+  char buf[32];
+  
+  snprintf (buf, 32, "fvar%d", vid++);
+  
+  v->id = new ActId (buf);
+  fprintf (output_stream, "   syn::sdtvar<%d> %s;\n", v->width, buf);
+  fprintf (output_stream, "   syn::var_init<%d,false> var_%s(%s);\n", v->width, buf, buf);
 }
