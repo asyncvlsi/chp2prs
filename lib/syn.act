@@ -129,12 +129,12 @@ defproc select(a1of1? c; sdtexprchan?<1> gg[N]; a1of1! s[N+int(has_else)])
   (i:N: sdt_connect_r1of2 conn[i..i]; conn[i](g[i],gg[i]);)
   (i:N-1: g[i].f = g[i+1].r;)
 
+  c.r = g[0].r;
+
   ortree<N+int(has_else)> ot;
-  
-  [ has_else -> (i:N:  s[i](.r=g[i].t, .a=ot.in[i]); )
-                s[N].r = g[N-1].f;
+  (i:N:  s[i](.r=g[i].t, .a=ot.in[i]);)
+  [ has_else -> s[N].r = g[N-1].f;
                 s[N].a = ot.in[N-1];
-  [] ~has_else -> (i:N: s[i](.r=g[i].t, .a=ot.in[i]); )
   ]
    
   ot.out = c.a;    
@@ -262,7 +262,8 @@ export defproc fullseq (a1of1? go; a1of1! r)
 {
   bool x, _gor, _goa, _ra;
   prs {
-      ~x & ~_gor -> r.r+
+      /**XXX FIX ***/
+     ~Reset & ~x & ~_gor -> r.r+
       ~_ra -> x+
       Reset | x -> r.r-
       x & _ra -> _goa-

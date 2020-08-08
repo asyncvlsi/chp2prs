@@ -695,7 +695,7 @@ defproc const(sdtexprchan<W> out)
     out.r => _req-
     (i:W:
       ~_req => out.d.r[i].d[((V >> i) & 1)]+
-      Reset -> out.d.r[i].d[1-(V >> i) & 1]-
+     Reset -> out.d.r[i].d[1-(V >> i) & 1]-
     )
   }
 }

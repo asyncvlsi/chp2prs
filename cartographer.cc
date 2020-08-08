@@ -1097,7 +1097,7 @@ void SDTEngine::_expr_collect_vars (Expr *e)
       int val = e->u.v;
       if (val < 0) {
 	val = -val;
-	w = 1;
+	w = 2;
       }
       while (val) {
 	val >>= 1;

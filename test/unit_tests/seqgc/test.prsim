@@ -1,72 +1,13 @@
-initialize
+source std_init_nognd.prsim
 
-watch Reset
-watch _Reset
-watch t.go.r
-watch t.var_x.v.t
-watch t.var_x.v.f
-watch t.var_y.v.t
-watch t.var_y.v.f
-watch t.var_z.v.t
-watch t.var_z.v.f
-watch t.go.a
-watch t.e_13.in1[0].t
-watch t.e_13.in1[0].f
-watch t.e_13.in2[0].t
-watch t.e_13.in2[0].f
-watch t.e_13.out.t
-watch t.e_13.out.f
-set_principal t.go.r
-set_principal t.var_x.v.t
-set_principal t.var_x.v.f
-set_principal t.var_y.v.t
-set_principal t.var_y.v.f
-set_principal t.var_z.v.t
-set_principal t.var_z.v.f
-set_principal t.go.a
-set_principal t.e_13.in1[0].t
-set_principal t.e_13.in1[0].f
-set_principal t.e_13.in2[0].t
-set_principal t.e_13.in2[0].f
-set_principal t.e_13.out.t
-set_principal t.e_13.out.f
-
-mode reset
-set Reset 1
-set _Reset 0
-set t.go.r 0
-cycle
 set Reset 0
-set _Reset 1
-cycle
-mode run
-set t.go.r 0
 cycle
 
-assert t.go.r 0
-assert t.var_x.v.t 0
-assert t.var_x.v.f 1
-assert t.var_y.v.t 0
-assert t.var_y.v.f 1
-assert t.var_z.v.t 0
-assert t.var_z.v.f 1
-assert t.go.a 0
-set t.go.r 1
+assert t.c0.a 1
 
-cycle t.var_y.v.f
-assert t.var_y.v.f 0
-
-cycle t.var_y.v.t
-assert t.var_y.v.t 1
-
-cycle t.var_z.v.t
-assert t.var_z.v.t 1
-
-cycle
-assert t.var_x.v.t 0
-assert t.var_x.v.f 1
-assert t.var_y.v.t 1
-assert t.var_y.v.f 0
-assert t.var_z.v.t 1
-assert t.var_z.v.f 0
-assert t.go.a 1
+assert t.x.r[0].t 0
+assert t.x.r[0].f 1
+assert t.y.r[0].t 1
+assert t.y.r[0].f 0
+assert t.z.r[0].t 1
+assert t.z.r[0].f 0
