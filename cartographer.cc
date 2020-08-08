@@ -278,6 +278,11 @@ void SDTEngine::_construct_varmap_expr (Expr *e)
       v->fcurexpr = 1;
     }
     break;
+
+  case E_BUILTIN_BOOL:
+  case E_BUILTIN_INT:
+    _construct_varmap_expr (e->u.e.l);
+    break;
     
   case E_FUNCTION:
     e = e->u.fn.r;
@@ -963,6 +968,26 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
     _emit_expr_unary (id, *width, e->type, lid, lw);
     break;
 
+  case E_BUILTIN_INT:
+    UNARY_OP;
+    if (e->u.e.r) {
+      Assert (e->u.e.r->type == E_INT, "What?");
+      *width = e->u.e.r->u.v;
+    }
+    else {
+      *width = 1;
+    }
+    _emit_expr_width_conv (lid, lw, id, *width);
+    break;
+
+  case E_BUILTIN_BOOL:
+    UNARY_OP;
+    rid = _gen_expr_id ();
+    _emit_expr_const (rid, 1, 0);
+    *width = 1;
+    _emit_expr_binary (id, *width, E_NE, lid, lw, rid, *width);
+    break;
+
   case E_QUERY:
     CHECK_EXPR (e->u.e.r->u.e.l, lid, lw);
     CHECK_EXPR (e->u.e.r->u.e.r, rid, rw);
@@ -1053,6 +1078,8 @@ void SDTEngine::_expr_collect_vars (Expr *e)
   case E_UMINUS:
   case E_NOT:
   case E_COMPLEMENT:
+  case E_BUILTIN_INT:
+  case E_BUILTIN_BOOL:
     UNARY_OP;
     break;
 
@@ -1115,8 +1142,7 @@ void SDTEngine::_expr_collect_vars (Expr *e)
       list_iappend (_intconst, w);
     }
     break;
-    
-    
+
   case E_VAR:
     {
       varmap_info *v;
