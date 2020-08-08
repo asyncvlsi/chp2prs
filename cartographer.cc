@@ -1420,9 +1420,10 @@ int BasicSDT::_gen_safe_bool (int eid)
   _emit_var_read (eid, &xv);
 
   int eid2 = _gen_expr_id ();
+  fprintf (output_stream, "   syn::expr::null e%d;\n", eid2);
 
-  fprintf (output_stream, " e%d.r = c%d.r; c%d.a = e%d.r; e%d.d=e%d.d\n",
-	   eid2, fid, fid, eid, eid, eid2);
+  fprintf (output_stream, "   e%d.out.r = c%d.r; c%d.a = e%d.out.r; e%d.out.d=e%d.out.d;\n",
+	   eid2, fid, fid, eid, eid2, eid);
   
   delete xv.id;
   

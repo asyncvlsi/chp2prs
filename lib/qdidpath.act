@@ -517,7 +517,6 @@ defproc cmp(dualrails<W1> a; dualrails<W2> b; d1of3 out)
   pint wmin = min(W1,W2);
   pint wmax = max(W1,W2);
 
- 
   { wmin > 0 : "lt with no bits?" };
 
   d1of3 cr[wmax];
@@ -525,13 +524,14 @@ defproc cmp(dualrails<W1> a; dualrails<W2> b; d1of3 out)
   fcmpgen gen[wmin];
   (i:wmin: gen[i](.a = a.r[i], .b=b.r[i], .out=cr[i]);)
 
-  [ W1 < W2 ->
-    fcmpa0 ra[W2-W1];
-    (i:W2-W1: ra[i](.a=a.r[i+wmin], .out=cr[i+wmin]);)
- [] W2 > W1 -> 
+  [ W1 > W2 ->
+    fcmpa0 ra[W1-W2];
+    (i:W1-W2: ra[i](.a=a.r[i+wmin], .out=cr[i+wmin]);)
+  [] W1 < W2 ->
     fcmpb0 rb[W2-W1];
     (i:W2-W1: rb[i](.b=b.r[i+wmin], .out=cr[i+wmin]);)
   ]
+  
   fcmptree<wmax> t(cr,out);
 }
 
@@ -652,6 +652,8 @@ defproc ne(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
   x.out.d.r[0].t = out.d.r[0].f;
   x.out.d.r[0].f = out.d.r[0].t;
   x.out.r = out.r;
+  out.r = a.r;
+  out.r = b.r;
 }
 
 export template<pint W>
@@ -671,7 +673,7 @@ defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
     out.r = a.r;
     a.d.r = out.d.r[0..W1-1];
     prs {
-      a.d.r[W1-1].t | a.d.r[W1-1].t => _xv-
+      a.d.r[W1-1].t | a.d.r[W1-1].f => _xv-
       (i:W1..W2-1:  _xv => out.d.r[i].f- )
    }
    (i:W1..W2-1: GND = out.d.r[i].t;)
