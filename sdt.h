@@ -146,7 +146,8 @@ private:
   virtual void _emit_trueseq (int cid, int sid) = 0;
 
   virtual void _gen_fresh_var (varmap_info *v) = 0;
-
+  virtual int _gen_safe_bool (int eid) = 0;
+  
   virtual void _emit_loop (int cid, list_t *guards, list_t *stmts) = 0;
   virtual void _emit_doloop (int cid, int guard, int stmt) = 0;
   virtual void _emit_select (int is_nondet, int cid, list_t *guards, list_t *stmts) = 0;

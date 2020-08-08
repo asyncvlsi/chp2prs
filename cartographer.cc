@@ -401,6 +401,7 @@ void SDTEngine::_emit_guardlist (int isloop,
     while (tmp) {
       if (tmp->g) {
 	_emit_expr (&eid, 1, tmp->g);
+	eid = _gen_safe_bool (eid);
 	list_iappend (res, eid);
       }
       else {
@@ -1392,4 +1393,38 @@ void BasicSDT::_gen_fresh_var (varmap_info *v)
   v->id = new ActId (buf);
   fprintf (output_stream, "   syn::sdtvar<%d> %s;\n", v->width, buf);
   fprintf (output_stream, "   syn::var_init<%d,false> var_%s(%s);\n", v->width, buf, buf);
+}
+
+
+/* 
+   returns new eid for the safe bool
+*/
+int BasicSDT::_gen_safe_bool (int eid)
+{
+  varmap_info xv;
+  xv.width = 1;
+  _gen_fresh_var (&xv);
+
+  /*
+    Sequence:
+      1. transfer expression to variable
+      2. read variable into expression
+  */
+  int tid = _gen_stmt_id ();
+  _emit_transfer (tid, eid, &xv);
+
+  int fid = _gen_stmt_id ();
+  _emit_trueseq (fid, tid);
+
+  eid = _gen_expr_id ();
+  _emit_var_read (eid, &xv);
+
+  int eid2 = _gen_expr_id ();
+
+  fprintf (output_stream, " e%d.r = c%d.r; c%d.a = e%d.r; e%d.d=e%d.d\n",
+	   eid2, fid, fid, eid, eid, eid2);
+  
+  delete xv.id;
+  
+  return eid2;
 }
