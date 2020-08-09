@@ -22,7 +22,7 @@ BINARY=chp2prs.$(EXT)
 
 TARGETS=$(BINARY)
 
-OBJS=main.o check_chp.o cartographer.o
+OBJS=main.o check_chp.o cartographer.o sdt.o basicsdt.o
 
 SRCS=$(OBJS:.o=.cc)
 

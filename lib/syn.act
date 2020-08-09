@@ -285,6 +285,13 @@ defproc semi(a1of1? c; a1of1! stmts[N])
   c.a = f[N-1].go.a;
 }
 
+export template<pint N>
+defproc semiopt(a1of1? c; a1of1! stmts[N])
+{
+  c.r = stmts[0].r;
+  c.a = stmts[N-1].a;
+  (i:N-1: stmts[i].a = stmts[i+1].r;)
+}
 
 export template<pint W>
 defproc transfer(a1of1? c; sdtexprchan?<W> e; sdtchan!<W> ch);

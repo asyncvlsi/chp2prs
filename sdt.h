@@ -24,6 +24,7 @@
 
 #include <hash.h>
 #include <string>
+#include <act/act.h>
 
 
 /*
