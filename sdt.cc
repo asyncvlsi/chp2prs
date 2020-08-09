@@ -500,6 +500,11 @@ void SDTEngine::run_sdt (Process *p)
       varmap_info *v = (varmap_info *) b->v;
       if (v->fischan) {
 	_emit_channel_mux (v);
+	if (v->nread > 0 && v->nwrite > 0) {
+	  char buf[10240];
+	  v->id->sPrint (buf, 10240);
+	  fatal_error  ("Channel `%s': send and receive on the same channel within a process not supported", buf);
+	}
       }
     }
   }
