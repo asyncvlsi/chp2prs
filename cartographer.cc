@@ -1430,7 +1430,9 @@ void BasicSDT::_gen_fresh_var (varmap_info *v)
 int BasicSDT::_gen_safe_bool (int eid)
 {
   varmap_info xv;
+
   xv.width = 1;
+  xv.fischan = 0;
   _gen_fresh_var (&xv);
 
   /*
@@ -1452,8 +1454,6 @@ int BasicSDT::_gen_safe_bool (int eid)
 
   fprintf (output_stream, "   e%d.out.r = c%d.r; c%d.a = e%d.out.r; e%d.out.d=e%d.out.d;\n",
 	   eid2, fid, fid, eid, eid2, eid);
-  
-  delete xv.id;
   
   return eid2;
 }
