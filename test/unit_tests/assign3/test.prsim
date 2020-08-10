@@ -5,16 +5,9 @@ cycle
 
 assert t.c0.a 1
 
-assert t.x.r[0].t 1
-assert t.x.r[0].f 0
-assert t.y.r[0].t 1
-assert t.y.r[0].f 0
-assert t.z.r[0].t 0
-assert t.z.r[0].f 1
-assert t.v.r[0].t 1
-assert t.v.r[0].f 0
-assert t.a.r[0].t 1
-assert t.a.r[0].f 0
-assert t.b.r[0].t 1
-assert t.b.r[0].f 0
-
+assert-var-bool "t.x" 1
+assert-var-bool "t.y" 1 
+assert-var-bool "t.z" 0
+assert-var-bool "t.v" 1
+assert-var-bool "t.a" 1
+assert-var-bool "t.b" 1

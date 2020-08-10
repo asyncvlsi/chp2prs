@@ -1,11 +1,12 @@
 initialize
+load-scm "helper.scm"
 random
 watch Reset
 watch t.c0.a
 mode reset
 
 set Reset 1
-source res_x.prsim
+set-channel-neutral "t.x" 32
 cycle
 
 status U
@@ -17,14 +18,14 @@ mode run
 set Reset 0
 cycle
 
-source set_x_10.prsim
+set-channel-valid "t.x" 32 10
 cycle
 assert t.x.a 1
 
-source res_x.prsim
+set-channel-neutral "t.x" 32
 cycle
 assert t.x.a 0
 
 assert t.c0.a 1
 
-source assert_yv_10.prsim
+assert-var-int "t.y" 32 10

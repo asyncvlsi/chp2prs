@@ -5,7 +5,5 @@ cycle
 
 assert t.c0.a 1
 
-assert t.x.r[0].t 1
-assert t.x.r[0].f 0
-assert t.y.r[0].t 1
-assert t.y.r[0].f 0
+assert-var-bool "t.x" 1
+assert-var-bool "t.y" 1

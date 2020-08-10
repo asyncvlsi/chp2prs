@@ -1,4 +1,5 @@
 initialize
+load-scm "helper.scm"
 random
 
 mode reset
