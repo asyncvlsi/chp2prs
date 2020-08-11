@@ -588,52 +588,6 @@ defproc ge(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
   l.out.d.r[0].f=out.d.r[0].t;
 }
 
-template<pint N>
-defproc dror(dualrails<N> d; dualrails<1> out)
-{
-  { N > 0 : "What?" };
-
-  pint i, end, j;
-  i = 0;
-  end = N-1;
-
-  /* dynamic array that holds all the nodes in the completion tree */
-  dualrail tmp[N];
-  (k:N:tmp[k] = d.r[k];)
-
-  /* Invariant: i <= end */
-    
-  *[ i != end ->
-     /* 
-      * Invariant: tmp[i..end] has the current signals that need to be
-      * combined together, and "isinv" specifies if they are the inverted
-      * sense or not
-      */
-     j = 0;
-     *[ i < end ->
-	/*-- there are still signals that need to be combined --*/
-	j = j + 1;
-	dualrail tmp[end+j..end+j];
-	bool _tt[end+j..end+j], _ff[end+j..end+j];
-	prs {
-	  tmp[i].t & (tmp[i+1].t | tmp[i+1].f) | tmp[i+1].t & tmp[i].f -> _tt[end+j]-
-         ~tmp[i].t & ~tmp[i].f & ~tmp[i+1].t & ~tmp[i+1].f -> _tt[end+j]+
-	 
-	  tmp[i].f & tmp[i+1].f -> _ff[end+j]-
-         ~tmp[i].f & ~tmp[i+1].f -> _ff[end+j]+
-
-	 _tt[end+j] => tmp[end+j].t-
-	 _ff[end+j] => tmp[end+j].f-
-         }
-	i = i + 2;
-     ]
-      /*-- update range that has to be combined --*/
-      end = end+j;
-      j = 0;
-  ]
-  tmp[end] = out.r[0];
-}
-
 export template<pint W1,W2>
 defproc eq(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
 {

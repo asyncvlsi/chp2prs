@@ -18,7 +18,7 @@
 #  Boston, MA  02110-1301, USA.
 #
 #-------------------------------------------------------------------------
-TARGETACT=syn.act qdichan.act qdidpath.act _all_.act
+TARGETACT=syn.act qdichan.act qdidpath.act _all_.act syngates.act 
 
 include $(VLSI_TOOLS_SRC)/scripts/Makefile.std
 
@@ -28,5 +28,6 @@ all:
 install: install_act
 	@if [ ! -d $(ACT_HOME)/act/syn ]; then mkdir $(ACT_HOME)/act/syn; fi
 	@for i in $(TARGETACT); do $(VLSI_TOOLS_SRC)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
+	@$(VLSI_TOOLS_SRC)/scripts/install globals.act $(ACT_HOME)/act/globals.act
 
 -include Makefile.deps

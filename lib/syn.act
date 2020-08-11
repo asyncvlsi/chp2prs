@@ -20,6 +20,7 @@
  **************************************************************************
  */
 import "globals.act";
+import "syn/syngates.act";
 
 /* Syntax directed translation */
   
@@ -163,84 +164,6 @@ defproc doloop(a1of1? c; sdtexprchan?<1> gg; a1of1! s)
   }
 }
 
-
-/*
- * Build a completion tree using a combination of 2-input and 3-input
- * C-elements 
- */
-export template<pint N; pbool invert>
-defproc ctree (bool? in[N]; bool out)
-{
-  bool tout;
-
-  { N > 0 : "What?" };
-
-  pint i, end, j;
-  pbool isinv;
-  isinv = invert;
-  i = 0;
-  end = N-1;
-
-  /* dynamic array that holds all the nodes in the completion tree */
-  bool tmp[N];
-  (k:N:tmp[k] = in[k];)
-
-  /* Invariant: i <= end */
-    
-  *[ i != end ->
-     /* 
-      * Invariant: tmp[i..end] has the current signals that need to be
-      * combined together, and "isinv" specifies if they are the inverted
-      * sense or not
-      */
-     j = 0;
-     *[ i < end ->
-	/*-- there are still signals that need to be combined --*/
-	j = j + 1;
-	bool tmp[end+j..end+j];
-	[ i+2 >= end ->
-	  /*-- last piece: use either a 2 or 3 input C-element --*/
-	  prs { (&k:i..end:tmp[k]) #> tmp[end+j]- }
-	  i = end;
-        [] else ->
-	  /*-- more to come; so use a two input C-element --*/
-          prs { (&k:i..i+1:tmp[k]) #> tmp[end+j]- }
-	  i = i + 2;
-	]
-      ]
-      /*-- we just added an inverting layer --*/
-      isinv = ~isinv;
-
-      /*-- update range that has to be combined --*/
-      i = end+1;
-      end = end+j;
-      j = 0;
-  ]
-  /*-- invert the signal if needed --*/
-  [isinv -> prs { tmp[end] => out- } 
-  [] else -> tmp[end] = out;
-  ]
-}
-
-export template<pint N>
-defproc sigbuf (bool in, out)
-{
- { N > 0 : "sigbuf: parameter error" };
-
- bool _out;
-
- [ N < 8 -> in = out;
- [] else ->
-      sigbuf<N/8> sb(in);
-      prs {
-      	 sb.out => _out-
-	 _out   => out-
-      }
-      sizing {
-      	 _out {-N/4}; out {-N}
-      }
- ]
-}
 
 /*-- composition --*/
 export template<pint N>
