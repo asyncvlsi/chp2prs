@@ -28,7 +28,6 @@ all:
 install: install_act $(TARGETINSTALL)
 	@if [ ! -d $(ACT_HOME)/act/syn ]; then mkdir $(ACT_HOME)/act/syn; fi
 	@for i in $(TARGETINSTALL); do $(VLSI_TOOLS_SRC)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
-
-#	@$(VLSI_TOOLS_SRC)/scripts/install globals.act $(ACT_HOME)/act/globals.act
+	@$(VLSI_TOOLS_SRC)/scripts/install globals.act $(ACT_HOME)/act/globals.act
 
 -include Makefile.deps
