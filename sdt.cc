@@ -323,30 +323,33 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
       _emit_expr (&eid, v->width, c->u.assign.e);
 
       if (c->type == ACT_CHP_ASSIGNSELF) {
-	int fseq = _gen_stmt_id ();
-
 	/*-- generate a fresh variable --*/
 	xv = *v;
-	_gen_fresh_var (&xv);
 
-	int tstmt = _gen_stmt_id ();
+	if (_gen_fresh_var (&xv)) {
+	  int fseq = _gen_stmt_id ();
+	  int tstmt = _gen_stmt_id ();
 
-	_emit_trueseq (fseq, tstmt);
-	_emit_transfer (tstmt, eid, &xv);
+	  _emit_trueseq (fseq, tstmt);
+	  _emit_transfer (tstmt, eid, &xv);
 
-	tstmt = _gen_stmt_id ();
+	  tstmt = _gen_stmt_id ();
 
-	eid = _gen_expr_id ();
-	_emit_var_read (eid, &xv);
-	_emit_transfer (tstmt, eid, v);
+	  eid = _gen_expr_id ();
+	  _emit_var_read (eid, &xv);
+	  _emit_transfer (tstmt, eid, v);
 
-	list_t *l = list_new ();
-	list_iappend (l, fseq);
-	list_iappend (l, tstmt);
+	  list_t *l = list_new ();
+	  list_iappend (l, fseq);
+	  list_iappend (l, tstmt);
 
-	_emit_semi (id, l);
-
-	list_free (l);
+	  _emit_semi (id, l);
+	  
+	  list_free (l);
+	}
+	else {
+	  _emit_transfer (id, eid, v);
+	}
       }
       else {
 	_emit_transfer (id, eid, v);
@@ -492,6 +495,8 @@ void SDTEngine::run_sdt (Process *p)
   _varmap = ihash_new (4);
   _construct_varmap (chp->c);
 
+  //_rewrite_chp_func (chp->c);
+
   _emit_begin ();
 
   /*-- emit all the variable ports and channel muxes --*/
@@ -505,6 +510,9 @@ void SDTEngine::run_sdt (Process *p)
 	  v->id->sPrint (buf, 10240);
 	  fatal_error  ("Channel `%s': send and receive on the same channel within a process not supported", buf);
 	}
+      }
+      else {
+	_emit_variable_mux (v);
       }
     }
   }

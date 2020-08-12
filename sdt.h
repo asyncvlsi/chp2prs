@@ -87,6 +87,7 @@ private:
   void _construct_varmap (act_chp_lang_t *c);
   void _construct_varmap_expr (Expr *e);
   void _clear_var_flags ();
+  void _rewrite_chp_func (act_chp_lang_t *c);
 
   /*-- helper function for run_sdt --*/
   void _run_sdt_helper (int id, act_chp_lang_t *c);
@@ -235,6 +236,7 @@ protected:
   /* channel mux: note that the # of ports needed for the mux are
      already part of the varmap_info */
   virtual void _emit_channel_mux (varmap_info *v) = 0;
+  virtual void _emit_variable_mux (varmap_info *v) = 0;
 
   /*--- 
     Loop and Comma:
@@ -258,8 +260,10 @@ protected:
     Generate a fresh (single use) variable. This is used for storing
     guard results and assignments when the RHS uses the variable being
     assigned.
+
+    Return 0 if you don't need a fresh variable, 1 otherwise.
   */
-  virtual void _gen_fresh_var (varmap_info *v) = 0;
+  virtual int _gen_fresh_var (varmap_info *v) = 0;
 
   /*-- 
     Given an expression ID where the result is a Boolean, use the

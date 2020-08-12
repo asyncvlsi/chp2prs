@@ -379,6 +379,12 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
   fprintf (output_stream, ");\n");
 }
 
+void BasicSDT::_emit_variable_mux (varmap_info *v)
+{
+  /* if you need a mux for accessing variables, add it here */
+  return;
+}
+
 
 void BasicSDT::_emit_trueseq (int cid, int sid)
 {
@@ -386,7 +392,7 @@ void BasicSDT::_emit_trueseq (int cid, int sid)
 	   _gen_inst_id(), cid, sid);
 }
 
-void BasicSDT::_gen_fresh_var (varmap_info *v)
+int BasicSDT::_gen_fresh_var (varmap_info *v)
 {
   static int vid = 0;
   char buf[32];
@@ -396,6 +402,8 @@ void BasicSDT::_gen_fresh_var (varmap_info *v)
   v->id = new ActId (buf);
   fprintf (output_stream, "   syn::sdtvar<%d> %s;\n", v->width, buf);
   fprintf (output_stream, "   syn::var_init<%d,false> var_%s(%s);\n", v->width, buf, buf);
+
+  return 1;
 }
 
 
@@ -406,9 +414,10 @@ int BasicSDT::_gen_safe_bool (int eid)
 {
   varmap_info xv;
 
+  xv.id = NULL;
   xv.width = 1;
   xv.fischan = 0;
-  _gen_fresh_var (&xv);
+  Assert (_gen_fresh_var (&xv), "What?");
 
   /*
     Sequence:

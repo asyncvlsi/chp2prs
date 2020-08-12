@@ -75,6 +75,7 @@ class BasicSDT : public SDTEngine {
   void _emit_recv (int cid, varmap_info *ch, varmap_info *v);
 
   void _emit_channel_mux (varmap_info *ch);
+  void _emit_variable_mux (varmap_info *v);
 
   
   void _emit_comma (int cid, list_t *stmts);
@@ -82,7 +83,7 @@ class BasicSDT : public SDTEngine {
   void _emit_semiopt (int cid, list_t *stmts);
   void _emit_trueseq (int cid, int sid);
 
-  void _gen_fresh_var (varmap_info *v);
+  int _gen_fresh_var (varmap_info *v);
   int _gen_safe_bool (int eid);
 
   void _emit_loop (int cid, list_t *guards, list_t *stmts);
