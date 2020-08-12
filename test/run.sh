@@ -82,7 +82,7 @@ cd "unit_tests"
 
 for i in *
 do
-    if [ -d $i ]
+    if [ -d $i -a -f $i/test.act ]
     then
 	run_test $i
     fi
