@@ -162,11 +162,15 @@ void BasicSDT::_emit_begin ()
   size_t pn_len = strlen(P->getName());
   char proc_name[pn_len];
   strncpy(proc_name, P->getName(), pn_len-2);
-  proc_name[pn_len-1] = '\0';
+  proc_name[pn_len-2] = '\0';
   
   /* print imports */
-  fprintf(output_stream, "import syn;\n");
-  if (bundled_data) fprintf(output_stream, "import bundled;\n");
+  if (bundled_data) {
+    fprintf (output_stream, "import \"syn/bundled.act\";\n");
+  }
+  else {
+    fprintf(output_stream, "import syn;\n");
+  }
   fprintf(output_stream, "\n");
   
   /* Print params for toplevel from process port list */
