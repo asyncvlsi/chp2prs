@@ -171,7 +171,13 @@ void BasicSDT::_emit_begin ()
   else {
     fprintf(output_stream, "import syn;\n");
   }
+  if (_exprfile) {
+    fprintf (output_stream, "import \"%s\";\n", _exprfile);
+
+    fprintf (_efp, "namespace syn {\n\nexport namespace expr {\n\n");
+  }
   fprintf(output_stream, "\n");
+  
   
   /* Print params for toplevel from process port list */
   int pnum = P->getNumPorts();
@@ -194,5 +200,10 @@ void BasicSDT::_emit_end (int id)
   fprintf (output_stream, "}\n");
   
   if (output_file) fclose(output_stream);
+
+  if (_efp) {
+    fprintf (_efp, "\n}\n\n}\n");
+    fclose (_efp);
+  }
 }
   

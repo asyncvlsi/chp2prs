@@ -38,7 +38,7 @@
 
 static void usage(char *name)
 {
-  fprintf(stderr, "Usage: %s <actfile> <process> <outfile> [--optimize] [--bundled]\n", name);
+  fprintf(stderr, "Usage: %s [-Ob] [-e file] <actfile> <process> <outfile>\n", name);
   exit(1);
 }
 
@@ -48,41 +48,38 @@ int main(int argc, char **argv)
   char *proc;
   bool chpopt = false;
   bool bundled = false;
+  char *exprfile = NULL;
 
   /* initialize ACT library */
   Act::Init(&argc, &argv);
 
-  /* some usage check */
-  if (argc < 4 || argc > 6)
-  {
-    usage(argv[0]);
+  int ch;
+  while ((ch = getopt (argc, argv, "Obe:")) != -1) {
+    switch (ch) {
+    case 'O':
+      chpopt = true;
+      break;
+    case 'b':
+      bundled = true;
+      break;
+    case 'e':
+      if (exprfile) {
+	FREE (exprfile);
+      }
+      exprfile = Strdup (optarg);
+      break;
+    default:
+      usage (argv[0]);
+      break;
+    }
   }
-    
-  /* check if optimize */
-  if ((argc == 5 && strcmp(argv[4], "--optimize") == 0)
-       || (argc == 6 && strcmp(argv[5], "--optimize") == 0)) {
-    chpopt = true;
-    //printf("> Sequencer Optimization turned ON\n");
+
+  if (optind != argc - 3) {
+    usage (argv[0]);
   }
-  else
-  {
-    //printf("> Sequencer Optimization turned OFF\n");
-  }
-  
-  /* check if bundled data */
-  if ((argc == 5 && strcmp(argv[4], "--bundled") == 0)
-       || (argc == 6 && strcmp(argv[5], "--bundled") == 0))
-  {
-    bundled = true;
-    //printf("> Bundled data turned ON\n");
-  }
-  else
-  {
-    //printf("> Bundled data turned OFF\n");
-  }
-  
+      
   /* read in the ACT file */
-  a = new Act(argv[1]);
+  a = new Act(argv[optind]);
 
   /* expand it */
   a->Expand();
@@ -91,22 +88,22 @@ int main(int argc, char **argv)
   config_read("prs2net.conf");
 
   /* find the process specified on the command line */
-  Process *p = a->findProcess(argv[2]);
+  Process *p = a->findProcess(argv[optind+1]);
 
   if (!p)
   {
-    fatal_error("Could not find process `%s' in file `%s'", argv[2], argv[1]);
+    fatal_error("Could not find process `%s' in file `%s'", argv[optind+1], argv[optind]);
   }
 
   if (!p->isExpanded())
   {
-    fatal_error("Process `%s' is not expanded.", argv[2]);
+    fatal_error("Process `%s' is not expanded.", argv[optind+1]);
   }
 
   /* extract the chp */
   if (p->getlang() == NULL || p->getlang()->getchp() == NULL)
   {
-    fatal_error("Input file `%s' does not have any chp.", argv[2]);
+    fatal_error("Process `%s' does not have any chp.", argv[optind+1]);
   }
 
   if (chpopt)
@@ -122,7 +119,8 @@ int main(int argc, char **argv)
   }
 
   check_chp(p);
-  BasicSDT *sdt = new BasicSDT(bundled, chpopt, argv[3]);
+  BasicSDT *sdt = new BasicSDT(bundled, chpopt, argv[optind+2]);
+  sdt->mkExprBlocks (exprfile);
   sdt->run_sdt (p);
 
   return 0;

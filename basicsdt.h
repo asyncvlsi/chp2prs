@@ -65,6 +65,7 @@ class BasicSDT : public SDTEngine {
   void _emit_expr_width_conv (int from, int from_w,
 			      int to, int to_w);
   
+  void _emit_expr_block (int eid, int blkid, list_t *eleaf);
 
   void _emit_expr_const (int eid, int width, int val);
 

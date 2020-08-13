@@ -182,11 +182,13 @@ void SDTEngine::_construct_varmap_expr (Expr *e)
 
 void SDTEngine::_clear_var_flags ()
 {
-  for (int i=0; i < _varmap->size; i++) {
-    for (ihash_bucket_t *b = _varmap->head[i]; b; b = b->next) {
-      varmap_info *v = (varmap_info *)b->v;
-      v->fcurexpr = 0;
-    }
+  ihash_iter_t iter;
+  ihash_bucket_t *b;
+  ihash_iter_init (_varmap, &iter);
+
+  while ((b = ihash_iter_next (_varmap, &iter))) {
+    varmap_info *v = (varmap_info *)b->v;
+    v->fcurexpr = 0;
   }
 }
     
@@ -473,6 +475,9 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
 void SDTEngine::run_sdt (Process *p)
 {
   struct act_chp *chp = NULL;
+  ihash_iter_t iter;
+  ihash_bucket_t *b;
+  
   if (p->getlang() != NULL && p->getlang()->getchp() != NULL) {
     chp = p->getlang()->getchp();
   }
@@ -481,11 +486,10 @@ void SDTEngine::run_sdt (Process *p)
   }
 
   if (_varmap) {
-    for (int i=0; i < _varmap->size; i++) {
-      for (ihash_bucket_t *b = _varmap->head[i]; b; b = b->next) {
-	varmap_info *v = (varmap_info *)b->v;
-	FREE (v);
-      }
+    ihash_iter_init (_varmap, &iter);
+    while ((b = ihash_iter_next (_varmap, &iter))) {
+      varmap_info *v = (varmap_info *)b->v;
+      FREE (v);
     }
     ihash_free (_varmap);
     _varmap = NULL;
@@ -495,25 +499,36 @@ void SDTEngine::run_sdt (Process *p)
   _varmap = ihash_new (4);
   _construct_varmap (chp->c);
 
+  /*--- create expression file, if blocks are requested ---*/
+  if (_exprfile) {
+    _efp = fopen (_exprfile, "w");
+    if (!_efp) {
+      fatal_error ("Could not open expression file `%s' for writing",
+		   _exprfile);
+    }
+  }
+  else {
+    _efp = NULL;
+  }
+
   //_rewrite_chp_func (chp->c);
 
   _emit_begin ();
 
   /*-- emit all the variable ports and channel muxes --*/
-  for (int i=0; i < _varmap->size; i++) {
-    for (ihash_bucket_t *b = _varmap->head[i]; b; b = b->next) {
-      varmap_info *v = (varmap_info *) b->v;
-      if (v->fischan) {
-	_emit_channel_mux (v);
-	if (v->nread > 0 && v->nwrite > 0) {
-	  char buf[10240];
-	  v->id->sPrint (buf, 10240);
-	  fatal_error  ("Channel `%s': send and receive on the same channel within a process not supported", buf);
-	}
+  ihash_iter_init (_varmap, &iter);
+  while ((b = ihash_iter_next (_varmap, &iter))) {
+    varmap_info *v = (varmap_info *) b->v;
+    if (v->fischan) {
+      _emit_channel_mux (v);
+      if (v->nread > 0 && v->nwrite > 0) {
+	char buf[10240];
+	v->id->sPrint (buf, 10240);
+	fatal_error  ("Channel `%s': send and receive on the same channel within a process not supported", buf);
       }
-      else {
-	_emit_variable_mux (v);
-      }
+    }
+    else {
+      _emit_variable_mux (v);
     }
   }
   
@@ -559,7 +574,6 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
       _emit_expr_helper (myid, &myw, ex);			\
     }								\
   } while (0)
-      
 
 #define BINARY_OP				\
   do {						\
@@ -706,22 +720,21 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
 }
 
 
-void SDTEngine::_expr_collect_vars (Expr *e)
+void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
 {
   int id;
-  int cid;
 
   Assert (e, "Hmm");
 
-#define BINARY_OP				\
-  do {						\
-    _expr_collect_vars (e->u.e.l);		\
-    _expr_collect_vars (e->u.e.r);		\
+#define BINARY_OP					\
+  do {							\
+    _expr_collect_vars (e->u.e.l, collect_phase);	\
+    _expr_collect_vars (e->u.e.r, collect_phase);	\
   } while (0)
 
-#define UNARY_OP				\
-  do {						\
-    _expr_collect_vars (e->u.e.l);		\
+#define UNARY_OP					\
+  do {							\
+    _expr_collect_vars (e->u.e.l, collect_phase);	\
   } while (0)
   
   switch (e->type) {
@@ -778,19 +791,31 @@ void SDTEngine::_expr_collect_vars (Expr *e)
     break;
 
   case E_TRUE:
-    id = _gen_expr_id ();
-    _emit_expr_const (id, 1, 1);
-    list_iappend (_boolconst, id);
+    if (collect_phase) {
+      id = _gen_expr_id ();
+      list_iappend (_boolconst, id);
+    }
+    else {
+      id = list_ivalue (_booliter);
+      _booliter = list_next (_booliter);
+      _emit_expr_const (id, 1, 1);
+    }
     break;
     
   case E_FALSE:
-    id = _gen_expr_id ();
-    _emit_expr_const (id, 1, 0);
-    list_iappend (_boolconst, id);
+    if (collect_phase) {
+      id = _gen_expr_id ();
+      list_iappend (_boolconst, id);
+    }
+    else {
+      id = list_ivalue (_booliter);
+      _booliter = list_next (_booliter);
+      _emit_expr_const (id, 1, 0);
+    }
     break;
     
   case E_INT:
-    {
+    if (collect_phase) {
       int w = 0;
       int val = e->u.v;
       if (val < 0) {
@@ -807,20 +832,32 @@ void SDTEngine::_expr_collect_vars (Expr *e)
 	w = 1;
       }
       id = _gen_expr_id ();
-      cid = _gen_stmt_id ();
-      _emit_expr_const (id, w, e->u.v);
       list_iappend (_intconst, id);
       list_iappend (_intconst, w);
+    }
+    else {
+      int w;
+      id = list_ivalue (_intiter);
+      _intiter = list_next (_intiter);
+      w = list_ivalue (_intiter);
+      _intiter = list_next (_intiter);
+      _emit_expr_const (id, w, e->u.v);
     }
     break;
 
   case E_VAR:
-    {
+    if (collect_phase) {
       varmap_info *v;
       ihash_bucket_t *b;
       v = _var_getinfo ((ActId *)e->u.e.l);
       b = ihash_add (_exprmap, (long)e);
       b->i = _gen_expr_id ();
+    }
+    else {
+      varmap_info *v;
+      ihash_bucket_t *b;
+      v = _var_getinfo ((ActId *)e->u.e.l);
+      b = ihash_lookup (_exprmap, (long)e);
       _emit_var_read (b->i, v);
     }
     break;
@@ -841,7 +878,6 @@ void SDTEngine::_expr_collect_vars (Expr *e)
 #undef UNARY_OP
 }
 
-
   /* id = expr_id for evaluating this expression */
 void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
 {
@@ -858,36 +894,96 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
   _intconst = list_new ();
   _boolconst = list_new ();
   
-  _expr_collect_vars (e);
+  _expr_collect_vars (e, 1);
 
-  _intiter = list_first (_intconst);
-  _booliter = list_first (_boolconst);
-
-  CHECK_EXPR (e, myid, width);
-  *id = myid;
-
-  list_t *eval = list_new ();
-
-  if (_exprmap->n > 0 || list_length (_intconst) > 0 ||
-      list_length (_boolconst) > 0) {
-    /* connect the request to all these eid ports */
-    
-    /* collect all the ids */
+  int xid = _gen_inst_id();
+  if (_efp) {
     listitem_t *li;
+    ihash_iter_t iter;
+    ihash_bucket_t *ib;
+    
+    /* emit a block! */
+    fprintf (_efp, "export defproc blk%d (\n", xid);
     for (li = list_first (_intconst); li; li = list_next (li)) {
-      list_iappend (eval, list_ivalue (li));
+      int ival = list_ivalue (li);
       li = list_next (li);
+      int iw = list_ivalue (li);
+      fprintf (_efp, "\t syn::sdtexprchan<%d> eo%d;\n", iw, ival);
     }
     for (li = list_first (_boolconst); li; li = list_next (li)) {
-      list_iappend (eval, list_ivalue (li));
+      int ival = list_ivalue (li);
+      fprintf (_efp, "\t syn::sdtexprchan<1> eo%d;\n", ival);
     }
-    for (int i=0; i < _exprmap->size; i++) {
-      for (ihash_bucket_t *b = _exprmap->head[i]; b; b = b->next) {
-	list_iappend (eval, b->i);
-      }
+
+    ihash_iter_init (_exprmap, &iter);
+    while ((ib = ihash_iter_next (_exprmap, &iter))) {
+      Expr *e = (Expr *)ib->key;
+      varmap_info *v = _var_getinfo ((ActId *)e->u.e.l);
+      fprintf (_efp, "\t syn::sdtexprchan<%d> eo%d;\n", v->width, ib->i);
+    }
+    fprintf (_efp, "\t syn::sdtexprchan<%d> out)\n{\n", tgt_width);
+
+    for (li = list_first (_intconst); li; li = list_next (li)) {
+      int ival = list_ivalue (li);
+      li = list_next (li);
+      int iw = list_ivalue (li);
+      fprintf (_efp, "\t syn::expr::nullint<%d> e%d(eo%d);\n", iw, ival, ival);
+    }
+    for (li = list_first (_boolconst); li; li = list_next (li)) {
+      int ival = list_ivalue (li);
+      fprintf (_efp, "\t syn::expr::null e%d(eo%d);\n", ival, ival);
+    }
+
+    ihash_iter_init (_exprmap, &iter);
+    while ((ib = ihash_iter_next (_exprmap, &iter))) {
+      Expr *e = (Expr *)ib->key;
+      varmap_info *v = _var_getinfo ((ActId *)e->u.e.l);
+      fprintf (_efp, "\t syn::expr::nullint<%d> e%d(eo%d);\n",
+	       v->width, ib->i, ib->i);
     }
   }
 
+  _intiter = list_first (_intconst);
+  _booliter = list_first (_boolconst);
+  _expr_collect_vars (e, 0);
+  
+
+  _intiter = list_first (_intconst);
+  _booliter = list_first (_boolconst);
+  CHECK_EXPR (e, myid, width);
+  *id = myid;
+
+  /*-- width-conversion --*/
+  myid = _gen_expr_id ();
+  _emit_expr_width_conv (*id, width, myid, tgt_width);
+  *id = myid;
+
+  if (_efp) {
+    listitem_t *li;
+    list_t *ids;
+    ihash_iter_t iter;
+    ihash_bucket_t *ib;
+
+    
+    fprintf (_efp, "   out=e%d.out;\n", *id);
+    fprintf (_efp, "}\n\n");
+    
+    ids = list_new ();
+    
+    for (li = list_first (_intconst); li; li = list_next (li)) {
+      list_iappend (ids, list_ivalue (li));
+      li = list_next (li);
+    }
+    for (li = list_first (_boolconst); li; li = list_next (li)) {
+      list_iappend (ids, list_ivalue (li));
+    }
+    ihash_iter_init (_exprmap, &iter);
+    while ((ib = ihash_iter_next (_exprmap, &iter))) {
+      list_iappend (ids, ib->i);
+    }
+    _emit_expr_block (*id, xid, ids);
+  }
+  
   ihash_free (_exprmap);
   _exprmap = NULL;
 
@@ -897,15 +993,5 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
   list_free (_boolconst);
   _boolconst = NULL;
 
-  /*-- eval = the list of base cases you need --*/
-
-  /*-- width-conversion --*/
-  if (width != tgt_width) {
-    myid = _gen_expr_id ();
-    _emit_expr_width_conv (*id, width, myid, tgt_width);
-    *id = myid;
-  }
-  
-  list_free (eval);
 }
 

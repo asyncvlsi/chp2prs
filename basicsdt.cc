@@ -173,22 +173,34 @@ void BasicSDT::_emit_expr_binary (int id, int width,
 				  int lid, int lw,
 				  int rid, int rw)
 {
-  fprintf (output_stream, "   syn::expr::%s<%d,%d> e%d (e%d.out,e%d.out);\n",
+  FILE *o = (_efp == NULL ? output_stream : _efp);
+  
+  fprintf (o, "   syn::expr::%s<%d,%d> e%d (e%d.out,e%d.out);\n",
 	   sdt_expr_name (type), lw, rw, id, lid, rid);
 }
 
 void BasicSDT::_emit_expr_unary (int id, int width,
 				 int type, int lid, int lw)
 {
-  fprintf (output_stream, "   syn::expr::%s<%d> e%d (e%d.out);\n",
+  FILE *o = (_efp == NULL ? output_stream : _efp);
+  
+  fprintf (o, "   syn::expr::%s<%d> e%d (e%d.out);\n",
 	   sdt_expr_name (type), lw, id, lid);
 }
 
 
 void BasicSDT::_emit_expr_const (int id, int width, int val)
 {
-  fprintf (output_stream, "   syn::expr::const<%d,%d> e%d;\n",
-	   width, val, id);
+  fprintf (output_stream, "   syn::expr::const<%d,%d> e%d;\n", width, val, id);
+}
+
+void BasicSDT::_emit_expr_width_conv (int from, int from_w,
+				      int to, int to_w)
+{
+  FILE *o = (_efp == NULL ? output_stream : _efp);
+  
+  fprintf (o, "   syn::expr::widthconv<%d,%d> e%d(e%d.out);\n",
+	   from_w, to_w, to, from);
 }
 
 void BasicSDT::_emit_var_read (int eid, varmap_info *v)
@@ -198,15 +210,6 @@ void BasicSDT::_emit_var_read (int eid, varmap_info *v)
   fprintf (output_stream, ");\n");
   v->iread++;
 }
-
-void BasicSDT::_emit_expr_width_conv (int from, int from_w,
-				      int to, int to_w)
-{
-  fprintf (output_stream, "   syn::expr::widthconv<%d,%d> e%d(e%d.out);\n",
-	   from_w, to_w, to, from);
-}
-
-
 
 void BasicSDT::_emit_transfer (int cid, int eid, varmap_info *ch)
 {
@@ -440,4 +443,19 @@ int BasicSDT::_gen_safe_bool (int eid)
 	   eid2, fid, fid, eid, eid2, eid);
   
   return eid2;
+}
+
+
+
+void BasicSDT::_emit_expr_block (int id, int blkid, list_t *exprs)
+{
+  listitem_t *li;
+  fprintf (output_stream, "   syn::expr::blk%d e%d(", blkid, id);
+  for (li = list_first (exprs); li; li = list_next (li)) {
+    if (li != list_first (exprs)) {
+      fprintf (output_stream, ", ");
+    }
+    fprintf (output_stream, "e%d.out", list_ivalue (li));
+  }
+  fprintf (output_stream, ");\n");
 }

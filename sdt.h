@@ -65,6 +65,7 @@ class SDTEngine {
     _varmap = NULL;
     _exprmap = NULL;
     _shared_expr_var = 0;
+    _exprfile = NULL;
   }
 
   /*-- 
@@ -73,6 +74,11 @@ class SDTEngine {
     values from the variables
     --*/
   void modeSharedExprVar () { _shared_expr_var = 1; }
+
+  /*--
+    Use monolithic expressions
+    --*/
+  void mkExprBlocks (const char *file) { _exprfile = file; }
 
 
   /*
@@ -107,7 +113,7 @@ private:
   listitem_t *_booliter;
   list_t *_intconst;
   listitem_t *_intiter;
-  void _expr_collect_vars (Expr *e);
+  void _expr_collect_vars (Expr *e, int collect_phase);
   int _expr_get_id (Expr *e);
 
   /*-- 
@@ -125,6 +131,13 @@ protected:
   /* The process being translated */
   Process *P;
 
+  /*
+   * This is used to emit expression building blocks in a separate
+   * file 
+   */
+  const char *_exprfile;
+  FILE *_efp;
+  
   /* building blocks */
 
   /*-- 
@@ -171,7 +184,6 @@ protected:
    *   replacing this method.
    */     
   virtual void _emit_expr (int *id, int target_width, Expr *e);
-  
 
   /*-- helper function used to emit the expression tree ---*/
   virtual void _emit_expr_helper (int id, int *width, Expr *e);
@@ -180,6 +192,12 @@ protected:
     Override these if you want to use the _emit_expr block, but
        want to change the base cases for expression evaluation
   --*/
+
+  /*
+     In expression block mode, used to emit the expression block
+     instance 
+  */
+  virtual void _emit_expr_block (int eid, int blkid, list_t *eleaf) = 0;
 
   /*-- 
     Emit binary operation 
