@@ -1,9 +1,3 @@
-(define cadr (lambda (x) (car (cdr x))))
-(define =? (lambda (x y) (zero? (- x y))))
-(define <? (lambda (x y) (negative? (- x y))))
-(define >? (lambda (x y) (positive? (- x y))))
-(define >=? (lambda (x y) (or (>? x y) (=? x y))))
-(define <=? (lambda (x y) (or (<? x y) (=? x y))))
 (define % (lambda (x y)  (- x (* y (truncate (/ x y))))))
 
 (define dualrail-bit
