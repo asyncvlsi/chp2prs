@@ -163,6 +163,10 @@ void BasicSDT::_emit_begin ()
   char proc_name[pn_len];
   strncpy(proc_name, P->getName(), pn_len-2);
   proc_name[pn_len-2] = '\0';
+
+  if (import_file) {
+    fprintf (output_stream, "import \"%s\";\n", import_file);
+  }
   
   /* print imports */
   if (bundled_data) {

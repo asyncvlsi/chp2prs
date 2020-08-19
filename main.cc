@@ -49,6 +49,7 @@ int main(int argc, char **argv)
   bool chpopt = false;
   bool bundled = false;
   char *exprfile = NULL;
+  int emit_import = 0;
 
   /* initialize ACT library */
   Act::Init(&argc, &argv);
@@ -94,8 +95,14 @@ int main(int argc, char **argv)
 
   if (!p->isExpanded())
   {
-    fatal_error("Process `%s' is not expanded.", argv[optind+1]);
+    //fatal_error("Process `%s' is not expanded.", argv[optind+1]);
+    p = p->Expand (ActNamespace::Global(), p->CurScope(), 0, NULL);
+    emit_import = 1;
   }
+  else {
+    emit_import = 0;
+  }
+  Assert (p, "What?");
 
   /* extract the chp */
   if (p->getlang() == NULL || p->getlang()->getchp() == NULL)
@@ -116,7 +123,9 @@ int main(int argc, char **argv)
   }
 
   check_chp(p);
-  BasicSDT *sdt = new BasicSDT(bundled, chpopt, argv[optind+2]);
+  BasicSDT *sdt = new BasicSDT(bundled, chpopt,
+			       emit_import ? argv[optind] : NULL,
+			       argv[optind+2]);
   sdt->mkExprBlocks (exprfile);
   sdt->run_sdt (p);
 

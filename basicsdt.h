@@ -26,7 +26,7 @@
 
 class BasicSDT : public SDTEngine {
  public:
-  BasicSDT (int isbundled, int isopt, char *out) {
+  BasicSDT (int isbundled, int isopt, const char *doimport, char *out) {
     bundled_data = isbundled;
     optimize = isopt;
     _expr_id = 0;
@@ -34,6 +34,7 @@ class BasicSDT : public SDTEngine {
     _inst_id = 0;
     output_stream = NULL;
     output_file = out;
+    import_file = doimport;
   }
   
  protected:
@@ -41,6 +42,7 @@ class BasicSDT : public SDTEngine {
   int bundled_data;
   FILE *output_stream;
   char *output_file;
+  const char *import_file;
 
 
   int _expr_id;

@@ -26,17 +26,12 @@ function run_test {
 	rm -rf $1/run
     fi
     mkdir $1/run
+    $ACTTOOL $1/test.act "$1" $1/run/sdt.act
     cat > $1/run/tst.act <<EOF
-import "$1/test.act";
-$1 tst;
-EOF
-    $ACTTOOL $1/run/tst.act "$1<>" $1/run/sdt.act
-    cat > $1/run/tst2.act <<EOF
-import "$1/test.act";
 import "$1/run/sdt.act";
 sdt_$1 t;
 EOF
-    if aflat $1/run/tst2.act > $1/run/test.prs
+    if aflat $1/run/tst.act > $1/run/test.prs
     then
 	prsim -r $1/run/test.prs < $1/test.prsim > $1/run/prsim.out
 	if egrep '(WRONG|WARNING|Node)' $1/run/prsim.out >/dev/null
