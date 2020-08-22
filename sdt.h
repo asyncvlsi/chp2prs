@@ -105,23 +105,20 @@ private:
   struct iHashtable *_varmap;
 
   /*-- 
-    these are constructed but not used at the moment; needed for
-    shared expression construction
+    SDT methods that you shouldn't have to override
     --*/
+  void _emit_guardlist (int isloop, act_chp_gc_t *gc, list_t *reslist);
+
+protected:
+  /*-- used for block expression construction --*/
   struct iHashtable *_exprmap;
   list_t *_boolconst;
   listitem_t *_booliter;
   list_t *_intconst;
   listitem_t *_intiter;
   void _expr_collect_vars (Expr *e, int collect_phase);
-  int _expr_get_id (Expr *e);
 
-  /*-- 
-    SDT methods that you shouldn't have to override
-    --*/
-  void _emit_guardlist (int isloop, act_chp_gc_t *gc, list_t *reslist);
 
-protected:
   /*
    * This function returns the varmap_info structure
    * for an ACT identifier

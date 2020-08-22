@@ -52,14 +52,8 @@ defchan rx1of2 <: chan(int<N>) (bool r; dualrails<N> d) { }
 export defchan sdtchan <: ax1of2 () { }
 export defchan sdtexprchan <: rx1of2 () { }
 
-export defchan r1of2 <: chan(bool) (bool r, t, f) { }
-
-export defproc sdt_connect_r1of2(r1of2 r; sdtexprchan<1> c)
-{
-  r.r = c.r;
-  r.t = c.d.r[0].t;
-  r.f = c.d.r[0].f;
-}
+//export defchan r1of2 <: chan(bool) (bool r, t, f) { }
+export defchan r1of2 <: sdtexprchan<1> (bool t, f) { t = d.r[0].t; f = d.r[0].f; }
 
 export template<pint W>
 defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c)

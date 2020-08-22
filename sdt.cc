@@ -883,6 +883,9 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
 {
   int width;
   int myid;
+  list_t *all_leaves;
+  listitem_t *li;
+
   /*-- recursively expand expression --*/
   if (!e) {
     fatal_error ("Emit NULL expression?!");
@@ -890,64 +893,65 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
 
   Assert (!_exprmap, "What?");
   _exprmap = ihash_new (4);
-
   _intconst = list_new ();
   _boolconst = list_new ();
   
   _expr_collect_vars (e, 1);
 
-  int xid = _gen_inst_id();
-  if (_efp) {
-    listitem_t *li;
+  all_leaves = list_new ();
+  {
     ihash_iter_t iter;
     ihash_bucket_t *ib;
-    
+
+    for (li = list_first (_intconst); li; li = list_next (li)) {
+      int ival = list_ivalue (li);
+      li = list_next (li);
+      int iw = list_ivalue (li);
+      list_iappend (all_leaves, ival);
+      list_iappend (all_leaves, iw);
+    }
+    for (li = list_first (_boolconst); li; li = list_next (li)) {
+      int ival = list_ivalue (li);
+      list_iappend (all_leaves, ival);
+      list_iappend (all_leaves, 1);
+    }
+
+    ihash_iter_init (_exprmap, &iter);
+    while ((ib = ihash_iter_next (_exprmap, &iter))) {
+      Expr *e = (Expr *)ib->key;
+      varmap_info *v = _var_getinfo ((ActId *)e->u.e.l);
+      list_iappend (all_leaves, ib->i);
+      list_iappend (all_leaves, v->width);
+    }
+  }
+
+  int xid = _gen_inst_id();
+  if (_efp) {
     /* emit a block! */
     fprintf (_efp, "export defproc blk%d (\n", xid);
-    for (li = list_first (_intconst); li; li = list_next (li)) {
+    for (li = list_first (all_leaves); li; li = list_next (li)) {
       int ival = list_ivalue (li);
       li = list_next (li);
       int iw = list_ivalue (li);
       fprintf (_efp, "\t syn::sdtexprchan<%d> eo%d;\n", iw, ival);
     }
-    for (li = list_first (_boolconst); li; li = list_next (li)) {
-      int ival = list_ivalue (li);
-      fprintf (_efp, "\t syn::sdtexprchan<1> eo%d;\n", ival);
-    }
-
-    ihash_iter_init (_exprmap, &iter);
-    while ((ib = ihash_iter_next (_exprmap, &iter))) {
-      Expr *e = (Expr *)ib->key;
-      varmap_info *v = _var_getinfo ((ActId *)e->u.e.l);
-      fprintf (_efp, "\t syn::sdtexprchan<%d> eo%d;\n", v->width, ib->i);
-    }
     fprintf (_efp, "\t syn::sdtexprchan<%d> out)\n{\n", tgt_width);
 
-    for (li = list_first (_intconst); li; li = list_next (li)) {
+    for (li = list_first (all_leaves); li; li = list_next (li)) {
       int ival = list_ivalue (li);
       li = list_next (li);
       int iw = list_ivalue (li);
       fprintf (_efp, "\t syn::expr::nullint<%d> e%d(eo%d);\n", iw, ival, ival);
     }
-    for (li = list_first (_boolconst); li; li = list_next (li)) {
-      int ival = list_ivalue (li);
-      fprintf (_efp, "\t syn::expr::null e%d(eo%d);\n", ival, ival);
-    }
-
-    ihash_iter_init (_exprmap, &iter);
-    while ((ib = ihash_iter_next (_exprmap, &iter))) {
-      Expr *e = (Expr *)ib->key;
-      varmap_info *v = _var_getinfo ((ActId *)e->u.e.l);
-      fprintf (_efp, "\t syn::expr::nullint<%d> e%d(eo%d);\n",
-	       v->width, ib->i, ib->i);
-    }
   }
 
+  /*-- emit leaves --*/
   _intiter = list_first (_intconst);
   _booliter = list_first (_boolconst);
   _expr_collect_vars (e, 0);
-  
 
+
+  /*-- emit expression --*/
   _intiter = list_first (_intconst);
   _booliter = list_first (_boolconst);
   CHECK_EXPR (e, myid, width);
@@ -964,22 +968,14 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
     ihash_iter_t iter;
     ihash_bucket_t *ib;
 
-    
     fprintf (_efp, "   out=e%d.out;\n", *id);
     fprintf (_efp, "}\n\n");
     
     ids = list_new ();
     
-    for (li = list_first (_intconst); li; li = list_next (li)) {
+    for (li = list_first (all_leaves); li; li = list_next (li)) {
       list_iappend (ids, list_ivalue (li));
       li = list_next (li);
-    }
-    for (li = list_first (_boolconst); li; li = list_next (li)) {
-      list_iappend (ids, list_ivalue (li));
-    }
-    ihash_iter_init (_exprmap, &iter);
-    while ((ib = ihash_iter_next (_exprmap, &iter))) {
-      list_iappend (ids, ib->i);
     }
     _emit_expr_block (*id, xid, ids);
   }
@@ -993,5 +989,6 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
   list_free (_boolconst);
   _boolconst = NULL;
 
+  list_free (all_leaves);
 }
 
