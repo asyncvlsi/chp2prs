@@ -104,6 +104,7 @@ bool write_process_definition(FILE *fp, Process * p, const char * proc_name)
     fprintf(fp, "{\n");
   }
 
+#if 0  
   if (has_bool_overrides) {
     int vconnect = 0;
     for (iter = iter.begin(); iter != iter.end(); iter++) {
@@ -115,6 +116,7 @@ bool write_process_definition(FILE *fp, Process * p, const char * proc_name)
       }
     }
   }
+#endif  
   return has_overrides;
 }
 
@@ -189,7 +191,7 @@ void BasicSDT::_emit_begin ()
        
   /* Write process definition and variable declarations */
   int overrides = write_process_definition(output_stream, P, proc_name);
-  initialize_chp_ints(output_stream, P, overrides);
+  //initialize_chp_ints(output_stream, P, override);
 }
 
 

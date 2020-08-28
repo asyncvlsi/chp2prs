@@ -29,7 +29,7 @@ namespace syn {
 /*-- variable state --*/
 export template<pint W; pbool I>
 defproc var_init(sdtvar<W> v);
-  
+
 /*-- basic statements --*/
 export
 defproc sskip(a1of1 c)
@@ -37,71 +37,6 @@ defproc sskip(a1of1 c)
   c.r = c.a;
 }
 
-/*
- * Build an OR-gate tree (NOR/NAND/optional INV)
- */
-export template<pint N>
-defproc ortree (bool? in[N]; bool out)
-{
-  bool tout;
-
-  { N > 0 : "What?" };
-
-  pint i, end, j;
-  pbool isinv;
-  isinv = false;
-  i = 0;
-  end = N-1;
-
-  /* dynamic array that holds all the nodes in the completion tree */
-  bool tmp[N];
-  (k:N:tmp[k] = in[k];)
-
-  /* Invariant: i <= end */
-    
-  *[ i != end ->
-     /* 
-      * Invariant: tmp[i..end] has the current signals that need to be
-      * combined together, and "isinv" specifies if they are the inverted
-      * sense or not
-      */
-     j = 0;
-     *[ i < end ->
-	/*-- there are still signals that need to be combined --*/
-	j = j + 1;
-	bool tmp[end+j..end+j];
-	[ i+2 >= end ->
-	  /*-- last piece: use either a 2 or 3 input C-element --*/
-	  [isinv -> 
-	     prs { (&k:i..end:tmp[k]) => tmp[end+j]- }
-	  [] else ->
-	     prs { (|k:i..end:tmp[k]) => tmp[end+j]- }
-          ]	      
-	  i = end;
-        [] else ->
-	  /*-- more to come; so use a two input C-element --*/
-	  [isinv -> 
-	     prs { (&k:i..i+1:tmp[k]) => tmp[end+j]- }
-	  [] else ->
-	     prs { (|k:i..i+1:tmp[k]) => tmp[end+j]- }
-          ]	      
-	  i = i + 2;
-	]
-      ]
-      /*-- we just added an inverting layer --*/
-      isinv = ~isinv;
-
-      /*-- update range that has to be combined --*/
-      i = end+1;
-      end = end+j;
-      j = 0;
-  ]
-  /*-- invert the signal if needed --*/
-  [isinv -> prs { tmp[end] => out- } 
-  [] else -> tmp[end] = out;
-  ]
-}
-  
 /*-- compound statements --*/
 export template<pint N>
 defproc loop(a1of1? c; r1of2? g[N]; a1of1! s[N])
@@ -135,6 +70,26 @@ defproc select(a1of1? c; r1of2 g[N]; a1of1! s[N+int(has_else)])
   ]
    
   ot.out = c.a;    
+}
+
+export template<pint N>
+defproc parselect(a1of1? c; r1of2 g[N]; a1of1 s[N])
+{
+  sigbuf<N> sig(c.r);
+  (i:N: sig.out = g[i].r;)
+
+  ortree<N> ot;
+  (i:N: s[i](.r = g[i].t, .a = ot.in[i]);)
+
+  bool _x[N], _ot;
+  prs {
+    (i:N: g[i].t | g[i].f => _x[i]-)
+    ot.out => _ot-
+  }
+  ctree<N,true> ct(_x);
+  prs {
+    ct.out & _ot #> c.a-
+  }
 }
 
 export template<pint N;pbool has_else>
@@ -212,8 +167,14 @@ defproc semiopt(a1of1? c; a1of1! stmts[N])
 export template<pint W>
 defproc transfer(a1of1? c; sdtexprchan?<W> e; sdtchan!<W> ch);
 
+
+/*-- used for direct variable write --*/
 export template<pint W>
 defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);
+
+/*-- used for varport write --*/
+export template<pint W>
+defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W> port);
 
 export template<pint W,N>
 defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]);
@@ -321,5 +282,27 @@ export template<pint W>
 defproc readport(sdtvar<W> var; sdtexprchan<W> out);
 
 }
+
+export template<pint W; pint NI,NO>
+defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
+{
+  var_init<W,false> x(v);
+  expr::writeport<W> w[NI];
+  expr::readport<W> r[NO];
+
+  (i:NI: w[i](.var=x.v, .in=in[i]);)
+  (i:NO: r[i](.var=x.v, .out=out[i]);)
+}  
+
+export template<pint NI,NO>
+defproc var_bool_ports(sdtboolvar v; sdtchan<1> in[NI]; sdtexprchan<1> out[NO])
+{
+  var_init<1,false> x(v.x);
+  expr::writeport<1> w[NI];
+  expr::readport<1> r[NO];
+
+  (i:NI: w[i](.var=x.v, .in=in[i]);)
+  (i:NO: r[i](.var=x.v, .out=out[i]);)
+}  
 
 }

@@ -356,7 +356,6 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
       else {
 	_emit_transfer (id, eid, v);
       }
-      v->iwrite++;
     }
     break;
 
@@ -529,6 +528,13 @@ void SDTEngine::run_sdt (Process *p)
     }
     else {
       _emit_variable_mux (v);
+#if 0      
+      if (v->nread == 0 || v->nwrite == 0) {
+	char buf[10240];
+	v->id->sPrint (buf, 10240);
+	warning ("Variable `%s': only read or only written?", buf);
+      }
+#endif      
     }
   }
   

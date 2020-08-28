@@ -205,10 +205,16 @@ void BasicSDT::_emit_expr_width_conv (int from, int from_w,
 
 void BasicSDT::_emit_var_read (int eid, varmap_info *v)
 {
+#if 0  
   fprintf (output_stream, "   syn::expr::readport<%d> e%d(", v->width, eid);
   v->id->Print (output_stream);
   fprintf (output_stream, ");\n");
   v->iread++;
+#endif
+  fprintf (output_stream, "   syn::expr::nullint<%d> e%d(var_",
+	   v->width, eid);
+  v->id->Print (output_stream);
+  fprintf (output_stream, ".out[%d]);\n", v->iread++);
 }
 
 void BasicSDT::_emit_transfer (int cid, int eid, varmap_info *ch)
@@ -216,6 +222,7 @@ void BasicSDT::_emit_transfer (int cid, int eid, varmap_info *ch)
   int wport = 0;
   if (!ch->fischan) {
     /* emit a write port */
+#if 0    
     wport = _gen_inst_id ();
     fprintf (output_stream, "   syn::expr::writeport<%d> w_%d(", ch->width, wport);
     if (ch->fisbool) {
@@ -223,6 +230,7 @@ void BasicSDT::_emit_transfer (int cid, int eid, varmap_info *ch)
     }
     ch->id->Print (output_stream);
     fprintf (output_stream, ");\n");
+#endif    
   }
   fprintf (output_stream, "   syn::transfer<%d> s_%d(c%d, e%d.out,",
 	   ch->width, _gen_inst_id(), cid, eid);
@@ -233,13 +241,19 @@ void BasicSDT::_emit_transfer (int cid, int eid, varmap_info *ch)
 	     ch->fisinport ? ch->iread++ : ch->iwrite++);
   }
   else {
+#if 0    
     fprintf (output_stream, "w_%d.in", wport);
+#endif
+    fprintf (output_stream, "var_");
+    ch->id->Print (output_stream);
+    fprintf (output_stream, ".in[%d]", ch->iwrite++);
   }
   fprintf (output_stream, ");\n");
 }
 
 void BasicSDT::_emit_recv (int cid, varmap_info *ch, varmap_info *v)
 {
+#if 0  
   fprintf (output_stream, "   syn::recv<%d> s_%d(c%d,", ch->width,
 	   _gen_inst_id(), cid);
   ch->id->Print (output_stream);
@@ -253,6 +267,21 @@ void BasicSDT::_emit_recv (int cid, varmap_info *ch, varmap_info *v)
     v->id->Print (output_stream);
   }
   fprintf (output_stream, ");\n");
+#else
+
+  fprintf (output_stream, "   syn::recvport<%d> s_%d(c%d,", ch->width,
+	   _gen_inst_id(), cid);
+  ch->id->Print (output_stream);
+  fprintf (output_stream, "_mux.m[%d]", ch->fisinport ? ch->iread++ :
+	   ch->iwrite++);
+  fprintf (output_stream, ",");
+  if (v) {
+    fprintf (output_stream, "var_");
+    v->id->Print (output_stream);
+    fprintf (output_stream, ".in[%d]", v->iwrite++);
+  }
+  fprintf (output_stream, ");\n");
+#endif  
 }
 
 
@@ -385,7 +414,18 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
 void BasicSDT::_emit_variable_mux (varmap_info *v)
 {
   /* if you need a mux for accessing variables, add it here */
-  return;
+  if (!v->fisbool) {
+    fprintf (output_stream, "   syn::var_int_ports<%d,%d,%d> var_",
+	     v->width, v->nwrite, v->nread);
+  }
+  else {
+    fprintf (output_stream, "   syn::var_bool_ports<%d,%d> var_",
+	     v->nwrite, v->nread);
+  }    
+  v->id->Print (output_stream);
+  fprintf (output_stream, "(");
+  v->id->Print (output_stream);
+  fprintf (output_stream, ");\n");
 }
 
 
@@ -403,8 +443,16 @@ int BasicSDT::_gen_fresh_var (varmap_info *v)
   snprintf (buf, 32, "fvar%d", vid++);
   
   v->id = new ActId (buf);
+  v->iread = 0;
+  v->iwrite = 0;
+  v->nread = 1;
+  v->nwrite = 1;
   fprintf (output_stream, "   syn::sdtvar<%d> %s;\n", v->width, buf);
+#if 0  
   fprintf (output_stream, "   syn::var_init<%d,false> var_%s(%s);\n", v->width, buf, buf);
+#else
+  fprintf (output_stream, "   syn::var_int_ports<%d,1,1> var_%s(%s);\n", v->width, buf, buf);
+#endif  
 
   return 1;
 }

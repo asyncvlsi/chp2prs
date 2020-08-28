@@ -84,6 +84,23 @@ defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
   c.a = ch.a;
 }
 
+export template<pint W>
+defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W> port)
+{
+  bool cr;
+  sigbuf<2*W> s(c.r,cr);
+  bool _t[W], _f[W];
+
+  prs {
+      (i:W: cr & ch.d.r[i].t #> _t[i]-
+            cr & ch.d.r[i].f #> _f[i]-
+	    _t[i] => port.d.r[i].t-
+	    _f[i] => port.d.r[i].f-
+      )
+  }
+  port.a = c.a;
+  port.a = ch.a;
+}
 
 export template<pint W,N>
 defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N])
