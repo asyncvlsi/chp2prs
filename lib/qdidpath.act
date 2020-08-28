@@ -53,11 +53,28 @@ export template<pint W; pint NI,NO>
 defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
 {
   var_init<W,false> x(v);
-  expr::writeport<W> w[NI];
+  expr::writeport<W> w(v);
   expr::readport<W> r[NO];
 
-  (i:NI: w[i](.var=x.v, .in=in[i]);)
   (i:NO: r[i](.var=x.v, .out=out[i]);)
+
+  [ NI = 1 -> w.in=in[0];
+  [] NI > 1 -> 
+      bool _t[W], _f[W];
+      bool _a[NI];
+      prs {
+        (i:W: (|j:NI: in[j].d.r[i].t) => _t[i]-
+	      (|j:NI: in[j].d.r[i].f) => _f[i]-
+	      _t[i] => w.in.d.r[i].t-
+	      _f[i] => w.in.d.r[i].f-
+	)
+	(i:NI: 
+	   w.in.a & (in[i].d.r[0].t|in[i].d.r[0].f) -> _a[i]-
+	   ~w.in.a & ~(in[i].d.r[0].t|in[i].d.r[0].f) -> _a[i]+
+	   _a[i] => in[i].a-
+	)
+      }
+  ]
 }  
 
 
