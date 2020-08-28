@@ -1,0 +1,38 @@
+initialize
+load-scm "helper.scm"
+random
+watch Reset
+watch t.c0.a
+mode reset
+
+set Reset 1
+set-channel-neutral "t.x" 32
+cycle
+
+status U
+
+assert t.c0.r 0
+assert t.x.a 0
+
+mode run
+set Reset 0
+cycle
+
+set-channel-valid "t.x" 32 10
+cycle
+assert t.x.a 1
+
+set-channel-neutral "t.x" 32
+cycle
+assert t.x.a 0
+
+set-channel-valid "t.x" 32 12
+cycle
+assert t.x.a 1
+
+set-channel-neutral "t.x" 32
+cycle
+assert t.x.a 0
+
+assert t.c0.a 1
+assert-var-int "t.y" 32 12

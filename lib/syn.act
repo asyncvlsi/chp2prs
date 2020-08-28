@@ -30,6 +30,22 @@ namespace syn {
 export template<pint W; pbool I>
 defproc var_init(sdtvar<W> v);
 
+/*-- var with ports --*/
+export template<pint W; pint NI,NO>
+defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO]);
+
+
+/*-- bool var conversion --*/
+export template<pint NI,NO>
+defproc var_bool_ports(sdtboolvar v; sdtchan<1> in[NI]; sdtexprchan<1> out[NO])
+{
+  var_int_ports<1,NI,NO> x;
+  (i:NI: x.in[i]=in[i];)
+  (i:NO: x.out[i]=out[i];)
+  x.v = v.x;  
+}  
+
+
 /*-- basic statements --*/
 export
 defproc sskip(a1of1 c)
@@ -177,10 +193,10 @@ export template<pint W>
 defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W> port);
 
 export template<pint W,N>
-defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]);
+defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N]);
 
 export template<pint W,N>
-defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N]);
+defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N]);
 
 export namespace expr {
 
@@ -282,27 +298,5 @@ export template<pint W>
 defproc readport(sdtvar<W> var; sdtexprchan<W> out);
 
 }
-
-export template<pint W; pint NI,NO>
-defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
-{
-  var_init<W,false> x(v);
-  expr::writeport<W> w[NI];
-  expr::readport<W> r[NO];
-
-  (i:NI: w[i](.var=x.v, .in=in[i]);)
-  (i:NO: r[i](.var=x.v, .out=out[i]);)
-}  
-
-export template<pint NI,NO>
-defproc var_bool_ports(sdtboolvar v; sdtchan<1> in[NI]; sdtexprchan<1> out[NO])
-{
-  var_init<1,false> x(v.x);
-  expr::writeport<1> w[NI];
-  expr::readport<1> r[NO];
-
-  (i:NI: w[i](.var=x.v, .in=in[i]);)
-  (i:NO: r[i](.var=x.v, .out=out[i]);)
-}  
 
 }

@@ -49,6 +49,17 @@ defproc var_init(sdtvar<W> v)
   }
 }
 
+export template<pint W; pint NI,NO>
+defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
+{
+  var_init<W,false> x(v);
+  expr::writeport<W> w[NI];
+  expr::readport<W> r[NO];
+
+  (i:NI: w[i](.var=x.v, .in=in[i]);)
+  (i:NO: r[i](.var=x.v, .out=out[i]);)
+}  
+
 
 export template<pint W>
 defproc transfer(a1of1? c; sdtexprchan?<W> e; sdtchan!<W> ch)
@@ -103,13 +114,26 @@ defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W> port)
 }
 
 export template<pint W,N>
-defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N])
+defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
 {
   { N > 0 : "Parameter out of range" };
 
+
   [ N = 1 -> m[0] = c;
   [] else ->
-       { false : "FIXME" };
+       sigbuf<2*W> s[N];
+       bool _t[N][W], _f[N][W];
+       (i:N: s[i](.in=ctrl[i].r);)
+       prs {
+	 (i:W: (j:N: c.d.r[i].t & s[j].out #> _t[j][i]-
+		     c.d.r[i].f & s[j].out #> _f[j][i]-
+		     _t[j][i] => m[j].d.r[i].t-
+		     _f[j][i] => m[j].d.r[i].f-
+		) )
+       }
+       (i:N: m[i].a = ctrl[i].a;)
+       ortree<N> o(,c.a);
+       (i:N: m[i].a=o.in[i];)
   ]
 }
 
@@ -118,9 +142,25 @@ defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
 {
   { N > 0 : "Parameter out of range" };
 
+
   [ N = 1 -> m[0] = c;
   [] else ->
-       { false : "FIXME" };
+       bool _t[W], _f[W];
+       bool _v[N];
+       bool _a;
+       prs {
+          /* or-gate to drive output */
+          (i:W: (|j:N: m[j].d.r[i].t) => _t[i]- 
+                (|j:N: m[j].d.r[i].f) => _f[i]-
+               _t[i] => c.d.r[i].t-
+               _f[i] => c.d.r[i].f-
+          )
+          /* check which input is pending */
+          (i:N: m[i].d.r[0].t | m[i].d.r[0].f => _v[i]- )
+	  c.a => _a-
+          /* ack the appropriate input */
+          (i:N: _a & _v[i] #> m[i].a-)
+        }
   ]
 }
 
