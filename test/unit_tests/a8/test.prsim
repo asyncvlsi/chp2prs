@@ -27,4 +27,4 @@ assert-channel-neutral "t.x" 32
 set t.x.a 0
 cycle
 
-assert t.c0.a 1
+assert t.c0.a 0

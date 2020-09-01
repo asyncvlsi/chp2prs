@@ -10,4 +10,4 @@ assert t.c0.r 0
 set Reset 0
 mode run
 cycle
-assert t.c0.a 1
+assert t.c0.a 0

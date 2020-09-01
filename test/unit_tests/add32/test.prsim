@@ -12,7 +12,7 @@ mode run
 set Reset 0
 cycle
 
-assert t.c0.a 1
+assert t.c0.a 0
 assert-var-int "t.x" 32 1311594000
 assert-var-int "t.y" 32  356732687
 assert-var-int "t.z" 32 (+ 1311594000 356732687)

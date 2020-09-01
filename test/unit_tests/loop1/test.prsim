@@ -4,7 +4,7 @@ set Reset 0
 
 cycle
 
-assert t.c0.a 1
+assert t.c0.a 0
 
 assert-var-int "t.x" 32 1024
 assert-var-int "t.y" 32 10

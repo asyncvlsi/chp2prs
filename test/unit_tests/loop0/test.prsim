@@ -3,7 +3,7 @@ source std_init_nognd.prsim
 set Reset 0
 cycle
 
-assert t.c0.a 1
+assert t.c0.a 0
 
 assert-var-bool "t.x" 1
 assert-var-bool "t.y" 1

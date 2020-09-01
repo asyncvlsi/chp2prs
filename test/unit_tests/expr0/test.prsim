@@ -3,7 +3,7 @@ source std_init.prsim
 set Reset 0
 cycle
 
-assert t.c0.a 1
+assert t.c0.a 0
 
 assert-var-int "t.z" 32 16384
 assert-var-int "t.y" 32 32768

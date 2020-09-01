@@ -201,7 +201,8 @@ void BasicSDT::_emit_end (int id)
   
   fprintf (output_stream, "/*--- connect reset to go signal ---*/\n");
 
-  fprintf (output_stream, "   prs { Reset => c%d.r- }\n", id);
+  fprintf (output_stream, "   bool final_sig, _final_sig;\n");
+  fprintf (output_stream, "   prs { Reset | final_sig => c%d.r-\n          Reset -> final_sig-\n          c%d.a => _final_sig-\n          ~_final_sig -> final_sig+ }\n", id, id);
 
   fprintf (output_stream, "}\n");
   

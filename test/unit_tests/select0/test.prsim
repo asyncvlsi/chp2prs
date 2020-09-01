@@ -3,7 +3,7 @@ source std_init.prsim
 set Reset 0
 cycle
 
-assert t.c0.a 1
+assert t.c0.a 0
 
 assert t.x.r[0].t 0
 assert t.x.r[0].f 1

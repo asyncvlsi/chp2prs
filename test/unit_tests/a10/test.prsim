@@ -34,5 +34,5 @@ set-channel-neutral "t.x" 32
 cycle
 assert t.x.a 0
 
-assert t.c0.a 1
+assert t.c0.a 0
 assert-var-int "t.y" 32 12
