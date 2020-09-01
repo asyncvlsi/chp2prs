@@ -54,9 +54,9 @@ defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
 {
   var_init<W,false> x(v);
   expr::writeport<W> w(v);
-  expr::readport<W> r[NO];
-
-  (i:NO: r[i](.var=x.v, .out=out[i]);)
+  [ NO > 0 -> expr::readport<W> r[NO]; 
+              (i:NO: r[i](.var=x.v, .out=out[i]);)
+  ]
 
   [ NI = 1 -> w.in=in[0];
   [] NI > 1 -> 
