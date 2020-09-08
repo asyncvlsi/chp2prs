@@ -498,7 +498,7 @@ defproc mod(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W2> out)
 }
   
 export template<pint W1,W2>
-defproc lsl(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+(1<<W2)> out)
+defproc lsl(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+(1<<W2)-1> out)
 {
   { false : "Shifters missing" };
 }
