@@ -455,7 +455,23 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
     tl = list_new ();
     for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
       int id = _gen_stmt_id ();
-      _run_sdt_helper (id, (act_chp_lang_t *) list_value (li));
+      act_chp_lang_t *x = (act_chp_lang_t *) list_value (li);
+
+      /* if the item is not a semi or comma, add an implicit sequencer */
+      if (c->type == ACT_CHP_COMMA &&
+	  (x->type != ACT_CHP_COMMA && x->type != ACT_CHP_SEMI)) {
+	/*-- add an implicit semicolon --*/
+	list_t *tmp = list_new ();
+	int id2 = _gen_stmt_id ();
+	list_iappend (tmp, id2);
+	_emit_semi (id, tmp);
+	
+	_run_sdt_helper (id2, x);
+      }
+      else {
+	_run_sdt_helper (id, x);
+      }
+      
       if (changed) {
 	_block_id++;
       }
