@@ -60,8 +60,9 @@ varmap_info *SDTEngine::_var_getinfo (ActId *id)
 	v->fisinport = 0;
       }
       else {
-	warning ("Please provide direction flags to channels! Assuming input.");
-	v->fisinport = 1;
+	v->fisinport = 2;
+	v->block_in = -1;
+	v->block_out = -1;
       }
     }
     else {
@@ -196,9 +197,14 @@ void SDTEngine::_construct_varmap (act_chp_lang_t *c)
 {
   varmap_info *v;
   int x;
+  int pblock = 0;
+  int changed = 0;
   if (!c) return;
 
+  pblock = _block_id;
+
   switch (c->type) {
+
   case ACT_CHP_SKIP:
     break;
   case ACT_CHP_ASSIGN:
@@ -213,6 +219,15 @@ void SDTEngine::_construct_varmap (act_chp_lang_t *c)
     break;
   case ACT_CHP_SEND:
     v = _var_getinfo (c->u.comm.chan);
+    if (v->fisinport == 2) {
+      if (v->block_out != -1 && v->block_out != pblock) {
+	warning ("Channel has multiple potentially concurrent senders?");
+	fprintf (stderr, "\t Channel: ");
+	v->id->Print (stderr);
+	fprintf (stderr, "\n");
+      }
+      v->block_out = pblock;
+    }
     v->nwrite++;
     _clear_var_flags ();
     for (listitem_t *li = list_first (c->u.comm.rhs); li; li = list_next (li)){
@@ -222,6 +237,15 @@ void SDTEngine::_construct_varmap (act_chp_lang_t *c)
     break;
   case ACT_CHP_RECV:
     v = _var_getinfo (c->u.comm.chan);
+    if (v->fisinport == 2) {
+      if (v->block_in != -1 && v->block_in != pblock) {
+	warning ("Channel has multiple potentially concurrent receivers?");
+	fprintf (stderr, "\t Channel: ");
+	v->id->Print (stderr);
+	fprintf (stderr, "\n");
+      }
+      v->block_in = pblock;
+    }
     v->nread++;
     for (listitem_t *li = list_first (c->u.comm.rhs); li; li = list_next (li)){
       ActId *id = (ActId *) list_value (li);
@@ -230,15 +254,28 @@ void SDTEngine::_construct_varmap (act_chp_lang_t *c)
     }
     break;
   case ACT_CHP_COMMA:
+    if (pblock == -1) {
+      _block_id = 0;
+      changed = 1;
+    }
   case ACT_CHP_SEMI:
+    if (pblock == -1 && c->type == ACT_CHP_SEMI) {
+      _block_id = -2;
+    }
     for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
       _construct_varmap ((act_chp_lang_t *) list_value (li));
+      if (changed) {
+	_block_id++;
+      }
     }
     break;
   case ACT_CHP_LOOP:
   case ACT_CHP_SELECT:
   case ACT_CHP_SELECT_NONDET:
   case ACT_CHP_DOLOOP:
+    if (pblock == -1) {
+      _block_id = -2;
+    }
     {
       act_chp_gc_t *gc = c->u.gc;
 
@@ -267,6 +304,9 @@ void SDTEngine::_construct_varmap (act_chp_lang_t *c)
     fatal_error ("What?");
     break;
   }
+  
+  _block_id = pblock;
+  
   return;
 }
 
@@ -306,6 +346,8 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
 {
   varmap_info *v;
   list_t *tl;
+  int pblock = _block_id;
+  int changed = 0;
   
   if (!c) return;
   
@@ -402,11 +444,21 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
     break;
 
   case ACT_CHP_COMMA:
+    if (pblock == -1) {
+      _block_id = 0;
+      changed = 1;
+    }
   case ACT_CHP_SEMI:
+    if (pblock == -1 && c->type == ACT_CHP_SEMI) {
+      _block_id = -2;
+    }
     tl = list_new ();
     for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
       int id = _gen_stmt_id ();
       _run_sdt_helper (id, (act_chp_lang_t *) list_value (li));
+      if (changed) {
+	_block_id++;
+      }
       list_iappend (tl, id);
     }
     if (c->type == ACT_CHP_COMMA) {
@@ -422,6 +474,9 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
   case ACT_CHP_DOLOOP:
   case ACT_CHP_SELECT:
   case ACT_CHP_SELECT_NONDET:
+    if (pblock == -1) {
+      _block_id = -2;
+    }
     {
       list_t *gl;
       list_t *idl;
@@ -469,6 +524,7 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
     fatal_error ("What?");
     break;
   }
+  _block_id = pblock;
 }
 				 
 void SDTEngine::run_sdt (Process *p)
@@ -496,6 +552,7 @@ void SDTEngine::run_sdt (Process *p)
   P = p;
 
   _varmap = ihash_new (4);
+  _block_id = -1;
   _construct_varmap (chp->c);
 
   /*--- create expression file, if blocks are requested ---*/
@@ -520,11 +577,13 @@ void SDTEngine::run_sdt (Process *p)
     varmap_info *v = (varmap_info *) b->v;
     if (v->fischan) {
       _emit_channel_mux (v);
+#if 0
       if (v->nread > 0 && v->nwrite > 0) {
 	char buf[10240];
 	v->id->sPrint (buf, 10240);
 	fatal_error  ("Channel `%s': send and receive on the same channel within a process not supported", buf);
       }
+#endif      
     }
     else {
       _emit_variable_mux (v);
@@ -539,6 +598,7 @@ void SDTEngine::run_sdt (Process *p)
   }
   
   int toplev = _gen_stmt_id ();
+  _block_id = -1;
   _run_sdt_helper (toplev, chp->c);
   _emit_end (toplev);
 }
@@ -998,3 +1058,37 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
   list_free (all_leaves);
 }
 
+
+int SDTEngine::_get_isinport (varmap_info *v)
+{
+  Assert (v->fischan, "_get_isinport() callled for non-channel variable");
+  if (v->fisinport == 0) {
+    return 0;
+  }
+  else if (v->fisinport == 1) {
+    return 1;
+  }
+  else {
+    if (v->block_in < 0 || v->block_out < 0) {
+      fprintf (stderr, "Channel: ");
+      v->id->Print (stderr);
+      fprintf (stderr, "\n");
+      warning ("Channel has a missing %s port",
+	       (v->block_in < 0 ? "input" : "output"));
+    }
+    if (_block_id == v->block_in) {
+      return 1;
+    }
+    else if (_block_id == v->block_out) {
+      return 0;
+    }
+    else {
+      printf ("in=%d, out=%d, cur=%d\n", v->block_in, v->block_out, _block_id);
+      fprintf (stderr, "Channel: ");
+      v->id->Print (stderr);
+      fprintf (stderr, "\n");
+      fatal_error ("Shared channels are not supported");
+    }
+    return 0;
+  }
+}

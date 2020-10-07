@@ -1,0 +1,9 @@
+source std_init.prsim
+
+assert t.c0.r 0
+
+set Reset 0
+cycle
+
+assert t.c0.a 0
+assert-var-int "t.x" 32 15

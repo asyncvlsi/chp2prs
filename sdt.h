@@ -40,10 +40,12 @@ struct varmap_info {
   /*-- flags --*/
   unsigned int fcurexpr:1;	// found in current expression
   unsigned int fischan:1;	// channel or int?
-  unsigned int fisinport:1;	// 1 if input, 0 if output
+  unsigned int fisinport:2;	// 1 if input, 0 if output, 2 if both
   unsigned int fisbool:1;	// bool variable
 
   int width;			// bitwidth
+
+  int block_in, block_out;	// for internal channels
 
   int nread, nwrite;		// for variables
                                 //     nread  = total # of reads
@@ -101,6 +103,9 @@ private:
   /*-- mode: currently not used --*/
   int _shared_expr_var;
 
+  /*-- top level block ID --*/
+  int _block_id;
+
   /*-- the varmap table --*/
   struct iHashtable *_varmap;
 
@@ -117,6 +122,9 @@ protected:
   list_t *_intconst;
   listitem_t *_intiter;
   void _expr_collect_vars (Expr *e, int collect_phase);
+
+
+  int _get_isinport (varmap_info *v);
 
 
   /*

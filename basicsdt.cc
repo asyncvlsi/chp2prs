@@ -215,11 +215,13 @@ void BasicSDT::_emit_transfer (int cid, int eid, varmap_info *ch)
 {
   fprintf (output_stream, "   syn::transfer<%d> s_%d(c%d, e%d.out,",
 	   ch->width, _gen_inst_id(), cid, eid);
+
   if (ch->fischan) {
     /* pick the channel mux */
     ch->id->Print (output_stream);
-    fprintf (output_stream, "_mux.m[%d]",
-	     ch->fisinport ? ch->iread++ : ch->iwrite++);
+    fprintf (output_stream, "_mux%c.m[%d]",
+	     _get_isinport (ch) ? 'i' : 'o',
+	     _get_isinport (ch) ? ch->iread++ : ch->iwrite++);
   }
   else {
     fprintf (output_stream, "var_");
@@ -244,9 +246,9 @@ void BasicSDT::_emit_recv (int cid, varmap_info *ch, varmap_info *v)
   
   fprintf (output_stream, "   syn::recvport<%d> s_%d(c%d,", ch->width,
 	   _gen_inst_id(), cid);
-  Assert (ch->fisinport, "What?");
+  Assert (_get_isinport (ch), "What?");
   ch->id->Print (output_stream);
-  fprintf (output_stream, "_mux.m[%d]", ch->iread++);
+  fprintf (output_stream, "_muxi.m[%d]", ch->iread++);
   fprintf (output_stream, ",");
   if (v) {
     fprintf (output_stream, "var_");
@@ -257,7 +259,7 @@ void BasicSDT::_emit_recv (int cid, varmap_info *ch, varmap_info *v)
   if (ch->nread > 1) {
     fprintf (output_stream, "   ");
     ch->id->Print (output_stream);
-    fprintf (output_stream, "_mux.ctrl[%d]=c%d;\n", ch->iread-1, c);
+    fprintf (output_stream, "_muxi.ctrl[%d]=c%d;\n", ch->iread-1, c);
   }
 }
 
@@ -376,16 +378,20 @@ void BasicSDT::_emit_doloop (int cid, int guard, int stmt)
 void BasicSDT::_emit_channel_mux (varmap_info *v)
 {
   Assert (v->fischan, "What?");
-  if (v->fisinport) {
+  if (v->nread > 0) {
     fprintf (output_stream, "   syn::muxinport<%d,%d> ", v->width, v->nread);
+    v->id->Print (output_stream);
+    fprintf (output_stream, "_muxi(");
+    v->id->Print (output_stream);
+    fprintf (output_stream, ");\n");
   }
-  else {
+  if (v->nwrite > 0) {
     fprintf (output_stream, "   syn::muxoutport<%d,%d> ", v->width, v->nwrite);
+    v->id->Print (output_stream);
+    fprintf (output_stream, "_muxo(");
+    v->id->Print (output_stream);
+    fprintf (output_stream, ");\n");
   }
-  v->id->Print (output_stream);
-  fprintf (output_stream, "_mux(");
-  v->id->Print (output_stream);
-  fprintf (output_stream, ");\n");
 }
 
 void BasicSDT::_emit_variable_mux (varmap_info *v)
