@@ -4,6 +4,6 @@ defproc a11() {
   int x;
 
   chp {
-	w!15, w?x
+	(skip;w!15),(w?x;x:=x+1)
   }
 }
