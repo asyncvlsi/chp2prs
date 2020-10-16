@@ -350,6 +350,7 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
   int changed = 0;
   
   if (!c) return;
+  c->space = (void*) id; /* XXX: can we use space ? */
   
   switch (c->type) {
   case ACT_CHP_SKIP:
@@ -617,6 +618,8 @@ void SDTEngine::run_sdt (Process *p)
   _block_id = -1;
   _run_sdt_helper (toplev, chp->c);
   _emit_end (toplev);
+
+  emit_sdt_hint (chp->c); /* TODO : act_chp_lang_t->space is marked by id, should be able to generate hint, implement this */
 }
 
 

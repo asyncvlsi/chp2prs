@@ -290,6 +290,7 @@ void BasicSDT::_emit_semi (int cid, list_t *stmts)
     fprintf (output_stream, "c%d", list_ivalue (li));
   }
   fprintf (output_stream, "});\n");
+
 }
 
 void BasicSDT::_emit_semiopt (int cid, list_t *stmts)
@@ -471,7 +472,14 @@ int BasicSDT::_gen_safe_bool (int eid)
   return eid2;
 }
 
-
+void BasicSDT::_emit_chp (int cid, act_chp_lang_t *c)
+{
+  if (hint_stream) {
+    fprintf (hint_stream, "*[c%d:(", cid);
+    chp_print(hint_stream, c);
+    fprintf (hint_stream, ")]");
+  }
+}
 
 void BasicSDT::_emit_expr_block (int id, int blkid, list_t *exprs)
 {
@@ -485,3 +493,153 @@ void BasicSDT::_emit_expr_block (int id, int blkid, list_t *exprs)
   }
   fprintf (output_stream, ");\n");
 }
+
+
+/* c: CHP
+ * par: list of CHPs
+ * Assumes all the space fields of these CHPs have been properly
+ * set in run_sdt() earlier.
+ *
+ * Print the sdt chp, and the paralleled chps */
+void BasicSDT::_emit_sdt_chp (act_chp_lang_t *c, list_t *par)
+{
+  _emit_chp ((intptr_t) c->space, c);
+  for (listitem_t *li = list_first (par); li; li = list_next (li)) {
+      fprintf (hint_stream, "||");
+      act_chp_lang_t *c0 = (act_chp_lang_t *) list_value (li);
+      _emit_chp ((intptr_t) c0->space, c0);
+  }
+}
+
+void BasicSDT::emit_sdt_hint (act_chp_lang_t *c)
+{
+  if (!hint_file) { return; } /* don't print hint */
+  hint_stream = fopen(hint_file, "w");
+
+  if (!hint_stream) {
+    fatal_error ("Could not open file `%s' for reading", hint_file);
+  }
+
+  list_t *par = list_new ();
+  fprintf (hint_stream, "prog ");
+  _emit_chp ((intptr_t) c->space, c);
+  fprintf (hint_stream, "\n");
+
+  while (true) {
+    act_chp_lang_t *hole = NULL;
+    act_chp_lang_t *new_c = _emit_sdt_hint_helper (c, (const act_chp_lang **) &hole);
+    if (!new_c) {
+      fatal_error ("new_c is supposed to be always not NULL");
+    }
+    if (new_c == c) {
+      break; /* no new hole, just return */
+    }
+    if (!hole) {
+      fprintf(stderr, "no hole\n");
+      break; /* toplevel is leaf, return */
+    } else {
+      hole->type = ACT_CHP_HOLE;
+      hole->label = NULL; /* otherwise will print weird character */
+    }
+
+    /* print hints */
+    fprintf (hint_stream, "\nhints ");
+    _emit_sdt_chp (c, par); /* print the program with hole */
+    fprintf (hint_stream, "\n");
+    chp_print (hint_stream, new_c); /* print the sub chp */
+    fprintf (hint_stream, "\nc%d\n", (intptr_t) new_c->space); /* print channel */
+    list_append (par, new_c);
+
+    /* set the hole to communication.
+     * XXX: here we assume send is active */
+    hole->type = ACT_CHP_SEND;
+    char name[128];
+    snprintf (name, sizeof(name), "c%d", (intptr_t) new_c->space);
+    hole->u.comm.chan = new ActId(name);
+    hole->u.comm.rhs = list_new (); /* empty rhs */
+
+    fprintf (hint_stream, "\nprog ");
+    _emit_sdt_chp (c, par);
+    fprintf (hint_stream, "\n");
+  }
+  /* XXX : c and par are not properly freed */
+  if (hint_file) fclose(hint_stream);
+}
+
+/* input: c
+ * output: hole & {return value}
+ *
+ * find ONE "leaf" CHP in c, and create a new "hole" to substitute it, with the
+ * leaf being returned.
+ *
+ * e.g. c = (L!x; R?x; x:=0)
+ * after running this function, c would be like (_; R?x; x:=0) (underscore is the hole)
+ * variable {hole} would point to the hole, and the {return value} is the old
+ * CHP that's in the hole which is L!x.
+ *
+ * */
+act_chp_lang_t *BasicSDT::_emit_sdt_hint_helper (act_chp_lang_t *c, const act_chp_lang_t **hole)
+{
+  switch (c->type) {
+  case ACT_CHP_SKIP:
+  case ACT_CHP_ASSIGN:
+  case ACT_CHP_RECV:
+    return c;
+
+  case ACT_CHP_SEND:
+    if (list_length (c->u.comm.rhs) == 0) {
+      /* XXX: here we assume dataless communication is NOT used in user program */
+      return NULL;
+    } else {
+      return c;
+    }
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    {
+      for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
+        act_chp_lang_t *r = _emit_sdt_hint_helper ((act_chp_lang_t *) list_value (li), hole);
+        if (r) {
+          if (!*hole) {
+            NEW (list_value (li), act_chp_lang_t); /* this modifies where the current list entry points to */
+            *hole = (const act_chp_lang_t*) list_value (li);
+          }
+          return r;
+        }
+      }
+      return c;
+    }
+
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+  case ACT_CHP_SELECT:
+  case ACT_CHP_SELECT_NONDET:
+    {
+      for (act_chp_gc_t *gc = c->u.gc; gc; gc = gc->next) {
+        act_chp_lang_t *r = _emit_sdt_hint_helper (gc->s, hole);
+        if (r) {
+          if (!*hole) {
+            NEW (gc->s, act_chp_lang_t); /* this modifies where the current list entry points to */
+            *hole = (const act_chp_lang_t*)gc->s;
+          }
+          return r;
+        }
+      }
+      return c;
+    }
+
+  case ACT_CHP_FUNC:
+    fatal_error ("functions not supported yet");
+    break;
+
+  case ACT_CHP_HOLE:
+    fatal_error ("Not suppose to encounter hole in this function");
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+}
+
+

@@ -26,7 +26,7 @@
 
 class BasicSDT : public SDTEngine {
  public:
-  BasicSDT (int isbundled, int isopt, const char *doimport, char *out) {
+  BasicSDT (int isbundled, int isopt, const char *doimport, char *out, char *hint) {
     bundled_data = isbundled;
     optimize = isopt;
     _expr_id = 0;
@@ -34,6 +34,8 @@ class BasicSDT : public SDTEngine {
     _inst_id = 0;
     output_stream = NULL;
     output_file = out;
+    hint_stream = NULL;
+    hint_file = hint;
     import_file = doimport;
   }
   
@@ -42,6 +44,8 @@ class BasicSDT : public SDTEngine {
   int bundled_data;
   FILE *output_stream;
   char *output_file;
+  FILE *hint_stream;
+  char *hint_file;
   const char *import_file;
 
 
@@ -97,6 +101,11 @@ class BasicSDT : public SDTEngine {
   void _emit_begin ();
   void _emit_end (int toplev);
 
+  void _emit_chp (int cid, act_chp_lang_t *c);
+
+  void emit_sdt_hint (act_chp_lang_t *c);
+  act_chp_lang_t *_emit_sdt_hint_helper (act_chp_lang_t *c, const act_chp_lang_t **hole);
+  void _emit_sdt_chp (act_chp_lang_t *c, list_t *par);
 };  
 
 #endif /* __ACT_BASIC_SDT_H__ */

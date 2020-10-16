@@ -48,6 +48,7 @@ int main(int argc, char **argv)
   char *proc;
   bool chpopt = false;
   bool bundled = false;
+  bool emit_hint  = false;
   char *exprfile = NULL;
   int emit_import = 0;
 
@@ -55,8 +56,11 @@ int main(int argc, char **argv)
   Act::Init(&argc, &argv);
 
   int ch;
-  while ((ch = getopt (argc, argv, "Obe:")) != -1) {
+  while ((ch = getopt (argc, argv, "HObe:")) != -1) {
     switch (ch) {
+    case 'H':
+      emit_hint = true;
+      break;
     case 'O':
       chpopt = true;
       break;
@@ -123,9 +127,16 @@ int main(int argc, char **argv)
   }
 
   check_chp(p);
+  char hint[50];
+  if (emit_hint)
+  {
+    strcpy(hint, argv[optind+2]);
+    strcat(hint, ".hint");
+  }
+
   BasicSDT *sdt = new BasicSDT(bundled, chpopt,
 			       emit_import ? argv[optind] : NULL,
-			       argv[optind+2]);
+			       argv[optind+2], emit_hint ? hint : NULL);
   sdt->mkExprBlocks (exprfile);
   sdt->run_sdt (p);
 
