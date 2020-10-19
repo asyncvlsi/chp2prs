@@ -546,7 +546,11 @@ void BasicSDT::emit_sdt_hint (act_chp_lang_t *c)
     fprintf (hint_stream, "\nhints ");
     _emit_sdt_chp (c, par); /* print the program with hole */
     fprintf (hint_stream, "\n");
+
+    fprintf (hint_stream, "(");
     chp_print (hint_stream, new_c); /* print the sub chp */
+    fprintf (hint_stream, ")");
+
     fprintf (hint_stream, "\nc%d\n", (intptr_t) new_c->space); /* print channel */
     list_append (par, new_c);
 
