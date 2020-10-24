@@ -1,0 +1,38 @@
+import "design/stackelem.act";
+import "design/stackend.act";
+
+namespace stack {
+
+export template<pint N>
+defproc stack (a1of1 go;
+	       a1of2 op, full;
+	       aN1of2<8> push, pop)
+{
+  { N > 0 : "why bother creating an empty stack?" };
+  
+  element x[N];
+  end xe;
+
+  (i:N-1: x[i+1](.chan_op = x[i].chan_rop,
+		 .chan_full = x[i].chan_rfull,
+		 .chan_push = x[i].chan_rpush,
+		 .chan_pop = x[i].chan_rpop
+		 );
+   )
+
+  xe(.chan_op = x[N-1].chan_rop,
+     .chan_full = x[N-1].chan_rfull,
+     .chan_pop = x[N-1].chan_rpop,
+     .chan_push = x[N-1].chan_rpush);
+  
+  x[0](.chan_op = op,
+       .chan_full = full,
+       .chan_push = push,
+       .chan_pop = pop);
+
+  (i:N: x[i].go.r = go.r; )
+  xe.go.r = go.r;    
+  go.a = x[0].go.a; // doesn't matter, never changes
+}
+
+}

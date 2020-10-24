@@ -1,0 +1,265 @@
+/*
+ * Blocks for syntax directed translation
+ *
+ */
+import "design/globals.act";
+import "design/channel.act";
+
+/*
+  a1of2: dual-rail data channel
+  a1of1: single-rail control channel
+  dualrail: one-bit of data
+*/
+
+/*
+ * Variable initialization
+ */
+export defproc syn_var_init_true (dualrail v)
+{
+  prs {
+    v.f<8> -> v.t-
+    Reset | v.t<8> -> v.f-
+    [weak=1] ~v.t<4,4> -> v.f+
+    [weak=1] ~v.f<4,4> -> v.t+
+ }
+}
+
+/*
+ * Variable initialization
+ */
+export defproc syn_var_init_false (dualrail v)
+{
+  prs {
+    Reset | v.f<8> -> v.t-
+    v.t<8> -> v.f-
+    [weak=1] ~v.t<4,4> -> v.f+
+    [weak=1] ~v.f<4,4> -> v.t+
+  }
+}
+
+
+/* mutually recursive definition of a completion tree */
+
+export template<pint N> defproc syn_invctree (bool in[N]; bool _out);
+export template<pint N> defproc syn_ctree (bool in[N]; bool out);
+
+export template<pint N>
+defproc syn_invctree (bool in[N]; bool _out)
+{
+  [ N > 3 ->
+      syn_ctree<N/2> l(in[0..N/2-1]);
+      syn_ctree<N-N/2> r(in[N/2..N-1]);
+      prs {
+        r.out & l.out -> _out-
+        ~r.out & ~l.out -> _out+
+      }
+  [] else ->
+    prs {
+     (&i:N:in[N-1-i]) -> _out-
+     (&i:N:~in[N-1-i]) -> _out+
+    }
+  ]
+}
+
+
+export template<pint N>
+defproc syn_ctree (bool in[N]; bool out)
+{
+  [ N > 3 ->
+      syn_invctree<N/2> l(in[0..N/2-1]);
+      syn_invctree<N-N/2> r(in[N/2..N-1]);
+      prs {
+        r._out & l._out -> out-
+        ~r._out & ~l._out -> out+
+      }
+  [] N = 1 -> out = in[0];
+  [] else ->
+      bool _out;
+      prs {
+      	(&i:N:in[N-1-i]) -> _out-
+      	(&i:N:~in[N-1-i]) -> _out+
+	_out => out-
+      }
+  ]
+}
+
+/*
+ *  Input: go
+ *         in : channel
+ *         v : one-bit variable
+ *
+ */
+export defproc syn_recv (a1of1 go; dualrail v; a1of2 in)
+{
+  bool _goa;
+  go.a = in.a;
+  prs {
+   [keeper=0] go.r <20> & _goa & in.t -> v.f-
+   [keeper=0] go.r <20> & _goa & in.f -> v.t-
+   go.r & (v.t & in.t | v.f & in.f) -> _goa-
+  ~in.t & ~in.f & ~go.r -> _goa+
+   Reset | _goa  <20> => go.a-
+  }
+}
+
+/*
+ *
+ *  Expression  evaluation
+ *
+ */
+
+/* Basecase: variable */
+export defproc syn_expr_var (bool go_r; dualrail v; dualrail out)
+{
+  _dualrail _out;
+  prs {
+   go_r & v.t -> _out.t-
+   go_r & v.f -> _out.f-
+  ~_Reset | ~go_r <20> -> _out.t+
+  ~_Reset | ~go_r <20> -> _out.f+
+
+   _out.t => out.t-
+   _out.f => out.f-
+  }
+}
+
+export template <pint N>
+defproc syn_expr_vararray (bool go_r; dualrail v[N]; dualrail out[N])
+{
+  syn_expr_var ev[N];
+  (i:N: ev[i].go_r = go_r;
+        ev[i].v = v[i];
+        ev[i].out = out[i];
+	)
+}
+
+/* AND */
+export defproc syn_expr_and (dualrail in1, in2; dualrail out)
+{
+  _dualrail _out;
+  prs {
+    in1.t & in2.t -> _out.t-
+   ~in1.t & ~in2.t -> _out.t+
+    in1.f & (in2.t | in2.f) | in1.t & in2.f -> _out.f-
+   ~in1.t & ~in1.f & ~in2.t & ~in2.f -> _out.f+
+
+    _out.t => out.t-
+    _out.f => out.f-
+  }
+}
+
+/* OR */
+export defproc syn_expr_or (dualrail in1, in2; dualrail out)
+{
+  _dualrail _out;
+  prs {
+    in1.t & (in2.t|in2.f) | in1.f & in2.t  -> _out.t-
+   ~in1.t & ~in1.f & ~in2.t & ~in2.f -> _out.t+
+    in2.f & in1.f -> _out.f-
+   ~in2.f & ~in1.f -> _out.f+
+    _out.t => out.t-
+    _out.f => out.f-
+  }
+}
+
+/* EQ */
+export defproc syn_expr_eq (dualrail in1, in2; dualrail out)
+{
+  _dualrail _out;
+  prs {
+    in1.t & in2.t | in2.f & in1.f -> _out.t-
+   ~in1.t & ~in1 .f & ~in2.t & ~in2.f -> _out.t+
+    in1.t & in2.f | in2.t & in1.f -> _out.f-
+   ~in1.t & ~in1 .f & ~in2.t & ~in2.f -> _out.f+
+    _out.t => out.t-
+    _out.f => out.f-
+  }
+}
+
+/* NOT */
+export defproc syn_expr_not (dualrail in; dualrail out)
+{
+  out.t = in.f;
+  out.f = in.t;
+}
+
+
+export defproc syn_or2 (bool x, y, out)
+{
+  bool _or;
+  prs {
+    x | y => _or-
+    _or => out-
+  }
+}
+
+export defproc syn_notand (bool x, y, out)
+{
+  bool _inv;
+
+  prs {
+      x => _inv-
+      _inv | y => out-
+  }
+}
+
+
+export defproc syn_skip (a1of1 go)
+{
+  go.r = go.a;
+}
+
+/*
+ * Simple sequencer
+ */
+export defproc syn_fullseq (a1of1 go; a1of1 r)
+{
+  bool x;
+  bool _gor;
+  bool _goa;
+  bool _ra;
+
+  prs {
+    ~x & ~_gor -> r.r+
+     ~_ra -> x+
+     Reset | x -> r.r-
+   x & _ra -> _goa-
+    _gor -> x-
+    ~x -> _goa+
+    go.r => _gor-
+    _goa => go.a-
+    r.a => _ra-
+  }
+}
+
+/*
+  Sequencing:  S1; S2
+
+  Input: go
+  Output: two channels for S1 and S2
+*/
+export defproc syn_seq (a1of1 go; a1of1 s1, s2)
+{
+  go.r = s1.r;
+  s1.a = s2.r;
+  go.a = s2.a;
+}
+
+/*
+  Parallel: S1 || S2
+  Same I/O as syn_seq
+*/
+export defproc syn_par (a1of1 go; a1of1 s1, s2)
+{
+  go.r = s1.r;
+  go.r = s2.r;
+
+  bool _c;
+
+  prs {
+    s2.a & s1.a -> _c-
+   ~s2.a & ~s1.a -> _c+
+
+   _c => go.a-
+  }
+}

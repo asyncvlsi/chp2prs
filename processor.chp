@@ -1,0 +1,120 @@
+import "design/functions.act";
+
+defproc processor() {
+  /* opcodes
+      0000 = HALT
+      0001 = PUSHC
+      0010 = POP
+      0011 = POPOUT
+      0100 = PUSHREG
+      0101 = POPREG
+      0110 = ADD
+      0111 = SUB
+      1000 = JMP
+      1001 = BRZ
+      1010 = BRLZ
+  */
+
+  /* Off-chip interface */
+  chan(int<12>) PC;
+  chan(int<12>) IN;
+  chan(int<12>) OUT;
+
+  /* FETCH */
+  int<12> pc_index;
+
+  /* EXECUTE */
+  int<4> exec_op;
+  int<8> exec_data;
+  int<8> exec_dump;
+  int<12> exec_temp;
+
+  /* STACK CONTROL */
+  int<1> stack_should_perform;
+  int<1> stack_op;
+  int<8> stack_data;
+
+  /* STACK */
+  int<1> stack0_is_full;
+  int<1> stack0_op;
+  int<8> stack0_data;
+  chan(int<1>) stack0_op_chan;
+  chan!(int<8>) stack0_push_chan;
+  chan(int<8>) stack0_pop_chan;
+  chan(int<1>) stack0_full_chan;
+
+  int<1> stack1_is_full;
+  int<1> stack1_op;
+  int<8> stack1_data;
+  chan(int<1>) stack1_op_chan;
+  chan!(int<8>) stack1_push_chan;
+  chan(int<8>) stack1_pop_chan;
+  chan(int<1>) stack1_full_chan;
+
+  chan(int<1>) stack2_op_chan;
+  chan(int<8>) stack2_push_chan;
+  chan(int<8>) stack2_pop_chan;
+  chan(int<1>) stack2_full_chan;
+
+  /* REGS */
+  int<8> reg0;
+  int<8> reg1;
+  int<8> reg2;
+  int<8> reg3;
+
+  int<1> jnk;
+  int<1> dbg;
+
+  chp {
+    *[ PC!pc_index; IN? exec_temp; exec_op := split_4(exec_temp); exec_data := split_8(exec_temp);
+      [ is_branch_1(exec_op) = 0 -> pc_index := pcincrement_12(pc_index)
+      [] else -> skip
+      ];
+      [ true -> stack_should_perform := 1 ];
+      [ is_pushc_1(exec_op) = 1 -> stack_op := 1; stack_data := exec_data [] else -> skip ];
+      [ is_pop_1(exec_op) = 1 -> stack_op := 0 [] else -> skip ];
+      [ is_popout_1(exec_op) = 1 -> stack_op := 0 [] else -> skip ];
+      [ is_pushreg0_1(exec_op, exec_data) = 1 -> stack_op := 1, stack_data := reg0 [] else -> skip ];
+      [ is_pushreg1_1(exec_op, exec_data) = 1 -> stack_op := 1, stack_data := reg1 [] else -> skip ];
+      [ is_pushreg2_1(exec_op, exec_data) = 1 -> stack_op := 1, stack_data := reg2 [] else -> skip ];
+      [ is_pushreg3_1(exec_op, exec_data) = 1 -> stack_op := 1, stack_data := reg3 [] else -> skip ];
+      [ is_popreg_1(exec_op) = 1 -> stack_op := 0 [] else -> skip ];
+      [ is_add_1(exec_op) = 1 -> stack1_data := stackadd_8(stack0_data, stack1_data); stack_op := 0 [] else -> skip ];
+      [ is_sub_1(exec_op) = 1 -> stack1_data := stacksub_8(stack1_data, stack0_data); stack_op := 0 [] else -> skip ];
+      [ is_jmp_1(exec_op) = 1 -> pc_index := pcadd_12(pc_index, exec_data), stack_should_perform := 0 [] else -> skip ];
+      [ is_brz_true_1(exec_op, stack0_data) = 1 -> stack_should_perform := 0, pc_index := pcadd_12(pc_index, exec_data) [] else -> skip ];
+      [ is_brz_false_1(exec_op, stack0_data) = 1 -> stack_should_perform := 0, pc_index := pcincrement_12(pc_index) [] else -> skip ];
+      [ is_brlz_true_1(exec_op, stack0_data) = 1 -> stack_should_perform := 0, pc_index := pcadd_12(pc_index, exec_data) [] else -> skip ];
+      [ is_brlz_false_1(exec_op, stack0_data) = 1 -> dbg := 1; stack_should_perform := 0, pc_index := pcincrement_12(pc_index) [] else -> skip ];
+      [ is_halt_1(exec_op) = 1 -> stack_should_perform := 0 [] else -> skip ];
+      [ stack_should_perform -> stack0_op_chan!stack_op [] else -> skip ];
+      [ stack_should_perform & stack_op -> stack0_push_chan!stack_data [] else -> skip ];
+      [ stack_should_perform & ~stack_op -> stack0_full_chan?jnk; stack0_pop_chan?stack_data [] else -> skip ];
+      [ is_popout_1(exec_op) = 1 -> exec_temp := join_12(exec_op, stack_data); OUT!(exec_temp) [] else -> skip ];
+      [ is_popreg0_1(exec_op, exec_data) = 1 -> reg0 := stack_data [] else -> skip ];
+      [ is_popreg1_1(exec_op, exec_data) = 1 -> reg1 := stack_data [] else -> skip ];
+      [ is_popreg2_1(exec_op, exec_data) = 1 -> reg2 := stack_data [] else -> skip ];
+      [ is_popreg3_1(exec_op, exec_data) = 1 -> reg3 := stack_data [] else -> skip ]
+    ] ,
+
+    stack0_is_full := 0;
+    *[ stack0_op_chan?stack0_op;
+      [ ~stack0_op -> stack0_full_chan!stack0_is_full; stack0_pop_chan!stack0_data [] else -> skip ];
+      [ stack0_is_full -> stack1_op_chan!stack0_op [] else -> skip ];
+      [ stack0_op & stack0_is_full -> stack1_push_chan!stack0_data [] else -> skip ];
+      [ stack0_op -> stack0_push_chan?stack0_data, stack0_is_full := 1 [] else -> skip ];
+      [ ~stack0_op & stack0_is_full -> stack1_full_chan?stack0_is_full; stack1_pop_chan?stack0_data [] else -> skip ]
+    ] ,
+
+   stack1_is_full := 0;
+   *[ stack1_op_chan?stack1_op;
+     [ ~stack1_op -> stack1_full_chan!stack1_is_full; stack1_pop_chan!stack1_data [] else -> skip ];
+     [ stack1_is_full -> stack2_op_chan!stack1_op [] else -> skip ];
+     [ stack1_op & stack1_is_full -> stack2_push_chan!stack1_data [] else -> skip ];
+     [ stack1_op -> stack1_push_chan?stack1_data, stack1_is_full := 1 [] else -> skip ];
+     [ ~stack1_op & stack1_is_full -> stack2_full_chan?stack1_is_full; stack2_pop_chan?stack1_data [] else -> skip ]
+   ]
+  }
+}
+
+processer a;

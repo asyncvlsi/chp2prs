@@ -1,0 +1,115 @@
+import "design/globals.act";
+import "design/channel.act";
+import "design/opcode_conditions.act";
+import "design/functions.act";
+import "design/lab_syn.act";
+
+defproc bundled_is_brlz_true_1(bool go_r; dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out;
+  bundled_is_brlz_1 f1(go_r, v0, f1_out);
+  bundled_is_less_than_zero_1 f2(go_r, v1, f2_out);
+
+  syn_expr_and and(f1_out, f2_out, out);
+}
+
+defproc bundled_is_brlz_false_1(bool go_r; dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out, inv_f2_out;
+  bundled_is_brlz_1 f1(go_r, v0, f1_out);
+  bundled_is_less_than_zero_1 f2(go_r, v1, f2_out);
+
+  syn_expr_not not(f2_out, inv_f2_out);
+  syn_expr_and and(f1_out, inv_f2_out, out);
+}
+
+defproc bundled_is_brz_true_1(bool go_r; dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out;
+  bundled_is_brz_1 f1(go_r, v0, f1_out);
+  bundled_is_zero_1 f2(go_r, v1, f2_out);
+
+  syn_expr_and and(f1_out, f2_out, out);
+}
+
+defproc bundled_is_brz_false_1(bool go_r; dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out, inv_f2_out;
+  bundled_is_brz_1 f1(go_r, v0, f1_out);
+  bundled_is_zero_1 f2(go_r, v1, f2_out);
+
+  syn_expr_not not(f2_out, inv_f2_out);
+  syn_expr_and and(f1_out, inv_f2_out, out);
+}
+
+defproc bundled_is_pushreg0_1(bool go_r;  dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out;
+  bundled_is_pushreg_1 f1(go_r, v0, f1_out);
+  bundled_is_reg0_1 f2(go_r, v1, f2_out);
+
+  syn_expr_and and(f1_out, f2_out, out);
+}
+
+defproc bundled_is_pushreg1_1(bool go_r;  dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out;
+  bundled_is_pushreg_1 f1(go_r, v0, f1_out);
+  bundled_is_reg1_1 f2(go_r, v1, f2_out);
+
+  syn_expr_and and(f1_out, f2_out, out);
+}
+
+defproc bundled_is_pushreg2_1(bool go_r;  dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out;
+  bundled_is_pushreg_1 f1(go_r, v0, f1_out);
+  bundled_is_reg2_1 f2(go_r, v1, f2_out);
+
+  syn_expr_and and(f1_out, f2_out, out);
+}
+
+defproc bundled_is_pushreg3_1(bool go_r;  dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out;
+  bundled_is_pushreg_1 f1(go_r, v0, f1_out);
+  bundled_is_reg3_1 f2(go_r, v1, f2_out);
+
+  syn_expr_and and(f1_out, f2_out, out);
+}
+
+defproc bundled_is_popreg0_1(bool go_r;  dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out;
+  bundled_is_popreg_1 f1(go_r, v0, f1_out);
+  bundled_is_reg0_1 f2(go_r, v1, f2_out);
+
+  syn_expr_and and(f1_out, f2_out, out);
+}
+
+defproc bundled_is_popreg1_1(bool go_r;  dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out;
+  bundled_is_popreg_1 f1(go_r, v0, f1_out);
+  bundled_is_reg1_1 f2(go_r, v1, f2_out);
+
+  syn_expr_and and(f1_out, f2_out, out);
+}
+
+defproc bundled_is_popreg2_1(bool go_r;  dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out;
+  bundled_is_popreg_1 f1(go_r, v0, f1_out);
+  bundled_is_reg2_1 f2(go_r, v1, f2_out);
+
+  syn_expr_and and(f1_out, f2_out, out);
+}
+
+defproc bundled_is_popreg3_1(bool go_r;  dualrail v0[4], v1[8]; dualrail out)
+{
+  dualrail f1_out, f2_out;
+  bundled_is_popreg_1 f1(go_r, v0, f1_out);
+  bundled_is_reg3_1 f2(go_r, v1, f2_out);
+
+  syn_expr_and and(f1_out, f2_out, out);
+}

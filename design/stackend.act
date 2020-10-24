@@ -1,0 +1,162 @@
+import "design/channel.act";
+import "design/lab_syn.act";
+
+namespace stack {
+
+defproc end (a1of1 go; a1of2 chan_op, chan_full; 
+	     aN1of2<8> chan_push, chan_pop)
+{
+ /* --- declaring all variables and channels --- */
+ syn_var_init_false var_dval2[8];
+ syn_var_init_false var_dval[8];
+ syn_var_init_false var_dop;
+ /* --- end of declarations --- */
+
+/* comma */
+ a1of1 c_0;
+
+ /*--- emit individual gc (#0) [loop] ---*/
+ r1of2 gc_0;
+/* recv */
+ a1of1 c_1;
+ syn_fullseq fs_0(c_1,);
+ syn_recv s_0(fs_0.r);
+ s_0.in = chan_op;
+ s_0.v = var_dop.v;
+
+ a1of1 c_2;
+ syn_fullseq fs_1(c_2, c_1);
+ gc_0.r = c_2.r;
+ gc_0.t = c_2.a;
+ gc_0.f = GND;
+ a1of1 c_3;
+ /* gc cascade, start=0, end=0 */
+ syn_notand na_2;
+ na_2.x = c_3.r;
+ na_2.out = gc_0.r;
+ gc_0.t = na_2.y;
+ gc_0.f = c_3.a;
+ /* ----- end of gc (#0) ----- */
+
+ syn_par s_3(c_0);
+ s_3.s1 = c_3;
+ a1of1 c_4;
+ s_3.s2 = c_4;
+
+ /*--- emit individual gc (#1) [loop] ---*/
+ r1of2 gc_1;
+/* recv */
+ a1of1 c_5;
+ syn_fullseq fs_4(c_5,);
+ syn_recv s_4[8];
+ (i:8: s_4[i].go.r = fs_4.r.r;)
+ syn_ctree<8> ct_4;
+ (i:8: ct_4.in[i]=s_4[i].go.a;)
+ ct_4.out=fs_4.r.a; fs_4.r.a=chan_push.a;
+ (i:8: s_4[i].in.t = chan_push.d[i].t;
+          s_4[i].in.f = chan_push.d[i].f;
+          s_4[i].v = var_dval[i].v; )
+
+ a1of1 c_6;
+ syn_fullseq fs_5(c_6, c_5);
+ gc_1.r = c_6.r;
+ gc_1.t = c_6.a;
+ gc_1.f = GND;
+ a1of1 c_7;
+ /* gc cascade, start=1, end=1 */
+ syn_notand na_6;
+ na_6.x = c_7.r;
+ na_6.out = gc_1.r;
+ gc_1.t = na_6.y;
+ gc_1.f = c_7.a;
+ /* ----- end of gc (#1) ----- */
+
+ syn_par s_7(c_4);
+ s_7.s1 = c_7;
+ a1of1 c_8;
+ s_7.s2 = c_8;
+
+ /*--- emit individual gc (#2) [loop] ---*/
+ r1of2 gc_2;
+/* send */
+ syn_expr_vararray<8> e_1;
+ (i:8: e_1.v[i] = var_dval2[i].v;)
+ a1of1 c_9;
+ a1of1 recv_r_8;
+ syn_fullseq fs_8(c_9, recv_r_8);
+ syn_fullseq s_9;
+ recv_r_8.r = s_9.go.r;
+ syn_recv rtv_9[8];
+ syn_expr_vararray<8> e_2;
+ syn_var_init_false tv_9[8];
+ (i:8: e_2.v[i] = tv_9[i].v; e_2.v[i]=rtv_9[i].v;)
+ s_9.r.r = e_1.go_r;
+ (i:8: s_9.r.r = rtv_9[i].go.r;)
+ syn_ctree<8> ct_9;
+ (i:8: ct_9.in[i]=rtv_9[i].go.a;)
+ s_9.r.a = ct_9.out;
+ (i:8: e_1.out[i].t = rtv_9[i].in.t; e_1.out[i].f = rtv_9[i].in.f;)
+ s_9.go.a = e_2.go_r;
+ recv_r_8.a = chan_pop.a;
+ (i:8: chan_pop.d[i] = e_2.out[i];)
+
+ a1of1 c_10;
+ syn_fullseq fs_10(c_10, c_9);
+ gc_2.r = c_10.r;
+ gc_2.t = c_10.a;
+ gc_2.f = GND;
+ a1of1 c_11;
+ /* gc cascade, start=2, end=2 */
+ syn_notand na_11;
+ na_11.x = c_11.r;
+ na_11.out = gc_2.r;
+ gc_2.t = na_11.y;
+ gc_2.f = c_11.a;
+ /* ----- end of gc (#2) ----- */
+
+ syn_par s_12(c_8);
+ s_12.s1 = c_11;
+
+ /*--- emit individual gc (#3) [loop] ---*/
+ r1of2 gc_3;
+/* send */
+ syn_var_init_false const_0;
+ syn_expr_var e_3(,const_0.v);
+ a1of1 c_12;
+ a1of1 recv_r_13;
+ syn_fullseq fs_13(c_12, recv_r_13);
+ syn_fullseq s_14;
+ recv_r_13.r = s_14.go.r;
+ syn_recv rtv_14;
+ syn_expr_var e_4;
+ syn_var_init_false tv_14(rtv_14.v);
+ e_4.v = tv_14.v;
+ s_14.r.r = e_3.go_r;
+ s_14.r = rtv_14.go;
+ e_3.out.t = rtv_14.in.t;
+ e_3.out.f = rtv_14.in.f;
+ s_14.go.a = e_4.go_r;
+ recv_r_13.a = chan_full.a;
+ chan_full.t = e_4.out.t;
+ chan_full.f = e_4.out.f;
+
+ a1of1 c_13;
+ syn_fullseq fs_15(c_13, c_12);
+ gc_3.r = c_13.r;
+ gc_3.t = c_13.a;
+ gc_3.f = GND;
+ a1of1 c_14;
+ /* gc cascade, start=3, end=3 */
+ syn_notand na_16;
+ na_16.x = c_14.r;
+ na_16.out = gc_3.r;
+ gc_3.t = na_16.y;
+ gc_3.f = c_14.a;
+ /* ----- end of gc (#3) ----- */
+
+ s_12.s2 = c_14;
+
+ go = c_0;
+}
+
+}

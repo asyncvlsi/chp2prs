@@ -1,0 +1,36 @@
+import "design/processor_cells.act";
+
+defproc toplevel ()
+{
+  cell::g0x0 g0;
+  cell::g1x0 g1;
+  cell::g2x0 g2;
+  cell::g3x0 g3;
+  cell::g4x0 g4;
+  cell::g5x0 g5;
+  cell::g6x0 g6;
+  cell::g7x0 g7;
+  cell::g8x0 g8;
+  cell::g9x0 g9;
+  cell::g10x0 g10;
+  cell::g11x0 g11;
+  cell::g12x0 g12;
+  cell::g13x0 g13;
+  cell::g14x0 g14;
+  cell::g15x0 g15;
+  cell::g16x0 g16;
+  cell::g17x0 g17;
+  cell::g18x0 g18;
+  cell::g19x0 g19;
+  cell::g20x0 g20;
+  cell::g21x0 g21;
+  cell::g22x0 g22;
+  cell::g23x0 g23;
+  cell::g24x0 g24;
+  cell::g25x0 g25;
+  cell::g26x0 g26;
+  cell::g27x0 g27;
+  cell::g28x0 g28;
+}
+
+toplevel t;

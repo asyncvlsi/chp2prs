@@ -1,0 +1,228 @@
+import "design/globals.act";
+import "design/channel.act";
+import "design/combinational.act";
+import "design/lab_syn.act";
+
+defproc delaybuf(bool in, out)
+{
+  bool _x;
+  prs {
+     in => _x-
+     _x => out-
+  }
+}
+
+template<pint D>
+defproc delay (bool in, out)
+{
+  delaybuf d[D];
+  (i:D-1:d[i].out=d[i+1].in;)
+  d[0].in = in;
+  d[D-1].out = out;
+}
+
+/* Combinational logic for 4 bit compare -- necessitate all 4 inputs
+  to be low and the delay to be high to set out.t true.
+  otherwise, wait for delay high to set out.f false.
+ */
+defproc bundled_cmp_1 (bool go_r; dualrail c[4]; dualrail out)
+{
+   /* combinational logic */
+   delay<10> d;
+   bool _dout;
+   d.in = go_r;
+   prs {
+      d.out => _dout-
+      ~_dout & ((~c[0].f & ~c[1].f & ~c[2].f & ~c[3].f) | (~c[0].t & ~c[1].t & ~c[2].t & ~c[3].t)) => out.t+
+      ~_dout & ((~c[0].f | ~c[1].f | ~c[2].f | ~c[3].f) & (~c[0].t | ~c[1].t | ~c[2].t | ~c[3].t)) => out.f+
+   }
+}
+
+defproc bundled_stackadd_8 (bool go_r; dualrail v0[8]; dualrail v1[8]; dualrail out[8])
+{
+   /* combinational logic */
+   delay<65> d;
+   bool _dout;
+   d.in = go_r;
+
+   bool cout;
+   bool cin;
+   add8 a (,,cin,, cout);
+   (; i : 8 : a.a[i] = v0[i].t; a.b[i] = v1[i].t; )
+
+   bool _aout[8], _gor;
+   prs {
+      Reset -> cin-
+      d.out => _dout-
+      go_r => _gor-
+      (i:8: [unstab=1] a.out[i] => _aout[i]-
+            ~_dout & ~_aout[i] => out[i].t+
+            ~_dout & ~a.out[i] => out[i].f+
+      )
+   }
+}
+
+defproc bundled_stacksub_8 (bool go_r; dualrail v0[8]; dualrail v1[8]; dualrail out[8])
+{
+   /* combinational logic */
+   delay<65> d;
+   d.in = go_r;
+   bool cout, cin, _dout;
+   add8 s (,, cin,, cout);
+   (; i : 8 : s.a[i] = v0[i].t; s.b[i] = v1[i].f; )
+
+   bool _sout[8], _gor;
+   prs {
+      ~_Reset -> cin+
+      d.out => _dout-
+      go_r => _gor-
+      (i:8: [unstab=1] s.out[i] => _sout[i]-
+      	    ~_dout & ~_sout[i] => out[i].t+
+      	    ~_dout & ~s.out[i] => out[i].f+
+      )
+   }
+}
+
+defproc bundled_is_zero_1(bool go_r; dualrail v0[8]; dualrail out) {
+  bool _gor;
+  prs {
+    go_r => _gor-
+    ((&i:8: ~v0[i].t)) & ~_gor -> out.t+
+    ~_gor & ((|i:8: ~v0[i].f)) -> out.f+
+    _gor -> out.t-
+    _gor -> out.f-
+  }
+}
+
+defproc bundled_is_less_than_zero_1(bool go_r; dualrail v0[8]; dualrail out) {
+  bool _gor;
+  prs {
+    go_r => _gor-
+    ~_gor & ~v0[7].f -> out.t+
+    ~_gor & ~v0[7].t -> out.f+
+    _gor -> out.t-
+    _gor -> out.f-
+  }
+}
+
+defproc bundled_is_reg0_1(bool go_r; dualrail v0[8]; dualrail out) {
+  bool _gor;
+  prs {
+    go_r => _gor-
+    ~v0[1].t & ~v0[0].t & ~_gor -> out.t+
+    ~_gor & (~v0[0].f | ~v0[1].f) -> out.f+
+    _gor -> out.t-
+    _gor -> out.f-
+  }
+}
+
+defproc bundled_is_reg1_1(bool go_r; dualrail v0[8]; dualrail out) {
+  bool _gor;
+  prs {
+    go_r => _gor-
+    ~v0[1].t & ~v0[0].f & ~_gor -> out.t+
+    ~_gor & (~v0[0].t | ~v0[1].f) -> out.f+
+    _gor -> out.t-
+    _gor -> out.f-
+  }
+}
+
+defproc bundled_is_reg2_1(bool go_r; dualrail v0[8]; dualrail out) {
+  bool _gor;
+  prs {
+    go_r => _gor-
+    ~v0[1].f & ~v0[0].t & ~_gor -> out.t+
+    ~_gor & (~v0[0].f | ~v0[1].t) -> out.f+
+    _gor -> out.t-
+    _gor -> out.f-
+  }
+}
+
+defproc bundled_is_reg3_1(bool go_r; dualrail v0[8]; dualrail out) {
+  bool _gor;
+  prs {
+    go_r => _gor-
+    ~v0[1].f & ~v0[0].f & ~_gor -> out.t+
+    ~_gor & (~v0[0].t | ~v0[1].t) -> out.f+
+    _gor -> out.t-
+    _gor -> out.f-
+  }
+}
+
+defproc bundled_pcincrement_12 (bool go_r; dualrail v0[12]; dualrail out[12])
+{
+   /* combinational logic */
+   delay<100> d;
+   d.in = go_r;
+   bool zero[12];
+   bool cout, cin, _dout;
+   add12 s (,, cin,, cout);
+   (; i : 12 : s.a[i] = v0[i].t; s.b[i] = zero[i]; )
+
+   bool _sout[12];
+   prs {
+      ~_Reset -> cin+
+      d.out => _dout-
+      (i:12: Reset -> zero[i]-)
+      (i:12: [unstab=1] s.out[i] => _sout[i]-
+	       ~_dout & ~_sout[i] => out[i].t+
+	       ~_dout & ~s.out[i] => out[i].f+
+      )
+   }
+}
+
+defproc bundled_pcadd_12 (bool go_r; dualrail v0[12]; dualrail v1[8]; dualrail out[12])
+{
+   /* combinational logic */
+   delay<200> d;
+   bool _dout;
+   d.in = go_r;
+
+   bool cout, cin;
+   add12 a (,,cin,, cout);
+   (i:12: a.a[i] = v0[i].t; )
+   (i:8: a.b[i] = v1[i].t; )
+   (i:4: a.b[i+8] = v1[7].t; )
+
+   bool _aout[12];
+   prs {
+      Reset -> cin-
+      d.out => _dout-
+      (i:12: [unstab=1] a.out[i] => _aout[i]-
+            ~_dout & ~_aout[i] -> out[i].t+
+            _dout -> out[i].t-
+            ~_dout & ~a.out[i] -> out[i].f+
+            _dout -> out[i].f-
+      )
+   }
+}
+
+/* INPUT is [ opcode,4 ][ data,8 ] ==> OUTPUT is [ opcode,4 ] */
+defproc bundled_split_4(bool go_r; dualrail v0[12]; dualrail out[4])
+{
+  syn_expr_vararray<4> va (go_r, ,out);
+  (i:4: va.v[i] = v0[i];)
+}
+
+/* INPUT is [ opcode,4 ][ data,8 ] ==> OUTPUT is [ data,8 ] */
+defproc bundled_split_8(bool go_r; dualrail v0[12]; dualrail out[8])
+{
+  syn_expr_var va[8];
+  (i:8: va[i].v = v0[i+4];
+        va[i].go_r = go_r;
+        va[i].out = out[i];
+  )
+}
+
+defproc bundled_join_12(bool go_r; dualrail v0[4], v1[8]; dualrail out[12])
+{
+  syn_expr_var va[12];
+  (i:4: va[i+8].v = v0[i];
+        va[i+8].go_r = go_r;
+        va[i+8].out = out[i+8];
+  )
+  (i:8: va[i].v = v1[i];
+        va[i].go_r = go_r;
+        va[i].out = out[i];
+  )
+}

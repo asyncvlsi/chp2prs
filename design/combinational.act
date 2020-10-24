@@ -1,0 +1,36 @@
+import "design/globals.act";
+import "design/channel.act";
+
+defproc add(bool a, b; bool cin; bool s, cout)
+{
+	bool _a, _b, _cin;
+	prs {
+		[unstab=1] a =>_a-
+		[unstab=1] b =>_b-
+		[unstab=1] cin =>_cin-
+		[unstab=1] (~a & ~b & ~_cin) | (~_cin & ~_a & ~_b) | (~cin & ~_b & ~a) | (~cin & ~_a & ~b) -> s+
+		(cin & _a & b) | (_cin & _a & _b) | (cin & _b & a) | (a & b & _cin) -> s-
+		[unstab=1] (~_cin & ~a & ~_b) | (~_b & ~_a) | (~b & ~_a & ~_cin) -> cout+
+		(_cin & a & _b) | (_b & _a) | (b & _a & _cin) -> cout-
+	}
+}
+
+/* MSB = array[7] .. array[0] = LSB */
+defproc add8(bool a[8], b[8]; bool cin; bool out[8], cout)
+{
+	add x[8];
+	(; i : 8 : x[i].a = a[i]; x[i].b = b[i]; x[i].s = out[i]; )
+	x[0].cin = cin;
+	x[7].cout = cout;
+	(; i : 1..7 : x[i].cin = x[i-1].cout; )
+}
+
+/* MSB = array[11] .. array[0] = LSB */
+defproc add12(bool a[12], b[12]; bool cin; bool out[12], cout)
+{
+	add x[12];
+	(; i : 12 : x[i].a = a[i]; x[i].b = b[i]; x[i].s = out[i]; )
+	x[0].cin = cin;
+	x[11].cout = cout;
+	(; i : 1..11 : x[i].cin = x[i-1].cout; )
+}

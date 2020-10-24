@@ -1,0 +1,258 @@
+namespace cell {
+
+export defcell g0x0 (bool? in[3]; bool! out)
+{
+   prs {
+   in[2] | in[0] -> out-
+   ~in[0] & ~in[1] -> out+
+   }
+}
+
+export defcell g10x0 (bool? in[1]; bool! out)
+{
+   prs {
+   in[0]<8> -> out-
+   [weak=1] ~in[0]<4,4> -> out+
+   }
+}
+
+export defcell g11x0 (bool? in[2]; bool! out)
+{
+   prs {
+   in[0] | in[1]<8> -> out-
+   [weak=1] ~in[1]<4,4> -> out+
+   }
+}
+
+export defcell g12x0 (bool? in[2]; bool! out)
+{
+   prs {
+   in[0] & in[1] -> out-
+   ~in[0] & ~in[1] -> out+
+   }
+}
+
+export defcell g13x0 (bool? in[5]; bool! out)
+{
+   prs {
+   in[0] & (in[1] & in[2] | in[3] & in[4]) -> out-
+   ~in[2] & ~in[4] & ~in[0] -> out+
+   }
+}
+
+export defcell g14x0 (bool? in[2]; bool! out)
+{
+   prs {
+   in[0] | in[1]<20> -> out-
+   ~(in[0] | in[1]) -> out+
+   }
+}
+
+export defcell g15x0 (bool? in[3]; bool! out)
+{
+   prs {
+   [keeper=0] in[0]<20> & in[1] & in[2] -> out-
+   }
+}
+
+export defcell g16x0 (bool? in[5]; bool! out)
+{
+   prs {
+   in[4] -> out-
+   ~in[0] & ~in[1] & ~in[2] & ~in[3] & ~in[4] -> out+
+   }
+}
+
+export defcell g17x0 (bool? in[5]; bool! out)
+{
+   prs {
+   in[4] -> out-
+   (~in[0] | ~in[1] | ~in[2] | ~in[3]) & ~in[4] -> out+
+   }
+}
+
+export defcell g18x0 (bool? in[4]; bool! out)
+{
+   prs {
+   in[0] & in[1] | in[2] & in[3] -> out-
+   ~in[0] & ~in[3] & ~in[1] & ~in[2] -> out+
+   }
+}
+
+export defcell g19x0 (bool? in[4]; bool! out)
+{
+   prs {
+   in[0] & in[1] | in[2] & in[3] -> out-
+   ~in[0] & ~in[3] & ~in[2] & ~in[1] -> out+
+   }
+}
+
+export defcell g1x0 (bool? in[2]; bool! out)
+{
+   prs {
+   in[1] -> out-
+   ~in[0] -> out+
+   }
+}
+
+export defcell g20x0 (bool? in[4]; bool! out)
+{
+   prs {
+   in[0] & (in[1] | in[2]) | in[3] & in[2] -> out-
+   ~in[3] & ~in[0] & ~in[1] & ~in[2] -> out+
+   }
+}
+
+export defcell g21x0 (bool? in[2]; bool! out)
+{
+   prs {
+   in[1] -> out-
+   ~in[0] & ~in[1] -> out+
+   }
+}
+
+export defcell g22x0 (bool? in[3]; bool! out)
+{
+   prs {
+   in[0] & in[1] & in[2] -> out-
+   ~in[0] & ~in[1] & ~in[2] -> out+
+   }
+}
+
+export defcell g23x0 (bool? in[3]; bool! out)
+{
+   prs {
+   in[2] -> out-
+   ~in[0] & ~in[1] & ~in[2] -> out+
+   }
+}
+
+export defcell g24x0 (bool? in[3]; bool! out)
+{
+   prs {
+   in[0] -> out-
+   ~in[0] & (~in[1] | ~in[2]) -> out+
+   }
+}
+
+export defcell g25x0 (bool? in[1]; bool! out)
+{
+   prs {
+   in[0] -> out-
+   }
+}
+
+export defcell g26x0 (bool? in[2]; bool! out)
+{
+   prs {
+   in[0] -> out-
+   ~in[0] & ~in[1] -> out+
+   }
+}
+
+export defcell g27x0 (bool? in[9]; bool! out)
+{
+   prs {
+   in[8] -> out-
+   ~in[0] & ~in[1] & ~in[2] & ~in[3] & ~in[4] & ~in[5] & ~in[6] & ~in[7] & ~in[8] -> out+
+   }
+}
+
+export defcell g28x0 (bool? in[9]; bool! out)
+{
+   prs {
+   in[0] -> out-
+   ~in[0] & (~in[1] | ~in[2] | ~in[3] | ~in[4] | ~in[5] | ~in[6] | ~in[7] | ~in[8]) -> out+
+   }
+}
+
+export defcell g2x0 (bool? in[2]; bool! out)
+{
+   prs {
+   in[0] & in[1] -> out-
+   ~in[0] -> out+
+   }
+}
+
+export defcell g3x0 (bool? in[1]; bool! out)
+{
+   prs {
+   in[0] -> out-
+   ~in[0] -> out+
+   }
+}
+
+export defcell g4x0 (bool? in[2]; bool! out)
+{
+   prs {
+   in[0] | in[1] -> out-
+   ~(in[0] | in[1]) -> out+
+   }
+}
+
+export defcell g5x0 (bool? in[1]; bool! out)
+{
+   prs {
+   [unstab=1] in[0] -> out-
+   ~in[0] -> out+
+   }
+}
+
+export defcell g6x0 (bool? in[6]; bool! out)
+{
+   prs {
+   in[5] & in[3] & in[1] | in[2] & in[3] & in[4] | in[5] & in[4] & in[0] | in[0] & in[1] & in[2] -> out-
+   [unstab=1] ~in[0] & ~in[1] & ~in[2] | ~in[2] & ~in[3] & ~in[4] | ~in[5] & ~in[4] & ~in[0] | ~in[5] & ~in[3] & ~in[1] -> out+
+   }
+}
+
+export defcell g7x0 (bool? in[5]; bool! out)
+{
+   prs {
+   in[0] & in[1] & in[2] | in[2] & in[3] | in[4] & in[3] & in[0] -> out-
+   [unstab=1] ~in[0] & ~in[1] & ~in[2] | ~in[2] & ~in[3] | ~in[4] & ~in[3] & ~in[0] -> out+
+   }
+}
+
+export defcell g8x0 (bool? in[1]; bool! out)
+{
+   prs {
+   ~in[0] -> out+
+   }
+}
+
+export defcell g9x0 (bool? in[3]; bool! out)
+{
+   prs {
+   in[0] & in[1] -> out-
+   ~in[2] | ~in[0]<20> -> out+
+   }
+}
+
+export template<pint w,l> defcell p0(bool? in[2]; bool! out) {
+  prs { passp<w,l> (in[0],in[1],out) }
+}
+
+export template<pint w,l> defcell n0(bool? in[2]; bool! out) {
+  prs { passn<w,l> (in[0],in[1],out) }
+}
+
+export template<pint w,l> defcell t0(bool? in[3]; bool! out) {
+  prs { transgate<w,l> (in[0],in[1],in[2],out) }
+}
+
+export defcell p1(bool? in[2]; bool! out) {
+  prs { passp (in[0],in[1],out) }
+}
+
+export defcell n1(bool? in[2]; bool! out) {
+  prs { passn (in[0],in[1],out) }
+}
+
+export defcell t1(bool? in[3]; bool! out) {
+  prs { transgate (in[0],in[1],in[2],out) }
+}
+
+
+
+}
