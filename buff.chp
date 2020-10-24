@@ -1,0 +1,11 @@
+defproc buff() {
+  int<8> x;
+  chan?(int<8>) L;
+  chan!(int<8>) R;
+
+  chp {
+   *[ L?x; R!x ]
+  }
+}
+
+buff a;
