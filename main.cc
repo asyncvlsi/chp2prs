@@ -38,7 +38,7 @@
 
 static void usage(char *name)
 {
-  fprintf(stderr, "Usage: %s [-Ob] [-e file] <actfile> <process> <outfile>\n", name);
+  fprintf(stderr, "Usage: %s [-HOb] [-e file] <actfile> <process> <outfile>\n", name);
   exit(1);
 }
 
