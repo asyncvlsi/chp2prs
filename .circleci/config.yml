@@ -1,0 +1,97 @@
+version: 2
+
+jobs:
+   ubuntu18:
+     # Ubuntu 18
+     docker:
+       - image: ubuntu:18.04
+     steps:
+       - checkout
+       - run:
+          name: Dependencies
+          command: |
+              apt-get -q update -y
+              apt-get -q install -y libedit-dev zlib1g-dev m4 build-essential git 
+       - run: 
+          name: Install act base
+          command: |
+              git clone https://github.com/asyncvlsi/act
+              mkdir install
+              export ACT_HOME=`pwd`/install
+              cd act
+              echo "===== build act base ====="
+              export VLSI_TOOLS_SRC=`pwd`
+              ./configure $ACT_HOME
+              ./build
+              echo "===== install act base ====="
+              make install
+              cd ..
+       - run: 
+          name: Build install and test
+          command: |
+              export ACT_HOME=`pwd`/install
+              export PATH=$ACT_HOME/bin:$PATH
+              export VLSI_TOOLS_SRC=`pwd`/act
+              echo "===== build act addon ====="
+              make depend
+              make
+              echo "===== install act addon ====="
+              make install
+              echo "===== test act addon with dualrail ====="
+              make runtest
+              echo "===== test act addon with optimise ====="
+              make runtest optimize=1          
+              echo "===== test act addon with bundeled data ====="
+              make runtest bundeled=1
+
+   centos8:
+    # centos 8 / rhel 8
+     docker:
+       - image: centos:8
+     steps:
+       - checkout
+       - run:           
+          name: Dependencies
+          command: |
+              yum install -y 'dnf-command(config-manager)'
+              yum config-manager --set-enabled powertools -y
+              yum install -y gcc gcc-c++ diffutils make libedit-devel zlib-devel m4 git
+       - run: 
+          name: Install act base
+          command: |
+              git clone https://github.com/asyncvlsi/act
+              mkdir install
+              export ACT_HOME=`pwd`/install
+              cd act
+              echo "===== build act base ====="
+              export VLSI_TOOLS_SRC=`pwd`
+              ./configure $ACT_HOME
+              ./build
+              echo "===== install act base ====="
+              make install
+              cd ..
+       - run: 
+          name: Build install and test
+          command: |
+              export ACT_HOME=`pwd`/install
+              export PATH=$ACT_HOME/bin:$PATH
+              export VLSI_TOOLS_SRC=`pwd`/act
+              echo "===== build act addon ====="
+              make depend
+              make
+              echo "===== install act addon ====="
+              make install
+              echo "===== test act addon with dualrail ====="
+              make runtest
+              echo "===== test act addon with optimise ====="
+              make runtest optimize=1          
+              echo "===== test act addon with bundeled data ====="
+              make runtest bundeled=1
+
+workflows:
+   version: 2
+   build:
+     jobs: 
+        - ubuntu18
+        - centos8
+

@@ -18,7 +18,7 @@ failed=0
 #
 #  run_test name [option]
 #
-function run_test {
+run_test () {
     echo "Testing ${bold}$1 ${normal}(options: -e $1/run/expr.act)"
     # clear run directory
     if [ -d $1/run ];
