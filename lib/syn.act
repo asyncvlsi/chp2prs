@@ -109,11 +109,6 @@ defproc parselect(a1of1? c; r1of2 g[N]; a1of1 s[N])
     (i:N: g[i].t | g[i].f => _x[i]-)
     ot.out => _ot-
   }
-  sizing { 
-  p_n_mode <- 1;
-  _x[i]{-1}; 
-  _ot{-1}
-  }
   ctree<N,true> ct(_x);
   prs {
     ct.out & _ot #> c.a-
