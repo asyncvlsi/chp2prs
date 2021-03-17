@@ -20,7 +20,7 @@
  **************************************************************************
  */
 import "globals.act";
-import "syn/syngates.act";
+import "syngates.act";
 
 /* Syntax directed translation */
   
@@ -70,6 +70,13 @@ defproc loop(a1of1? c; r1of2? g[N]; a1of1! s[N])
     c.r => _r-
     _r | ot.out => g[0].r-
   }
+
+  sizing { 
+    leak_adjust <- 1; 
+    p_n_mode <- 1;
+    _r{-1}; 
+    g[0].r{-1}
+  }
 }
 
 export template<pint N;pbool has_else>
@@ -102,10 +109,24 @@ defproc parselect(a1of1? c; r1of2 g[N]; a1of1 s[N])
     (i:N: g[i].t | g[i].f => _x[i]-)
     ot.out => _ot-
   }
+  sizing { 
+  p_n_mode <- 1;
+  _x[i]{-1}; 
+  _ot{-1}
+  }
   ctree<N,true> ct(_x);
   prs {
     ct.out & _ot #> c.a-
   }
+  sizing { 
+    leak_adjust <- 1; 
+    p_n_mode <- 1;
+    c.a{-1};
+    //(;j:N: _x[j]{-1});
+    _ot{-1}
+  }
+  (j:N: sizing {leak_adjust <- 1; p_n_mode <- 1; _x[j]{-1} })
+
 }
 
 export template<pint N;pbool has_else>
@@ -125,6 +146,11 @@ defproc doloop(a1of1? c; r1of2 g; a1of1! s)
   prs {
     c.r => _r-
     _r | g.t => s.r-
+  }
+  sizing { 
+    leak_adjust <- 1; 
+    p_n_mode <- 1;
+    _r{-1}; s.r{-1}
   }
 }
 
@@ -160,6 +186,16 @@ export defproc fullseq (a1of1? go; a1of1! r)
       _goa => go.a-
       r.a => _ra-
  }
+   sizing { 
+    leak_adjust <- 1; 
+    p_n_mode <- 1;
+    r.r{-1}; 
+    x{-1};
+    _goa{-1};
+    _gor{-1};
+    go.a{-1};
+    _ra{-1}
+    }
 }
   
 export template<pint N>
