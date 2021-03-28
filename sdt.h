@@ -22,10 +22,8 @@
 #ifndef __CHP2PRS_STD_H__
 #define __CHP2PRS_STD_H__
 
-#include <hash.h>
 #include <string>
 #include <act/act.h>
-
 
 /*
  *

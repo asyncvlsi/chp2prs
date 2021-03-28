@@ -26,7 +26,6 @@
 #include <string.h>
 #include <act/act.h>
 #include <act/passes/netlist.h>
-#include "config.h"
 #include "check_chp.h"
 #include "cartographer.h"
 #ifdef CHP_OPTIMIZE
