@@ -31,7 +31,7 @@ CHPOPT=
 
 SUBDIRS=lib
 
-include $(VLSI_TOOLS_SRC)/scripts/Makefile.std
+include $(ACT_HOME)/scripts/Makefile.std
 
 #DFLAGS+=-DCHP_OPTIMIZE
 
