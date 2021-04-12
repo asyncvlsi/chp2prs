@@ -19,7 +19,7 @@
  *
  **************************************************************************
  */
-import "lib/globals.act";
+import "globals.act";
 
 namespace syn {
 

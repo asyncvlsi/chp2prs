@@ -19,8 +19,8 @@
  *
  **************************************************************************
  */
-import "lib/globals.act";
-import "lib/syngates.act";
+import "globals.act";
+import "syn/syngates.act";
 
 /* Syntax directed translation */
   
