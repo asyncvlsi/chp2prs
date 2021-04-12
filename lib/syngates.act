@@ -170,10 +170,13 @@ defproc ctree (bool? in[N]; bool out)
   }
 }
 
-export template<pint N>
+export template<pint M>
 defproc sigbuf (bool in, out)
 {
- { N >= 0 : "sigbuf: parameter error" };
+{ M >= 0 : "sigbuf: parameter error" };
+
+ pint N = M/3;
+  
  { N < 56 : "sigbuf: please revise your circuit, sigbuf with drive strength of 64+ requested" };
 
  bool _out;
