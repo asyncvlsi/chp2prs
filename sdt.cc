@@ -230,9 +230,8 @@ void SDTEngine::_construct_varmap (act_chp_lang_t *c)
     }
     v->nwrite++;
     _clear_var_flags ();
-    for (listitem_t *li = list_first (c->u.comm.rhs); li; li = list_next (li)){
-      Expr *e = (Expr *) list_value (li);
-      _construct_varmap_expr (e);
+    if (c->u.comm.e) {
+      _construct_varmap_expr (c->u.comm.e);
     }
     break;
   case ACT_CHP_RECV:
@@ -247,9 +246,8 @@ void SDTEngine::_construct_varmap (act_chp_lang_t *c)
       v->block_in = pblock;
     }
     v->nread++;
-    for (listitem_t *li = list_first (c->u.comm.rhs); li; li = list_next (li)){
-      ActId *id = (ActId *) list_value (li);
-      v = _var_getinfo (id);
+    if (c->u.comm.var) {
+      v = _var_getinfo (c->u.comm.var);
       v->nwrite++;
     }
     break;
@@ -406,15 +404,7 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
       Expr *e;
       int eid, vid;
       v = _var_getinfo (c->u.comm.chan);
-      if (list_length (c->u.comm.rhs) > 1) {
-	fatal_error ("Fix send tuples...");
-      }
-      if (list_length (c->u.comm.rhs) == 1) {
-	e = (Expr *) list_value (list_first (c->u.comm.rhs));
-      }
-      else {
-	e = NULL;
-      }
+      e = c->u.comm.e;
       if (e) {
 	_emit_expr (&eid, v->width, e);
       }
@@ -430,11 +420,8 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
       varmap_info *wv;
       
       v = _var_getinfo (c->u.comm.chan);
-      if (list_length (c->u.comm.rhs) > 1) {
-	fatal_error ("Fix recv tuples...");
-      }
-      if (list_length (c->u.comm.rhs) == 1) {
-	wv = _var_getinfo ((ActId *)list_value (list_first (c->u.comm.rhs)));
+      if (c->u.comm.var) {
+	wv = _var_getinfo (c->u.comm.var);
       }
       else {
 	wv = NULL;

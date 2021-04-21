@@ -221,44 +221,37 @@ void check (act_chp_lang_t *c)
       }
       else
       {
-        listitem_t *li;
-        for (li = list_first (c->u.comm.rhs); li; li = list_next (li))
-        {
-          if (c->type == ACT_CHP_SEND)
-          {
-            Expr *e = (Expr *) list_value (li);
-            expr_width = get_expr_bitwidth (e);
-            /* ensure correct sub-expressions in the send buffer */
-            if (expr_width == -1)
+	if (c->u.comm.e) {
+	  expr_width = get_expr_bitwidth (c->u.comm.e);
+	  /* ensure correct sub-expressions in the send buffer */
+	  if (expr_width == -1)
             {
               fprintf (stderr, "check_chp error: Expression operands have incompatible bit widths\n");
               exit (-1);
             }
             /* ensure the send buffer and channel have the same width */
-            else if (expr_width != TypeFactory::bitWidth(it) && expr_width != 0)
+	  else if (expr_width != TypeFactory::bitWidth(it) && expr_width != 0)
             {
               fprintf (stderr, "check_chp error: Channel and expression have incompatible bit widths\n");
               exit (-1);
             }
-          }
-          else
-          {
-            ActId *rec_var = (ActId *) list_value (li);
-            InstType *lit = P->Lookup(rec_var);
-            /* ensure valid receiving variable */
-            if (!lit)
+	}
+	if (c->u.comm.var) {
+	  ActId *rec_var = c->u.comm.var;
+	  InstType *lit = P->Lookup(rec_var);
+	  /* ensure valid receiving variable */
+	  if (!lit)
             {
-            	fprintf (stderr, "check_chp error: Variable %s not found\n", rec_var->getName());
-            	exit (1);
+	      fprintf (stderr, "check_chp error: Variable %s not found\n", rec_var->getName());
+	      exit (1);
             }
-            /* ensure channel bitwidth is equal to the variable bitwidth */
-            if (TypeFactory::bitWidth(lit) != TypeFactory::bitWidth(it))
+	  /* ensure channel bitwidth is equal to the variable bitwidth */
+	  if (TypeFactory::bitWidth(lit) != TypeFactory::bitWidth(it))
             {
               fprintf (stderr, "check_chp error: Receiving variable has insufficient width: %s\n", rec_var->getName());
               exit (-1);
             }
-          }
-        }
+	}
       }
       break;
     case ACT_CHP_SEMI:
