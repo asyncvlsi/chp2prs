@@ -46,6 +46,11 @@ int get_expr_bitwidth (Expr *e)
     case E_ASR:
 	return get_expr_bitwidth (e->u.e.l);
 
+   case E_MOD:
+	return get_expr_bitwidth (e->u.e.r);
+   case E_DIV:
+	return get_expr_bitwidth (e->u.e.l);
+
     case E_AND:
     case E_OR:
     case E_XOR:
