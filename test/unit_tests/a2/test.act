@@ -3,6 +3,6 @@ defproc a2() {
   bool x;
 
   chp {
-	x+;skip
+	x+;skip;x:=x
   }
 }

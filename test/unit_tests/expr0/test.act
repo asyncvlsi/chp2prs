@@ -6,7 +6,8 @@ defproc expr0() {
   chp {
     z:=16384;
     y:=32768;
-    x := (z > y) | (y > z)
+    x := (z > y) | (y > z);
+    x := x
   }
 }
 

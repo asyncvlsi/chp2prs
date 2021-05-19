@@ -3,6 +3,6 @@ defproc a4(chan?(int) x) {
   int y;
 
   chp {
-	skip;x?y;skip
+	skip;x?y;skip;y:=y
   }
 }
