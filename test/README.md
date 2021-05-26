@@ -6,13 +6,9 @@ make runtest
 ```
 will test the correctness of the repository by iterating through the the test/unit_tests folder, and for each test:
 * run the chp2prs executable on each `test.act` file
-* print the results into an `output/output.act` file
-* use `aflat` to convert the output to an `output/test.prs` file
-* run the unit test's `test.prsim` script on the production rules, and check the output of the prsim test, copied to `output/prsim.out` for any wrong assertions or fatal errors.
-
-`make runtest optimize=1` will place the outputted files into a `output_opt` folder within the unit_test
-
-`make runtest bundled=1` will place the outputted files into a `output_bundled` folder within the unit_test
+* print the results into an `run/sdt.act` file and optionally in `run/expr.act`
+* use `aflat` to convert the output instance in `tst.` to an `run/test.prs` file, prepending it with `init.prs`
+* after initialising the sim with `init_qdi.prsim` or `init_bd_prsim` run the unit test's `test.prsim` script on the production rules, and check the output of the prsim test, copied to `run/prsim.out` for any wrong assertions or fatal errors.
 
 ### Unit Test File Structure
 Each test has a dedicated directory.
@@ -32,5 +28,4 @@ Outputted files are placed in the output/, output_bundled/, or output_opt/ folde
  
 [ Optional Files ]
 
- * test_writer.txt = a file used to create the test.prsim for the unit test
- * test_opt.prsim = a prsim file to test the optimized output of the chp2prs prs
+ * test_writer.txt = a file used to create the test.prsim for the unit test - still needed?

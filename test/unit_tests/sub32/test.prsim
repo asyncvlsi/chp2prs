@@ -1,6 +1,6 @@
-source std_init.prsim
 
 set Reset 0
+mode run
 cycle
 
 assert t.c0.a 0

@@ -107,12 +107,12 @@ private:
   /*-- the varmap table --*/
   struct iHashtable *_varmap;
 
+protected:
   /*-- 
     SDT methods that you shouldn't have to override
     --*/
-  void _emit_guardlist (int isloop, act_chp_gc_t *gc, list_t *reslist);
+  virtual void _emit_guardlist (int isloop, act_chp_gc_t *gc, list_t *reslist);
 
-protected:
   /*-- used for block expression construction --*/
   struct iHashtable *_exprmap;
   list_t *_boolconst;

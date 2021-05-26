@@ -30,8 +30,9 @@
 #include "cartographer.h"
 #include <act/iter.h>
 #include <act/value.h>
+#include "config_pkg.h"
 
-#ifdef CHP_OPTIMIZE
+#ifdef FOUND_chp_opt
 #include <act/chp-opt/optimize.h>
 #endif
 
@@ -53,7 +54,7 @@
 /* Recursively called fn to handle different chp statement types */
 
 /* Print proc definition & override CHP variables */
-bool write_process_definition(FILE *fp, Process * p, const char * proc_name)
+bool BasicSDT::write_process_definition(FILE *fp, Process * p, const char * proc_name)
 {
   bool has_overrides = 0;
   bool has_bool_overrides = 0;
@@ -121,7 +122,7 @@ bool write_process_definition(FILE *fp, Process * p, const char * proc_name)
 }
 
 /* Initialize var_init_false vars for each CHP int */
-void initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
+void BasicSDT::initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
 {
   int bw = 0;
 
@@ -152,7 +153,7 @@ void BasicSDT::_emit_begin ()
   if (output_file) {
     output_stream = fopen(output_file, "w");
     if (!output_stream) {
-      fatal_error ("Could not open file `%s' for reading", output_file);
+      fatal_error ("Could not open file `%s' for writing", output_file);
     }
   }
   else {
@@ -175,7 +176,7 @@ void BasicSDT::_emit_begin ()
     fprintf (output_stream, "import \"syn/bundled.act\";\n");
   }
   else {
-    fprintf(output_stream, "import syn;\n");
+    fprintf(output_stream, "import \"syn/qdibasic/_all_.act\";\n");
   }
   if (_exprfile) {
     fprintf (output_stream, "import \"%s\";\n", _exprfile);

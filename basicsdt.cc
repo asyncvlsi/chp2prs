@@ -398,11 +398,21 @@ void BasicSDT::_emit_variable_mux (varmap_info *v)
 {
   /* if you need a mux for accessing variables, add it here */
   if (!v->fisbool) {
-    fprintf (output_stream, "   syn::var_int_ports<%d,%d,%d> var_",
+    // zero length arrays are not allowed, this is for simulation only, writing but not reading would not make sense in a real chip
+    if (v->nread == 0) {
+      fprintf (output_stream, "   syn::var_int_in_ports<%d,%d> var_", v->width, v->nwrite);
+      warning("you are generating a variable that is written but never read, in case this is a circuit for tapeout reexamine your design");
+    }
+    else fprintf (output_stream, "   syn::var_int_ports<%d,%d,%d> var_",
 	     v->width, v->nwrite, v->nread);
   }
   else {
-    fprintf (output_stream, "   syn::var_bool_ports<%d,%d> var_",
+    // zero length arrays are not allowed, this is for simulation only, writing but not reading would not make sense in a real chip
+    if (v->nread == 0){
+      fprintf(output_stream, "   syn::var_bool_in_ports<%d> var_", v->nwrite);
+      warning("you are generating a variable that is written but never read, in case this is a circuit for tapeout reexamine your design");
+    } 
+    else fprintf (output_stream, "   syn::var_bool_ports<%d,%d> var_",
 	     v->nwrite, v->nread);
   }    
   v->id->Print (output_stream);

@@ -31,9 +31,10 @@ run_test () {
 import "$1/run/sdt.act";
 sdt_$1 t;
 EOF
-    if aflat $1/run/tst.act > $1/run/test.prs
+    cp init.prs $1/run/test.prs
+    if aflat $1/run/tst.act >> $1/run/test.prs
     then
-	prsim -r $1/run/test.prs < $1/test.prsim > $1/run/prsim.out
+	cat init_qdi.prsim $1/test.prsim | prsim -r $1/run/test.prs > $1/run/prsim.out
 	if egrep '(WRONG|WARNING|Node)' $1/run/prsim.out >/dev/null
 	then
 	    echo "${bold}*** simulation failed ***${normal}"
@@ -63,6 +64,8 @@ fi
 
 cd "unit_tests"
 
+if [ -z $1 ];
+then
 for i in *
 do
     if [ -d $i -a -f $i/test.act ]
@@ -70,6 +73,9 @@ do
 	run_test $i
     fi
 done
+else
+run_test $1
+fi
 
 if [ $failed -eq 1 ]
 then

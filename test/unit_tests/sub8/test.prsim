@@ -1,4 +1,3 @@
-source std_init.prsim
 
 set Reset 0
 cycle

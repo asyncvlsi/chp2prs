@@ -1,7 +1,7 @@
 defproc comm() {
   int<32> x;
   int<32> y;
-  chan<32> a;
+  chan(int<32>) a;
 
   chp {
     x := 156707415 ;

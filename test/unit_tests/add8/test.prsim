@@ -1,15 +1,6 @@
-initialize
-load-scm "helper.scm"
-random
 
-mode reset
-set GND 0
-set Reset 1
-cycle
-status U
-
-mode run
 set Reset 0
+mode run
 cycle
 
 assert t.c0.a 0

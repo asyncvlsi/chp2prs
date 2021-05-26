@@ -1,0 +1,7 @@
+defproc loop3 (chan!(int<32>) Y) {
+  int<32> y;
+  
+  chp {
+    y:=0; *[ y:=y+1; Y!y ]
+  }
+}

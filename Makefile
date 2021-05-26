@@ -21,22 +21,34 @@
 BINARY=chp2prs.$(EXT)
 
 TARGETS=$(BINARY)
+include config.mk
 
+ifdef expropt_INCLUDE
+OBJS=main.o check_chp.o cartographer.o sdt.o basicsdt.o externoptsdt.o
+else
 OBJS=main.o check_chp.o cartographer.o sdt.o basicsdt.o
+endif
 
 SRCS=$(OBJS:.o=.cc)
 
+ifdef chp_opt_INCLUDE
+CHPOPT=-lchpopt
+else
 CHPOPT=
-#CHPOPT=-lchpopt
+endif
 
 SUBDIRS=lib
 
 include $(ACT_HOME)/scripts/Makefile.std
 
-#DFLAGS+=-DCHP_OPTIMIZE
+ifdef expropt_INCLUDE
+EXPRLIB=-lexpropt
+else
+EXPRLIB=
+endif
 
 $(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
-	$(CXX) $(CFLAGS) $(OBJS) -o $(BINARY) $(LIBACTPASS) $(CHPOPT)
+	$(CXX) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(LIBACTPASS) $(EXPRLIB)
 
 testreps:
 	@if [ -d test -a -x test/repeat_unit.sh ]; \
@@ -50,6 +62,16 @@ testreps:
 	fi
 
 debug: obj_main obj_cartographer obj_checkchp start_lldb
+
+obj_chpexpr2verilog:
+	@if [ -d $(EXT) -a -f $(EXT)/externoptsdt.o ] ; \
+	then \
+		(mv $(EXT)/externoptsdt.o externoptsdt.o); \
+	fi
+	@if [ -d $(EXT) -a -f $(EXT)/syntesis_helper.o ] ; \
+	then \
+		(mv $(EXT)/syntesis_helper.o syntesis_helper.o); \
+	fi
 
 obj_cartographer:
 	@if [ -d $(EXT) -a -f $(EXT)/cartographer.o ] ; \

@@ -1,0 +1,64 @@
+
+set-channel-neutral "t.A" 4
+set-channel-neutral "t.B" 4
+set-channel-neutral "t.C" 4
+set t.Y.a 0
+
+
+cycle
+system "echo 'reset completed'"
+status X
+set Reset 0
+mode run
+cycle
+
+assert t.c0.a 0
+assert t.A.a 0
+assert t.B.a 0
+assert t.C.a 0
+assert-channel-neutral "t.Y" 4
+
+set-channel-valid "t.A" 4 3
+set-channel-valid "t.B" 4 4
+set-channel-valid "t.C" 4 0
+system "echo 'sending first set'"
+cycle
+
+assert t.A.a 1
+assert t.B.a 1
+assert t.C.a 1
+set-channel-neutral "t.A" 4
+set-channel-neutral "t.B" 4
+set-channel-neutral "t.C" 4
+cycle
+assert t.A.a 0
+assert t.B.a 0
+assert t.C.a 0
+
+assert-var-int "t.y" 4 12
+assert-channel-valid "t.Y" 4 12
+set t.Y.a 1
+system "echo 'setting neutral'"
+cycle
+assert-channel-neutral "t.Y" 4
+set t.Y.a 0
+
+set-channel-valid "t.A" 4 2
+set-channel-valid "t.B" 4 3
+set-channel-valid "t.C" 4 7
+system "echo 'sending second set'"
+cycle
+system "echo 'checking second set'"
+
+assert t.A.a 1
+assert t.B.a 1
+assert t.C.a 1
+set-channel-neutral "t.A" 4
+set-channel-neutral "t.B" 4
+set-channel-neutral "t.C" 4
+cycle
+assert t.A.a 0
+assert t.B.a 0
+assert t.C.a 0
+assert-var-int "t.y" 4 13
+assert-channel-valid "t.Y" 4 13

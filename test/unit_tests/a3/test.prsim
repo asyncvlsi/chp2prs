@@ -1,13 +1,5 @@
-initialize
-load-scm "helper.scm"
-random
 watch Reset
 watch t.c0.a
-mode reset
-set Reset 1
-set GND 0
-cycle
-status U
 assert t.c0.r 0
 set Reset 0
 mode run

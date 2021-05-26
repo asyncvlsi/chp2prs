@@ -1,0 +1,12 @@
+initialize
+load-scm "helper_bd.scm"
+set GND 0
+set Vdd 1
+
+mode reset
+mode nounstab
+
+set Reset 1
+cycle
+status U
+
