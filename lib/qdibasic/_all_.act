@@ -19,6 +19,6 @@
  *
  **************************************************************************
  */
-import "syn/qdichan.act";
-import "syn/syn.act";
-import "syn/qdidpath.act";
+import "syn/qdibasic/chan.act";
+import "syn/qdibasic/syn.act";
+import "syn/qdibasic/dpath.act";

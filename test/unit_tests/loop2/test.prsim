@@ -1,0 +1,43 @@
+set-channel-neutral "t.A" 32
+cycle
+set Reset 0
+mode run
+cycle
+system "echo 'reset complete'"
+status X
+system "echo 'send 1'"
+set-channel-valid "t.A" 32 1
+cycle
+
+assert t.A.a 1
+set-channel-neutral "t.A" 32
+assert-var-int "t.y" 32 1
+cycle
+system "echo 'send 2'"
+set-channel-valid "t.A" 32 2
+assert t.A.a 0
+cycle
+
+assert t.A.a 1
+set-channel-neutral "t.A" 32
+assert-var-int "t.y" 32 2
+cycle
+system "echo 'send 3'"
+set-channel-valid "t.A" 32 3
+assert t.A.a 0
+cycle
+
+assert t.A.a 1
+set-channel-neutral "t.A" 32
+assert-var-int "t.y" 32 3
+cycle
+
+system "echo 'send 4'"
+set-channel-valid "t.A" 32 4
+assert t.A.a 0
+cycle
+
+assert t.A.a 1
+set-channel-neutral "t.A" 32
+assert-var-int "t.y" 32 4
+cycle

@@ -18,16 +18,29 @@
 #  Boston, MA  02110-1301, USA.
 #
 #-------------------------------------------------------------------------
-TARGETINSTALL=syn.act qdichan.act qdidpath.act _all_.act syngates.act 
+TARGETINSTALL=
+TARGETINSTALL_QDIBASIC=qdibasic/_all_.act qdibasic/dpath.act qdibasic/chan.act qdibasic/syn.act qdibasic/syngates.act 
+TARGETINSTALL_QDIOPT=qdiopt/_all_.act qdiopt/stdcells.act qdiopt/dpath.act 
+TARGETINSTALL_BDOPT=bdopt/_all_.act bdopt/stdcells.act bdopt/dpath.act bdopt/chan.act bdopt/syn.act bdopt/syngates.act 
+TARGETINSTALL_LIBERTY=osu018_stdcells.lib LICENSE.osu018_stdcells.lib
 
 include $(ACT_HOME)/scripts/Makefile.std
 
 all:
 	@echo "Done"
 
-install: install_act $(TARGETINSTALL)
+install: install_act $(TARGETINSTALL) $(TARGETINSTALL_QDIBASIC) $(TARGETINSTALL_QDIOPT) $(TARGETINSTALL_BDOPT)
 	@if [ ! -d $(ACT_HOME)/act/syn ]; then mkdir $(ACT_HOME)/act/syn; fi
 	@for i in $(TARGETINSTALL); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
+	@if [ ! -d $(ACT_HOME)/act/syn/qdibasic ]; then mkdir $(ACT_HOME)/act/syn/qdibasic; fi
+	@for i in $(TARGETINSTALL_QDIBASIC); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
+	@if [ ! -d $(ACT_HOME)/act/syn/qdiopt ]; then mkdir $(ACT_HOME)/act/syn/qdiopt; fi
+	@for i in $(TARGETINSTALL_QDIOPT); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
+	@if [ ! -d $(ACT_HOME)/act/syn/bdopt ]; then mkdir $(ACT_HOME)/act/syn/bdopt; fi
+	@for i in $(TARGETINSTALL_BDOPT); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
+	@if [ ! -d $(ACT_HOME)/act/syn/liberty ]; then mkdir $(ACT_HOME)/act/syn/liberty; fi
+	@for i in $(TARGETINSTALL_LIBERTY); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/liberty/$$i; done
 	@$(ACT_HOME)/scripts/install globals.act $(ACT_HOME)/act/globals.act
+
 
 -include Makefile.deps

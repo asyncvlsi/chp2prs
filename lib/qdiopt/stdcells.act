@@ -1,0 +1,561 @@
+import "globals.act";
+import "syn/qdibasic/chan.act"; // import via _all_
+import "syn/qdibasic/syn.act"; // import via _all_
+
+/**
+ * This library contains QDI versions of stdcell library, with single bit channels.
+ * for HA and FA multi output cells it assumes the request signal is the same and will short it.
+ */
+
+namespace syn {
+
+export 
+template <pint N>
+defproc copy (syn::sdtexprchan<1> in; syn::sdtexprchan<1> out[N]) 
+{ 
+  (i:N: in = out[i];)
+}
+
+export defproc source_GND(syn::sdtexprchan<1> out) 
+{
+  bool _f;
+  prs {
+    out.r => _f-
+    _f => out.d.r[0].f-
+  }
+  out.d.r[0].t = GND;
+  sizing {p_n_mode <- 1; leak_adjust <- 1; _f{-1}; out.d.r[0].f{-1}}
+}
+
+export defproc source_Vdd(syn::sdtexprchan<1> out) 
+{
+  bool _t;
+  prs {
+    out.r => _t-
+    _t => out.d.r[0].t-
+  }
+  out.d.r[0].f = GND;
+  sizing {p_n_mode <- 1; leak_adjust <- 1; _t{-1}; out.d.r[0].t{-1}}
+}
+
+/*-- inverters --*/
+
+export template<pint N>
+defproc inv (syn::sdtexprchan?<1> A; syn::sdtexprchan!<1> Y)
+{
+  A.r = Y.r;
+  sigbuf<N*3> _f(A.d.r[0].t,Y.d.r[0].f);
+  sigbuf<N*3> _t(A.d.r[0].f,Y.d.r[0].t);
+}
+
+export defcell INVX1 <: inv<1>() { } 
+export defcell INVX2 <: inv<2>() { } 
+export defcell INVX4 <: inv<4>() { }
+export defcell INVX8 <: inv<8>() { }
+
+/*-- clock delay buffers --*/
+
+template<pint N>
+defproc dbuf (bool? in; bool! out)
+{
+  {false: "should not have been used by the syntesis tool no qdi equivilent"};
+  bool sig[2*N+1];
+  sig[0] = in;
+  sig[2*N] = out;
+  prs {
+    (i:2*N: ~sig[i] <80;2> -> sig[i+1]+
+             sig[i] <40;2> -> sig[i+1]-
+     )
+  }
+}
+
+export defproc CLKBUF1 <: dbuf<2>() { }
+export defproc CLKBUF2 <: dbuf<3>() { }
+export defproc CLKBUF3 <: dbuf<4>() { }
+
+
+/*--  signal buffers --*/
+
+export template<pint N>
+defproc buf (syn::sdtexprchan?<1> A; syn::sdtexprchan!<1> Y)
+{
+  A.r = Y.r;
+  sigbuf<N*3> _f(A.d.r[0].f,Y.d.r[0].f);
+  sigbuf<N*3> _t(A.d.r[0].t,Y.d.r[0].t);
+}
+  
+export defcell BUFX1 <: buf<1>() { }
+export defcell BUFX2 <: buf<2>() { }
+export defcell BUFX4 <: buf<4>() { }
+
+  
+/*-- simple gates --*/
+export defcell NOR2X1 (syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y)
+{
+  A.r = Y.r;
+  B.r = Y.r;
+  bool _f,_t;
+  prs {
+     A.d.r[0].f & B.d.r[0].f -> _t-
+     A.d.r[0].t & (B.d.r[0].f | B.d.r[0].t) | B.d.r[0].t & A.d.r[0].f -> _f-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+}
+  
+export defcell NOR3X1 (syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y)
+{
+  A.r = Y.r;
+  B.r = Y.r;
+  C.r = Y.r;
+  bool _f,_t;
+  prs {
+     A.d.r[0].f & B.d.r[0].f & C.d.r[0].f -> _t-
+     A.d.r[0].t & (B.d.r[0].t | B.d.r[0].f) & (C.d.r[0].t | C.d.r[0].f) | B.d.r[0].t & A.d.r[0].f & (C.d.r[0].t | C.d.r[0].f) | C.d.r[0].t & B.d.r[0].f & A.d.r[0].f -> _f-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+} 
+
+export defcell OR2X1 (syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y)
+{
+  A.r = Y.r;
+  B.r = Y.r;
+  bool _f,_t;
+  prs {
+     A.d.r[0].f & B.d.r[0].f -> _f-
+     A.d.r[0].t & (B.d.r[0].f | B.d.r[0].t) | B.d.r[0].t & A.d.r[0].f -> _t-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+}
+  
+export defcell OR2X2 (syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y)
+{
+  A.r = Y.r;
+  B.r = Y.r;
+  bool _f,_t;
+  prs {
+     A.d.r[0].f & B.d.r[0].f -> _f-
+     A.d.r[0].t & (B.d.r[0].f | B.d.r[0].t) | B.d.r[0].t & A.d.r[0].f -> _t-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-2}; Y.d.r[0].f {-2}; _t{-1}; _f{-1}}
+} 
+
+export defcell NAND2X1 (syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y)
+{
+  A.r = Y.r;
+  B.r = Y.r;
+  bool _f,_t;
+  prs {
+     A.d.r[0].f & (B.d.r[0].t | B.d.r[0].f) | A.d.r[0].t & B.d.r[0].f -> _t-
+     A.d.r[0].t & B.d.r[0].t -> _f-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-2}; Y.d.r[0].f {-2}; _t{-1}; _f{-1}}
+}
+
+export defcell NAND3X1 (syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y)
+{
+    A.r = Y.r;
+    B.r = Y.r;
+    C.r = Y.r;
+    bool _f,_t;
+    prs {
+     A.d.r[0].f & (B.d.r[0].t | B.d.r[0].f) & (C.d.r[0].t | C.d.r[0].f) | B.d.r[0].f & A.d.r[0].t & (C.d.r[0].t | C.d.r[0].f)| C.d.r[0].f & A.d.r[0].t & B.d.r[0].t-> _t-
+     A.d.r[0].t & B.d.r[0].t & C.d.r[0].t -> _f-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+} 
+
+export defcell AND2X1 (syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) 
+{
+  A.r = Y.r;
+  B.r = Y.r;
+  bool _f,_t;
+  prs {
+     A.d.r[0].f & (B.d.r[0].t | B.d.r[0].f) | B.d.r[0].f & A.d.r[0].t -> _f-
+     A.d.r[0].t & B.d.r[0].t -> _t-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+} 
+
+export defcell AND2X2 (syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) 
+{   
+  A.r = Y.r;
+  B.r = Y.r;
+  bool _f,_t;
+  prs {
+     A.d.r[0].f & (B.d.r[0].t | B.d.r[0].f) | B.d.r[0].f & A.d.r[0].t -> _f-
+     A.d.r[0].t & B.d.r[0].t -> _t-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-2}; Y.d.r[0].f {-2}; _t{-1}; _f{-1}}
+} 
+
+export defcell XOR2X1 (syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y)
+{  
+  A.r = Y.r;
+  B.r = Y.r;
+  bool _f,_t;
+  prs {
+     A.d.r[0].f & B.d.r[0].t | A.d.r[0].t & B.d.r[0].f  -> _t-
+     A.d.r[0].f & B.d.r[0].f | A.d.r[0].t & B.d.r[0].t  -> _f-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+}
+
+export defcell XNOR2X1 (syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y)
+{  
+  A.r = Y.r;
+  B.r = Y.r;
+  bool _f,_t;
+  prs {
+     A.d.r[0].f & B.d.r[0].t | A.d.r[0].t & B.d.r[0].f  -> _f-
+     A.d.r[0].f & B.d.r[0].f | A.d.r[0].t & B.d.r[0].t  -> _t-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+}
+
+export defcell MUX2X1 (syn::sdtexprchan?<1> A, B, S; syn::sdtexprchan!<1> Y)
+{
+    A.r = Y.r;
+    B.r = Y.r;
+    S.r = Y.r;
+    bool _f,_t;
+    prs {
+     A.d.r[0].t & S.d.r[0].t & (B.d.r[0].f | B.d.r[0].t) | B.d.r[0].t & S.d.r[0].f & (A.d.r[0].f | A.d.r[0].t) -> _f-
+     A.d.r[0].f & S.d.r[0].t & (B.d.r[0].f | B.d.r[0].t) | B.d.r[0].f & S.d.r[0].f & (A.d.r[0].f | A.d.r[0].t) -> _t-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~S.d.r[0].t & ~S.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~S.d.r[0].t & ~S.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+}
+
+export defcell OAI21X1 (syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y)
+{
+  A.r = Y.r;
+  B.r = Y.r;
+  C.r = Y.r;
+  bool _f,_t;
+  prs {
+     A.d.r[0].f & B.d.r[0].f & C.d.r[0].t | C.d.r[0].f & (A.d.r[0].t | A.d.r[0].f) & ( B.d.r[0].t | B.d.r[0].f ) -> _t-
+     (A.d.r[0].t & ( B.d.r[0].t | B.d.r[0].f ) | B.d.r[0].t & A.d.r[0].f ) & C.d.r[0].t -> _f-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+}
+
+export defcell AOI21X1 (syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y) 
+{ 
+  A.r = Y.r;
+  B.r = Y.r;
+  C.r = Y.r;
+  bool _f,_t;
+  prs {
+     (A.d.r[0].f & (B.d.r[0].t | B.d.r[0].f ) | B.d.r[0].f & A.d.r[0].t ) & C.d.r[0].f -> _t-
+     (A.d.r[0].t & B.d.r[0].t & C.d.r[0].f) | C.d.r[0].t & (A.d.r[0].t | A.d.r[0].f) & ( B.d.r[0].t | B.d.r[0].f )-> _f-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+}
+
+export defcell OAI22X1 (syn::sdtexprchan?<1> A, B, C, D; syn::sdtexprchan!<1> Y)
+{
+  A.r = Y.r;
+  B.r = Y.r;
+  C.r = Y.r;
+  D.r = Y.r;
+  bool _f,_t;
+  prs {
+     (A.d.r[0].f & B.d.r[0].f & (C.d.r[0].f | C.d.r[0].t) & (D.d.r[0].f | D.d.r[0].t)) | (C.d.r[0].f & D.d.r[0].f & (A.d.r[0].f | A.d.r[0].t) & (B.d.r[0].f | B.d.r[0].t)) -> _t-
+     (A.d.r[0].t & (B.d.r[0].f | B.d.r[0].t)| B.d.r[0].t & A.d.r[0].f) & (C.d.r[0].t & (D.d.r[0].f | D.d.r[0].t ) | D.d.r[0].t & C.d.r[0].f) -> _f-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f & ~D.d.r[0].t & ~D.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f & ~D.d.r[0].t & ~D.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+}
+
+export defcell AOI22X1 (syn::sdtexprchan?<1> A, B, C, D; syn::sdtexprchan!<1> Y) 
+{ 
+  A.r = Y.r;
+  B.r = Y.r;
+  C.r = Y.r;
+  D.r = Y.r;
+  bool _f,_t;
+  prs {
+     (A.d.r[0].f & (B.d.r[0].f | B.d.r[0].t) | B.d.r[0].f & A.d.r[0].t) & (C.d.r[0].f & (D.d.r[0].f | D.d.r[0].t) | D.d.r[0].f & C.d.r[0].t) -> _t-
+     (A.d.r[0].t & B.d.r[0].t & (C.d.r[0].f | C.d.r[0].t) & (D.d.r[0].f | D.d.r[0].t)) | (C.d.r[0].t & D.d.r[0].t & (A.d.r[0].f | A.d.r[0].t) & (B.d.r[0].f | B.d.r[0].t)) -> _f-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f & ~D.d.r[0].t & ~D.d.r[0].f -> _t+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f & ~C.d.r[0].t & ~C.d.r[0].f & ~D.d.r[0].t & ~D.d.r[0].f -> _f+
+     _f => Y.d.r[0].f-
+     _t => Y.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.d.r[0].t {-1}; Y.d.r[0].f {-1}; _t{-1}; _f{-1}}
+} 
+
+  
+/*--- arithmetic ---*/
+  
+export defcell HAX1 (syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> YC, YS)
+{
+  A.r = YS.r;
+  B.r = YS.r;
+  YC.r = YS.r;
+  bool _fc,_tc,_fs,_ts;
+  prs {
+     A.d.r[0].f & (B.d.r[0].t | B.d.r[0].f) | B.d.r[0].f & A.d.r[0].t -> _fc-
+     A.d.r[0].t & B.d.r[0].t -> _tc-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _tc+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _fc+
+     _fc => YC.d.r[0].f-
+     _tc => YC.d.r[0].t-
+  
+     A.d.r[0].f & B.d.r[0].t | A.d.r[0].t & B.d.r[0].f  -> _ts-
+     A.d.r[0].f & B.d.r[0].f | A.d.r[0].t & B.d.r[0].t  -> _fs-
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _ts+
+     ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _fs+
+     _fs => YS.d.r[0].f-
+     _ts => YS.d.r[0].t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; YS.d.r[0].t {-1}; YS.d.r[0].f {-1}; _tc{-1}; _fc{-1}; YC.d.r[0].t {-1}; YC.d.r[0].f {-1}; _tc{-1}; _fc{-1}}
+}
+
+export defproc FAX1 (syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> YC, YS)
+{
+  A.r = YS.r;
+  B.r = YS.r;
+  C.r = YS.r;
+  YC.r = YS.r;
+  bool _st, _sf, _ct, _cf;
+  prs {
+    A.d.r[0].t & B.d.r[0].t | (A.d.r[0].t | B.d.r[0].t) & C.d.r[0].t -> _ct-
+    ~C.d.r[0].t & ~C.d.r[0].f & ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f  -> _ct+
+
+    A.d.r[0].f & B.d.r[0].f | (A.d.r[0].f | B.d.r[0].f) & C.d.r[0].f -> _cf-
+    ~C.d.r[0].t & ~C.d.r[0].f & ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f  -> _cf+
+
+    C.d.r[0].t & (A.d.r[0].t & B.d.r[0].t | A.d.r[0].f & B.d.r[0].f) | C.d.r[0].f & (A.d.r[0].t & B.d.r[0].f | A.d.r[0].f & B.d.r[0].t) -> _st-
+    ~C.d.r[0].t & ~C.d.r[0].f & ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _st+
+
+    C.d.r[0].t & (A.d.r[0].f & B.d.r[0].t | A.d.r[0].t & B.d.r[0].f) | C.d.r[0].f & (A.d.r[0].f & B.d.r[0].f | A.d.r[0].t & B.d.r[0].t) -> _sf-
+    ~C.d.r[0].t & ~C.d.r[0].f & ~A.d.r[0].t & ~A.d.r[0].f & ~B.d.r[0].t & ~B.d.r[0].f -> _sf+
+
+    _ct => YC.d.r[0].t-
+    _cf => YC.d.r[0].f-
+    _st => YS.d.r[0].t-
+    _sf => YS.d.r[0].f-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; YC.d.r[0].t{-1}; YC.d.r[0].f{-1}; YS.d.r[0].t{-1}; YS.d.r[0].f{-1} ; _st{-1}; _sf{-1}; _ct{-1}; _cf{-1}}
+
+}
+
+/*
+export defproc FAX1 (syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> YC, YS)
+{
+  HAX1 hadd1(A,B);
+  HAX1 hadd2(C,hadd1.YS, YS);
+  OR2X1 or(hadd1.YC, hadd2.YC, YC);
+ }*/
+
+/*--- buffered transmission gates ---*/
+/*  
+export defcell TBUF1 (bool? A, EN; bool! Y)
+{
+  {false: "should not have been used by the syntesis tool no qdi equivilent"};
+  bool _en;
+  prs {
+    EN => _en-
+
+   ~A & ~_en -> Y+
+    A & EN -> Y-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; _en{-1}; Y{-1} }
+}
+ 
+export defcell TBUF2 (bool? A, EN; bool! Y)
+{
+  {false: "should not have been used by the syntesis tool no qdi equivilent"};
+  bool _en;
+  prs {
+    EN => _en-
+
+   ~A & ~_en -> Y+
+    A & EN -> Y-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; _en{-2}; Y{-2,2} }
+}
+*/
+/*--- clocked elements ---*/
+/*
+export defcell LATCH (bool? CLK, D; bool! Q)
+{
+  {false: "should not have been used by the syntesis tool no qdi equivilent"};
+  bool _q, _clk;
+  prs {
+    CLK => _clk-
+
+   [keeper=0] D<10> & CLK -> _q-
+   ~D<20> & ~_clk -> _q+
+
+   //feedback
+  [iskeeper=1;keeper=0] ~Q<10> & ~CLK -> _q+    
+  [iskeeper=1] Q<10> & _clk -> _q-
+
+    _q => Q-
+  }
+  sizing { _clk{-2}; Q{-2} }
+}
+ 
+export defproc DFFPOSX1 (bool? CLK, D; bool! Q)
+{
+  {false: "should not have been used by the syntesis tool no qdi equivilent"};
+  bool _q, __q, QB, _clk;
+
+  prs {
+    CLK<20> -> _clk-
+   ~CLK<40> -> _clk+
+
+    _q<10> -> __q-
+   ~_q<20> -> __q+
+
+   QB<20> -> Q-
+  ~QB<40> -> Q+
+
+   [keeper=0] D<10> & _clk -> _q-
+  ~D<20> & ~CLK -> _q+
+
+  // feedback
+  [iskeeper=1;keeper=0] ~__q<20> & ~_clk -> _q+
+  [iskeeper=1]  __q<10> & CLK -> _q-
+
+  [keeper=0] ~__q<20> & ~_clk -> QB+
+   __q<10> & CLK -> QB-  
+
+  // feedback
+  [iskeeper=1;keeper=0] ~Q<10> & ~CLK -> QB+
+  [iskeeper=1] Q<10> & _clk -> QB-
+  }
+}
+ 
+export defproc DFFNEGX1 (bool? CLK, D; bool! Q)
+{
+  {false: "should not have been used by the syntesis tool no qdi equivilent"};
+  bool _q, __q, QB, _clk;
+
+  prs {
+    CLK<20> -> _clk-
+   ~CLK<40> -> _clk+
+
+    _q<10> -> __q-
+   ~_q<20> -> __q+
+
+   QB<20> -> Q-
+  ~QB<40> -> Q+
+
+   [keeper=0] D<10> & CLK -> _q-
+  ~D<20> & ~_clk -> _q+
+
+  // feedback
+  [iskeeper=1;keeper=0] ~__q<20> & ~CLK -> _q+
+  [iskeeper=1]  __q<10> & _clk -> _q-
+
+  [keeper=0] ~__q<20> & ~CLK -> QB+
+   __q<10> & _clk -> QB-  
+
+  // feedback
+  [iskeeper=1;keeper=0] ~Q<10> & ~_clk -> QB+
+  [iskeeper=1] Q<10> & CLK -> QB-
+  }
+}
+
+export defproc DFFSR (bool? CLK, R, S, D; bool! Q)
+{
+  {false: "should not have been used by the syntesis tool no qdi equivilent"};
+  bool _clk, __clk, QB, _dl;
+  bool _Ro, _So;
+  bool _So2;
+  bool _qb;
+
+  prs {
+    QB<10> -> Q-
+   ~QB<20> -> Q+
+
+    CLK<10> -> _clk-
+   ~CLK<20> -> _clk+
+
+    _clk<10> -> __clk-
+   ~_clk<20> -> __clk+
+
+   R<20> & _So -> _Ro-
+  ~R<20> | ~_So -> _Ro+
+
+    S<20> & _dl -> _So-
+   ~S<20> | ~_dl -> _So+
+
+   [keeper=0] D<10> & _clk -> _dl-
+            ~D<20> & ~__clk<10> -> _dl+
+
+    R<20> & _qb -> QB-
+   ~R<20> | ~_qb -> QB+
+
+    QB<20> & S -> _So2-
+   ~QB<20> | ~S -> _So2+
+
+   // input stage feedback
+   transgate<10> (__clk,_clk,_Ro,_dl)
+
+   // input to output
+   transgate<10> (__clk,_clk,_So,_qb)
+
+  // output feedback
+   transgate<10> (_clk,__clk,_So2,_qb)
+  }
+}
+ */
+}

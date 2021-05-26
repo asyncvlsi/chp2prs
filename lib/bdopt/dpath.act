@@ -1,0 +1,291 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2020 Rajit Manohar
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+//import "globals.act";
+
+namespace syn {
+
+/*
+ * Datapath elements
+ *
+ *   Need to define:
+ *      - variables
+ *      - send
+ *      - receive
+ *      - expression evaluation
+ *
+ */
+
+export defproc delaybuf (bool in, out)
+{
+  bool _x;
+  prs
+  {
+      in => _x-
+      _x => out-
+  }
+}
+
+export template<pint D>
+defproc delay (bool in, out)
+{
+  delaybuf d[D];
+  (i:D-1:d[i].out=d[i+1].in;)
+  d[0].in = in;
+  d[D-1].out = out;
+}
+
+/**
+ * a variable, represented by a cross coupled inverter.
+ * with a week pullup, the variable is written with a strong pulldown
+ * @param W: how many bits the variable has
+ * @param I: the default bool the variable is set to on reset
+ */ 
+export template<pint W; pbool I>
+defproc var_init(sdtvar<W> v) 
+{
+  prs {
+    (i:W:
+       v.r[i].f<8> -> v.r[i].t-
+       v.r[i].t<8> -> v.r[i].f-
+      [weak=1] ~v.r[i].t<4,4> -> v.r[i].f+
+      [weak=1] ~v.r[i].f<4,4> -> v.r[i].t+
+
+      Reset -> v.r[i].d[int(~I)]-
+     )
+  }
+  (j:W: sizing {leak_adjust <- 1;  v.r[j].d[int(~I)]{-1} })
+}
+
+/**
+ * a transfer triggers a pull channel (sdtexprchan) and puts the result on a push channel (sdtchan).
+ * @param W: width of the push and pull channels
+ */
+export template<pint W>
+defproc transfer(a1of1? c; sdtexprchan?<W> e; sdtchan!<W> ch)
+{
+  c.r = e.r;
+  e.a = ch.r;
+  e.d = ch.d;
+  c.a = ch.a;
+}
+
+/**
+ * recvport gates/triggers a variable write on a connected write port.
+ * @param W: width of the port and channel
+ */
+export template<pint W>
+defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W> port)
+{
+  prs {
+    c.r & ch.r #> port.r+
+  }
+  ch.d = port.d;
+  ch.a = port.a;
+  c.a = port.a;
+}
+
+/**
+ * a port mux for reading c that selects from multiple send channels based on control channels
+ * @param W: wodth of the channels
+ * @param N: number of input channels
+ */
+export template<pint W,N>
+defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
+{
+  { N > 0 : "Parameter out of range" };
+
+
+  [ N = 1 -> m[0] = c;
+  [] else -> 
+       delay<3> dly[N];
+       sigbuf<N/3> ctl_req[N];
+       (i:N: ctl_req[i].in = ctrl[i].r;)
+       AND2X1 data_and[N][W];
+       (i:N: (j:W: data_and[i][j].A = ctl_req[i].out;
+                  data_and[i][j].B = c.d[j];
+                  data_and[i][j].Y = m[i].d[j]; 
+                  )
+              dly[i].out = m[i].r;
+              )
+       
+       prs {
+         (i:N: ctl_req[i].out & c.r #> dly[i].in+
+            )
+       }
+
+       (i:N: m[i].a = ctrl[i].a;)
+       ortree<N> o(,c.a);
+       (i:N: m[i].a=o.in[i];)
+  ]
+
+}
+
+/**
+ * a port mux for writing c from multiple channels
+ * @param W: wodth of the channels
+ * @param N: number of output channels
+ */
+export template<pint W,N>
+defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
+{
+  { N > 0 : "Parameter out of range" };
+
+
+  [ N = 1 -> m[0] = c;
+  [] else ->
+       bool c_a;
+       sigbuf<W> s(c.a,c_a);
+       AND2X1 _mux[W][N];
+       ortree<N> ortr[W];
+       ortree<N> orreq;
+       (i:W: (j:N: 
+                  _mux[i][j].A = m[j].d[i]; 
+                  _mux[i][j].B = m[j].r;
+                  _mux[i][j].Y = ortr[i].in[j];
+              )
+              ortr[i].out = c.d[i];
+        )
+        (j:N: orreq.in[j] = m[j].r;)
+       delay<20> dly_req(orreq.out,c.r);
+       prs {
+          /* ack the appropriate input */
+          (i:N: ~c_a & ~m[i].r #> m[i].a-)
+        }
+
+
+        //(i:W: sizing {leak_adjust <- 1; _t[i]{-1};  _f[i]{-1}; c.d.r[i].t{-1};  c.d.r[i].f{-1}} )
+  ]
+}
+
+
+/*-- variable access ports --*/
+/**
+ * the write port is a provides the pull down element to set a variable.
+ * it does so when the channel issues a request
+ * @param W: width of the channel and variable
+ *
+ * NOTE: @TODO if timing analysis is to hard go back to validation tree
+ */
+export template<pint W>
+defproc writeport(sdtvar<W> var; sdtchan<W> port)
+{
+  bool _wack[W];
+  bool _d_B[W];
+  bool req_in, _dly_req_in;
+  delay<5> dly(req_in);
+  sigbuf<W> s(port.r,req_in);
+  prs {
+    (i:W: [keeper=0] port.d[i] & req_in & _dly_req_in -> var.r[i].f-
+          [keeper=0] _d_B[i] & req_in & _dly_req_in -> var.r[i].t-
+          port.d[i] => _d_B[i]-
+     )
+    dly.out => _dly_req_in-
+    Reset | _dly_req_in => port.a-
+  }
+}
+
+/**
+ * the read port gives out the value of the variable on request.
+ * @param W: width of the channel and variable
+ */
+export template<pint W>
+defproc readport(sdtvar<W> var; sdtexprchan<W> out)
+{
+  bool xout, _xout;
+
+  sigbuf<2*W> s(xout,_xout);
+  delay<4> dly(out.r, out.a);
+  
+  prs {
+    out.r => xout-
+    (i:W:
+     ~_xout & ~var.r[i].f -> out.d[i]+
+     _xout -> out.d[i]-
+     )
+  }
+}
+
+/**
+ * initialises a variable and creates the appropriate read and write ports.
+ * @param W: width of the variable
+ * @param NO: number of output ports
+ * @param NI: number of input ports
+ */
+export template<pint W; pint NI,NO>
+defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
+{
+  var_init<W,false> x(v);
+  [ NO > 0 -> readport<W> r[NO]; 
+              (i:NO: r[i].var=x.v; r[i].out=out[i];)
+  ]
+  [ NI > 0 -> writeport<W> wr[NI]; 
+              (j:NI: wr[j].var=x.v; wr[j].port=in[j];)
+  ]
+} 
+
+/*
+ * this is a workarround for simulation cases where you have 0 read ports, in a physical implementation that would not make sense,
+ * zero length arrays are not allowed.
+ */
+export template<pint W; pint NI>
+defproc var_int_in_ports(sdtvar<W> v; sdtchan<W> in[NI])
+{
+  var_int_ports<W,NI,1> ports(v,in);
+  ports.out[0].r = GND;
+}
+
+
+/**
+ * recv is a write port - so a write to a variable - that is triggered/gated by a ctl channel.
+ * @param W: width of the variable and channel
+ */
+export template<pint W>
+defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
+{
+  sdtchan<W> portch;
+  recvport<W> gate(.c=c,.ch=ch,.port=portch);
+  writeport<W> port(.var=var,.port=portch);
+}
+
+export defproc trueto1of2(r1of2 out)
+{
+  out.a = out.t;
+  out.f = GND;
+  out.d[0] = out.t;
+  out.r = out.a;
+}
+
+export defproc bdto1of2(r1of2 out)
+{
+  bool _d, _t, _f;
+  prs {
+    out.d[0] => _d-
+    out.r & out.a & out.d[0] -> _t-
+    ~out.a -> _t+
+    _t => out.t-
+    out.r & out.a & _d -> _f-
+     ~out.a -> _f+
+    _f => out.f-
+  }
+}
+
+}

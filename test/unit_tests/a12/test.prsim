@@ -1,4 +1,3 @@
-source std_init.prsim
 
 assert t.c0.r 0
 
@@ -6,6 +5,7 @@ watch t.x.r[0].t
 watch t.x.r[0].f
 
 set Reset 0
+mode run
 cycle
 
 assert t.c0.a 0

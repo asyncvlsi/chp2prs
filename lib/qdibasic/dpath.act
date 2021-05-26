@@ -47,7 +47,9 @@ defproc var_init(sdtvar<W> v)
       Reset -> v.r[i].d[int(~I)]-
      )
   }
+  (j:W: sizing {p_n_mode <- 1; leak_adjust <- 1;  v.r[j].d[int(~I)]{-1} })
 }
+
 
 export template<pint W; pint NI,NO>
 defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
@@ -60,22 +62,35 @@ defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
 
   [ NI = 1 -> w.in=in[0];
   [] NI > 1 -> 
-      bool _t[W], _f[W];
       bool _a[NI];
+      ortree<NI> ot[W];
+      ortree<NI> of[W];
+      (i:W: (j:NI: 
+                in[j].d.r[i].t = ot[i].in[j];
+                in[j].d.r[i].f = of[i].in[j];)
+                w.in.d.r[i].f = of[i].out;
+                w.in.d.r[i].t = ot[i].out;)
       prs {
-        (i:W: (|j:NI: in[j].d.r[i].t) => _t[i]-
-	      (|j:NI: in[j].d.r[i].f) => _f[i]-
-	      _t[i] => w.in.d.r[i].t-
-	      _f[i] => w.in.d.r[i].f-
-	)
-	(i:NI: 
-	   w.in.a & (in[i].d.r[0].t|in[i].d.r[0].f) -> _a[i]-
-	   ~w.in.a & ~(in[i].d.r[0].t|in[i].d.r[0].f) -> _a[i]+
-	   _a[i] => in[i].a-
-	)
+        (i:NI: 
+          w.in.a & (in[i].d.r[0].t|in[i].d.r[0].f) -> _a[i]-
+          ~w.in.a & ~(in[i].d.r[0].t|in[i].d.r[0].f) -> _a[i]+
+          _a[i] => in[i].a-
+        )
       }
+      (i:NI: sizing {p_n_mode <- 1; leak_adjust <- 1; in[i].a{-1}; _a[i]{-1}})
   ]
-}  
+} 
+
+/*
+ * this is a workarround for simulation cases where you have 0 read ports, in a physical implementation that would not make sense,
+ * zero length arrays are not allowed.
+ */
+export template<pint W; pint NI>
+defproc var_int_in_ports(sdtvar<W> v; sdtchan<W> in[NI])
+{
+  var_int_ports<W,NI,1> ports(v,in);
+  ports.out[0].r = GND;
+}
 
 
 export template<pint W>
@@ -103,11 +118,18 @@ defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
       ~cr  & ~ch.d.r[i].t & ~ch.d.r[i].f -> wack[i]+
      )
   }
+  (j:W: sizing {p_n_mode <- 1; leak_adjust <- 1;  wack[j]{-1}; var.r[j].t{-1};  var.r[j].f{-1} })
+  
 
   ctree<W,false> ct(wack);
   
   prs {
     Reset | ct.out => c.a-
+  }
+  sizing {
+    leak_adjust <- 1; 
+    p_n_mode <- 1;
+    c.a{-1}
   }
   c.a = ch.a;
 }
@@ -122,10 +144,11 @@ defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W> port)
   prs {
       (i:W: cr & ch.d.r[i].t #> _t[i]-
             cr & ch.d.r[i].f #> _f[i]-
-	    _t[i] => port.d.r[i].t-
-	    _f[i] => port.d.r[i].f-
+        _t[i] => port.d.r[i].t-
+        _f[i] => port.d.r[i].f-
       )
   }
+  (j:W: sizing {p_n_mode <- 1; leak_adjust <- 1; _t[j]{-1};  _f[j]{-1}; port.d.r[j].t{-1};  port.d.r[j].f{-1} })
   port.a = c.a;
   port.a = ch.a;
 }
@@ -137,21 +160,24 @@ defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
 
 
   [ N = 1 -> m[0] = c;
-  [] else ->
+  [] else -> 
        sigbuf<2*W> s[N];
        bool _t[N][W], _f[N][W];
        (i:N: s[i](.in=ctrl[i].r);)
        prs {
-	 (i:W: (j:N: c.d.r[i].t & s[j].out #> _t[j][i]-
-		     c.d.r[i].f & s[j].out #> _f[j][i]-
-		     _t[j][i] => m[j].d.r[i].t-
-		     _f[j][i] => m[j].d.r[i].f-
-		) )
+        (i:W: (j:N: c.d.r[i].t & s[j].out #> _t[j][i]-
+          c.d.r[i].f & s[j].out #> _f[j][i]-
+          _t[j][i] => m[j].d.r[i].t-
+          _f[j][i] => m[j].d.r[i].f-
+        ) )
        }
+       (i:W: (j:N:  sizing {p_n_mode <- 1; leak_adjust <- 1; _t[j][i]{-1};  _f[j][i]{-1}; m[j].d.r[i].t{-1};  m[j].d.r[i].f{-1}} ))
+
        (i:N: m[i].a = ctrl[i].a;)
        ortree<N> o(,c.a);
        (i:N: m[i].a=o.in[i];)
   ]
+
 }
 
 export template<pint W,N>
@@ -159,25 +185,26 @@ defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
 {
   { N > 0 : "Parameter out of range" };
 
-
   [ N = 1 -> m[0] = c;
   [] else ->
-       bool _t[W], _f[W];
        bool _v[N];
        bool _a;
+      ortree<N> ot[W];
+      ortree<N> of[W];
+      (i:W: (j:N: 
+                m[j].d.r[i].t = ot[i].in[j];
+                m[j].d.r[i].f = of[i].in[j];)
+                c.d.r[i].f = of[i].out;
+                c.d.r[i].t = ot[i].out;)
        prs {
-          /* or-gate to drive output */
-          (i:W: (|j:N: m[j].d.r[i].t) => _t[i]- 
-                (|j:N: m[j].d.r[i].f) => _f[i]-
-               _t[i] => c.d.r[i].t-
-               _f[i] => c.d.r[i].f-
-          )
           /* check which input is pending */
           (i:N: m[i].d.r[0].t | m[i].d.r[0].f => _v[i]- )
-	  c.a => _a-
+            c.a => _a-
           /* ack the appropriate input */
           (i:N: _a & _v[i] #> m[i].a-)
         }
+        (i:N: sizing {p_n_mode <- 1; leak_adjust <- 1; m[i].a{-1}; _v[i]{-1}} )
+        sizing {p_n_mode <- 1; leak_adjust <- 1;  _a{-1}}
   ]
 }
 
@@ -294,18 +321,18 @@ defproc fadd(dualrail a, b, cin; dualrail s, cout)
   bool _st, _sf, _ct, _cf;
   prs {
     a.t & b.t | (a.t | b.t) & cin.t -> _ct-
-    ~a.t & ~a.f & ~b.t & ~b.f -> _ct+
+    ~a.t & ~a.f & ~b.t & ~b.f & ~cin.t & ~cin.f -> _ct+
 
     a.f & b.f | (a.f | b.f) & cin.f -> _cf-
-    ~a.t & ~a.f & ~b.t & ~b.f -> _cf+
+    ~a.t & ~a.f & ~b.t & ~b.f & ~cin.t & ~cin.f -> _cf+
 
       cin.t & (a.t & b.t | a.f & b.f) |
       cin.f & (a.t & b.f | a.f & b.t) -> _st-
-      ~cin.t & ~cin.f -> _st+
+      ~a.t & ~a.f & ~b.t & ~b.f & ~cin.t & ~cin.f -> _st+
 
       cin.t & (a.f & b.t | a.t & b.f) |
       cin.f & (a.f & b.f | a.t & b.t) -> _sf-
-      ~cin.t & ~cin.f -> _sf+
+      ~a.t & ~a.f & ~b.t & ~b.f & ~cin.t & ~cin.f -> _sf+
 
     _ct => cout.t-
     _cf => cout.f-
@@ -376,10 +403,12 @@ defproc addfblock(dualrails<W1> a; dualrails<W2> b; dualrail cin;
 
   (i:wmin: fa[i](.a=a.r[i], .b=b.r[i], .s=s.r[i]);)
   [ W1 > W2 -> (i:wmin..wmax-1: ha[i](.a=a.r[i],.s=s.r[i]);
-		[ i != wmin -> ha[i-1].cout=ha[i].b; ]
+		[ i != wmin -> ha[i-1].cout=ha[i].b;
+    [] else -> fa[wmin-1].cout=ha[i].b;]
 		)
  [] W2 > W1 -> (i:wmin..wmax-1: ha[i](.a=b.r[i],.s=s.r[i]);
-		[ i != wmin -> ha[i-1].cout=ha[i].b; ]
+		[ i != wmin -> ha[i-1].cout=ha[i].b;
+    [] else -> fa[wmin-1].cout=ha[i].b;]
 		)
   ]
 
@@ -479,10 +508,60 @@ defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out)
   ]
 }
 
+export defproc and2 (dualrail? A, B; dualrail! Y) 
+{
+  bool _f,_t;
+  prs {
+     A.f & (B.t | B.f) | B.f & A.t -> _f-
+     A.t & B.t -> _t-
+     ~A.t & ~A.f & ~B.t & ~B.f -> _t+
+     ~A.t & ~A.f & ~B.t & ~B.f -> _f+
+     _f => Y.f-
+     _t => Y.t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.t {-1}; Y.f {-1}; _t{-1}; _f{-1}}
+} 
+
 export template<pint W1,W2>
 defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out)
 {
-  { false : "Multiplication not yet implemented" };
+  /* reference single cycle multiplier https://inst.eecs.berkeley.edu/~eecs151/sp18/files/Lecture21.pdf @TODO change to more optimal version */
+  fadd fa[W1][W2];
+  and2 and[W1][W2];
+  const<W1,0> zeroa;
+  const<W2,0> zerob;
+  zeroa.out.r = a.r;
+  zerob.out.r = b.r;
+  out.r = b.r;
+  out.r = a.r;
+  (i:W1: (j:W2:
+    and[i][j].A = a.d.r[i];
+    and[i][j].B = b.d.r[j];
+    fa[i][j].a = and[i][j].Y;
+    [ i <= 0 & j <= 0 -> fa[i][j].cin = zeroa.out.d.r[i];
+                         fa[i][j].b = zerob.out.d.r[j];
+                         fa[i][j].s = out.d.r[i];
+                         fa[i][j].cout = fa[i][j+1].cin;
+    [] i > 0 & j <= 0 -> fa[i][j].cin = zeroa.out.d.r[i];
+                         fa[i][j].s = out.d.r[i];
+                         fa[i][j].cout = fa[i][j+1].cin;
+    [] i <= 0 & j < W2-1  & j > 0 -> fa[i][j].s = fa[i+1][j-1].b;
+                                     fa[i][j].cout = fa[i][j+1].cin;
+                                     fa[i][j].b = zerob.out.d.r[j];
+    [] i <= 0 & j >= W2-1 -> fa[i][j].s = fa[i+1][j-1].b;
+                             fa[i][j].cout = fa[i+1][j].b; 
+                             fa[i][j].b = zerob.out.d.r[j];                                
+    [] i < W1-1 & j >= W2-1 & i > 0 -> fa[i][j].s = fa[i+1][j-1].b;
+                               fa[i][j].cout = fa[i+1][j].b;
+    [] i >= W1-1 & j < W2-1  & j > 0 -> fa[i][j].s = out.d.r[W1+j-1];
+                                fa[i][j].cout = fa[i][j+1].cin;
+    [] i >= W1-1 & j >= W2-1 -> fa[i][j].s = out.d.r[W1+j-1];
+                                fa[i][j].cout = out.d.r[W1+j];
+    [] else -> fa[i][j].s = fa[i+1][j-1].b;
+               fa[i][j].cout = fa[i][j+1].cin;
+    ]
+  ))
+
 }
 
 export template<pint W1,W2>
@@ -713,6 +792,8 @@ defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
       a.d.r[W1-1].t | a.d.r[W1-1].f => _xv-
       (i:W1..W2-1:  _xv => out.d.r[i].f- )
    }
+   (i:W1..W2-1: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.r[i].f{-1}} )
+   sizing {p_n_mode <- 1; leak_adjust <- 1; _xv{-1} }
    (i:W1..W2-1: GND = out.d.r[i].t;)
     
   [] W1 > W2 ->
@@ -735,11 +816,13 @@ defproc const(sdtexprchan<W> out)
      Reset -> out.d.r[i].d[1-(V >> i) & 1]-
     )
   }
+  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.r[i].d[((V >> i) & 1)]{-1}} )
+  sizing {p_n_mode <- 1; leak_adjust <- 1; _req{-1} }
 }
 
 
 /*-- variable access ports --*/
-	 
+	     
 export template<pint W>
 defproc writeport(sdtvar<W> var; sdtchan<W> in)
 {
@@ -752,10 +835,12 @@ defproc writeport(sdtvar<W> var; sdtchan<W> in)
        ~in.d.r[i].t & ~in.d.r[i].f -> _wack[i]+
      )
   }
+  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; var.r[i].f{-1}; var.r[i].t{-1}; _wack[i]{-1} })
   ctree<W,false> wa(_wack);
   prs {
     Reset | wa.out => in.a-
   }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; in.a{-1} }
 }
 
 export template<pint W>
@@ -775,6 +860,8 @@ defproc readport(sdtvar<W> var; sdtexprchan<W> out)
      _xout -> out.d.r[i].t-
      )
   }
+  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.r[i].f{-1}; out.d.r[i].t{-1}})
+  sizing {p_n_mode <- 1; leak_adjust <- 1; xout{-1} }
 }
 
 }

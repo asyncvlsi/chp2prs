@@ -1,0 +1,32 @@
+set t.Y.a 0
+cycle
+set Reset 0
+mode run
+cycle
+system "echo 'reset complete'"
+status X
+
+
+assert-channel-valid "t.Y" 32 1
+set t.Y.a 1
+cycle
+
+assert-channel-neutral "t.Y" 32
+set t.Y.a 0
+cycle
+
+assert-channel-valid "t.Y" 32 2
+set t.Y.a 1
+cycle
+
+assert-channel-neutral "t.Y" 32
+set t.Y.a 0
+cycle
+
+assert-channel-valid "t.Y" 32 3
+set t.Y.a 1
+cycle
+
+assert-channel-neutral "t.Y" 32
+set t.Y.a 0
+cycle

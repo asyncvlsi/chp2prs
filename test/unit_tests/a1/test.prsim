@@ -1,11 +1,5 @@
-initialize
-random
 watch Reset
 watch t.c0.a
-mode reset
-set Reset 1
-cycle
-status U
 assert t.c0.r 0
 set Reset 0
 mode run

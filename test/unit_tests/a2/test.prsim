@@ -1,15 +1,8 @@
-initialize
-random
 watch Reset
 watch t.c0.a
-mode reset
-set Reset 1
-cycle
-status U
 assert t.c0.r 0
 set Reset 0
 mode run
 cycle
 assert t.c0.a 0
-assert t.x.x.r[0].f 0
-assert t.x.x.r[0].t 1
+assert-var-bit "t.x.x" 0 1

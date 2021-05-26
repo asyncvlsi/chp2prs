@@ -20,7 +20,7 @@
  **************************************************************************
  */
 import "globals.act";
-import "syn/syngates.act";
+import "syn/qdibasic/syngates.act";
 
 /* Syntax directed translation */
   
@@ -45,6 +45,18 @@ defproc var_bool_ports(sdtboolvar v; sdtchan<1> in[NI]; sdtexprchan<1> out[NO])
   x.v = v.x;  
 }  
 
+/*
+ * this is a workarround for simulation cases where you have 0 read ports, in a physical implementation that would not make sense,
+ * zero length arrays are not allowed.
+ */
+export template<pint NI>
+defproc var_bool_in_ports(sdtboolvar v; sdtchan<1> in[NI])
+{
+  var_int_ports<1,NI,1> x;
+  (i:NI: x.in[i]=in[i];)
+  x.out[0].r = GND;
+  x.v = v.x;  
+} 
 
 /*-- basic statements --*/
 export

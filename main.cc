@@ -28,16 +28,22 @@
 #include <act/passes/netlist.h>
 #include "check_chp.h"
 #include "cartographer.h"
-#ifdef CHP_OPTIMIZE
-#include <act/chp-opt/optimize.h>
+#include "config_pkg.h"
+
+#ifdef FOUND_expropt
+#include "externoptsdt.h"
 #endif
 
+#ifdef FOUND_chp_opt
+#include <act/chp-opt/optimize.h>
+#endif
 #include "basicsdt.h"
 
 
 static void usage(char *name)
 {
-  fprintf(stderr, "Usage: %s [-Ob] [-e file] <actfile> <process> <outfile>\n", name);
+  fprintf(stderr, "Usage BasicSDT: %s [-Ob] [-e<exprfile>] <actfile> <process> <out>\n", name);
+  fprintf(stderr, "Usage ExrpOptSDT: %s [-Ob] -o[<yosys,genus>] -e<exprfile> <actfile> <process> <out>\n", name);
   exit(1);
 }
 
@@ -48,13 +54,15 @@ int main(int argc, char **argv)
   bool chpopt = false;
   bool bundled = false;
   char *exprfile = NULL;
+  char *syntesistool = NULL;
   int emit_import = 0;
+  int external_opt = 0;
 
   /* initialize ACT library */
   Act::Init(&argc, &argv);
 
   int ch;
-  while ((ch = getopt (argc, argv, "Obe:")) != -1) {
+  while ((ch = getopt (argc, argv, "Obe:o:")) != -1) {
     switch (ch) {
     case 'O':
       chpopt = true;
@@ -64,9 +72,13 @@ int main(int argc, char **argv)
       break;
     case 'e':
       if (exprfile) {
-	FREE (exprfile);
+        FREE (exprfile);
       }
       exprfile = Strdup (optarg);
+      break;
+    case 'o':
+      external_opt = 1;
+      syntesistool = Strdup (optarg);
       break;
     default:
       usage (argv[0]);
@@ -74,7 +86,7 @@ int main(int argc, char **argv)
     }
   }
 
-  if (optind != argc - 3) {
+  if ( optind != argc - 3 ) {
     usage (argv[0]);
   }
       
@@ -111,8 +123,9 @@ int main(int argc, char **argv)
 
   if (chpopt)
   {
-#ifdef CHP_OPTIMIZE    
-    ChpOpt::optimize(p, a->getTypeFactory());
+#ifdef FOUND_chp_opt    
+    ChpOptPass *copt = new ChpOptPass (a);
+    copt->run (p);
     printf("> Optimized CHP:\n");
     chp_print(stdout, p->getlang()->getchp()->c);
     printf("\n");
@@ -122,11 +135,29 @@ int main(int argc, char **argv)
   }
 
   check_chp(p);
-  BasicSDT *sdt = new BasicSDT(bundled, chpopt,
-			       emit_import ? argv[optind] : NULL,
-			       argv[optind+2]);
-  sdt->mkExprBlocks (exprfile);
-  sdt->run_sdt (p);
+  SDTEngine *sdt;
+  if (external_opt) 
+  {
 
+#ifdef FOUND_expropt
+    sdt = new ExternOptSDT(bundled, chpopt,
+                    emit_import ? argv[optind] : NULL,
+                    argv[optind+2],
+                    exprfile,
+                    strcmp(syntesistool, "genus") ? yosys : genus );
+#else
+    fatal_error ("External optimization package not installed!");
+#endif
+  }
+  else
+  {
+    if (bundled) fatal_error("the BasicSDT flow only supports QDI currently");
+    sdt = new BasicSDT(bundled, chpopt,
+                    emit_import ? argv[optind] : NULL,
+                    argv[optind+2]);
+      sdt->mkExprBlocks (exprfile);
+  }
+
+  sdt->run_sdt (p);
   return 0;
 }
