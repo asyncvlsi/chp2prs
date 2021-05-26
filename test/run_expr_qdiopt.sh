@@ -5,7 +5,7 @@ OS=`$VLSI_TOOLS_SRC/scripts/getos`
 EXT=${ARCH}_${OS}
 ACTTOOL=../../chp2prs.$EXT
 
-if ! $ACT_HOME/scripts/findpkg -i expropt
+if ! $ACT_HOME/scripts/findpkg -i expropt > /dev/null
 then
 	echo "Expression optimization package not installed"
 	exit 0
