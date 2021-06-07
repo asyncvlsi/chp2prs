@@ -24,9 +24,9 @@ TARGETS=$(BINARY)
 include config.mk
 
 ifdef expropt_INCLUDE
-OBJS=main.o check_chp.o cartographer.o sdt.o basicsdt.o externoptsdt.o
+OBJS=main.o sdt.o basicsdt.o externoptsdt.o
 else
-OBJS=main.o check_chp.o cartographer.o sdt.o basicsdt.o
+OBJS=main.o sdt.o basicsdt.o
 endif
 
 SRCS=$(OBJS:.o=.cc)

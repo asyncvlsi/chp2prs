@@ -19,33 +19,31 @@
  *
  **************************************************************************
  */
+#include <act/act.h>
+#include <act/iter.h>
 #include "basicsdt.h"
 
-int BasicSDT::_gen_inst_id ()
-{
-  return _inst_id++;
-}
-
+/*
+ *
+ *  Core syntax-directed translation code written by Rajit Manohar
+ *
+ *  Extensions to full expressions, optimizations, and direct use of
+ *  the ACT library  by Zeb Mehring
+ *
+ */
 
 int BasicSDT::_gen_stmt_id ()
 {
-  fprintf (output_stream, "   syn::a1of1 c%d;\n", _stmt_id);
-  return _stmt_id++;
+  int tmp = SDTEngine::_gen_stmt_id ();
+  fprintf (output_stream, "   syn::a1of1 c%d;\n", tmp);
+  return tmp;
 }
-
-
-int BasicSDT::_gen_expr_id ()
-{
-  return _expr_id++;
-}
-
 
 void BasicSDT::_emit_skip (int id)
 {
   int inst = _gen_inst_id ();
   fprintf (output_stream, "   syn::sskip s_%d(c%d);\n", inst, id);
 }
-
 
 static const char *sdt_expr_name (int type)
 {
@@ -495,3 +493,185 @@ void BasicSDT::_emit_expr_block (int id, int blkid, list_t *exprs)
   }
   fprintf (output_stream, ");\n");
 }
+
+
+BasicSDT::BasicSDT (int isbundled, int isopt, char *out) : SDTEngine()
+{
+  bundled_data = isbundled;
+  optimize = isopt;
+  
+  _expr_id = 0;
+  _stmt_id = 0;
+  _inst_id = 0;
+  
+  output_stream = NULL;
+  output_file = out;
+  import_file = NULL;
+}
+
+
+
+/* Recursively called fn to handle different chp statement types */
+
+/* Print proc definition & override CHP variables */
+bool BasicSDT::write_process_definition(FILE *fp, Process * p, const char * proc_name)
+{
+  bool has_overrides = 0;
+  bool has_bool_overrides = 0;
+
+  fprintf(fp, "defproc sdt_%s <: %s ()\n", proc_name, proc_name);
+
+  int bw = 0;
+  
+  /* iterate through Scope Hashtable to find all chp variables */
+  ActInstiter iter(p->CurScope());
+  for (iter = iter.begin(); iter != iter.end(); iter++) {
+    ValueIdx *vx = *iter;
+    /* chan variable found */
+    if (TypeFactory::isChanType (vx->t))
+    {
+      bw = TypeFactory::bitWidth(vx->t);
+      if (!has_overrides) {
+	fprintf(fp, "+{\n");
+	has_overrides = true;
+      }
+      fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
+    }
+    
+    /* int variable found */
+    if (TypeFactory::isIntType (vx->t)) {
+      /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
+      bw = TypeFactory::bitWidth(vx->t);
+      if (!has_overrides) {
+	fprintf(fp, "+{\n");
+	has_overrides = true;
+      }
+      fprintf(fp, "  syn::sdtvar<%d> %s;\n", bw, vx->getName());
+    }
+    else if (TypeFactory::isBoolType (vx->t)) {
+      if (!has_overrides) {
+	fprintf(fp, "+{\n");
+	has_overrides = true;
+      }
+      fprintf (fp, " syn::sdtboolvar %s;\n", vx->getName());
+      has_bool_overrides = 1;
+    }
+  }
+  /* end param declaration */
+  if (has_overrides) {
+    fprintf(fp, "}\n{\n");
+  }
+  else {
+    fprintf(fp, "{\n");
+  }
+
+#if 0  
+  if (has_bool_overrides) {
+    int vconnect = 0;
+    for (iter = iter.begin(); iter != iter.end(); iter++) {
+      ValueIdx *vx = *iter;
+      if (TypeFactory::isBoolType (vx->t)) {
+	fprintf (fp, " syn::sdtvar<1> b_%s;\n", vx->getName());
+	fprintf (fp, " syn::varconnect vc_%d(%s,b_%s);\n",
+		 vconnect++, vx->getName(), vx->getName());
+      }
+    }
+  }
+#endif  
+  return has_overrides;
+}
+
+/* Initialize var_init_false vars for each CHP int */
+void BasicSDT::initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
+{
+  int bw = 0;
+
+  /* iterate through Scope Hashtable to find all chp ints */
+  fprintf(fp, "  /* Initialize chp vars */\n");
+
+  ActInstiter iter(p->CurScope());
+  for (iter = iter.begin(); iter != iter.end(); iter++) {
+    ValueIdx *vx = *iter;
+    
+    /* int variable found */
+    if (TypeFactory::isIntType (vx->t)) {
+      bw = TypeFactory::bitWidth(vx->t);
+      fprintf(fp, "  syn::var_init<%d,false> var_%s(%s);\n", bw,
+	      vx->getName(), vx->getName());
+    }
+    else if (TypeFactory::isBoolType (vx->t)) {
+      fprintf(fp, "  syn::var_init<1,false> var_%s(b_%s);\n",
+	      vx->getName(), vx->getName());
+    }
+  }
+  fprintf(fp, "\n");
+}
+
+void BasicSDT::_emit_begin ()
+{
+  /* initialize the output location */ 
+  if (output_file) {
+    output_stream = fopen(output_file, "w");
+    if (!output_stream) {
+      fatal_error ("Could not open file `%s' for writing", output_file);
+    }
+  }
+  else {
+    output_stream = stdout;
+  }
+
+
+  /* get proc_name */
+  size_t pn_len = strlen(P->getName());
+  char proc_name[pn_len];
+  strncpy(proc_name, P->getName(), pn_len-2);
+  proc_name[pn_len-2] = '\0';
+
+  if (import_file) {
+    fprintf (output_stream, "import \"%s\";\n", import_file);
+  }
+  
+  /* print imports */
+  if (bundled_data) {
+    fprintf (output_stream, "import \"syn/bundled.act\";\n");
+  }
+  else {
+    fprintf(output_stream, "import \"syn/qdibasic/_all_.act\";\n");
+  }
+  if (_exprfile) {
+    fprintf (output_stream, "import \"%s\";\n", _exprfile);
+
+    fprintf (_efp, "namespace syn {\n\nexport namespace expr {\n\n");
+  }
+  fprintf(output_stream, "\n");
+  
+  
+  /* Print params for toplevel from process port list */
+  int pnum = P->getNumPorts();
+  bool has_overrides = false;
+       
+  /* Write process definition and variable declarations */
+  int overrides = write_process_definition(output_stream, P, proc_name);
+  //initialize_chp_ints(output_stream, P, override);
+}
+
+
+void BasicSDT::_emit_end (int id)
+{
+  /* connect toplevel "go" signal and print wrapper process instantiation */
+  
+  fprintf (output_stream, "/*--- connect reset to go signal ---*/\n");
+
+  fprintf (output_stream, "   bool final_sig, _final_sig;\n");
+  fprintf (output_stream, "   prs { Reset | final_sig => c%d.r-\n          Reset -> final_sig-\n          c%d.a => _final_sig-\n          ~_final_sig -> final_sig+ }\n", id, id);
+
+  fprintf (output_stream, "}\n");
+  
+  if (output_file) fclose(output_stream);
+
+  if (_efp) {
+    fprintf (_efp, "\n}\n\n}\n");
+    fclose (_efp);
+  }
+}
+  

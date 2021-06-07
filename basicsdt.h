@@ -26,36 +26,54 @@
 
 class BasicSDT : public SDTEngine {
  public:
-  BasicSDT (int isbundled, int isopt, const char *doimport, char *out) {
-    bundled_data = isbundled;
-    optimize = isopt;
-    _expr_id = 0;
-    _stmt_id = 0;
-    _inst_id = 0;
-    output_stream = NULL;
-    output_file = out;
+  /**
+   *  Basic SDT translator
+   *
+   * @param isbundled indicates if the datapath is bundled data (1) or
+   * QDI (0)
+   *
+   * @param isopt is 1 if SDT control optimizations are enabled
+   *
+   * @param doimport is set if the output should emit another import
+   * directive
+   *
+   * @param out is the output file name
+   *
+   */
+  BasicSDT (int isbundled, int isopt, char *out);
+
+  /**
+   *  Adds an import directive to the output file
+   *
+   *  @param doimport is the name of the package to import
+   */
+  void setExtraImport (const char *doimport) {
     import_file = doimport;
   }
-  
 
  protected:
+  /// Run SDT control optimizations
   int optimize;
+
+  /// Datapath is bundled data (vs QDI)  
   int bundled_data;
+  
+  /// Output file stream
   FILE *output_stream;
+  
+  /// Name of output file
   char *output_file;
-  const char *import_file;
+  
+  /// Optional import directive
+  const char *import_file;	
 
-
-  int _expr_id;
-  int _stmt_id;
-  int _inst_id;
-
-  int _gen_inst_id ();
+  /// Override stmt id to also emit the channel definition in the
+  /// output stream
   int _gen_stmt_id ();
-  int _gen_expr_id ();
 
-  /* id = stmt_id for skip */
   void _emit_skip (int id);
+
+  void _emit_expr_block (int eid, int blkid, list_t *eleaf);
 
   void _emit_expr_binary (int id, int width,
 			  int type,
@@ -68,8 +86,6 @@ class BasicSDT : public SDTEngine {
   void _emit_expr_width_conv (int from, int from_w,
 			      int to, int to_w);
   
-  void _emit_expr_block (int eid, int blkid, list_t *eleaf);
-
   void _emit_expr_const (int eid, int width, int val);
 
   /* id = variable port for this identifier */

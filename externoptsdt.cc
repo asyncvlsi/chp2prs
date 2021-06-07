@@ -19,6 +19,18 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
     fatal_error ("Emit NULL expression?!");
   }
 
+  if (!_exprfile) {
+    fatal_error ("ExternOptSDT: requires block expression mode");
+  }
+  
+  if (!mapper) {
+    mapper = new ExternalExprOpt(_map,
+				 bundled_data ? bd : qdi,
+				 bundled_data ? true : false,
+				 _exprfile, "e", "blk");
+  }
+  Assert (mapper, "Could not create mapper!");
+
   // make sure the maps are empty and create new ones
   //Assert (!_inexprmap, "What?");
   _inexprmap = ihash_new (0);
@@ -42,7 +54,7 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
 
 
   // generate block id and check if we have a expression file to write the blocks too
-  int xid = _gen_inst_id();
+  int xid = _gen_expr_blk_id ();
   if (!_exprfile) 
   {
     fatal_error("need expr file for optimisation mode");
@@ -120,7 +132,7 @@ void ExternOptSDT::_emit_bd_ctl_bypass (int id, list_t *all_leaves)
   if (number_of_leaves > 0) 
   {
     int index = 0;
-    fprintf(output_stream, "   syn::ctree<%u,false> ackmerge%u;\n", number_of_leaves, id, id);
+    fprintf(output_stream, "   syn::ctree<%u,false> ackmerge%u;\n", number_of_leaves, id);
     fprintf(output_stream, "   syn::delay<50> delayblk%u (ackmerge%u.out, e%u.out.a);\n", id, id, id);
     for (li = list_first (all_leaves); li; li = list_next (li))
     {

@@ -26,7 +26,6 @@
 #include <string.h>
 #include <act/act.h>
 #include <act/passes/netlist.h>
-#include "check_chp.h"
 #include "cartographer.h"
 #include "config_pkg.h"
 
@@ -42,8 +41,8 @@
 
 static void usage(char *name)
 {
-  fprintf(stderr, "Usage BasicSDT: %s [-Ob] [-e<exprfile>] <actfile> <process> <out>\n", name);
-  fprintf(stderr, "Usage ExrpOptSDT: %s [-Ob] -o[<yosys,genus>] -e<exprfile> <actfile> <process> <out>\n", name);
+  fprintf(stderr, "Usage BasicSDT: %s [-Ob] [-e <exprfile>] <actfile> <process> <out>\n", name);
+  fprintf(stderr, "Usage ExrpOptSDT: %s [-Ob] -o [<yosys,genus>] [-e <exprfile>] <actfile> <process> <out>\n", name);
   exit(1);
 }
 
@@ -134,17 +133,21 @@ int main(int argc, char **argv)
 #endif
   }
 
-  check_chp(p);
-  SDTEngine *sdt;
+  if (!exprfile) {
+    exprfile = Strdup ("expr.act");
+  }
+
+  BasicSDT *sdt;
   if (external_opt) 
   {
 
 #ifdef FOUND_expropt
-    sdt = new ExternOptSDT(bundled, chpopt,
-                    emit_import ? argv[optind] : NULL,
-                    argv[optind+2],
-                    exprfile,
-                    strcmp(syntesistool, "genus") ? yosys : genus );
+    sdt = new ExternOptSDT(bundled, chpopt, argv[optind+2],
+			   strcmp(syntesistool, "genus") ? yosys : genus );
+    if (emit_import) {
+      sdt->setExtraImport (argv[optind]);
+    }
+    sdt->mkExprBlocks (exprfile);
 #else
     fatal_error ("External optimization package not installed!");
 #endif
@@ -152,10 +155,11 @@ int main(int argc, char **argv)
   else
   {
     if (bundled) fatal_error("the BasicSDT flow only supports QDI currently");
-    sdt = new BasicSDT(bundled, chpopt,
-                    emit_import ? argv[optind] : NULL,
-                    argv[optind+2]);
-      sdt->mkExprBlocks (exprfile);
+    sdt = new BasicSDT(bundled, chpopt, argv[optind+2]);
+    if (emit_import) {
+      sdt->setExtraImport (argv[optind]);
+    }
+    sdt->mkExprBlocks (exprfile);
   }
 
   sdt->run_sdt (p);

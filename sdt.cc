@@ -994,7 +994,7 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
     }
   }
 
-  int xid = _gen_inst_id();
+  int xid = _gen_expr_blk_id();
   if (_efp) {
     /* emit a block! */
     fprintf (_efp, "export defproc blk%d (\n", xid);
@@ -1094,4 +1094,28 @@ int SDTEngine::_get_isinport (varmap_info *v)
     }
     return 0;
   }
+}
+
+int SDTEngine::_gen_inst_id ()
+{
+  return _inst_id++;
+}
+
+
+int SDTEngine::_gen_stmt_id ()
+{
+  return _stmt_id++;
+}
+
+
+int SDTEngine::_gen_expr_id ()
+{
+  return _expr_id++;
+}
+
+int SDTEngine::_blk_id = 0;
+
+int SDTEngine::_gen_expr_blk_id ()
+{
+  return _blk_id++;
 }

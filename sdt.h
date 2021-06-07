@@ -121,6 +121,17 @@ protected:
   listitem_t *_intiter;
   void _expr_collect_vars (Expr *e, int collect_phase);
 
+  /// Integer numbering of expression instances
+  int _expr_id;			
+  
+  /// Integer numbering of control channels for statements
+  int _stmt_id;	
+
+  /// Integer numbering of instances
+  int _inst_id;
+
+  /// Block expression definition number, shared across the entire design
+  static int _blk_id;
 
   int _get_isinport (varmap_info *v);
 
@@ -148,18 +159,20 @@ protected:
     statement. This should return a fresh control channel ID.
     These are referred to as `statement IDs.'
     --*/
-  virtual int _gen_stmt_id () = 0;
+  virtual int _gen_stmt_id ();
 
   /*-- 
     Return a unique identifier used to control the evaluation of an
     expression. Use non-negative integers only. -1 is used as a
     special case.
     --*/
-  virtual int _gen_expr_id () = 0;
+  virtual int _gen_expr_id ();
 
   /*-- Return unique instance identifier --*/
-  virtual int _gen_inst_id () = 0;
+  virtual int _gen_inst_id ();
 
+  /*-- Return unique instance identifier --*/
+  virtual int _gen_expr_blk_id ();
 
   /*------------------------------------------------------------------------
    *

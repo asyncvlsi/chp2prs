@@ -5,9 +5,11 @@
 #include <act/expropt.h>
 
 /**
- * the ExternOpt Syntax directed translation class takes a CHP process and expans and translates it to production rules.
- * all data path parts are handed of to an external syntesis and mapping tool, like yosys or genus.
- * the controll path is handeled identiacal the the basic  Syntax directed translation which this class inherits from.
+ * the ExternOpt Syntax directed translation class takes a CHP process
+ * and expans and translates it to production rules.  all data path
+ * parts are handed of to an external syntesis and mapping tool, like
+ * yosys or genus.  the controll path is handeled identiacal the the
+ * basic Syntax directed translation which this class inherits from.
  * 
  */
 class ExternOptSDT : public BasicSDT {
@@ -15,30 +17,37 @@ class ExternOptSDT : public BasicSDT {
     /**
      * constructs a SDT translator. 
      * 
-     * @param isbundled indicate if the translation is to bundled data (1) or qdi (0)
+     * @param isbundled indicate if the translation is to bundled data
+     * (1) or qdi (0)
      * @param isopt is handed of to BasicSDT - should have no function
-     * @param doimport an additional act file that should be imported by the output
-     * @param out the path to the output file that the translated prs act is writen to.
-     * @param exprfile the path to the file all the datapath elements are writen to
-     * @param map the selected external sysntesis tool to be used for the logic syntesis and mapping - defaults to yosys.
-     * @param tmp_path the path where all the temporary files are generated, not implemented yet.
+     * @param doimport an additional act file that should be imported
+     * by the output 
+     * @param out the path to the output file that the translated prs
+     * act is writen to. 
+     * @param exprfile the path to the file all the datapath elements
+     * are writen to 
+     * @param map the selected external sysntesis tool to be used for
+     * the logic syntesis and mapping - defaults to yosys. 
+     * @param tmp_path the path where all the temporary files are
+     * generated, not implemented yet.
      */
     ExternOptSDT (int isbundled, 
                   int isopt, 
-                  const char *doimport, 
                   char *out,
-                  const char *exprfile, 
                   expr_mapping_software map = yosys,
-                  const char *tmp_path = ".") : BasicSDT(isbundled, isopt, doimport, out) {
+                  const char *tmp_path = ".") :
+      BasicSDT(isbundled, isopt, out) {
       
       tmp_file_path = tmp_path;
 
-      _exprfile = exprfile;
+      _map = map;
+      _exprfile = NULL;
       // create the datapath expression translator form the expropt library
-      mapper = new ExternalExprOpt(map, isbundled ? bd : qdi, isbundled ? true : false, exprfile, "e", "blk");
+      mapper = NULL;
     }
 
   private:
+  expr_mapping_software _map;
 
     /**
      * the path where the temporary syntesis files are generated in, not yet implemented uses the exceution directory of the program currently.
