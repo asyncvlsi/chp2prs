@@ -558,18 +558,6 @@ void SDTEngine::run_sdt (Process *p)
   _block_id = -1;
   _construct_varmap (chp->c);
 
-  /*--- create expression file, if blocks are requested ---*/
-  if (_exprfile) {
-    _efp = fopen (_exprfile, "w");
-    if (!_efp) {
-      fatal_error ("Could not open expression file `%s' for writing",
-		   _exprfile);
-    }
-  }
-  else {
-    _efp = NULL;
-  }
-
   //_rewrite_chp_func (chp->c);
 
   _emit_begin ();

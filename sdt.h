@@ -60,12 +60,18 @@ struct varmap_info {
  */
 class SDTEngine {
  public:
-  SDTEngine() {
+  SDTEngine(const char *exprfile) {
     P = NULL;
     _varmap = NULL;
     _exprmap = NULL;
     _shared_expr_var = 0;
-    _exprfile = NULL;
+    _exprfile = exprfile;
+    if (exprfile) {
+      _efp = fopen (exprfile, "a");
+    }
+    else {
+      _efp = NULL;
+    }
   }
 
   /*-- 
@@ -74,12 +80,6 @@ class SDTEngine {
     values from the variables
     --*/
   void modeSharedExprVar () { _shared_expr_var = 1; }
-
-  /*--
-    Use monolithic expressions
-    --*/
-  void mkExprBlocks (const char *file) { _exprfile = file; }
-
 
   /*
    * Main method that executes the syntax-directed translation engine

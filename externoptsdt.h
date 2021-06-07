@@ -33,16 +33,16 @@ class ExternOptSDT : public BasicSDT {
      */
     ExternOptSDT (int isbundled, 
                   int isopt, 
-                  char *out,
+                  FILE *fpout,
+		  const char *ef,
                   expr_mapping_software map = yosys,
                   const char *tmp_path = ".") :
-      BasicSDT(isbundled, isopt, out) {
+      BasicSDT(isbundled, isopt, fpout, ef) {
       
       tmp_file_path = tmp_path;
 
       _map = map;
-      _exprfile = NULL;
-      // create the datapath expression translator form the expropt library
+
       mapper = NULL;
     }
 

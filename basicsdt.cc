@@ -495,7 +495,8 @@ void BasicSDT::_emit_expr_block (int id, int blkid, list_t *exprs)
 }
 
 
-BasicSDT::BasicSDT (int isbundled, int isopt, char *out) : SDTEngine()
+BasicSDT::BasicSDT (int isbundled, int isopt, FILE *fpout, const char *ef)
+   : SDTEngine(ef)
 {
   bundled_data = isbundled;
   optimize = isopt;
@@ -504,9 +505,7 @@ BasicSDT::BasicSDT (int isbundled, int isopt, char *out) : SDTEngine()
   _stmt_id = 0;
   _inst_id = 0;
   
-  output_stream = NULL;
-  output_file = out;
-  import_file = NULL;
+  output_stream = fpout;
 }
 
 
@@ -609,43 +608,12 @@ void BasicSDT::initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
 
 void BasicSDT::_emit_begin ()
 {
-  /* initialize the output location */ 
-  if (output_file) {
-    output_stream = fopen(output_file, "w");
-    if (!output_stream) {
-      fatal_error ("Could not open file `%s' for writing", output_file);
-    }
-  }
-  else {
-    output_stream = stdout;
-  }
-
-
   /* get proc_name */
   size_t pn_len = strlen(P->getName());
   char proc_name[pn_len];
   strncpy(proc_name, P->getName(), pn_len-2);
   proc_name[pn_len-2] = '\0';
 
-  if (import_file) {
-    fprintf (output_stream, "import \"%s\";\n", import_file);
-  }
-  
-  /* print imports */
-  if (bundled_data) {
-    fprintf (output_stream, "import \"syn/bundled.act\";\n");
-  }
-  else {
-    fprintf(output_stream, "import \"syn/qdibasic/_all_.act\";\n");
-  }
-  if (_exprfile) {
-    fprintf (output_stream, "import \"%s\";\n", _exprfile);
-
-    fprintf (_efp, "namespace syn {\n\nexport namespace expr {\n\n");
-  }
-  fprintf(output_stream, "\n");
-  
-  
   /* Print params for toplevel from process port list */
   int pnum = P->getNumPorts();
   bool has_overrides = false;
@@ -666,12 +634,7 @@ void BasicSDT::_emit_end (int id)
   fprintf (output_stream, "   prs { Reset | final_sig => c%d.r-\n          Reset -> final_sig-\n          c%d.a => _final_sig-\n          ~_final_sig -> final_sig+ }\n", id, id);
 
   fprintf (output_stream, "}\n");
-  
-  if (output_file) fclose(output_stream);
-
-  if (_efp) {
-    fprintf (_efp, "\n}\n\n}\n");
-    fclose (_efp);
-  }
+  fclose (_efp);
+  _efp = NULL;
 }
   

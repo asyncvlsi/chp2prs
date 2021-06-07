@@ -46,6 +46,75 @@ static void usage(char *name)
   exit(1);
 }
 
+static void begin_sdtout (const char *output_file,
+			  const char *expr_file,
+			  const char *import_file,
+			  int bundled_data,
+			  int expropt,
+			  FILE **output_stream)
+{
+  /* initialize the output location */ 
+  if (output_file) {
+    *output_stream = fopen(output_file, "w");
+    if (!*output_stream) {
+      fatal_error ("Could not open file `%s' for writing", output_file);
+    }
+  }
+  else {
+    *output_stream = stdout;
+  }
+
+  if (import_file) {
+    fprintf (*output_stream, "import \"%s\";\n", import_file);
+  }
+  
+  /* print imports */
+  if (bundled_data) {
+    if (expropt) {
+      fprintf(*output_stream, "import \"syn/bdopt/_all_.act\";\n");
+    }
+    else {
+      fprintf (*output_stream, "import \"syn/bundled.act\";\n");
+    }
+  }
+  else {
+    if (expropt) {
+      fprintf(*output_stream, "import \"syn/qdiopt/_all_.act\";\n");
+    }
+    else {
+      fprintf(*output_stream, "import \"syn/qdibasic/_all_.act\";\n");
+    }
+  }
+
+  // open the operating namespace
+  fprintf(*output_stream, "open syn;\n");
+  
+  if (expr_file) {
+    FILE *efp = fopen (expr_file, "w");
+    if (!efp) {
+      fatal_error ("Could not open expression file `%s' for writing",
+		   expr_file);
+    }
+    fprintf (*output_stream, "import \"%s\";\n", expr_file);
+    fprintf (efp, "namespace syn {\n\nexport namespace expr {\n\n");
+    fclose (efp);
+  }
+  fprintf(*output_stream, "\n");
+}
+
+
+static void end_sdtout (FILE *fpout, const char *expr_file)
+{
+  if (fpout != stdout) {
+    fclose (fpout);
+  }
+  if (expr_file) {
+    FILE *efp = fopen (expr_file, "a");
+    fprintf (efp, "\n}\n\n}\n");
+    fclose (efp);
+  }
+}
+
 int main(int argc, char **argv)
 {
   Act *a;
@@ -137,17 +206,17 @@ int main(int argc, char **argv)
     exprfile = Strdup ("expr.act");
   }
 
+  FILE *fpout, *efp;
+
+  begin_sdtout (argv[optind+2], exprfile, emit_import ? argv[optind] : NULL,
+		bundled, external_opt, &fpout);
+
   BasicSDT *sdt;
   if (external_opt) 
   {
-
 #ifdef FOUND_expropt
-    sdt = new ExternOptSDT(bundled, chpopt, argv[optind+2],
+    sdt = new ExternOptSDT(bundled, chpopt, fpout, exprfile,
 			   strcmp(syntesistool, "genus") ? yosys : genus );
-    if (emit_import) {
-      sdt->setExtraImport (argv[optind]);
-    }
-    sdt->mkExprBlocks (exprfile);
 #else
     fatal_error ("External optimization package not installed!");
 #endif
@@ -155,13 +224,13 @@ int main(int argc, char **argv)
   else
   {
     if (bundled) fatal_error("the BasicSDT flow only supports QDI currently");
-    sdt = new BasicSDT(bundled, chpopt, argv[optind+2]);
-    if (emit_import) {
-      sdt->setExtraImport (argv[optind]);
-    }
-    sdt->mkExprBlocks (exprfile);
+
+    sdt = new BasicSDT(bundled, chpopt, fpout, exprfile);
   }
 
   sdt->run_sdt (p);
+
+  end_sdtout (fpout, exprfile);
+  
   return 0;
 }

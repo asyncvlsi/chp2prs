@@ -19,7 +19,7 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
     fatal_error ("Emit NULL expression?!");
   }
 
-  if (!_exprfile) {
+  if (!_efp) {
     fatal_error ("ExternOptSDT: requires block expression mode");
   }
   
@@ -55,7 +55,7 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
 
   // generate block id and check if we have a expression file to write the blocks too
   int xid = _gen_expr_blk_id ();
-  if (!_exprfile) 
+  if (!_efp)
   {
     fatal_error("need expr file for optimisation mode");
   }
@@ -78,9 +78,13 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
     }
   }
 
+  fclose (_efp);
+
   /*-- emit expression --*/
   block_info = mapper->run_external_opt(xid,tgt_width,e,all_leaves,_inexprmap,_inwidthmap);
-    
+
+  _efp = fopen (_exprfile, "a");
+
   // the current id of the output instance
   *id = _gen_expr_id ();
   // instanciate the expr block object in the main file
@@ -357,51 +361,12 @@ void ExternOptSDT::_emit_expr_const (int id, int width, int val, bool isguard)
 
 void ExternOptSDT::_emit_begin ()
 {
-  /* initialize the output location */ 
-  if (output_file) {
-    output_stream = fopen(output_file, "w");
-    if (!output_stream) {
-      fatal_error ("Could not open file `%s' for writing", output_file);
-    }
-  }
-  else {
-    output_stream = stdout;
-  }
-
-
   /* get proc_name */
   size_t pn_len = strlen(P->getName());
   char proc_name[pn_len];
   strncpy(proc_name, P->getName(), pn_len-2);
   proc_name[pn_len-2] = '\0';
-  // print additional imports
-  if (import_file) {
-    fprintf (output_stream, "import \"%s\";\n", import_file);
-  }
-  
-  /* print imports */
-  if (bundled_data) {
-    fprintf(output_stream, "import \"syn/bdopt/_all_.act\";\n");
-  }
-  else {
-    fprintf(output_stream, "import \"syn/qdiopt/_all_.act\";\n");
-  }
-  if (_exprfile) {
-    // import the file with the expr blocks
-    fprintf (output_stream, "import \"%s\";\n", _exprfile);
-    _efp = fopen (_exprfile, "w");
-    if (!_efp) {
-      fatal_error ("Could not open expression file `%s' for writing",
-		   _exprfile);
-    }
-    // in that file write the enclosing namespace and close the file again
-    fprintf (_efp, "namespace syn {\n\nexport namespace expr {\n\n");
-    fflush (_efp);
-    fclose (_efp);
-  }
-  // open the operating namespace
-  fprintf(output_stream, "open syn;\n");
-  
+
   
   /* Print params for toplevel from process port list */
   int pnum = P->getNumPorts();
@@ -422,19 +387,6 @@ void ExternOptSDT::_emit_end (int id)
   fprintf (output_stream, "   prs { Reset | final_sig => c%d.r-\n          Reset -> final_sig-\n          c%d.a => _final_sig-\n          ~_final_sig -> final_sig+ }\n", id, id);
 
   fprintf (output_stream, "}\n");
-  
-  if (output_file) fclose(output_stream);
-  // close all the namespace brack in the expr file
-  if (_exprfile) {
-    _efp = fopen (_exprfile, "a");
-    if (!_efp) {
-      fatal_error ("Could not open expression file `%s' for writing",
-		   _exprfile);
-    }
-    fprintf (_efp, "\n}\n\n}\n");
-    fflush (_efp);
-    fclose (_efp);
-  }
 }
 
 void ExternOptSDT::_emit_guardlist (int isloop, act_chp_gc_t *gc, list_t *res)

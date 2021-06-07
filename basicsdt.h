@@ -40,16 +40,7 @@ class BasicSDT : public SDTEngine {
    * @param out is the output file name
    *
    */
-  BasicSDT (int isbundled, int isopt, char *out);
-
-  /**
-   *  Adds an import directive to the output file
-   *
-   *  @param doimport is the name of the package to import
-   */
-  void setExtraImport (const char *doimport) {
-    import_file = doimport;
-  }
+  BasicSDT (int isbundled, int isopt, FILE *fpout, const char *expr_file);
 
  protected:
   /// Run SDT control optimizations
@@ -61,12 +52,6 @@ class BasicSDT : public SDTEngine {
   /// Output file stream
   FILE *output_stream;
   
-  /// Name of output file
-  char *output_file;
-  
-  /// Optional import directive
-  const char *import_file;	
-
   /// Override stmt id to also emit the channel definition in the
   /// output stream
   int _gen_stmt_id ();
