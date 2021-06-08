@@ -21,6 +21,7 @@
  */
 #include <act/act.h>
 #include <act/iter.h>
+#include <string.h>
 #include "basicsdt.h"
 
 /*
