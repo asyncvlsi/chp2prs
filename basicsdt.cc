@@ -590,19 +590,7 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
     fprintf(fp, "{\n");
   }
 
-#if 0  
-  if (has_bool_overrides) {
-    int vconnect = 0;
-    for (iter = iter.begin(); iter != iter.end(); iter++) {
-      ValueIdx *vx = *iter;
-      if (TypeFactory::isBoolType (vx->t)) {
-	fprintf (fp, " syn::sdtvar<1> b_%s;\n", vx->getName());
-	fprintf (fp, " syn::varconnect vc_%d(%s,b_%s);\n",
-		 vconnect++, vx->getName(), vx->getName());
-      }
-    }
-  }
-#endif  
+  fprintf (fp, " refine {\n");
   return has_overrides;
 }
 
@@ -649,7 +637,7 @@ void BasicSDT::_emit_end (int id)
     fprintf (output_stream, "   bool final_sig, _final_sig;\n");
     fprintf (output_stream, "   prs { Reset | final_sig => c%d.r-\n          Reset -> final_sig-\n          c%d.a => _final_sig-\n          ~_final_sig -> final_sig+ }\n", id, id);
   }
-  fprintf (output_stream, "}\n");
+  fprintf (output_stream, " }\n}\n\n");
   fclose (_efp);
   _efp = NULL;
 }

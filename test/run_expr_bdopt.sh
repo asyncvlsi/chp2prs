@@ -38,7 +38,7 @@ import "$1/run/sdt.act";
 sdt_$1 t;
 EOF
     cp init.prs $1/run/test.prs
-    if aflat $1/run/tst.act >> $1/run/test.prs
+    if aflat -ref=1 $1/run/tst.act >> $1/run/test.prs
     then
 	cat init_bd.prsim $1/test.prsim | prsim -r $1/run/test.prs > $1/run/prsim.out
     # removed warning to ignore X caused by hazards

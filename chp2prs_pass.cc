@@ -90,5 +90,7 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
   sdt->run_sdt (p);
   
   delete sdt;
+
+  return NULL;
 }
 

@@ -32,7 +32,7 @@ import "$1/run/sdt.act";
 sdt_$1 t;
 EOF
     cp init.prs $1/run/test.prs
-    if aflat $1/run/tst.act >> $1/run/test.prs
+    if aflat -ref=1 $1/run/tst.act >> $1/run/test.prs
     then
 	cat init_qdi.prsim $1/test.prsim | prsim -r $1/run/test.prs > $1/run/prsim.out
 	if egrep '(WRONG|WARNING|Node)' $1/run/prsim.out >/dev/null
