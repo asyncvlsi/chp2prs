@@ -17,3 +17,4 @@ prsim.out
 .DS_Store
 config_pkg.h
 config.mk
+*.so

@@ -535,12 +535,15 @@ void SDTEngine::run_sdt (Process *p)
   struct act_chp *chp = NULL;
   ihash_iter_t iter;
   ihash_bucket_t *b;
-  
+
+  P = p;
   if (p->getlang() != NULL && p->getlang()->getchp() != NULL) {
     chp = p->getlang()->getchp();
   }
   else {
-    fatal_error ("Process `%s' does not have a CHP body?", p->getName());
+    _emit_begin ();
+    _emit_end (-1);
+    return;
   }
 
   if (_varmap) {
@@ -1106,4 +1109,20 @@ int SDTEngine::_blk_id = 0;
 int SDTEngine::_gen_expr_blk_id ()
 {
   return _blk_id++;
+}
+
+
+SDTEngine::SDTEngine (const char *exprfile)
+{
+  P = NULL;
+  _varmap = NULL;
+  _exprmap = NULL;
+  _shared_expr_var = 0;
+  _exprfile = exprfile;
+  if (exprfile) {
+    _efp = fopen (exprfile, "a");
+  }
+  else {
+    _efp = NULL;
+  }
 }

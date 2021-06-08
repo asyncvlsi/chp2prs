@@ -136,17 +136,6 @@ class ExternOptSDT : public BasicSDT {
      */
     void _emit_expr_block (int id, int blkid, list_t *exprs);
 
-    /** 
-     * prints the act header, imports all libraries and the expression file
-     */
-    void _emit_begin ();
-
-    /**
-     * prints the final signal indecations and closes all the files.
-     * @param id the id of the last (top) element.
-     */
-    void _emit_end (int id);
-
     /**
      * generates a temp var for guards so the result of the guard is cached properly
      * @param eid the id of the signal to be guarded

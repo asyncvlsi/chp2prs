@@ -359,36 +359,6 @@ void ExternOptSDT::_emit_expr_const (int id, int width, int val, bool isguard)
   else fprintf (output_stream, "   // would emit const e%d <%d> %d %d\n", id, width,val,isguard);
 }
 
-void ExternOptSDT::_emit_begin ()
-{
-  /* get proc_name */
-  size_t pn_len = strlen(P->getName());
-  char proc_name[pn_len];
-  strncpy(proc_name, P->getName(), pn_len-2);
-  proc_name[pn_len-2] = '\0';
-
-  
-  /* Print params for toplevel from process port list */
-  int pnum = P->getNumPorts();
-  bool has_overrides = false;
-       
-  /* Write process definition and variable declarations */
-  int overrides = write_process_definition(output_stream, P, proc_name);
-  //initialize_chp_ints(output_stream, P, override);
-}
-
-void ExternOptSDT::_emit_end (int id)
-{
-  /* connect toplevel "go" signal and print wrapper process instantiation */
-  
-  fprintf (output_stream, "/*--- connect reset to go signal ---*/\n");
-
-  fprintf (output_stream, "   bool final_sig, _final_sig;\n");
-  fprintf (output_stream, "   prs { Reset | final_sig => c%d.r-\n          Reset -> final_sig-\n          c%d.a => _final_sig-\n          ~_final_sig -> final_sig+ }\n", id, id);
-
-  fprintf (output_stream, "}\n");
-}
-
 void ExternOptSDT::_emit_guardlist (int isloop, act_chp_gc_t *gc, list_t *res)
 {
   act_chp_gc_t *tmp;

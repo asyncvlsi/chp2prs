@@ -99,7 +99,7 @@ class BasicSDT : public SDTEngine {
   void _emit_begin ();
   void _emit_end (int toplev);
 
-  bool write_process_definition(FILE *fp, Process * p, const char * proc_name);
+  bool write_process_definition(FILE *fp, Process * p);
   void initialize_chp_ints(FILE *fp, Process * p, bool has_overrides);
 
 };  

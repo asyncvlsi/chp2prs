@@ -21,15 +21,24 @@
 BINARY=chp2prs.$(EXT)
 
 TARGETS=$(BINARY)
+TARGETLIBS=libactchp2prspass_$(EXT).so
+
+
 include config.mk
 
 ifdef expropt_INCLUDE
-OBJS=main.o sdt.o basicsdt.o externoptsdt.o
+OBJS=main.o
 else
-OBJS=main.o sdt.o basicsdt.o
+OBJS=main.o
 endif
 
-SRCS=$(OBJS:.o=.cc)
+ifdef expropt_INCLUDE
+SHOBJS=chp2prs_pass.os sdt.os basicsdt.os externoptsdt.os
+else
+SHOBJS=chp2prs_pass.os sdt.os basicsdt.os
+endif
+
+SRCS=$(OBJS:.o=.cc) $(SHOBJS:.os=.cc)
 
 ifdef chp_opt_INCLUDE
 CHPOPT=-lchpopt
@@ -42,13 +51,16 @@ SUBDIRS=lib
 include $(ACT_HOME)/scripts/Makefile.std
 
 ifdef expropt_INCLUDE
-EXPRLIB=-lexpropt
+EXPRLIB=-lexpropt_sh
 else
 EXPRLIB=
 endif
 
 $(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
-	$(CXX) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(LIBACTPASS) $(EXPRLIB)
+	$(CXX) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS) 
+
+$(TARGETLIBS): $(SHOBJS)
+	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB)
 
 testreps:
 	@if [ -d test -a -x test/repeat_unit.sh ]; \

@@ -29,15 +29,9 @@
 #include "cartographer.h"
 #include "config_pkg.h"
 
-#ifdef FOUND_expropt
-#include "externoptsdt.h"
-#endif
-
 #ifdef FOUND_chp_opt
 #include <act/chp-opt/optimize.h>
 #endif
-#include "basicsdt.h"
-
 
 static void usage(char *name)
 {
@@ -183,23 +177,19 @@ int main(int argc, char **argv)
   }
   Assert (p, "What?");
 
-  /* extract the chp */
-  if (p->getlang() == NULL || p->getlang()->getchp() == NULL)
-  {
-    fatal_error("Process `%s' does not have any chp.", argv[optind+1]);
-  }
-
   if (chpopt)
   {
 #ifdef FOUND_chp_opt    
     ChpOptPass *copt = new ChpOptPass (a);
-    copt->run (p);
-    printf("> Optimized CHP:\n");
-    chp_print(stdout, p->getlang()->getchp()->c);
-    printf("\n");
 #else
     fatal_error ("Optimize flag is not currently enabled in the build.");
 #endif
+  }
+
+  ActDynamicPass *c2p = new ActDynamicPass (a, "chp2prs", "libactchp2prspass.so", "chp2prs");
+
+  if (!c2p || (c2p->loaded() == false)) {
+    fatal_error ("Could not load dynamic pass!");
   }
 
   if (!exprfile) {
@@ -211,24 +201,16 @@ int main(int argc, char **argv)
   begin_sdtout (argv[optind+2], exprfile, emit_import ? argv[optind] : NULL,
 		bundled, external_opt, &fpout);
 
-  BasicSDT *sdt;
-  if (external_opt) 
-  {
-#ifdef FOUND_expropt
-    sdt = new ExternOptSDT(bundled, chpopt, fpout, exprfile,
-			   strcmp(syntesistool, "genus") ? yosys : genus );
-#else
-    fatal_error ("External optimization package not installed!");
-#endif
+  c2p->setParam ("chp_optimize", chpopt);
+  c2p->setParam ("externopt", external_opt);
+  c2p->setParam ("bundled_dpath", bundled);
+  if (external_opt) {
+    c2p->setParam ("use_yosys", strcmp (syntesistool, "genus") ? 1 : 0);
   }
-  else
-  {
-    if (bundled) fatal_error("the BasicSDT flow only supports QDI currently");
+  c2p->setParam ("expr_file", exprfile);
+  c2p->setParam ("output_fp", fpout);
 
-    sdt = new BasicSDT(bundled, chpopt, fpout, exprfile);
-  }
-
-  sdt->run_sdt (p);
+  c2p->run (p);
 
   end_sdtout (fpout, exprfile);
   

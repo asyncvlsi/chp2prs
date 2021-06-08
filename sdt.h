@@ -60,20 +60,12 @@ struct varmap_info {
  */
 class SDTEngine {
  public:
-  SDTEngine(const char *exprfile) {
-    P = NULL;
-    _varmap = NULL;
-    _exprmap = NULL;
-    _shared_expr_var = 0;
-    _exprfile = exprfile;
-    if (exprfile) {
-      _efp = fopen (exprfile, "a");
-    }
-    else {
-      _efp = NULL;
-    }
-  }
 
+  /// Create SDT traslator
+  /// @param exprfile is the file where block expressions definitions
+  /// are emitted.
+  SDTEngine(const char *exprfile);
+  
   /*-- 
     In the mode when expression variables are not shared, the
     core modules assume that the leaf of the expression tree "pulls" 
@@ -329,6 +321,10 @@ protected:
 
   /*-- header and footer --*/
   virtual void _emit_begin () = 0;
+
+  /// @param topid is a non-negative parameter with the top channel
+  /// for the process. If it is negative, there were no statements to
+  /// be translated for this process.
   virtual void _emit_end (int topid) = 0;
 };  
 

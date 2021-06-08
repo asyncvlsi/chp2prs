@@ -513,12 +513,27 @@ BasicSDT::BasicSDT (int isbundled, int isopt, FILE *fpout, const char *ef)
 /* Recursively called fn to handle different chp statement types */
 
 /* Print proc definition & override CHP variables */
-bool BasicSDT::write_process_definition(FILE *fp, Process * p, const char * proc_name)
+bool BasicSDT::write_process_definition(FILE *fp, Process * p)
 {
   bool has_overrides = 0;
   bool has_bool_overrides = 0;
 
-  fprintf(fp, "defproc sdt_%s <: %s ()\n", proc_name, proc_name);
+  fprintf(fp, "defproc sdt_");
+  ActNamespace::Act()->mfprintfproc (fp, p);
+  fprintf (fp, " <: ");
+
+  const char *procnm = p->getName();
+  int len = strlen (procnm);
+  if (procnm[len-1] == '>' && procnm[len-2] == '<') {
+    /* strip empty <> */
+    for (int i=0; i < len-2; i++) {
+      fputc (procnm[i], fp);
+    }
+  }
+  else {
+    fprintf (fp, "%s", procnm);
+  }
+  fprintf (fp, " ()\n");
 
   int bw = 0;
   
@@ -554,6 +569,17 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p, const char * proc
       }
       fprintf (fp, " syn::sdtboolvar %s;\n", vx->getName());
       has_bool_overrides = 1;
+    }
+    else if (TypeFactory::isProcessType (vx->t)) {
+      if (!has_overrides) {
+	fprintf(fp, "+{\n");
+	has_overrides = true;
+      }
+      fprintf (fp, " sdt_");
+      Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
+      Assert (proc, "Why am I here?");
+      ActNamespace::Act()->mfprintfproc (fp, proc);
+      fprintf (fp, " %s;\n", vx->getName());
     }
   }
   /* end param declaration */
@@ -608,31 +634,21 @@ void BasicSDT::initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
 
 void BasicSDT::_emit_begin ()
 {
-  /* get proc_name */
-  size_t pn_len = strlen(P->getName());
-  char proc_name[pn_len];
-  strncpy(proc_name, P->getName(), pn_len-2);
-  proc_name[pn_len-2] = '\0';
-
-  /* Print params for toplevel from process port list */
-  int pnum = P->getNumPorts();
-  bool has_overrides = false;
-       
   /* Write process definition and variable declarations */
-  int overrides = write_process_definition(output_stream, P, proc_name);
-  //initialize_chp_ints(output_stream, P, override);
+  int overrides = write_process_definition(output_stream, P);
 }
 
 
 void BasicSDT::_emit_end (int id)
 {
   /* connect toplevel "go" signal and print wrapper process instantiation */
-  
-  fprintf (output_stream, "/*--- connect reset to go signal ---*/\n");
 
-  fprintf (output_stream, "   bool final_sig, _final_sig;\n");
-  fprintf (output_stream, "   prs { Reset | final_sig => c%d.r-\n          Reset -> final_sig-\n          c%d.a => _final_sig-\n          ~_final_sig -> final_sig+ }\n", id, id);
+  if (id >= 0) {
+    fprintf (output_stream, "/*--- connect reset to go signal ---*/\n");
 
+    fprintf (output_stream, "   bool final_sig, _final_sig;\n");
+    fprintf (output_stream, "   prs { Reset | final_sig => c%d.r-\n          Reset -> final_sig-\n          c%d.a => _final_sig-\n          ~_final_sig -> final_sig+ }\n", id, id);
+  }
   fprintf (output_stream, "}\n");
   fclose (_efp);
   _efp = NULL;
