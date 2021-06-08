@@ -26,7 +26,6 @@
 #include <string.h>
 #include <act/act.h>
 #include <act/passes/netlist.h>
-#include "cartographer.h"
 #include "config_pkg.h"
 
 #ifdef FOUND_chp_opt
