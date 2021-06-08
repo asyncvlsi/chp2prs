@@ -590,7 +590,10 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
     fprintf(fp, "{\n");
   }
 
-  fprintf (fp, " refine {\n");
+  if (p->getlang() && p->getlang()->getchp()) {
+    fprintf (fp, " refine {\n");
+  }
+  
   return has_overrides;
 }
 
@@ -636,8 +639,11 @@ void BasicSDT::_emit_end (int id)
 
     fprintf (output_stream, "   bool final_sig, _final_sig;\n");
     fprintf (output_stream, "   prs { Reset | final_sig => c%d.r-\n          Reset -> final_sig-\n          c%d.a => _final_sig-\n          ~_final_sig -> final_sig+ }\n", id, id);
+
+    /* matches refine block start */
+    fprintf (output_stream, " }\n");
   }
-  fprintf (output_stream, " }\n}\n\n");
+  fprintf (output_stream, "}\n\n");
   fclose (_efp);
   _efp = NULL;
 }
