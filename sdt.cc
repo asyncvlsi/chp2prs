@@ -26,289 +26,6 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
-#define ACT_CHP_ASSIGNSELF (ACT_CHP_STMTEND+1)
-
-varmap_info *SDTEngine::_var_getinfo (ActId *id)
-{
-  act_connection *c;
-  ihash_bucket_t *b;
-  varmap_info *v;
-  InstType *it;
-
-  c = id->Canonical (P->CurScope());
-  Assert (c, "What?");
-  
-  b = ihash_lookup (_varmap, (long)c);
-  if (!b) {
-    b = ihash_add (_varmap, (long)c);
-    NEW (v, varmap_info);
-
-    v->nread = 0;
-    v->nwrite = 0;
-    v->iread = 0;
-    v->iwrite = 0;
-    v->id = id;
-    it = P->Lookup (id);
-    v->width = TypeFactory::bitWidth (it);
-    v->fisbool = 0;
-    if (TypeFactory::isChanType (it)) {
-      v->fischan = 1;
-      if (it->getDir() == Type::direction::IN) {
-	v->fisinport = 1;
-      }
-      else if (it->getDir() == Type::direction::OUT) {
-	v->fisinport = 0;
-      }
-      else {
-	v->fisinport = 2;
-	v->block_in = -1;
-	v->block_out = -1;
-      }
-    }
-    else {
-      v->fischan = 0;
-      if (TypeFactory::isBoolType (it)) {
-	v->fisbool = 1;
-      }
-    }
-    b->v = v;
-  }
-  return (varmap_info *) b->v;
-}
-
-void SDTEngine::_construct_varmap_expr (Expr *e)
-{
-  act_connection *uid;
-  varmap_info *v;
-  
-  if (!e) return;
-  switch (e->type) {
-    /* binary */
-  case E_AND:
-  case E_OR:
-  case E_PLUS:
-  case E_MINUS:
-  case E_MULT:
-  case E_DIV:
-  case E_MOD:
-  case E_LSL:
-  case E_LSR:
-  case E_ASR:
-  case E_XOR:
-  case E_LT:
-  case E_GT:
-  case E_LE:
-  case E_GE:
-  case E_EQ:
-  case E_NE:
-    _construct_varmap_expr (e->u.e.l);
-    _construct_varmap_expr (e->u.e.r);
-    break;
-    
-  case E_NOT:
-  case E_UMINUS:
-  case E_COMPLEMENT:
-    _construct_varmap_expr (e->u.e.l);
-    break;
-
-  case E_QUERY:
-    _construct_varmap_expr (e->u.e.l);
-    _construct_varmap_expr (e->u.e.r->u.e.l);
-    _construct_varmap_expr (e->u.e.r->u.e.r);
-    break;
-
-  case E_COLON:
-  case E_COMMA:
-    fatal_error ("Should have been handled elsewhere");
-    break;
-
-  case E_CONCAT:
-    do {
-      _construct_varmap_expr (e->u.e.l);
-      e = e->u.e.r;
-    } while (e);
-    break;
-
-  case E_BITFIELD:
-    /* l is an Id */
-    v = _var_getinfo ((ActId *)e->u.e.l);
-    if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
-      v->nread++;
-      v->fcurexpr = 1;
-    }
-    break;
-
-  case E_TRUE:
-  case E_FALSE:
-  case E_INT:
-  case E_REAL:
-    break;
-
-  case E_VAR:
-    v = _var_getinfo ((ActId *)e->u.e.l);
-    if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
-      v->nread++;
-      v->fcurexpr = 1;
-    }
-    break;
-
-  case E_PROBE:
-    v = _var_getinfo ((ActId *)e->u.e.l);
-    if (!_shared_expr_var || !v->fcurexpr) {
-      Assert (v->fischan, "What?");
-      v->nread++;
-      v->fcurexpr = 1;
-    }
-    break;
-
-  case E_BUILTIN_BOOL:
-  case E_BUILTIN_INT:
-    _construct_varmap_expr (e->u.e.l);
-    break;
-    
-  case E_FUNCTION:
-    e = e->u.fn.r;
-    while (e) {
-      _construct_varmap_expr (e->u.e.l);
-      e = e->u.e.r;
-    }
-    break;
-
-  case E_SELF:
-  default:
-    fatal_error ("Unknown expression type %d\n", e->type);
-    break;
-  }
-}
-
-void SDTEngine::_clear_var_flags ()
-{
-  ihash_iter_t iter;
-  ihash_bucket_t *b;
-  ihash_iter_init (_varmap, &iter);
-
-  while ((b = ihash_iter_next (_varmap, &iter))) {
-    varmap_info *v = (varmap_info *)b->v;
-    v->fcurexpr = 0;
-  }
-}
-    
-void SDTEngine::_construct_varmap (act_chp_lang_t *c)
-{
-  varmap_info *v;
-  int x;
-  int pblock = 0;
-  int changed = 0;
-  if (!c) return;
-
-  pblock = _block_id;
-
-  switch (c->type) {
-
-  case ACT_CHP_SKIP:
-    break;
-  case ACT_CHP_ASSIGN:
-    v = _var_getinfo (c->u.assign.id);
-    x = v->nread;
-    v->nwrite++;
-    _clear_var_flags ();
-    _construct_varmap_expr (c->u.assign.e);
-    if (x != v->nread) {
-      c->type = ACT_CHP_ASSIGNSELF;
-    }
-    break;
-  case ACT_CHP_SEND:
-    v = _var_getinfo (c->u.comm.chan);
-    if (v->fisinport == 2) {
-      if (v->block_out != -1 && v->block_out != pblock) {
-	warning ("Channel has multiple potentially concurrent senders?");
-	fprintf (stderr, "\t Channel: ");
-	v->id->Print (stderr);
-	fprintf (stderr, "\n");
-      }
-      v->block_out = pblock;
-    }
-    v->nwrite++;
-    _clear_var_flags ();
-    if (c->u.comm.e) {
-      _construct_varmap_expr (c->u.comm.e);
-    }
-    break;
-  case ACT_CHP_RECV:
-    v = _var_getinfo (c->u.comm.chan);
-    if (v->fisinport == 2) {
-      if (v->block_in != -1 && v->block_in != pblock) {
-	warning ("Channel has multiple potentially concurrent receivers?");
-	fprintf (stderr, "\t Channel: ");
-	v->id->Print (stderr);
-	fprintf (stderr, "\n");
-      }
-      v->block_in = pblock;
-    }
-    v->nread++;
-    if (c->u.comm.var) {
-      v = _var_getinfo (c->u.comm.var);
-      v->nwrite++;
-    }
-    break;
-  case ACT_CHP_COMMA:
-    if (pblock == -1) {
-      _block_id = 0;
-      changed = 1;
-    }
-  case ACT_CHP_SEMI:
-    if (pblock == -1 && c->type == ACT_CHP_SEMI) {
-      _block_id = -2;
-    }
-    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
-      _construct_varmap ((act_chp_lang_t *) list_value (li));
-      if (changed) {
-	_block_id++;
-      }
-    }
-    break;
-  case ACT_CHP_LOOP:
-  case ACT_CHP_SELECT:
-  case ACT_CHP_SELECT_NONDET:
-  case ACT_CHP_DOLOOP:
-    if (pblock == -1) {
-      _block_id = -2;
-    }
-    {
-      act_chp_gc_t *gc = c->u.gc;
-
-      /* group all guard variables together */
-      _clear_var_flags ();
-      while (gc) {
-	if (gc->g) {
-	  _construct_varmap_expr (gc->g);
-	}
-	gc = gc->next;
-      }
-
-      /* handle statements */
-      gc = c->u.gc;
-      while (gc) {
-	_clear_var_flags ();
-	_construct_varmap (gc->s);
-	gc = gc->next;
-      }
-    }
-    break;
-  case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
-    break;
-  default:
-    fatal_error ("What?");
-    break;
-  }
-  
-  _block_id = pblock;
-  
-  return;
-}
-
-
 void SDTEngine::_emit_guardlist (int isloop,
 				 act_chp_gc_t *gc, list_t *res)
 {
@@ -342,7 +59,6 @@ void SDTEngine::_emit_guardlist (int isloop,
 
 void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
 {
-  varmap_info *v;
   list_t *tl;
   int pblock = _block_id;
   int changed = 0;
@@ -358,28 +74,25 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
   case ACT_CHP_ASSIGN:
     {
       int eid;
-      varmap_info *v;
-      varmap_info xv;
 
-      v = _var_getinfo (c->u.assign.id);
-      _emit_expr (&eid, v->width, c->u.assign.e);
+      _emit_expr (&eid, bitWidth (c->u.assign.id), c->u.assign.e);
 
       if (c->type == ACT_CHP_ASSIGNSELF) {
 	/*-- generate a fresh variable --*/
-	xv = *v;
+	ActId *tmpv = NULL;
 
-	if (_gen_fresh_var (&xv)) {
+	if (_gen_fresh_var (bitWidth (c->u.assign.id), &tmpv)) {
 	  int fseq = _gen_stmt_id ();
 	  int tstmt = _gen_stmt_id ();
 
 	  _emit_trueseq (fseq, tstmt);
-	  _emit_transfer (tstmt, eid, &xv);
+	  _emit_transfer (tstmt, eid, tmpv);
 
 	  tstmt = _gen_stmt_id ();
 
 	  eid = _gen_expr_id ();
-	  _emit_var_read (eid, &xv);
-	  _emit_transfer (tstmt, eid, v);
+	  _emit_var_read (eid, tmpv);
+	  _emit_transfer (tstmt, eid, c->u.assign.id);
 
 	  list_t *l = list_new ();
 	  list_iappend (l, fseq);
@@ -390,11 +103,11 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
 	  list_free (l);
 	}
 	else {
-	  _emit_transfer (id, eid, v);
+	  _emit_transfer (id, eid, c->u.assign.id);
 	}
       }
       else {
-	_emit_transfer (id, eid, v);
+	_emit_transfer (id, eid, c->u.assign.id);
       }
     }
     break;
@@ -403,31 +116,19 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
     {
       Expr *e;
       int eid, vid;
-      v = _var_getinfo (c->u.comm.chan);
       e = c->u.comm.e;
       if (e) {
-	_emit_expr (&eid, v->width, e);
+	_emit_expr (&eid, bitWidth (c->u.comm.chan), e);
       }
       else {
 	eid = -1;
       }
-      _emit_transfer (id, eid, v);
+      _emit_transfer (id, eid, c->u.comm.chan);
     }
     break;
 
   case ACT_CHP_RECV:
-    {
-      varmap_info *wv;
-      
-      v = _var_getinfo (c->u.comm.chan);
-      if (c->u.comm.var) {
-	wv = _var_getinfo (c->u.comm.var);
-      }
-      else {
-	wv = NULL;
-      }
-      _emit_recv (id, v, wv);
-    }
+    _emit_recv (id, c->u.comm.chan, c->u.comm.var);
     break;
 
   case ACT_CHP_COMMA:
@@ -546,51 +247,13 @@ void SDTEngine::run_sdt (Process *p)
     return;
   }
 
-  if (_varmap) {
-    ihash_iter_init (_varmap, &iter);
-    while ((b = ihash_iter_next (_varmap, &iter))) {
-      varmap_info *v = (varmap_info *)b->v;
-      FREE (v);
-    }
-    ihash_free (_varmap);
-    _varmap = NULL;
-  }
   P = p;
 
-  _varmap = ihash_new (4);
   _block_id = -1;
-  _construct_varmap (chp->c);
-
-  //_rewrite_chp_func (chp->c);
 
   _emit_begin ();
 
-  /*-- emit all the variable ports and channel muxes --*/
-  ihash_iter_init (_varmap, &iter);
-  while ((b = ihash_iter_next (_varmap, &iter))) {
-    varmap_info *v = (varmap_info *) b->v;
-    if (v->fischan) {
-      _emit_channel_mux (v);
-#if 0
-      if (v->nread > 0 && v->nwrite > 0) {
-	char buf[10240];
-	v->id->sPrint (buf, 10240);
-	fatal_error  ("Channel `%s': send and receive on the same channel within a process not supported", buf);
-      }
-#endif      
-    }
-    else {
-      _emit_variable_mux (v);
-#if 0      
-      if (v->nread == 0 || v->nwrite == 0) {
-	char buf[10240];
-	v->id->sPrint (buf, 10240);
-	warning ("Variable `%s': only read or only written?", buf);
-      }
-#endif      
-    }
-  }
-  
+
   int toplev = _gen_stmt_id ();
   _block_id = -1;
   _run_sdt_helper (toplev, chp->c);
@@ -611,12 +274,10 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
   do {								\
     if ((ex)->type == E_VAR) {					\
       ihash_bucket_t *b;					\
-      varmap_info *v;						\
       b = ihash_lookup (_exprmap, (long)(ex));			\
       Assert (b, "What?");					\
-      v = _var_getinfo ((ActId *)(ex)->u.e.l);			\
       myid = b->i;						\
-      myw = v->width;						\
+      myw = bitWidth ((ActId *)(ex)->u.e.l);			\
     }								\
     else if ((ex)->type == E_TRUE || (ex)->type == E_FALSE) {	\
       myid = list_ivalue (_booliter);				\
@@ -907,18 +568,14 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
 
   case E_VAR:
     if (collect_phase) {
-      varmap_info *v;
       ihash_bucket_t *b;
-      v = _var_getinfo ((ActId *)e->u.e.l);
       b = ihash_add (_exprmap, (long)e);
       b->i = _gen_expr_id ();
     }
     else {
-      varmap_info *v;
       ihash_bucket_t *b;
-      v = _var_getinfo ((ActId *)e->u.e.l);
       b = ihash_lookup (_exprmap, (long)e);
-      _emit_var_read (b->i, v);
+      _emit_var_read (b->i, (ActId *)e->u.e.l);
     }
     break;
 
@@ -979,9 +636,8 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
     ihash_iter_init (_exprmap, &iter);
     while ((ib = ihash_iter_next (_exprmap, &iter))) {
       Expr *e = (Expr *)ib->key;
-      varmap_info *v = _var_getinfo ((ActId *)e->u.e.l);
       list_iappend (all_leaves, ib->i);
-      list_iappend (all_leaves, v->width);
+      list_iappend (all_leaves, bitWidth ((ActId *)e->u.e.l));
     }
   }
 
@@ -1053,39 +709,6 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
 }
 
 
-int SDTEngine::_get_isinport (varmap_info *v)
-{
-  Assert (v->fischan, "_get_isinport() callled for non-channel variable");
-  if (v->fisinport == 0) {
-    return 0;
-  }
-  else if (v->fisinport == 1) {
-    return 1;
-  }
-  else {
-    if (v->block_in < 0 || v->block_out < 0) {
-      fprintf (stderr, "Channel: ");
-      v->id->Print (stderr);
-      fprintf (stderr, "\n");
-      warning ("Channel has a missing %s port",
-	       (v->block_in < 0 ? "input" : "output"));
-    }
-    if (_block_id == v->block_in) {
-      return 1;
-    }
-    else if (_block_id == v->block_out) {
-      return 0;
-    }
-    else {
-      printf ("in=%d, out=%d, cur=%d\n", v->block_in, v->block_out, _block_id);
-      fprintf (stderr, "Channel: ");
-      v->id->Print (stderr);
-      fprintf (stderr, "\n");
-      fatal_error ("Shared channels are not supported");
-    }
-    return 0;
-  }
-}
 
 int SDTEngine::_gen_inst_id ()
 {
@@ -1115,9 +738,7 @@ int SDTEngine::_gen_expr_blk_id ()
 SDTEngine::SDTEngine (const char *exprfile)
 {
   P = NULL;
-  _varmap = NULL;
   _exprmap = NULL;
-  _shared_expr_var = 0;
   _exprfile = exprfile;
   if (exprfile) {
     _efp = fopen (exprfile, "a");
@@ -1125,4 +746,16 @@ SDTEngine::SDTEngine (const char *exprfile)
   else {
     _efp = NULL;
   }
+}
+
+int SDTEngine::bitWidth (ActId *id)
+{
+  if (!id) {
+    return -1;
+  }
+  InstType *it = P->CurScope()->FullLookup (id, NULL);
+  if (!it) {
+    return -1;
+  }
+  return TypeFactory::bitWidth (it);
 }

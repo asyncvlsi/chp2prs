@@ -24,6 +24,38 @@
 
 #include "sdt.h"
 
+
+/*
+ *
+ * Each original ACT variable will have a unique entry available that
+ * indicates various properties of the variable. The varmap_info
+ * structure includes the necessary information.
+ *
+ */
+struct varmap_info {
+  ActId *id;
+
+  /*-- flags --*/
+  unsigned int fcurexpr:1;	// found in current expression
+  unsigned int fischan:1;	// channel or int?
+  unsigned int fisinport:2;	// 1 if input, 0 if output, 2 if both
+  unsigned int fisbool:1;	// bool variable
+
+  int width;			// bitwidth
+
+  int block_in, block_out;	// for internal channels
+
+  int nread, nwrite;		// for variables
+                                //     nread  = total # of reads
+                                //     nwrite = total # of writes
+				// for channels
+                                //     nread  = total # of receives
+                                //     nwrite = total # of sends
+  
+  int iread, iwrite;		// running counter used for muxing
+};
+
+
 class BasicSDT : public SDTEngine {
  public:
   /**
@@ -51,6 +83,28 @@ class BasicSDT : public SDTEngine {
   
   /// Output file stream
   FILE *output_stream;
+
+
+  /*-- mode: currently not used --*/
+  int _shared_expr_var;
+
+  /// Aux functions for variable information
+  int _get_isinport (varmap_info *v);
+
+  /*
+   * This function returns the varmap_info structure
+   * for an ACT identifier
+   */
+  varmap_info *_var_getinfo (ActId *id);
+  
+  /* constructs the varmap structure */
+  void _construct_varmap (act_chp_lang_t *c);
+  void _construct_varmap_expr (Expr *e);
+  void _clear_var_flags ();
+
+  /*-- the varmap table --*/
+  struct iHashtable *_varmap;
+
   
   /// Override stmt id to also emit the channel definition in the
   /// output stream
@@ -74,21 +128,22 @@ class BasicSDT : public SDTEngine {
   void _emit_expr_const (int eid, int width, int val);
 
   /* id = variable port for this identifier */
-  void _emit_var_read   (int eid, varmap_info *v);
+  void _emit_var_read   (int eid, ActId *id);
   
-  void _emit_transfer (int cid, int eid, varmap_info *v);
-  void _emit_recv (int cid, varmap_info *ch, varmap_info *v);
+  void _emit_transfer (int cid, int eid, ActId *);
 
+  void _emit_recv (int cid, ActId *chid, ActId *);
+
+  /*-- internal --*/
   void _emit_channel_mux (varmap_info *ch);
   void _emit_variable_mux (varmap_info *v);
 
-  
   void _emit_comma (int cid, list_t *stmts);
   void _emit_semi (int cid, list_t *stmts);
   void _emit_semiopt (int cid, list_t *stmts);
   void _emit_trueseq (int cid, int sid);
 
-  int _gen_fresh_var (varmap_info *v);
+  int _gen_fresh_var (int width, ActId **);
   int _gen_safe_bool (int eid);
 
   void _emit_loop (int cid, list_t *guards, list_t *stmts);

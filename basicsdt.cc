@@ -202,16 +202,18 @@ void BasicSDT::_emit_expr_width_conv (int from, int from_w,
 	   from_w, to_w, to, from);
 }
 
-void BasicSDT::_emit_var_read (int eid, varmap_info *v)
+void BasicSDT::_emit_var_read (int eid, ActId *id)
 {
+  varmap_info *v = _var_getinfo (id);
   fprintf (output_stream, "   syn::expr::nullint<%d> e%d(var_",
 	   v->width, eid);
   v->id->Print (output_stream);
   fprintf (output_stream, ".out[%d]);\n", v->iread++);
 }
 
-void BasicSDT::_emit_transfer (int cid, int eid, varmap_info *ch)
+void BasicSDT::_emit_transfer (int cid, int eid, ActId *id)
 {
+  varmap_info *ch = _var_getinfo (id);
   fprintf (output_stream, "   syn::transfer<%d> s_%d(c%d, e%d.out,",
 	   ch->width, _gen_inst_id(), cid, eid);
 
@@ -230,8 +232,10 @@ void BasicSDT::_emit_transfer (int cid, int eid, varmap_info *ch)
   fprintf (output_stream, ");\n");
 }
 
-void BasicSDT::_emit_recv (int cid, varmap_info *ch, varmap_info *v)
+void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
 {
+  varmap_info *v = _var_getinfo (id);
+  varmap_info *ch = _var_getinfo (chid);
   int c;
   if (ch->nread > 1) {
     list_t *tmp = list_new ();
@@ -427,14 +431,25 @@ void BasicSDT::_emit_trueseq (int cid, int sid)
 	   _gen_inst_id(), cid, sid);
 }
 
-int BasicSDT::_gen_fresh_var (varmap_info *v)
+int BasicSDT::_gen_fresh_var (int width, ActId **id)
 {
   static int vid = 0;
+  varmap_info *v;
   char buf[32];
-  
-  snprintf (buf, 32, "fvar%d", vid++);
-  
-  v->id = new ActId (buf);
+
+  do {
+    snprintf (buf, 32, "fvar%d", vid++);
+  } while (P->CurScope()->Lookup (buf));
+
+  InstType *it = TypeFactory::Factory()->NewInt (P->CurScope(), Type::NONE,
+					    0, const_expr ((long)width));
+  it = it->Expand (NULL, NULL);
+
+  Assert (P->CurScope()->Add (buf, it), "What?");
+
+  *id = new ActId (buf);
+
+  v = _var_getinfo (*id);
   v->iread = 0;
   v->iwrite = 0;
   v->nread = 1;
@@ -450,12 +465,9 @@ int BasicSDT::_gen_fresh_var (varmap_info *v)
 */
 int BasicSDT::_gen_safe_bool (int eid)
 {
-  varmap_info xv;
+  ActId *id;
 
-  xv.id = NULL;
-  xv.width = 1;
-  xv.fischan = 0;
-  Assert (_gen_fresh_var (&xv), "What?");
+  Assert (_gen_fresh_var (1, &id), "What?");
 
   /*
     Sequence:
@@ -463,13 +475,13 @@ int BasicSDT::_gen_safe_bool (int eid)
       2. read variable into expression
   */
   int tid = _gen_stmt_id ();
-  _emit_transfer (tid, eid, &xv);
+  _emit_transfer (tid, eid, id);
 
   int fid = _gen_stmt_id ();
   _emit_trueseq (fid, tid);
 
   eid = _gen_expr_id ();
-  _emit_var_read (eid, &xv);
+  _emit_var_read (eid, id);
 
   int eid2 = _gen_expr_id ();
   fprintf (output_stream, "   syn::expr::null e%d;\n", eid2);
@@ -501,7 +513,10 @@ BasicSDT::BasicSDT (int isbundled, int isopt, FILE *fpout, const char *ef)
 {
   bundled_data = isbundled;
   optimize = isopt;
+  _varmap = NULL;
   
+  _shared_expr_var = 0;
+
   _expr_id = 0;
   _stmt_id = 0;
   _inst_id = 0;
@@ -626,8 +641,61 @@ void BasicSDT::initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
 
 void BasicSDT::_emit_begin ()
 {
+  ihash_iter_t iter;
+  ihash_bucket_t *b;
+  struct act_chp *chp;
+  
   /* Write process definition and variable declarations */
   int overrides = write_process_definition(output_stream, P);
+
+  if (!P->getlang() || !P->getlang()->getchp()) {
+    return;
+  }
+
+  chp = P->getlang()->getchp();
+
+  if (!chp->c) {
+    return;
+  }
+
+  if (_varmap) {
+    ihash_iter_init (_varmap, &iter);
+    while ((b = ihash_iter_next (_varmap, &iter))) {
+      varmap_info *v = (varmap_info *)b->v;
+      FREE (v);
+    }
+    ihash_free (_varmap);
+    _varmap = NULL;
+  }
+
+  _varmap = ihash_new (4);
+  _construct_varmap (chp->c);
+
+  /*-- emit all the variable ports and channel muxes --*/
+  ihash_iter_init (_varmap, &iter);
+  while ((b = ihash_iter_next (_varmap, &iter))) {
+    varmap_info *v = (varmap_info *) b->v;
+    if (v->fischan) {
+      _emit_channel_mux (v);
+#if 0
+      if (v->nread > 0 && v->nwrite > 0) {
+	char buf[10240];
+	v->id->sPrint (buf, 10240);
+	fatal_error  ("Channel `%s': send and receive on the same channel within a process not supported", buf);
+      }
+#endif      
+    }
+    else {
+      _emit_variable_mux (v);
+#if 0      
+      if (v->nread == 0 || v->nwrite == 0) {
+	char buf[10240];
+	v->id->sPrint (buf, 10240);
+	warning ("Variable `%s': only read or only written?", buf);
+      }
+#endif      
+    }
+  }
 }
 
 
@@ -647,5 +715,341 @@ void BasicSDT::_emit_end (int id)
   fprintf (output_stream, "}\n\n");
   fclose (_efp);
   _efp = NULL;
+
+
+  if (_varmap) {
+    ihash_iter_t iter;
+    ihash_bucket_t *b;
+    ihash_iter_init (_varmap, &iter);
+    while ((b = ihash_iter_next (_varmap, &iter))) {
+      varmap_info *v = (varmap_info *)b->v;
+      FREE (v);
+    }
+    ihash_free (_varmap);
+    _varmap = NULL;
+  }
+
+  
 }
   
+
+
+
+
+void BasicSDT::_construct_varmap_expr (Expr *e)
+{
+  act_connection *uid;
+  varmap_info *v;
+  
+  if (!e) return;
+  switch (e->type) {
+    /* binary */
+  case E_AND:
+  case E_OR:
+  case E_PLUS:
+  case E_MINUS:
+  case E_MULT:
+  case E_DIV:
+  case E_MOD:
+  case E_LSL:
+  case E_LSR:
+  case E_ASR:
+  case E_XOR:
+  case E_LT:
+  case E_GT:
+  case E_LE:
+  case E_GE:
+  case E_EQ:
+  case E_NE:
+    _construct_varmap_expr (e->u.e.l);
+    _construct_varmap_expr (e->u.e.r);
+    break;
+    
+  case E_NOT:
+  case E_UMINUS:
+  case E_COMPLEMENT:
+    _construct_varmap_expr (e->u.e.l);
+    break;
+
+  case E_QUERY:
+    _construct_varmap_expr (e->u.e.l);
+    _construct_varmap_expr (e->u.e.r->u.e.l);
+    _construct_varmap_expr (e->u.e.r->u.e.r);
+    break;
+
+  case E_COLON:
+  case E_COMMA:
+    fatal_error ("Should have been handled elsewhere");
+    break;
+
+  case E_CONCAT:
+    do {
+      _construct_varmap_expr (e->u.e.l);
+      e = e->u.e.r;
+    } while (e);
+    break;
+
+  case E_BITFIELD:
+    /* l is an Id */
+    v = _var_getinfo ((ActId *)e->u.e.l);
+    if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
+      v->nread++;
+      v->fcurexpr = 1;
+    }
+    break;
+
+  case E_TRUE:
+  case E_FALSE:
+  case E_INT:
+  case E_REAL:
+    break;
+
+  case E_VAR:
+    v = _var_getinfo ((ActId *)e->u.e.l);
+    if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
+      v->nread++;
+      v->fcurexpr = 1;
+    }
+    break;
+
+  case E_PROBE:
+    v = _var_getinfo ((ActId *)e->u.e.l);
+    if (!_shared_expr_var || !v->fcurexpr) {
+      Assert (v->fischan, "What?");
+      v->nread++;
+      v->fcurexpr = 1;
+    }
+    break;
+
+  case E_BUILTIN_BOOL:
+  case E_BUILTIN_INT:
+    _construct_varmap_expr (e->u.e.l);
+    break;
+    
+  case E_FUNCTION:
+    e = e->u.fn.r;
+    while (e) {
+      _construct_varmap_expr (e->u.e.l);
+      e = e->u.e.r;
+    }
+    break;
+
+  case E_SELF:
+  default:
+    fatal_error ("Unknown expression type %d\n", e->type);
+    break;
+  }
+}
+
+void BasicSDT::_clear_var_flags ()
+{
+  ihash_iter_t iter;
+  ihash_bucket_t *b;
+  ihash_iter_init (_varmap, &iter);
+
+  while ((b = ihash_iter_next (_varmap, &iter))) {
+    varmap_info *v = (varmap_info *)b->v;
+    v->fcurexpr = 0;
+  }
+}
+
+
+void BasicSDT::_construct_varmap (act_chp_lang_t *c)
+{
+  varmap_info *v;
+  int x;
+  int pblock = 0;
+  int changed = 0;
+  if (!c) return;
+
+  pblock = _block_id;
+
+  switch (c->type) {
+
+  case ACT_CHP_SKIP:
+    break;
+  case ACT_CHP_ASSIGN:
+    v = _var_getinfo (c->u.assign.id);
+    x = v->nread;
+    v->nwrite++;
+    _clear_var_flags ();
+    _construct_varmap_expr (c->u.assign.e);
+    if (x != v->nread) {
+      c->type = ACT_CHP_ASSIGNSELF;
+    }
+    break;
+  case ACT_CHP_SEND:
+    v = _var_getinfo (c->u.comm.chan);
+    if (v->fisinport == 2) {
+      if (v->block_out != -1 && v->block_out != pblock) {
+	warning ("Channel has multiple potentially concurrent senders?");
+	fprintf (stderr, "\t Channel: ");
+	v->id->Print (stderr);
+	fprintf (stderr, "\n");
+      }
+      v->block_out = pblock;
+    }
+    v->nwrite++;
+    _clear_var_flags ();
+    if (c->u.comm.e) {
+      _construct_varmap_expr (c->u.comm.e);
+    }
+    break;
+  case ACT_CHP_RECV:
+    v = _var_getinfo (c->u.comm.chan);
+    if (v->fisinport == 2) {
+      if (v->block_in != -1 && v->block_in != pblock) {
+	warning ("Channel has multiple potentially concurrent receivers?");
+	fprintf (stderr, "\t Channel: ");
+	v->id->Print (stderr);
+	fprintf (stderr, "\n");
+      }
+      v->block_in = pblock;
+    }
+    v->nread++;
+    if (c->u.comm.var) {
+      v = _var_getinfo (c->u.comm.var);
+      v->nwrite++;
+    }
+    break;
+  case ACT_CHP_COMMA:
+    if (pblock == -1) {
+      _block_id = 0;
+      changed = 1;
+    }
+  case ACT_CHP_SEMI:
+    if (pblock == -1 && c->type == ACT_CHP_SEMI) {
+      _block_id = -2;
+    }
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
+      _construct_varmap ((act_chp_lang_t *) list_value (li));
+      if (changed) {
+	_block_id++;
+      }
+    }
+    break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_SELECT:
+  case ACT_CHP_SELECT_NONDET:
+  case ACT_CHP_DOLOOP:
+    if (pblock == -1) {
+      _block_id = -2;
+    }
+    {
+      act_chp_gc_t *gc = c->u.gc;
+
+      /* group all guard variables together */
+      _clear_var_flags ();
+      while (gc) {
+	if (gc->g) {
+	  _construct_varmap_expr (gc->g);
+	}
+	gc = gc->next;
+      }
+
+      /* handle statements */
+      gc = c->u.gc;
+      while (gc) {
+	_clear_var_flags ();
+	_construct_varmap (gc->s);
+	gc = gc->next;
+      }
+    }
+    break;
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+  default:
+    fatal_error ("What?");
+    break;
+  }
+  
+
+  _block_id = pblock;
+  
+  return;
+}
+
+
+varmap_info *BasicSDT::_var_getinfo (ActId *id)
+{
+  act_connection *c;
+  ihash_bucket_t *b;
+  varmap_info *v;
+  InstType *it;
+
+  c = id->Canonical (P->CurScope());
+  Assert (c, "What?");
+  
+  b = ihash_lookup (_varmap, (long)c);
+  if (!b) {
+    b = ihash_add (_varmap, (long)c);
+    NEW (v, varmap_info);
+
+    v->nread = 0;
+    v->nwrite = 0;
+    v->iread = 0;
+    v->iwrite = 0;
+    v->id = id;
+    it = P->Lookup (id);
+    v->width = TypeFactory::bitWidth (it);
+    v->fisbool = 0;
+    if (TypeFactory::isChanType (it)) {
+      v->fischan = 1;
+      if (it->getDir() == Type::direction::IN) {
+	v->fisinport = 1;
+      }
+      else if (it->getDir() == Type::direction::OUT) {
+	v->fisinport = 0;
+      }
+      else {
+	v->fisinport = 2;
+	v->block_in = -1;
+	v->block_out = -1;
+      }
+    }
+    else {
+      v->fischan = 0;
+      if (TypeFactory::isBoolType (it)) {
+	v->fisbool = 1;
+      }
+    }
+    b->v = v;
+  }
+  return (varmap_info *) b->v;
+}
+
+
+int BasicSDT::_get_isinport (varmap_info *v)
+{
+  Assert (v->fischan, "_get_isinport() callled for non-channel variable");
+  if (v->fisinport == 0) {
+    return 0;
+  }
+  else if (v->fisinport == 1) {
+    return 1;
+  }
+  else {
+    if (v->block_in < 0 || v->block_out < 0) {
+      fprintf (stderr, "Channel: ");
+      v->id->Print (stderr);
+      fprintf (stderr, "\n");
+      warning ("Channel has a missing %s port",
+	       (v->block_in < 0 ? "input" : "output"));
+    }
+    if (_block_id == v->block_in) {
+      return 1;
+    }
+    else if (_block_id == v->block_out) {
+      return 0;
+    }
+    else {
+      printf ("in=%d, out=%d, cur=%d\n", v->block_in, v->block_out, _block_id);
+      fprintf (stderr, "Channel: ");
+      v->id->Print (stderr);
+      fprintf (stderr, "\n");
+      fatal_error ("Shared channels are not supported");
+    }
+    return 0;
+  }
+}

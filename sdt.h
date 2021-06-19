@@ -26,36 +26,6 @@
 #include <act/act.h>
 
 /*
- *
- * Each original ACT variable will have a unique entry available that
- * indicates various properties of the variable. The varmap_info
- * structure includes the necessary information.
- *
- */
-struct varmap_info {
-  ActId *id;
-
-  /*-- flags --*/
-  unsigned int fcurexpr:1;	// found in current expression
-  unsigned int fischan:1;	// channel or int?
-  unsigned int fisinport:2;	// 1 if input, 0 if output, 2 if both
-  unsigned int fisbool:1;	// bool variable
-
-  int width;			// bitwidth
-
-  int block_in, block_out;	// for internal channels
-
-  int nread, nwrite;		// for variables
-                                //     nread  = total # of reads
-                                //     nwrite = total # of writes
-				// for channels
-                                //     nread  = total # of receives
-                                //     nwrite = total # of sends
-  
-  int iread, iwrite;		// running counter used for muxing
-};
-
-/*
  *  Generic abstract base class for syntax-directed translation
  */
 class SDTEngine {
@@ -66,12 +36,6 @@ class SDTEngine {
   /// are emitted.
   SDTEngine(const char *exprfile);
   
-  /*-- 
-    In the mode when expression variables are not shared, the
-    core modules assume that the leaf of the expression tree "pulls" 
-    values from the variables
-    --*/
-  void modeSharedExprVar () { _shared_expr_var = 1; }
 
   /*
    * Main method that executes the syntax-directed translation engine
@@ -79,25 +43,10 @@ class SDTEngine {
   void run_sdt (Process *p);
 
 private:
-  /*-- internal functions --*/
-
-  /* constructs the varmap structure */
-  void _construct_varmap (act_chp_lang_t *c);
-  void _construct_varmap_expr (Expr *e);
-  void _clear_var_flags ();
-  void _rewrite_chp_func (act_chp_lang_t *c);
-
   /*-- helper function for run_sdt --*/
   void _run_sdt_helper (int id, act_chp_lang_t *c);
 
-  /*-- mode: currently not used --*/
-  int _shared_expr_var;
-
-  /*-- top level block ID --*/
-  int _block_id;
-
-  /*-- the varmap table --*/
-  struct iHashtable *_varmap;
+  int bitWidth (ActId *id);
 
 protected:
   /*-- 
@@ -125,17 +74,12 @@ protected:
   /// Block expression definition number, shared across the entire design
   static int _blk_id;
 
-  int _get_isinport (varmap_info *v);
-
-
-  /*
-   * This function returns the varmap_info structure
-   * for an ACT identifier
-   */
-  varmap_info *_var_getinfo (ActId *id);
-  
   /* The process being translated */
   Process *P;
+
+
+  /*-- top level block ID --*/
+  int _block_id;
 
   /*
    * This is used to emit expression building blocks in a separate
@@ -244,7 +188,7 @@ protected:
     Emit a read access to a variable
          v : the variable to be read
     --*/
-  virtual void _emit_var_read   (int eid, varmap_info *v) = 0;
+  virtual void _emit_var_read   (int eid, ActId *v) = 0;
   
 
   
@@ -254,15 +198,10 @@ protected:
   virtual void _emit_skip (int id) = 0;
 
   /* transfer expression to channel or variable */
-  virtual void _emit_transfer (int cid, int eid, varmap_info *v) = 0;
+  virtual void _emit_transfer (int cid, int eid, ActId *v) = 0;
 
   /* receive */
-  virtual void _emit_recv (int cid, varmap_info *ch, varmap_info *v) = 0;
-
-  /* channel mux: note that the # of ports needed for the mux are
-     already part of the varmap_info */
-  virtual void _emit_channel_mux (varmap_info *v) = 0;
-  virtual void _emit_variable_mux (varmap_info *v) = 0;
+  virtual void _emit_recv (int cid, ActId *ch, ActId *v) = 0;
 
   /*--- 
     Loop and Comma:
@@ -289,7 +228,7 @@ protected:
 
     Return 0 if you don't need a fresh variable, 1 otherwise.
   */
-  virtual int _gen_fresh_var (varmap_info *v) = 0;
+  virtual int _gen_fresh_var (int width, ActId **v) = 0;
 
   /*-- 
     Given an expression ID where the result is a Boolean, use the
@@ -326,6 +265,11 @@ protected:
   /// for the process. If it is negative, there were no statements to
   /// be translated for this process.
   virtual void _emit_end (int topid) = 0;
-};  
+};
+
+
+
+#define ACT_CHP_ASSIGNSELF (ACT_CHP_STMTEND+1)
+
 
 #endif /* __CHP2PRS_STD_H__ */

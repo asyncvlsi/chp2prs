@@ -395,12 +395,9 @@ void ExternOptSDT::_emit_guardlist (int isloop, act_chp_gc_t *gc, list_t *res)
 */
 int ExternOptSDT::_gen_safe_bool (int eid)
 {
-  varmap_info xv;
+  ActId *id;
 
-  xv.id = NULL;
-  xv.width = 1;
-  xv.fischan = 0;
-  Assert (_gen_fresh_var (&xv), "What?");
+  Assert (_gen_fresh_var (1, &id), "What?");
 
   /*
     Sequence:
@@ -408,13 +405,13 @@ int ExternOptSDT::_gen_safe_bool (int eid)
       2. read variable into expression
   */
   int tid = _gen_stmt_id ();
-  _emit_transfer (tid, eid, &xv);
+  _emit_transfer (tid, eid, id);
 
   int fid = _gen_stmt_id ();
   _emit_trueseq (fid, tid);
 
   eid = _gen_expr_id ();
-  _emit_var_read (eid, &xv);
+  _emit_var_read (eid, id);
 
   int eid2 = _gen_expr_id ();
   
@@ -586,11 +583,9 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
       b_width->i = v->width;
     }
     else {
-      varmap_info *v;
       ihash_bucket_t *b;
-      v = _var_getinfo ((ActId *)e->u.e.l);
       b = ihash_lookup (_inexprmap, (long)e);
-      _emit_var_read (b->i, v);
+      _emit_var_read (b->i, (ActId *)e->u.e.l);
     }
     break;
 
