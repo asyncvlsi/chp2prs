@@ -2,6 +2,7 @@
 #define __ACT_EXTERNOPT_SDT_H__
 
 #include "basicsdt.h"
+#include "config_pkg.h"
 #include <act/expropt.h>
 
 /**

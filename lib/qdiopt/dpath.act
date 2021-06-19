@@ -215,48 +215,6 @@ defproc wrap_from_array(sdtexprchan<1> in[W]; sdtexprchan<W> out)
 }
 
 export template<pint W1, W2>
-defproc widthconv_data(dualrail? a[W1]; sdtexprchan<W2> out)
-{
-  [ W1 = W2 -> a = out.d.r;
-  [] W1 < W2 ->
-    bool _xv;
-    a = out.d.r[0..W1-1];
-    prs {
-      a[W1-1].t | a[W1-1].f => _xv-
-      (i:W1..W2-1:  _xv => out.d.r[i].f- )
-   }
-   (i:W1..W2-1: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.r[i].f{-1}} )
-   sizing {p_n_mode <- 1; leak_adjust <- 1; _xv{-1} }
-   (i:W1..W2-1: GND = out.d.r[i].t;)
-    
-  [] W1 > W2 ->
-     a[0..W2-1] = out.d.r;
-     // XXX: dangling signals!
- ]
-}
-
-export template<pint W2>
-defproc widthconv_data_1(dualrail? a; sdtexprchan<W2> out)
-{
-  [ 1 = W2 -> a = out.d.r[0];
-  [] 1 < W2 ->
-    bool _xv;
-    a = out.d.r[0];
-    prs {
-      a.t | a.f => _xv-
-      (i:1..W2-1:  _xv => out.d.r[i].f- )
-   }
-  (i:1..W2-1: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.r[i].f{-1}} )
-   sizing {p_n_mode <- 1; leak_adjust <- 1; _xv{-1} }
-   (i:1..W2-1: GND = out.d.r[i].t;)
-    
-  [] 1 > W2 ->
-     a = out.d.r[0];
-     // XXX: dangling signals!
- ]
-}
-
-export template<pint W1, W2>
 defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
 {
   [ W1 = W2 -> a = out;

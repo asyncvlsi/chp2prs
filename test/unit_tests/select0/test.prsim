@@ -7,6 +7,9 @@ system "echo 'less than'"
 cycle
 
 assert-channel-valid "t.Z" 32 2
+assert-var-int "t.x" 32 1
+assert-var-int "t.y" 32 12423
+assert-var-int "t.z" 32 2
 set t.Z.a 1
 cycle
 assert-channel-neutral "t.Z" 32
@@ -15,6 +18,9 @@ cycle
 
 system "echo 'greater than'"
 assert-channel-valid "t.Z" 32 1
+assert-var-int "t.x" 32 22345
+assert-var-int "t.y" 32 12423
+assert-var-int "t.z" 32 1
 set t.Z.a 1
 cycle
 assert-channel-neutral "t.Z" 32
@@ -23,6 +29,9 @@ cycle
 
 system "echo 'equal'"
 assert-channel-valid "t.Z" 32 3
+assert-var-int "t.x" 32 12423
+assert-var-int "t.y" 32 12423
+assert-var-int "t.z" 32 3
 set t.Z.a 1
 cycle
 assert-channel-neutral "t.Z" 32
