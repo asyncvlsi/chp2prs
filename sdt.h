@@ -267,9 +267,4 @@ protected:
   virtual void _emit_end (int topid) = 0;
 };
 
-
-
-#define ACT_CHP_ASSIGNSELF (ACT_CHP_STMTEND+1)
-
-
 #endif /* __CHP2PRS_STD_H__ */
