@@ -26,6 +26,7 @@
 #include <string.h>
 #include <act/act.h>
 #include <act/passes/netlist.h>
+#include <act/passes/finline.h>
 #include "config_pkg.h"
 
 #ifdef FOUND_chp_opt
@@ -184,6 +185,9 @@ int main(int argc, char **argv)
     fatal_error ("Optimize flag is not currently enabled in the build.");
 #endif
   }
+
+  ActCHPFuncInline *ip = new ActCHPFuncInline (a);
+  ip->run (p);
 
   ActDynamicPass *c2p = new ActDynamicPass (a, "chp2prs", "libactchp2prspass.so", "chp2prs");
 
