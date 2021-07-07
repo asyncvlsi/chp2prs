@@ -403,8 +403,10 @@ void BasicSDT::_emit_variable_mux (varmap_info *v)
   if (!v->fisbool) {
     // zero length arrays are not allowed, this is for simulation only, writing but not reading would not make sense in a real chip
     if (v->nread == 0) {
+      char tmpbuf[1024];
       fprintf (output_stream, "   syn::var_int_in_ports<%d,%d> var_", v->width, v->nwrite);
-      warning("you are generating a variable that is written but never read, in case this is a circuit for tapeout reexamine your design");
+      v->id->sPrint (tmpbuf, 1024);
+      warning("Process `%s': variable `%s' is written but never read; hope you know what you're doing!", P ? P->getName() : "-toplevel-", tmpbuf);
     }
     else fprintf (output_stream, "   syn::var_int_ports<%d,%d,%d> var_",
 	     v->width, v->nwrite, v->nread);
@@ -412,8 +414,10 @@ void BasicSDT::_emit_variable_mux (varmap_info *v)
   else {
     // zero length arrays are not allowed, this is for simulation only, writing but not reading would not make sense in a real chip
     if (v->nread == 0){
+      char tmpbuf[1024];
       fprintf(output_stream, "   syn::var_bool_in_ports<%d> var_", v->nwrite);
-      warning("you are generating a variable that is written but never read, in case this is a circuit for tapeout reexamine your design");
+      v->id->sPrint (tmpbuf, 1024);
+      warning("Process `%s': variable `%s' is written but never read; hope you know what you're doing!", P ? P->getName() : "-toplevel-", tmpbuf);
     } 
     else fprintf (output_stream, "   syn::var_bool_ports<%d,%d> var_",
 	     v->nwrite, v->nread);
@@ -1022,7 +1026,7 @@ varmap_info *BasicSDT::_var_getinfo (ActId *id)
 
 int BasicSDT::_get_isinport (varmap_info *v)
 {
-  Assert (v->fischan, "_get_isinport() callled for non-channel variable");
+  Assert (v->fischan, "_get_isinport() called for non-channel variable");
   if (v->fisinport == 0) {
     return 0;
   }
