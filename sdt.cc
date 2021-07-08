@@ -128,7 +128,12 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
     break;
 
   case ACT_CHP_RECV:
-    _emit_recv (id, c->u.comm.chan, c->u.comm.var);
+    if (!c->u.comm.var) {
+      warning ("receive without variable on `%s'", c->u.comm.chan->getName());
+    }
+    else {
+      _emit_recv (id, c->u.comm.chan, c->u.comm.var);
+    }
     break;
 
   case ACT_CHP_COMMA:
@@ -408,11 +413,21 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
 
     /* XXX: here */
   case E_CONCAT:
-    fatal_error ("fix concat");
+    {
+      list_t *l = list_new ();
+      *width = 0;
+      do {
+	CHECK_EXPR (e->u.e.l, lid, lw);
+	list_iappend (l, lid);
+	list_iappend (l, lw);
+	*width = MAX(*width, lw);
+	e = e->u.e.r;
+      } while (e);
+      list_free (l);
+    }
     break;
 
   case E_BITFIELD:
-    fatal_error ("fix bitfield");
     break;
 
   case E_REAL:
@@ -500,11 +515,25 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
 
     /* XXX: here */
   case E_CONCAT:
-    fatal_error ("fix concat");
+    do {
+      _expr_collect_vars (e->u.e.l, collect_phase);
+      e = e->u.e.r;
+    } while (e);
     break;
 
   case E_BITFIELD:
-    fatal_error ("fix bitfield");
+    if (collect_phase) {
+      ihash_bucket_t *b;
+      if (!ihash_lookup (_exprmap, (long)e)) {
+	b = ihash_add (_exprmap, (long)e);
+	b->i = _gen_expr_id ();
+      }
+    }
+    else {
+      ihash_bucket_t *b;
+      b = ihash_lookup (_exprmap, (long)e);
+      _emit_var_read (b->i, (ActId *)e->u.e.l);
+    }
     break;
 
   case E_REAL:
@@ -569,8 +598,10 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
   case E_VAR:
     if (collect_phase) {
       ihash_bucket_t *b;
-      b = ihash_add (_exprmap, (long)e);
-      b->i = _gen_expr_id ();
+      if (!ihash_lookup (_exprmap, (long)e)) {
+	b = ihash_add (_exprmap, (long)e);
+	b->i = _gen_expr_id ();
+      }
     }
     else {
       ihash_bucket_t *b;
