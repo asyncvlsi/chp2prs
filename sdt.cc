@@ -128,12 +128,7 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
     break;
 
   case ACT_CHP_RECV:
-    if (!c->u.comm.var) {
-      warning ("receive without variable on `%s'", c->u.comm.chan->getName());
-    }
-    else {
-      _emit_recv (id, c->u.comm.chan, c->u.comm.var);
-    }
+    _emit_recv (id, c->u.comm.chan, c->u.comm.var);
     break;
 
   case ACT_CHP_COMMA:

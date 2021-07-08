@@ -234,7 +234,13 @@ void BasicSDT::_emit_transfer (int cid, int eid, ActId *id)
 
 void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
 {
-  varmap_info *v = _var_getinfo (id);
+  varmap_info *v;
+  if (id) {
+    v = _var_getinfo (id);
+  }
+  else {
+    v = NULL;
+  }
   varmap_info *ch = _var_getinfo (chid);
   int c;
   if (ch->nread > 1) {
