@@ -207,7 +207,7 @@ void BasicSDT::_emit_var_read (int eid, ActId *id)
   varmap_info *v = _var_getinfo (id);
   fprintf (output_stream, "   syn::expr::nullint<%d> e%d(var_",
 	   v->width, eid);
-  v->id->Print (output_stream);
+  _emit_mangled_id (output_stream, v->id);
   fprintf (output_stream, ".out[%d]);\n", v->iread++);
 }
 
@@ -219,14 +219,14 @@ void BasicSDT::_emit_transfer (int cid, int eid, ActId *id)
 
   if (ch->fischan) {
     /* pick the channel mux */
-    ch->id->Print (output_stream);
+    _emit_mangled_id (output_stream, ch->id);
     fprintf (output_stream, "_mux%c.m[%d]",
 	     _get_isinport (ch) ? 'i' : 'o',
 	     _get_isinport (ch) ? ch->iread++ : ch->iwrite++);
   }
   else {
     fprintf (output_stream, "var_");
-    ch->id->Print (output_stream);
+    _emit_mangled_id (output_stream, ch->id);
     fprintf (output_stream, ".in[%d]", ch->iwrite++);
   }
   fprintf (output_stream, ");\n");
@@ -256,18 +256,18 @@ void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
   fprintf (output_stream, "   syn::recvport<%d> s_%d(c%d,", ch->width,
 	   _gen_inst_id(), cid);
   Assert (_get_isinport (ch), "What?");
-  ch->id->Print (output_stream);
+  _emit_mangled_id (output_stream, ch->id);
   fprintf (output_stream, "_muxi.m[%d]", ch->iread++);
   fprintf (output_stream, ",");
   if (v) {
     fprintf (output_stream, "var_");
-    v->id->Print (output_stream);
+    _emit_mangled_id (output_stream, v->id);
     fprintf (output_stream, ".in[%d]", v->iwrite++);
   }
   fprintf (output_stream, ");\n");
   if (ch->nread > 1) {
     fprintf (output_stream, "   ");
-    ch->id->Print (output_stream);
+    _emit_mangled_id (output_stream, ch->id);
     fprintf (output_stream, "_muxi.ctrl[%d]=c%d;\n", ch->iread-1, c);
   }
 }
@@ -389,14 +389,14 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
   Assert (v->fischan, "What?");
   if (v->nread > 0) {
     fprintf (output_stream, "   syn::muxinport<%d,%d> ", v->width, v->nread);
-    v->id->Print (output_stream);
+    _emit_mangled_id (output_stream, v->id);
     fprintf (output_stream, "_muxi(");
     v->id->Print (output_stream);
     fprintf (output_stream, ");\n");
   }
   if (v->nwrite > 0) {
     fprintf (output_stream, "   syn::muxoutport<%d,%d> ", v->width, v->nwrite);
-    v->id->Print (output_stream);
+    _emit_mangled_id (output_stream, v->id);
     fprintf (output_stream, "_muxo(");
     v->id->Print (output_stream);
     fprintf (output_stream, ");\n");
@@ -405,30 +405,33 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
 
 void BasicSDT::_emit_variable_mux (varmap_info *v)
 {
+  char tmpbuf[4096];
   /* if you need a mux for accessing variables, add it here */
   if (!v->fisbool) {
     // zero length arrays are not allowed, this is for simulation only, writing but not reading would not make sense in a real chip
     if (v->nread == 0) {
-      char tmpbuf[1024];
       fprintf (output_stream, "   syn::var_int_in_ports<%d,%d> var_", v->width, v->nwrite);
-      v->id->sPrint (tmpbuf, 1024);
+      v->id->sPrint (tmpbuf, 4096);
       warning("Process `%s': variable `%s' is written but never read; hope you know what you're doing!", P ? P->getName() : "-toplevel-", tmpbuf);
     }
-    else fprintf (output_stream, "   syn::var_int_ports<%d,%d,%d> var_",
-	     v->width, v->nwrite, v->nread);
+    else {
+      fprintf (output_stream, "   syn::var_int_ports<%d,%d,%d> var_",
+	       v->width, v->nwrite, v->nread);
+    }
   }
   else {
     // zero length arrays are not allowed, this is for simulation only, writing but not reading would not make sense in a real chip
     if (v->nread == 0){
-      char tmpbuf[1024];
       fprintf(output_stream, "   syn::var_bool_in_ports<%d> var_", v->nwrite);
-      v->id->sPrint (tmpbuf, 1024);
+      v->id->sPrint (tmpbuf, 4096);
       warning("Process `%s': variable `%s' is written but never read; hope you know what you're doing!", P ? P->getName() : "-toplevel-", tmpbuf);
     } 
-    else fprintf (output_stream, "   syn::var_bool_ports<%d,%d> var_",
-	     v->nwrite, v->nread);
-  }    
-  v->id->Print (output_stream);
+    else {
+      fprintf (output_stream, "   syn::var_bool_ports<%d,%d> var_",
+	       v->nwrite, v->nread);
+    }
+  }
+  _emit_mangled_id (output_stream, v->id);
   fprintf (output_stream, "(");
   v->id->Print (output_stream);
   fprintf (output_stream, ");\n");
@@ -542,7 +545,6 @@ BasicSDT::BasicSDT (int isbundled, int isopt, FILE *fpout, const char *ef)
 bool BasicSDT::write_process_definition(FILE *fp, Process * p)
 {
   bool has_overrides = 0;
-  bool has_bool_overrides = 0;
 
   fprintf(fp, "defproc sdt_");
   ActNamespace::Act()->mfprintfproc (fp, p);
@@ -562,49 +564,50 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
   fprintf (fp, " ()\n");
 
   int bw = 0;
+
+#define OVERRIDE_OPEN				\
+  do {						\
+    if (!has_overrides) {			\
+      fprintf(fp, "+{\n");			\
+      has_overrides = true;			\
+    }						\
+  } while (0)
+    
   
   /* iterate through Scope Hashtable to find all chp variables */
   ActInstiter iter(p->CurScope());
   for (iter = iter.begin(); iter != iter.end(); iter++) {
     ValueIdx *vx = *iter;
     /* chan variable found */
-    if (TypeFactory::isChanType (vx->t))
-    {
+    if (TypeFactory::isChanType (vx->t)) {
       bw = TypeFactory::bitWidth(vx->t);
-      if (!has_overrides) {
-	fprintf(fp, "+{\n");
-	has_overrides = true;
-      }
+      OVERRIDE_OPEN;
       fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
     }
-    
-    /* int variable found */
-    if (TypeFactory::isIntType (vx->t)) {
+    else if (TypeFactory::isIntType (vx->t)) {
       /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
       bw = TypeFactory::bitWidth(vx->t);
-      if (!has_overrides) {
-	fprintf(fp, "+{\n");
-	has_overrides = true;
-      }
+      OVERRIDE_OPEN;
       fprintf(fp, "  syn::sdtvar<%d> %s;\n", bw, vx->getName());
     }
     else if (TypeFactory::isBoolType (vx->t)) {
-      if (!has_overrides) {
-	fprintf(fp, "+{\n");
-	has_overrides = true;
-      }
+      OVERRIDE_OPEN;
       fprintf (fp, " syn::sdtboolvar %s;\n", vx->getName());
-      has_bool_overrides = 1;
     }
     else if (TypeFactory::isProcessType (vx->t)) {
-      if (!has_overrides) {
-	fprintf(fp, "+{\n");
-	has_overrides = true;
-      }
+      OVERRIDE_OPEN;
       fprintf (fp, " sdt_");
       Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
       Assert (proc, "Why am I here?");
       ActNamespace::Act()->mfprintfproc (fp, proc);
+      fprintf (fp, " %s;\n", vx->getName());
+    }
+    else if (TypeFactory::isStructure (vx->t)) {
+      OVERRIDE_OPEN;
+      fprintf (fp, " sdt_");
+      Data *d = dynamic_cast <Data *> (vx->t->BaseType());
+      Assert (d, "Why am I here?");
+      ActNamespace::Act()->mfprintfproc (fp, d);
       fprintf (fp, " %s;\n", vx->getName());
     }
   }
@@ -637,7 +640,9 @@ void BasicSDT::initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
     
     /* int variable found */
     if (TypeFactory::isIntType (vx->t)) {
-      bw = TypeFactory::bitWidth(vx->t);
+      ActId *tmpid = new ActId (vx->getName());
+      bw = bitWidth (tmpid);
+      delete tmpid;
       fprintf(fp, "  syn::var_init<%d,false> var_%s(%s);\n", bw,
 	      vx->getName(), vx->getName());
     }
@@ -1002,7 +1007,7 @@ varmap_info *BasicSDT::_var_getinfo (ActId *id)
     v->iwrite = 0;
     v->id = id;
     it = P->Lookup (id);
-    v->width = TypeFactory::bitWidth (it);
+    v->width = bitWidth (id);
     v->fisbool = 0;
     if (TypeFactory::isChanType (it)) {
       v->fischan = 1;
@@ -1062,4 +1067,13 @@ int BasicSDT::_get_isinport (varmap_info *v)
     }
     return 0;
   }
+}
+
+
+void BasicSDT::_emit_mangled_id (FILE *fp, ActId *id)
+{
+  char buf[4096];
+
+  id->sPrint (buf, 4096);
+  ActNamespace::Act()->mfprintf (fp, "%s", buf);
 }

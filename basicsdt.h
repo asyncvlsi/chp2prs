@@ -96,6 +96,11 @@ class BasicSDT : public SDTEngine {
    * for an ACT identifier
    */
   varmap_info *_var_getinfo (ActId *id);
+
+  /*
+   * Use to emit ids
+   */
+  void _emit_mangled_id (FILE *fp, ActId *id);
   
   /* constructs the varmap structure */
   void _construct_varmap (act_chp_lang_t *c);

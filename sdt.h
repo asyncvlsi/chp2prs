@@ -46,12 +46,12 @@ private:
   /*-- helper function for run_sdt --*/
   void _run_sdt_helper (int id, act_chp_lang_t *c);
 
-  int bitWidth (ActId *id);
-
 protected:
   /*-- 
     SDT methods that you shouldn't have to override
     --*/
+  int bitWidth (ActId *id);
+
   virtual void _emit_guardlist (int isloop, act_chp_gc_t *gc, list_t *reslist);
 
   /*-- used for block expression construction --*/

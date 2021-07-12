@@ -25,13 +25,14 @@
 #include <unistd.h>
 #include <string.h>
 #include <act/act.h>
-#include <act/passes/netlist.h>
-#include <act/passes/finline.h>
+#include <act/iter.h>
+#include <act/passes.h>
 #include "config_pkg.h"
 
 #ifdef FOUND_chp_opt
 #include <act/chp-opt/optimize.h>
 #endif
+
 
 static void usage(char *name)
 {
@@ -79,10 +80,10 @@ static void begin_sdtout (const char *output_file,
       fprintf(*output_stream, "import \"syn/qdibasic/_all_.act\";\n");
     }
   }
-
   // open the operating namespace
   fprintf(*output_stream, "open syn;\n");
-  
+
+
   if (expr_file) {
     FILE *efp = fopen (expr_file, "w");
     if (!efp) {
@@ -107,6 +108,103 @@ static void end_sdtout (FILE *fpout, const char *expr_file)
     fprintf (efp, "\n}\n\n}\n");
     fclose (efp);
   }
+}
+
+
+int emit_refinement_header (FILE *fp, UserDef *u)
+{
+  int has_overrides = 0;
+  
+  fprintf(fp, "sdt_");
+  ActNamespace::Act()->mfprintfproc (fp, u);
+  fprintf (fp, " <: ");
+
+  const char *procnm = u->getName();
+  int len = strlen (procnm);
+  if (procnm[len-1] == '>' && procnm[len-2] == '<') {
+    /* strip empty <> */
+    for (int i=0; i < len-2; i++) {
+      fputc (procnm[i], fp);
+    }
+  }
+  else {
+    fprintf (fp, "%s", procnm);
+  }
+  fprintf (fp, " ()\n");
+
+  int bw = 0;
+
+#define OVERRIDE_OPEN				\
+  do {						\
+    if (!has_overrides) {			\
+      fprintf(fp, "+{\n");			\
+      has_overrides = true;			\
+    }						\
+  } while (0)
+    
+  /* iterate through Scope Hashtable to find all chp variables */
+  ActInstiter iter(u->CurScope());
+  for (iter = iter.begin(); iter != iter.end(); iter++) {
+    ValueIdx *vx = *iter;
+    /* chan variable found */
+    if (TypeFactory::isChanType (vx->t)) {
+      bw = TypeFactory::bitWidth(vx->t);
+      OVERRIDE_OPEN;
+      fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
+    }
+    else if (TypeFactory::isIntType (vx->t)) {
+      /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
+      bw = TypeFactory::bitWidth(vx->t);
+      OVERRIDE_OPEN;
+      fprintf(fp, "  syn::sdtvar<%d> %s;\n", bw, vx->getName());
+    }
+    else if (TypeFactory::isBoolType (vx->t)) {
+      OVERRIDE_OPEN;
+      fprintf (fp, " syn::sdtboolvar %s;\n", vx->getName());
+    }
+    else if (TypeFactory::isProcessType (vx->t)) {
+      OVERRIDE_OPEN;
+      fprintf (fp, " sdt_");
+      Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
+      Assert (proc, "Why am I here?");
+      ActNamespace::Act()->mfprintfproc (fp, proc);
+      fprintf (fp, " %s;\n", vx->getName());
+    }
+    else if (TypeFactory::isStructure (vx->t)) {
+      OVERRIDE_OPEN;
+      fprintf (fp, " sdt_");
+      Data *d = dynamic_cast <Data *> (vx->t->BaseType());
+      Assert (d, "Why am I here?");
+      ActNamespace::Act()->mfprintfproc (fp, d);
+      fprintf (fp, " %s;\n", vx->getName());
+    }
+  }
+  /* end param declaration */
+  if (has_overrides) {
+    fprintf(fp, "}\n{\n");
+  }
+  else {
+    fprintf(fp, "{\n");
+  }
+  return has_overrides;
+#undef OVERRIDE_OPEN
+}
+
+static void _struct_check (void *cookie, Data *d)
+{
+  FILE *fp;
+  if (!cookie || !d) return;
+
+  fp = (FILE *) cookie;
+
+  if (!TypeFactory::isStructure (d)) {
+    return;
+  }
+
+  fprintf (fp, "deftype ");
+  emit_refinement_header (fp, d);
+
+  fprintf (fp, "}\n");
 }
 
 int main(int argc, char **argv)
@@ -186,6 +284,8 @@ int main(int argc, char **argv)
 #endif
   }
 
+  ActApplyPass *app = new ActApplyPass (a);
+  
   ActCHPFuncInline *ip = new ActCHPFuncInline (a);
   ip->run (p);
 
@@ -203,6 +303,20 @@ int main(int argc, char **argv)
 
   begin_sdtout (argv[optind+2], exprfile, emit_import ? argv[optind] : NULL,
 		bundled, external_opt, &fpout);
+
+
+  /* now find all structures and channels with user-defined structs 
+
+     chan(struct) needs more stuff...
+       
+     defchan sdtchan_... <: chan(struct) (...)
+   */
+  app->setCookie (fpout);
+  app->setDataFn (_struct_check);
+  app->run_per_type (p);
+  app->setCookie (NULL);
+  app->setDataFn (NULL);
+ 
 
   c2p->setParam ("chp_optimize", chpopt);
   c2p->setParam ("externopt", external_opt);
