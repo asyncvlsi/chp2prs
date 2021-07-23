@@ -58,6 +58,25 @@ defproc var_bool_in_ports(sdtboolvar v; sdtchan<1> in[NI])
   x.v = v.x;  
 } 
 
+/*-- initialize -- */
+export
+defproc sinit (a1of1 c)
+{
+   bool final_sig, _final_sig;
+   prs { Reset | final_sig => c.r-
+          Reset -> final_sig-
+          c.a => _final_sig-
+          ~_final_sig -> final_sig+ 
+   }
+  sizing { 
+    leak_adjust <- 1; 
+    p_n_mode <- 1;
+    c.r{-1}; 
+    _final_sig{-1};
+    final_sig{-1}
+  }
+}
+
 
 /*-- basic statements --*/
 export

@@ -721,8 +721,7 @@ void BasicSDT::_emit_end (int id)
   if (id >= 0) {
     fprintf (output_stream, "/*--- connect reset to go signal ---*/\n");
 
-    fprintf (output_stream, "   bool final_sig, _final_sig;\n");
-    fprintf (output_stream, "   prs { Reset | final_sig => c%d.r-\n          Reset -> final_sig-\n          c%d.a => _final_sig-\n          ~_final_sig -> final_sig+ }\n", id, id);
+    fprintf (output_stream, "   syn::sinit s%d (c%d);\n", _gen_stmt_id(), id);
 
     /* matches refine block start */
     fprintf (output_stream, " }\n");
