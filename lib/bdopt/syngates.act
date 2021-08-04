@@ -92,13 +92,13 @@ defproc ortree (bool? in[N]; bool out)
   [isinv -> prs { tmp[end] => out- } 
   [] else -> tmp[end] = out;
   ]
+  [isinv ->
   sizing {
     leak_adjust <- 1; 
     p_n_mode <- 1;
-    //(;x:N..end+1: tmp[x]{-1})
     out{-1}
-    
   }
+  ]
 }
   
 /*
@@ -162,12 +162,13 @@ defproc ctree (bool? in[N]; bool out)
   [isinv -> prs { tmp[end] => out- } 
   [] else -> tmp[end] = out;
   ]
+  [ isinv ->
   sizing {
     p_n_mode <- 1;
     leak_adjust <- 1; 
-    //( ;x : N..end+1 : tmp[x]{-1} );
     out{-1}
   }
+  ]
 }
 
 export template<pint M>

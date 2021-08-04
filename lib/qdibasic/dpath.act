@@ -37,7 +37,7 @@ namespace syn {
 export template<pint W; pbool I>
 defproc var_init(sdtvar<W> v) 
 {
-  prs {
+  prs * {
     (i:W:
        v.r[i].f<8> -> v.r[i].t-
        v.r[i].t<8> -> v.r[i].f-
@@ -47,7 +47,6 @@ defproc var_init(sdtvar<W> v)
       Reset -> v.r[i].d[int(~I)]-
      )
   }
-  (j:W: sizing {p_n_mode <- 1; leak_adjust <- 1;  v.r[j].d[int(~I)]{-1} })
 }
 
 
