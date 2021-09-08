@@ -91,6 +91,13 @@ defproc var_int_in_ports(sdtvar<W> v; sdtchan<W> in[NI])
   ports.out[0].r = GND;
 }
 
+export template<pint W; pint NO>
+defproc var_int_out_ports(sdtvar<W> v; sdtexprchan<W> out[NO])
+{
+  var_int_ports<W,1,NO> ports(v,,out);
+  (i:W: ports.in[0].d.r[i].t = GND; ports.in[0].d.r[i].f = GND;)
+}
+  
 
 export template<pint W>
 defproc transfer(a1of1? c; sdtexprchan?<W> e; sdtchan!<W> ch)
@@ -777,6 +784,28 @@ defproc uminus(sdtexprchan<W> a; sdtexprchan<W> out);
 
 export template<pint W1,W2>
 defproc ite(sdtexprchan<1> a; sdtexprchan<W1> opt1; sdtexprchan<W2> opt2; sdtexprchan<max(W1,W2)> out);
+
+
+export template<pint W, LSB, MSB>
+defproc bitfield(sdtexprchan<W> a; sdtexprchan<MSB-LSB+1> out)
+{
+  { LSB >= 0 & MSB < W : "Illegal bit-field specifier" };
+
+  out.r = a.r;
+  out.d.r = a.d.r[LSB..MSB];
+
+  // XXX: dangling signals!
+}
+
+export template<pint W1, W2>
+defproc concat2(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out)
+{
+  a.r = out.r;
+  b.r = out.r;
+
+  out.d.r[0..W2-1] = b.d.r;
+  out.d.r[W2..W1+W2-1] = a.d.r;
+}
 
 
 export template<pint W1, W2>

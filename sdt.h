@@ -168,6 +168,19 @@ protected:
 				 int lid, int lw) = 0;
 
   /*--
+    Emit bitfield extraction
+  --*/
+  virtual void _emit_expr_bitfield (int eid, int lsb, int msb, int lid, int lw) = 0;
+
+  /*-- 
+    Emit concat.
+       list = id, width list (integer)
+    --*/
+  virtual void _emit_expr_concat2 (int eid, int width, int lid, int lw, int rid, int rw) = 0;
+
+  
+
+  /*--
     Emit a constant expression
        val : value of the constant
      width : bit-width of the constant

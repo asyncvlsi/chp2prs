@@ -276,7 +276,7 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
       ihash_bucket_t *b;					\
       b = ihash_lookup (_exprmap, (long)(ex));			\
       Assert (b, "What?");					\
-      myid = b->i;						\
+      myid = b->i < 0 ? -b->i : b->i;				\
       myw = bitWidth ((ActId *)(ex)->u.e.l);			\
     }								\
     else if ((ex)->type == E_TRUE || (ex)->type == E_FALSE) {	\
@@ -406,23 +406,74 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
     fatal_error ("Should have been handled elsewhere");
     break;
 
-    /* XXX: here */
   case E_CONCAT:
     {
+      int count;
       list_t *l = list_new ();
       *width = 0;
       do {
 	CHECK_EXPR (e->u.e.l, lid, lw);
 	list_iappend (l, lid);
 	list_iappend (l, lw);
-	*width = MAX(*width, lw);
+	*width += lw;
 	e = e->u.e.r;
       } while (e);
+
+      count = list_length (l);
+      while (count > 4) {
+	int tid;
+	lid = list_delete_ihead (l);
+	lw = list_delete_ihead (l);
+
+	rid = list_delete_ihead (l);
+	rw = list_delete_ihead (l);
+
+	tid = _gen_expr_id ();
+	_emit_expr_concat2 (tid, lw+rw, lid, lw, rid, rw);
+	list_iappend_head (l, lw+rw);
+	list_iappend_head (l, tid);
+	count -= 2;
+      }
+
+      Assert (count == 4, "Hmm");
+      
+      lid = list_delete_ihead (l);
+      lw = list_delete_ihead (l);
+
+      rid = list_delete_ihead (l);
+      rw = list_delete_ihead (l);
+
+      *width = lw + rw;
+      _emit_expr_concat2 (id, *width, lid, lw, rid, rw);
       list_free (l);
     }
     break;
 
   case E_BITFIELD:
+    {
+      ihash_bucket_t *b;
+      int lsb, msb;
+      
+      b = ihash_lookup (_exprmap, (long)(e));
+      Assert (b, "What?");
+      lid = b->i < 0 ? -b->i : b->i;
+      lw = bitWidth ((ActId *)e->u.e.l);
+
+      if (e->u.e.r->u.e.l) {
+	/* r = msb, l = lsb */
+	Assert (e->u.e.r->u.e.r->type == E_INT, "What?");
+	msb = e->u.e.r->u.e.r->u.v;
+	Assert (e->u.e.r->u.e.l->type == E_INT, "What?");
+	lsb = e->u.e.r->u.e.l->u.v;
+      }
+      else {
+	Assert (e->u.e.r->u.e.r->type == E_INT, "What?");
+	msb = e->u.e.r->u.e.r->u.v;
+	lsb = msb;
+      }
+      *width = (msb - lsb + 1);
+      _emit_expr_bitfield (id, lsb, msb, lid, lw);
+    }
     break;
 
   case E_REAL:
@@ -527,7 +578,10 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
     else {
       ihash_bucket_t *b;
       b = ihash_lookup (_exprmap, (long)e);
-      _emit_var_read (b->i, (ActId *)e->u.e.l);
+      if (b->i >= 0) {
+	_emit_var_read (b->i, (ActId *)e->u.e.l);
+	b->i = -b->i;
+      }
     }
     break;
 
@@ -601,7 +655,10 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
     else {
       ihash_bucket_t *b;
       b = ihash_lookup (_exprmap, (long)e);
-      _emit_var_read (b->i, (ActId *)e->u.e.l);
+      if (b->i >= 0) {
+	_emit_var_read (b->i, (ActId *)e->u.e.l);
+	b->i = -b->i;
+      }
     }
     break;
 
@@ -662,7 +719,7 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
     ihash_iter_init (_exprmap, &iter);
     while ((ib = ihash_iter_next (_exprmap, &iter))) {
       Expr *e = (Expr *)ib->key;
-      list_iappend (all_leaves, ib->i);
+      list_iappend (all_leaves, ib->i < 0 ? -ib->i : ib->i);
       list_iappend (all_leaves, bitWidth ((ActId *)e->u.e.l));
     }
   }

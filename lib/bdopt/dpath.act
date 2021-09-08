@@ -251,6 +251,12 @@ defproc var_int_in_ports(sdtvar<W> v; sdtchan<W> in[NI])
   var_int_ports<W,NI,1> ports(v,in);
   ports.out[0].r = GND;
 }
+export template<pint W; pint NO>
+defproc var_int_out_ports(sdtvar<W> v; sdtexprchan<W> out[NO])
+{
+  var_int_ports<W,1,NO> ports(v,,out);
+  ports.in[0].r = GND;
+}
 
 
 /**

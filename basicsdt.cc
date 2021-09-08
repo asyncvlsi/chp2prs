@@ -187,6 +187,22 @@ void BasicSDT::_emit_expr_unary (int id, int width,
 	   sdt_expr_name (type), lw, id, lid);
 }
 
+void BasicSDT::_emit_expr_bitfield (int eid, int lsb, int msb, int lid, int lw)
+{
+  FILE *o = (_efp == NULL ? output_stream : _efp);
+  
+  fprintf (o, "   syn::expr::bitfield<%d,%d,%d> e%d (e%d.out);\n",
+	   lw, lsb, msb, eid, lid);
+}
+  
+void BasicSDT::_emit_expr_concat2 (int eid, int width,
+				   int lid, int lw, int rid, int rw)
+{
+  FILE *o = (_efp == NULL ? output_stream : _efp);
+  
+  fprintf (o, "   syn::expr::concat2<%d,%d> e%d (e%d.out,e%d.out);\n",
+	   lw, rw, eid, lid, rid);
+}
 
 void BasicSDT::_emit_expr_const (int id, int width, int val)
 {
@@ -205,7 +221,7 @@ void BasicSDT::_emit_expr_width_conv (int from, int from_w,
 void BasicSDT::_emit_var_read (int eid, ActId *id)
 {
   varmap_info *v = _var_getinfo (id);
-  fprintf (output_stream, "   syn::expr::nullint<%d> e%d(var_",
+  fprintf (output_stream, "  syn::expr::nullint<%d> e%d(var_",
 	   v->width, eid);
   _emit_mangled_id (output_stream, v->id);
   fprintf (output_stream, ".out[%d]);\n", v->iread++);
@@ -414,6 +430,11 @@ void BasicSDT::_emit_variable_mux (varmap_info *v)
       v->id->sPrint (tmpbuf, 4096);
       warning("Process `%s': variable `%s' is written but never read; hope you know what you're doing!", P ? P->getName() : "-toplevel-", tmpbuf);
     }
+    else if (v->nwrite == 0) {
+      fprintf (output_stream, "   syn::var_int_out_ports<%d,%d> var_", v->width, v->nread);
+      v->id->sPrint (tmpbuf, 4096);
+      warning("Process `%s': variable `%s' is read but never written; hope you know what you're doing!", P ? P->getName() : "-toplevel-", tmpbuf);
+    }
     else {
       fprintf (output_stream, "   syn::var_int_ports<%d,%d,%d> var_",
 	       v->width, v->nwrite, v->nread);
@@ -425,7 +446,12 @@ void BasicSDT::_emit_variable_mux (varmap_info *v)
       fprintf(output_stream, "   syn::var_bool_in_ports<%d> var_", v->nwrite);
       v->id->sPrint (tmpbuf, 4096);
       warning("Process `%s': variable `%s' is written but never read; hope you know what you're doing!", P ? P->getName() : "-toplevel-", tmpbuf);
-    } 
+    }
+    else if (v->nwrite == 0) {
+      fprintf(output_stream, "   syn::var_bool_out_ports<%d> var_", v->nread);
+      v->id->sPrint (tmpbuf, 4096);
+      warning("Process `%s': variable `%s' is read but written read; hope you know what you're doing!", P ? P->getName() : "-toplevel-", tmpbuf);
+    }
     else {
       fprintf (output_stream, "   syn::var_bool_ports<%d,%d> var_",
 	       v->nwrite, v->nread);
@@ -559,7 +585,46 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
     }
   }
   else {
-    fprintf (fp, "%s", procnm);
+     /* XXX: replace 0 with false, 1 with true for Booleans */
+    int arg = -1;
+    int change = 0;
+    for (int i=0; i < len; i++) {
+       if (arg >= 0 && change) {
+	InstType *it = p->getPortType (-(arg+1));
+	if (TypeFactory::isPBoolType (it)) {
+	  if (procnm[i] == '0') {
+	    fprintf (fp, "false");
+	  }
+	  else if (procnm[i] == '1') {
+	    fprintf (fp, "true");
+	  }
+	  else {
+	    fprintf (fp, "ERR");
+	  }
+	}
+	else {
+	  if (procnm[i] == '{') {
+	    warning ("Array template parameters currently unsupported (%s)",
+		     procnm);
+	  }
+	  fputc (procnm[i], fp);
+	}
+      }
+      else {
+	fputc (procnm[i], fp);
+      }
+      if (procnm[i] == '<') {
+	change = 1;
+	arg = 0;
+      }
+      else if (procnm[i] == ',') {
+	change = 1;
+	arg++;
+      }
+      else {
+	change = 0;
+      }
+    }
   }
   fprintf (fp, " ()\n");
 

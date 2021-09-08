@@ -58,6 +58,15 @@ defproc var_bool_in_ports(sdtboolvar v; sdtchan<1> in[NI])
   x.v = v.x;  
 } 
 
+export template<pint NO>
+defproc var_bool_out_ports(sdtboolvar v; sdtexprchan<1> out[NO])
+{
+  var_int_ports<1,1,NO> x;
+  (i:NO: x.out[i]=out[i];)
+  x.in[0].r = GND;
+  x.v = v.x;  
+} 
+  
 /*-- initialize -- */
 export
 defproc sinit (a1of1 c)
