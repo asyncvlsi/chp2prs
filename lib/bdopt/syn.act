@@ -19,7 +19,6 @@
  *
  **************************************************************************
  */
-//import "globals.act";
 import "syn/bdopt/syngates.act";
 
 /* Syntax directed translation */

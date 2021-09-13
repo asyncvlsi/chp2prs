@@ -15,6 +15,15 @@ The options are:
    * `<outfile>` : where the result should be saved.
 
 
+### Installation
+
+This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act).
+
+   * Please install the ACT toolkit first; installation instructions are [here](https://github.com/asyncvlsi/act/blob/master/README.md).
+   * Install the ACT standard [library](https://github.com/asyncvlsi/stdlib)
+   * Run ./configure
+   * Build this program using the standard ACT tool install instructions [here](https://github.com/asyncvlsi/act/blob/master/README_tool.md).
+
 
 ### Overview
 
@@ -37,14 +46,6 @@ defproc sdt_foo <: foo() {
 using the libraries provided. The translation is created by using the `refine { ... }` module, and so use the `-ref=1` command-line option to ACT tools to use the generated circuit.
 
 The conversion is accomplished using syntax-directed translation, which is jusfitied using direct process decomposition.
-
-### Notes and Installation
-
-This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act).
-
-   * Please install the ACT toolkit first; installation instructions are [here](https://github.com/asyncvlsi/act/blob/master/README.md).
-   * Run ./configure
-   * Build this program using the standard ACT tool install instructions [here](https://github.com/asyncvlsi/act/blob/master/README_tool.md).
 
 ### Test Suite
 ```

@@ -1,4 +1,4 @@
-import "globals.act";
+import globals;
 import "syn/qdibasic/chan.act"; // import via _all_
 import "syn/qdibasic/syn.act"; // import via _all_
 

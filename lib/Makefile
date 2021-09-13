@@ -40,7 +40,6 @@ install: install_act $(TARGETINSTALL) $(TARGETINSTALL_QDIBASIC) $(TARGETINSTALL_
 	@for i in $(TARGETINSTALL_BDOPT); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
 	@if [ ! -d $(ACT_HOME)/act/syn/liberty ]; then mkdir $(ACT_HOME)/act/syn/liberty; fi
 	@for i in $(TARGETINSTALL_LIBERTY); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/liberty/$$i; done
-	@$(ACT_HOME)/scripts/install globals.act $(ACT_HOME)/act/globals.act
 
 
 -include Makefile.deps

@@ -19,7 +19,7 @@
  *
  **************************************************************************
  */
-import "globals.act";
+import globals;
 import "syn/qdibasic/syngates.act";
 
 /* Syntax directed translation */

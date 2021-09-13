@@ -19,7 +19,5 @@
  *
  **************************************************************************
  */
-//import "syn/qdibasic/chan.act";
-//import "syn/qdibasic/syn.act";
 import "syn/qdiopt/stdcells.act";
 import "syn/qdiopt/dpath.act";

@@ -1,4 +1,4 @@
-import "globals.act";
+import globals;
 
 namespace syn {
 
