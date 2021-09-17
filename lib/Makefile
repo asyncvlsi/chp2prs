@@ -19,10 +19,13 @@
 #
 #-------------------------------------------------------------------------
 TARGETINSTALL=
-TARGETINSTALL_QDIBASIC=qdibasic/_all_.act qdibasic/dpath.act qdibasic/chan.act qdibasic/syn.act qdibasic/syngates.act 
+TARGETINSTALL_QDIBASIC=qdibasic/_all_.act qdibasic/dpath.act qdibasic/chan.act qdibasic/math.act
 TARGETINSTALL_QDIOPT=qdiopt/_all_.act qdiopt/stdcells.act qdiopt/dpath.act 
-TARGETINSTALL_BDOPT=bdopt/_all_.act bdopt/stdcells.act bdopt/dpath.act bdopt/chan.act bdopt/syn.act bdopt/syngates.act 
+TARGETINSTALL_BDOPT=bdopt/_all_.act bdopt/stdcells.act bdopt/dpath.act bdopt/chan.act
 TARGETINSTALL_LIBERTY=osu018_stdcells.lib LICENSE.osu018_stdcells.lib
+
+TARGETACT=syn.act syngates.act
+TARGETACTSUBDIR=syn
 
 include $(ACT_HOME)/scripts/Makefile.std
 

@@ -1,6 +1,6 @@
 import globals;
 import "syn/qdibasic/chan.act"; // import via _all_
-import "syn/qdibasic/syn.act"; // import via _all_
+import "syn/syn.act"; // import via _all_
 
 /**
  * This library contains QDI versions of stdcell library, with single bit channels.

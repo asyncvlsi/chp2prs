@@ -183,20 +183,20 @@ defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
  * NOTE: @TODO if timing analysis is to hard go back to validation tree
  */
 export template<pint W>
-defproc writeport(sdtvar<W> var; sdtchan<W> port)
+defproc writeport(sdtvar<W> var; sdtchan<W> in)
 {
   bool _wack[W];
   bool _d_B[W];
   bool req_in, _dly_req_in;
   delay<5> dly(req_in);
-  sigbuf<W> s(port.r,req_in);
+  sigbuf<W> s(in.r,req_in);
   prs {
-    (i:W: [keeper=0] port.d[i] & req_in & _dly_req_in -> var.r[i].f-
+    (i:W: [keeper=0] in.d[i] & req_in & _dly_req_in -> var.r[i].f-
           [keeper=0] _d_B[i] & req_in & _dly_req_in -> var.r[i].t-
-          port.d[i] => _d_B[i]-
+          in.d[i] => _d_B[i]-
      )
     dly.out => _dly_req_in-
-    Reset | _dly_req_in => port.a-
+    Reset | _dly_req_in => in.a-
   }
 }
 
@@ -235,7 +235,7 @@ defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
               (i:NO: r[i].var=x.v; r[i].out=out[i];)
   ]
   [ NI > 0 -> writeport<W> wr[NI]; 
-              (j:NI: wr[j].var=x.v; wr[j].port=in[j];)
+              (j:NI: wr[j].var=x.v; wr[j].in=in[j];)
   ]
 } 
 
@@ -256,6 +256,27 @@ defproc var_int_out_ports(sdtvar<W> v; sdtexprchan<W> out[NO])
   ports.in[0].r = GND;
 }
 
+/*
+ * this is a workarround for simulation cases where you have 0 read ports, in a physical implementation that would not make sense,
+ * zero length arrays are not allowed.
+ */
+export template<pint NI>
+defproc var_bool_in_ports(sdtboolvar v; sdtchan<1> in[NI])
+{
+  var_int_ports<1,NI,1> x;
+  (i:NI: x.in[i]=in[i];)
+  x.out[0].r = GND;
+  x.v = v.x;  
+} 
+
+export template<pint NO>
+defproc var_bool_out_ports(sdtboolvar v; sdtexprchan<1> out[NO])
+{
+  var_int_ports<1,1,NO> x;
+  (i:NO: x.out[i]=out[i];)
+  x.in[0].r = GND;
+  x.v = v.x;  
+} 
 
 /**
  * recv is a write port - so a write to a variable - that is triggered/gated by a ctl channel.
@@ -266,7 +287,7 @@ defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
 {
   sdtchan<W> portch;
   recvport<W> gate(.c=c,.ch=ch,.port=portch);
-  writeport<W> port(.var=var,.port=portch);
+  writeport<W> port(.var=var,.in=portch);
 }
 
 export defproc trueto1of2(r1of2 out)

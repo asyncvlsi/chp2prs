@@ -21,3 +21,4 @@
  */
 import "syn/qdiopt/stdcells.act";
 import "syn/qdiopt/dpath.act";
+import "syn/qdibasic/math.act";
