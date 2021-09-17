@@ -23,3 +23,4 @@ import "syn/qdi/chan.act";
 import "syn/syn.act";
 import "syn/qdi/dpath.act";
 import "syn/qdi/math.act";
+import "syn/qdi/stdcells.act";
