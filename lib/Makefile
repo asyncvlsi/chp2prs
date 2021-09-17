@@ -20,7 +20,7 @@
 #-------------------------------------------------------------------------
 TARGETINSTALL=
 TARGETINSTALL_QDIBASIC=qdibasic/_all_.act qdibasic/dpath.act qdibasic/chan.act qdibasic/math.act
-TARGETINSTALL_QDIOPT=qdiopt/_all_.act qdiopt/stdcells.act qdiopt/dpath.act 
+TARGETINSTALL_QDIOPT=qdiopt/_all_.act qdiopt/stdcells.act
 TARGETINSTALL_BDOPT=bdopt/_all_.act bdopt/stdcells.act bdopt/dpath.act bdopt/chan.act
 TARGETINSTALL_LIBERTY=osu018_stdcells.lib LICENSE.osu018_stdcells.lib
 

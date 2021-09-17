@@ -700,6 +700,24 @@ defproc readport(sdtvar<W> var; sdtexprchan<W> out)
   sizing {p_n_mode <- 1; leak_adjust <- 1; xout{-1} }
 }
 
+export template<pint W>
+defproc wrap_to_array(sdtexprchan<W> in; sdtexprchan<1> out[W])
+{
+  (i:W: 
+        in.r = out[i].r;
+        in.d.r[i] = out[i].d.r[0];
+        )
+}
+
+export template<pint W>
+defproc wrap_from_array(sdtexprchan<1> in[W]; sdtexprchan<W> out)
+{
+  (i:W: 
+        out.r = in[i].r;
+        out.d.r[i] = in[i].d.r[0];
+        )
+}
+
 }
 
 }

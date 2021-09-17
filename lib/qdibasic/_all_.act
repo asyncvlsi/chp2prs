@@ -22,3 +22,4 @@
 import "syn/qdibasic/chan.act";
 import "syn/syn.act";
 import "syn/qdibasic/dpath.act";
+import "syn/qdibasic/math.act";
