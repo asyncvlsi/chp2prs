@@ -65,20 +65,10 @@ static void begin_sdtout (const char *output_file,
   
   /* print imports */
   if (bundled_data) {
-    if (expropt) {
-      fprintf(*output_stream, "import \"syn/bdopt/_all_.act\";\n");
-    }
-    else {
-      fprintf (*output_stream, "import \"syn/bundled.act\";\n");
-    }
+    fprintf(*output_stream, "import \"syn/bdopt/_all_.act\";\n");
   }
   else {
-    if (expropt) {
-      fprintf(*output_stream, "import \"syn/qdiopt/_all_.act\";\n");
-    }
-    else {
-      fprintf(*output_stream, "import \"syn/qdibasic/_all_.act\";\n");
-    }
+    fprintf(*output_stream, "import \"syn/qdi/_all_.act\";\n");
   }
   // open the operating namespace
   fprintf(*output_stream, "open syn;\n");

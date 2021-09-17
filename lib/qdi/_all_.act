@@ -1,6 +1,6 @@
 /*************************************************************************
  *
- *  Copyright (c) 2021 Rajit Manohar
+ *  Copyright (c) 2020 Rajit Manohar
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -19,6 +19,7 @@
  *
  **************************************************************************
  */
-import "syn/qdiopt/stdcells.act";
-import "syn/qdibasic/dpath.act";
-import "syn/qdibasic/math.act";
+import "syn/qdi/chan.act";
+import "syn/syn.act";
+import "syn/qdi/dpath.act";
+import "syn/qdi/math.act";

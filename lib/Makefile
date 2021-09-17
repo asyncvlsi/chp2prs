@@ -19,8 +19,7 @@
 #
 #-------------------------------------------------------------------------
 TARGETINSTALL=
-TARGETINSTALL_QDIBASIC=qdibasic/_all_.act qdibasic/dpath.act qdibasic/chan.act qdibasic/math.act
-TARGETINSTALL_QDIOPT=qdiopt/_all_.act qdiopt/stdcells.act
+TARGETINSTALL_QDI=qdi/_all_.act qdi/dpath.act qdi/chan.act qdi/math.act qdi/stdcells.act
 TARGETINSTALL_BDOPT=bdopt/_all_.act bdopt/stdcells.act bdopt/dpath.act bdopt/chan.act
 TARGETINSTALL_LIBERTY=osu018_stdcells.lib LICENSE.osu018_stdcells.lib
 
@@ -32,13 +31,11 @@ include $(ACT_HOME)/scripts/Makefile.std
 all:
 	@echo "Done"
 
-install: install_act $(TARGETINSTALL) $(TARGETINSTALL_QDIBASIC) $(TARGETINSTALL_QDIOPT) $(TARGETINSTALL_BDOPT)
+install: install_act $(TARGETINSTALL) $(TARGETINSTALL_QDI) $(TARGETINSTALL_BDOPT)
 	@if [ ! -d $(ACT_HOME)/act/syn ]; then mkdir $(ACT_HOME)/act/syn; fi
 	@for i in $(TARGETINSTALL); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
-	@if [ ! -d $(ACT_HOME)/act/syn/qdibasic ]; then mkdir $(ACT_HOME)/act/syn/qdibasic; fi
-	@for i in $(TARGETINSTALL_QDIBASIC); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
-	@if [ ! -d $(ACT_HOME)/act/syn/qdiopt ]; then mkdir $(ACT_HOME)/act/syn/qdiopt; fi
-	@for i in $(TARGETINSTALL_QDIOPT); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
+	@if [ ! -d $(ACT_HOME)/act/syn/qdi ]; then mkdir $(ACT_HOME)/act/syn/qdi; fi
+	@for i in $(TARGETINSTALL_QDI); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
 	@if [ ! -d $(ACT_HOME)/act/syn/bdopt ]; then mkdir $(ACT_HOME)/act/syn/bdopt; fi
 	@for i in $(TARGETINSTALL_BDOPT); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
 	@if [ ! -d $(ACT_HOME)/act/syn/liberty ]; then mkdir $(ACT_HOME)/act/syn/liberty; fi
