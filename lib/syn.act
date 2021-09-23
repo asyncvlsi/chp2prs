@@ -231,7 +231,7 @@ defproc semiopt(a1of1? c; a1of1! stmts[N])
 }
 
 export template<pint W>
-defproc transfer(a1of1? c; sdtexprchan?<W> e; sdtchan!<W> ch);
+defproc transfer(a1of1? c; sdtexprchan<W> e; sdtchan<W> ch);
 
 
 /*-- used for direct variable write --*/

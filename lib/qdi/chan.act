@@ -28,15 +28,12 @@ namespace syn {
 export deftype sdtvar <: Mx1of2 () { }
 
 export deftype sdtboolvar <: bool (sdtvar<1> x) { }
-  
-export template<pint N>
-defchan ax1of2 <: chan(int<N>) (Mx1of2<N> d; bool a) { }
 
 export template<pint N>
 defchan rx1of2 <: chan(int<N>) (bool r; Mx1of2<N> d) { }
 
 // specify qdi datapath channels
-export defchan sdtchan <: ax1of2 () { }
+export defchan sdtchan <: aMx1of2 () { }
 export defchan sdtexprchan <: rx1of2 () { }
 
 //export defchan r1of2 <: chan(bool) (bool r, t, f) { }

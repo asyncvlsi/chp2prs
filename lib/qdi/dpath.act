@@ -137,7 +137,7 @@ defproc var_bool_out_ports(sdtboolvar v; sdtexprchan<1> out[NO])
  * @param W: width of the push and pull channels
  */
 export template<pint W>
-defproc transfer(a1of1? c; sdtexprchan?<W> e; sdtchan!<W> ch)
+defproc transfer(a1of1? c; sdtexprchan<W> e; sdtchan<W> ch)
 {
   c.r = e.r;
   e.d = ch.d;
