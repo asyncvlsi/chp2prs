@@ -4,7 +4,7 @@
   (lambda (x i)
     (let ((tmp 
 	   (string-append x
-			  (string-append ".r["
+			  (string-append ".d["
 					 (string-append (number->string i)  "]")
 					 )
 			  )

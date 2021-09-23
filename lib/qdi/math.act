@@ -34,32 +34,32 @@ defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
   bool _t[wmax], _f[wmax];
 
   prs {
-    (i:wmin: a.d.r[i].t & b.d.r[i].t -> _t[i]-
-     a.d.r[i].f & (b.d.r[i].t | b.d.r[i].f) | a.d.r[i].t & b.d.r[i].f -> _f[i]-
-     ~a.d.r[i].t & ~b.d.r[i].t -> _t[i]+
-     ~a.d.r[i].t & ~b.d.r[i].t & ~a.d.r[i].f & ~b.d.r[i].f -> _f[i]+
+    (i:wmin: a.d.d[i].t & b.d.d[i].t -> _t[i]-
+     a.d.d[i].f & (b.d.d[i].t | b.d.d[i].f) | a.d.d[i].t & b.d.d[i].f -> _f[i]-
+     ~a.d.d[i].t & ~b.d.d[i].t -> _t[i]+
+     ~a.d.d[i].t & ~b.d.d[i].t & ~a.d.d[i].f & ~b.d.d[i].f -> _f[i]+
 
-     _t[i] => out.d.r[i].t-
-     _f[i] => out.d.r[i].f-
+     _t[i] => out.d.d[i].t-
+     _f[i] => out.d.d[i].f-
      )
   }
   
   [ W1 > W2 ->
     prs {
-        (i:wmin..wmax-1:  a.d.r[i].t | a.d.r[i].f -> _f[i]-
-                         ~a.d.r[i].t & ~a.d.r[i].f -> _f[i]+
-                          _f[i] => out.d.r[i].f-
+        (i:wmin..wmax-1:  a.d.d[i].t | a.d.d[i].f -> _f[i]-
+                         ~a.d.d[i].t & ~a.d.d[i].f -> _f[i]+
+                          _f[i] => out.d.d[i].f-
         )
     }
  [] else ->
     prs {
-      (i:wmin..wmax-1:  b.d.r[i].t | b.d.r[i].f -> _f[i]-
-                     ~b.d.r[i].t & ~b.d.r[i].f -> _f[i]+
-                      _f[i] => out.d.r[i].f-
+      (i:wmin..wmax-1:  b.d.d[i].t | b.d.d[i].f -> _f[i]-
+                     ~b.d.d[i].t & ~b.d.d[i].f -> _f[i]+
+                      _f[i] => out.d.d[i].f-
       )
     }
   ]
-  (i:wmin..wmax-1: GND = out.d.r[i].t;)
+  (i:wmin..wmax-1: GND = out.d.d[i].t;)
 
   out.r = a.r;
   out.r = b.r;  
@@ -74,20 +74,20 @@ defproc or(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
   bool _t[wmax], _f[wmax];
 
   prs {
-    (i:wmin: a.d.r[i].f & b.d.r[i].f  -> _f[i]-
-     a.d.r[i].t & (b.d.r[i].t | b.d.r[i].f) | a.d.r[i].f & b.d.r[i].t -> _t[i]-
-     ~a.d.r[i].f & ~b.d.r[i].f -> _f[i]+
-     ~a.d.r[i].t & ~b.d.r[i].t & ~a.d.r[i].f & ~b.d.r[i].f -> _t[i]+
+    (i:wmin: a.d.d[i].f & b.d.d[i].f  -> _f[i]-
+     a.d.d[i].t & (b.d.d[i].t | b.d.d[i].f) | a.d.d[i].f & b.d.d[i].t -> _t[i]-
+     ~a.d.d[i].f & ~b.d.d[i].f -> _f[i]+
+     ~a.d.d[i].t & ~b.d.d[i].t & ~a.d.d[i].f & ~b.d.d[i].f -> _t[i]+
 
-     _t[i] => out.d.r[i].t-
-     _f[i] => out.d.r[i].f-
+     _t[i] => out.d.d[i].t-
+     _f[i] => out.d.d[i].f-
     )
   }
   
   [ W1 > W2 ->
-    (i:wmin..wmax-1: a.d.r[i].d = out.d.r[i].d;)
+    (i:wmin..wmax-1: a.d.d[i].d = out.d.d[i].d;)
  [] else ->
-    (i:wmin..wmax-1: b.d.r[i].d = out.d.r[i].d;)
+    (i:wmin..wmax-1: b.d.d[i].d = out.d.d[i].d;)
   ]
   out.r = a.r;
   out.r = b.r;  
@@ -102,20 +102,20 @@ defproc xor(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
   bool _t[wmax], _f[wmax];
 
   prs {
-    (i:wmin: a.d.r[i].f & b.d.r[i].t | a.d.r[i].t & b.d.r[i].f -> _t[i]-
-     a.d.r[i].t & b.d.r[i].t | a.d.r[i].f & b.d.r[i].f -> _f[i]-
-     ~a.d.r[i].t & ~b.d.r[i].t & ~a.d.r[i].f & ~b.d.r[i].f -> _t[i]+
-     ~a.d.r[i].t & ~b.d.r[i].t & ~a.d.r[i].f & ~b.d.r[i].f -> _f[i]+
+    (i:wmin: a.d.d[i].f & b.d.d[i].t | a.d.d[i].t & b.d.d[i].f -> _t[i]-
+     a.d.d[i].t & b.d.d[i].t | a.d.d[i].f & b.d.d[i].f -> _f[i]-
+     ~a.d.d[i].t & ~b.d.d[i].t & ~a.d.d[i].f & ~b.d.d[i].f -> _t[i]+
+     ~a.d.d[i].t & ~b.d.d[i].t & ~a.d.d[i].f & ~b.d.d[i].f -> _f[i]+
 
-     _t[i] => out.d.r[i].t-
-     _f[i] => out.d.r[i].f-
+     _t[i] => out.d.d[i].t-
+     _f[i] => out.d.d[i].f-
     )
   }
   
   [ W1 > W2 ->
-    (i:wmin..wmax-1: a.d.r[i].d = out.d.r[i].d;)
+    (i:wmin..wmax-1: a.d.d[i].d = out.d.d[i].d;)
  [] else ->
-    (i:wmin..wmax-1: b.d.r[i].d = out.d.r[i].d;)
+    (i:wmin..wmax-1: b.d.d[i].d = out.d.d[i].d;)
   ]
   out.r = a.r;
   out.r = b.r;
@@ -125,8 +125,8 @@ export template<pint W>
 defproc not(sdtexprchan<W> a; sdtexprchan<W> out)
 {
   a.r = out.r;
-  (i:W: a.d.r[i].t = out.d.r[i].f;
-        a.d.r[i].f = out.d.r[i].t;
+  (i:W: a.d.d[i].t = out.d.d[i].f;
+        a.d.d[i].f = out.d.d[i].t;
    )
 }
 
@@ -202,8 +202,8 @@ defproc hadd1(dualrail a, b; dualrail s, cout)
 }
 
 template<pint W1,W2>
-defproc addfblock(dualrails<W1> a; dualrails<W2> b; dualrail cin;
-		  dualrails<max(W1,W2)> s; dualrail cout)
+defproc addfblock(Mx1of2<W1> a; Mx1of2<W2> b; dualrail cin;
+		  Mx1of2<max(W1,W2)> s; dualrail cout)
 {
   pint wmin = min(W1,W2);
   pint wmax = max(W1,W2);
@@ -215,12 +215,12 @@ defproc addfblock(dualrails<W1> a; dualrails<W2> b; dualrail cin;
 
   /* wire up primary inputs and outputs */
 
-  (i:wmin: fa[i](.a=a.r[i], .b=b.r[i], .s=s.r[i]);)
-  [ W1 > W2 -> (i:wmin..wmax-1: ha[i](.a=a.r[i],.s=s.r[i]);
+  (i:wmin: fa[i](.a=a.d[i], .b=b.d[i], .s=s.d[i]);)
+  [ W1 > W2 -> (i:wmin..wmax-1: ha[i](.a=a.d[i],.s=s.d[i]);
 		[ i != wmin -> ha[i-1].cout=ha[i].b;
     [] else -> fa[wmin-1].cout=ha[i].b;]
 		)
- [] W2 > W1 -> (i:wmin..wmax-1: ha[i](.a=b.r[i],.s=s.r[i]);
+ [] W2 > W1 -> (i:wmin..wmax-1: ha[i](.a=b.d[i],.s=s.d[i]);
 		[ i != wmin -> ha[i-1].cout=ha[i].b;
     [] else -> fa[wmin-1].cout=ha[i].b;]
 		)
@@ -249,26 +249,26 @@ defproc add(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out)
   [ wmin = 1 ->
     // this is only a half adder
     hadd ha[wmax];
-    [ W1 > W2 ->  (i:wmax: ha[i](.a=a.d.r[i],.s=out.d.r[i]);)
-                  ha[0].b=b.d.r[0];
+    [ W1 > W2 ->  (i:wmax: ha[i](.a=a.d.d[i],.s=out.d.d[i]);)
+                  ha[0].b=b.d.d[0];
                  (i:1..wmax-1: ha[i].b=ha[i-1].cout;)
-                 ha[wmax-1].cout=out.d.r[wmax];
-   [] W2 > W1 ->  (i:wmax: ha[i](.a=b.d.r[i],.s=out.d.r[i]);)
-                  ha[0].b=a.d.r[0];
+                 ha[wmax-1].cout=out.d.d[wmax];
+   [] W2 > W1 ->  (i:wmax: ha[i](.a=b.d.d[i],.s=out.d.d[i]);)
+                  ha[0].b=a.d.d[0];
                  (i:1..wmax-1: ha[i].b=ha[i-1].cout;)
-                 ha[wmax-1].cout=out.d.r[wmax];
-      [] else -> ha[0](.a = a.d.r[0], .b = b.d.r[0], .s = out.d.r[0],
-		       .cout = out.d.r[1]);
+                 ha[wmax-1].cout=out.d.d[wmax];
+      [] else -> ha[0](.a = a.d.d[0], .b = b.d.d[0], .s = out.d.d[0],
+		       .cout = out.d.d[1]);
     ]
   [] else ->
        /* lsb is a half adder */
        hadd ha[1];
        addfblock<W1-1,W2-1> fb;
-       fb.a.r = a.d.r[1..W1-1];
-       fb.b.r = b.d.r[1..W2-1];
-       fb.s.r = out.d.r[1..wmax-1];
-       fb.cout = out.d.r[wmax];
-       ha[0](.a=a.d.r[0],.b=b.d.r[0],.s=out.d.r[0],.cout=fb.cin);
+       fb.a.d = a.d.d[1..W1-1];
+       fb.b.d = b.d.d[1..W2-1];
+       fb.s.d = out.d.d[1..wmax-1];
+       fb.cout = out.d.d[wmax];
+       ha[0](.a=a.d.d[0],.b=b.d.d[0],.s=out.d.d[0],.cout=fb.cin);
   ]
 }
 
@@ -283,42 +283,42 @@ defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out)
   out.r = a.r;
   out.r = b.r;
 
-  dualrails<W2> bc;
+  Mx1of2<W2> bc;
 
-  (i:W2: bc.r[i].t = b.d.r[i].f;  bc.r[i].f = b.d.r[i].t; )
+  (i:W2: bc.d[i].t = b.d.d[i].f;  bc.d[i].f = b.d.d[i].t; )
 
   [ wmin = 1 ->
     hadd1 ha0;
     hadd ha[1..wmax-1];
-    [ W1 > W2 ->  (i:1..wmax-1: ha[i](.a=a.d.r[i],.s=out.d.r[i]);)
-                  ha0(.a=a.d.r[0],.s=out.d.r[0]);
-                  ha0.b=bc.r[0];
+    [ W1 > W2 ->  (i:1..wmax-1: ha[i](.a=a.d.d[i],.s=out.d.d[i]);)
+                  ha0(.a=a.d.d[0],.s=out.d.d[0]);
+                  ha0.b=bc.d[0];
                   [ wmax > 1 -> ha[1].b=ha0.cout; ]
                  (i:2..wmax-1: ha[i].b=ha[i-1].cout;)
-                 [ wmax = 1 -> ha0.cout=out.d.r[wmax];
-		 [] else ->  ha[wmax-1].cout=out.d.r[wmax];
+                 [ wmax = 1 -> ha0.cout=out.d.d[wmax];
+		 [] else ->  ha[wmax-1].cout=out.d.d[wmax];
 		 ]
 
-    [] W2 > W1 ->  (i:1..wmax-1: ha[i](.a=bc.r[i],.s=out.d.r[i]);)
-                  ha0(.a=bc.r[0],.s=out.d.r[0]);
-                  ha0.b=a.d.r[0];
+    [] W2 > W1 ->  (i:1..wmax-1: ha[i](.a=bc.d[i],.s=out.d.d[i]);)
+                  ha0(.a=bc.d[0],.s=out.d.d[0]);
+                  ha0.b=a.d.d[0];
                   [ wmax > 1 -> ha[1].b=ha0.cout; ]
                  (i:2..wmax-1: ha[i].b=ha[i-1].cout;)
-                 [ wmax = 1 -> ha0.cout=out.d.r[wmax];
-		 [] else ->  ha[wmax-1].cout=out.d.r[wmax];
+                 [ wmax = 1 -> ha0.cout=out.d.d[wmax];
+		 [] else ->  ha[wmax-1].cout=out.d.d[wmax];
 		 ]
-      [] else -> ha0(.a = a.d.r[0], .b = bc.r[0], .s = out.d.r[0],
-		       .cout = out.d.r[1]);
+      [] else -> ha0(.a = a.d.d[0], .b = bc.d[0], .s = out.d.d[0],
+		       .cout = out.d.d[1]);
     ]
   [] else ->
        /* lsb is a half adder */
        hadd1 ha1;
        addfblock<W1-1,W2-1> fb;
-       fb.a.r = a.d.r[1..W1-1];
-       fb.b.r = bc.r[1..W2-1];
-       fb.s.r = out.d.r[1..wmax-1];
-       fb.cout = out.d.r[wmax];
-       ha1(.a=a.d.r[0],.b=bc.r[0],.s=out.d.r[0],.cout=fb.cin);
+       fb.a.d = a.d.d[1..W1-1];
+       fb.b.d = bc.d[1..W2-1];
+       fb.s.d = out.d.d[1..wmax-1];
+       fb.cout = out.d.d[wmax];
+       ha1(.a=a.d.d[0],.b=bc.d[0],.s=out.d.d[0],.cout=fb.cin);
   ]
 }
 
@@ -349,28 +349,28 @@ defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out)
   out.r = b.r;
   out.r = a.r;
   (i:W1: (j:W2:
-    and[i][j].A = a.d.r[i];
-    and[i][j].B = b.d.r[j];
+    and[i][j].A = a.d.d[i];
+    and[i][j].B = b.d.d[j];
     fa[i][j].a = and[i][j].Y;
-    [ i <= 0 & j <= 0 -> fa[i][j].cin = zeroa.out.d.r[i];
-                         fa[i][j].b = zerob.out.d.r[j];
-                         fa[i][j].s = out.d.r[i];
+    [ i <= 0 & j <= 0 -> fa[i][j].cin = zeroa.out.d.d[i];
+                         fa[i][j].b = zerob.out.d.d[j];
+                         fa[i][j].s = out.d.d[i];
                          fa[i][j].cout = fa[i][j+1].cin;
-    [] i > 0 & j <= 0 -> fa[i][j].cin = zeroa.out.d.r[i];
-                         fa[i][j].s = out.d.r[i];
+    [] i > 0 & j <= 0 -> fa[i][j].cin = zeroa.out.d.d[i];
+                         fa[i][j].s = out.d.d[i];
                          fa[i][j].cout = fa[i][j+1].cin;
     [] i <= 0 & j < W2-1  & j > 0 -> fa[i][j].s = fa[i+1][j-1].b;
                                      fa[i][j].cout = fa[i][j+1].cin;
-                                     fa[i][j].b = zerob.out.d.r[j];
+                                     fa[i][j].b = zerob.out.d.d[j];
     [] i <= 0 & j >= W2-1 -> fa[i][j].s = fa[i+1][j-1].b;
                              fa[i][j].cout = fa[i+1][j].b; 
-                             fa[i][j].b = zerob.out.d.r[j];                                
+                             fa[i][j].b = zerob.out.d.d[j];                                
     [] i < W1-1 & j >= W2-1 & i > 0 -> fa[i][j].s = fa[i+1][j-1].b;
                                fa[i][j].cout = fa[i+1][j].b;
-    [] i >= W1-1 & j < W2-1  & j > 0 -> fa[i][j].s = out.d.r[W1+j-1];
+    [] i >= W1-1 & j < W2-1  & j > 0 -> fa[i][j].s = out.d.d[W1+j-1];
                                 fa[i][j].cout = fa[i][j+1].cin;
-    [] i >= W1-1 & j >= W2-1 -> fa[i][j].s = out.d.r[W1+j-1];
-                                fa[i][j].cout = out.d.r[W1+j];
+    [] i >= W1-1 & j >= W2-1 -> fa[i][j].s = out.d.d[W1+j-1];
+                                fa[i][j].cout = out.d.d[W1+j];
     [] else -> fa[i][j].s = fa[i+1][j-1].b;
                fa[i][j].cout = fa[i][j+1].cin;
     ]
@@ -488,7 +488,7 @@ defproc fcmptree(d1of3 in[N]; d1of3 out)
 
 
 export template<pint W1, W2>
-defproc cmp(dualrails<W1> a; dualrails<W2> b; d1of3 out)
+defproc cmp(Mx1of2<W1> a; Mx1of2<W2> b; d1of3 out)
 {
   pint wmin = min(W1,W2);
   pint wmax = max(W1,W2);
@@ -498,14 +498,14 @@ defproc cmp(dualrails<W1> a; dualrails<W2> b; d1of3 out)
   d1of3 cr[wmax];
     
   fcmpgen gen[wmin];
-  (i:wmin: gen[i](.a = a.r[i], .b=b.r[i], .out=cr[i]);)
+  (i:wmin: gen[i](.a = a.d[i], .b=b.d[i], .out=cr[i]);)
 
   [ W1 > W2 ->
     fcmpa0 ra[W1-W2];
-    (i:W1-W2: ra[i](.a=a.r[i+wmin], .out=cr[i+wmin]);)
+    (i:W1-W2: ra[i](.a=a.d[i+wmin], .out=cr[i+wmin]);)
   [] W1 < W2 ->
     fcmpb0 rb[W2-W1];
-    (i:W2-W1: rb[i](.b=b.r[i+wmin], .out=cr[i+wmin]);)
+    (i:W2-W1: rb[i](.b=b.d[i+wmin], .out=cr[i+wmin]);)
   ]
   
   fcmptree<wmax> t(cr,out);
@@ -524,10 +524,10 @@ defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
   cmp<W1,W2> c(a.d,b.d);
 
   bool _of;
-  out.d.r[0].t = c.out.lt;
+  out.d.d[0].t = c.out.lt;
   prs {
     c.out.gt | c.out.eq => _of-
-    _of => out.d.r[0].f-
+    _of => out.d.d[0].f-
   }
 }
 
@@ -542,8 +542,8 @@ defproc le(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
 {
   gt<W1,W2> g(a,b);
   g.out.r = out.r;
-  g.out.d.r[0].t=out.d.r[0].f;
-  g.out.d.r[0].f=out.d.r[0].t;
+  g.out.d.d[0].t=out.d.d[0].f;
+  g.out.d.d[0].f=out.d.d[0].t;
 }
 
 export template<pint W1,W2>
@@ -551,8 +551,8 @@ defproc ge(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
 {
   lt<W1,W2> l(a,b);
   l.out.r = out.r;
-  l.out.d.r[0].t=out.d.r[0].f;
-  l.out.d.r[0].f=out.d.r[0].t;
+  l.out.d.d[0].t=out.d.d[0].f;
+  l.out.d.d[0].f=out.d.d[0].t;
 }
 
 export template<pint W1,W2>
@@ -568,10 +568,10 @@ defproc eq(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
   cmp<W1,W2> c(a.d,b.d);
 
   bool _of;
-  out.d.r[0].t = c.out.eq;
+  out.d.d[0].t = c.out.eq;
   prs {
     c.out.gt | c.out.lt => _of-
-    _of => out.d.r[0].f-
+    _of => out.d.d[0].f-
   }
 }
 
@@ -579,8 +579,8 @@ export template<pint W1,W2>
 defproc ne(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
 {
   eq<W1,W2> x(a,b);
-  x.out.d.r[0].t = out.d.r[0].f;
-  x.out.d.r[0].f = out.d.r[0].t;
+  x.out.d.d[0].t = out.d.d[0].f;
+  x.out.d.d[0].f = out.d.d[0].t;
   x.out.r = out.r;
   out.r = a.r;
   out.r = b.r;
@@ -600,7 +600,7 @@ defproc bitfield(sdtexprchan<W> a; sdtexprchan<MSB-LSB+1> out)
   { LSB >= 0 & MSB < W : "Illegal bit-field specifier" };
 
   out.r = a.r;
-  out.d.r = a.d.r[LSB..MSB];
+  out.d.d = a.d.d[LSB..MSB];
 
   // XXX: dangling signals!
 }
@@ -611,8 +611,8 @@ defproc concat2(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out)
   a.r = out.r;
   b.r = out.r;
 
-  out.d.r[0..W2-1] = b.d.r;
-  out.d.r[W2..W1+W2-1] = a.d.r;
+  out.d.d[0..W2-1] = b.d.d;
+  out.d.d[W2..W1+W2-1] = a.d.d;
 }
 
 
@@ -623,18 +623,18 @@ defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
   [] W1 < W2 ->
     bool _xv;
     out.r = a.r;
-    a.d.r = out.d.r[0..W1-1];
+    a.d.d = out.d.d[0..W1-1];
     prs {
-      a.d.r[W1-1].t | a.d.r[W1-1].f => _xv-
-      (i:W1..W2-1:  _xv => out.d.r[i].f- )
+      a.d.d[W1-1].t | a.d.d[W1-1].f => _xv-
+      (i:W1..W2-1:  _xv => out.d.d[i].f- )
    }
-   (i:W1..W2-1: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.r[i].f{-1}} )
+   (i:W1..W2-1: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.d[i].f{-1}} )
    sizing {p_n_mode <- 1; leak_adjust <- 1; _xv{-1} }
-   (i:W1..W2-1: GND = out.d.r[i].t;)
+   (i:W1..W2-1: GND = out.d.d[i].t;)
     
   [] W1 > W2 ->
      out.r = a.r;
-     a.d.r[0..W2-1] = out.d.r;
+     a.d.d[0..W2-1] = out.d.d;
      // XXX: dangling signals!
  ]
 }
@@ -648,11 +648,11 @@ defproc const(sdtexprchan<W> out)
   prs {
     out.r => _req-
     (i:W:
-      ~_req => out.d.r[i].d[((V >> i) & 1)]+
-     Reset -> out.d.r[i].d[1-(V >> i) & 1]-
+      ~_req => out.d.d[i].d[((V >> i) & 1)]+
+     Reset -> out.d.d[i].d[1-(V >> i) & 1]-
     )
   }
-  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.r[i].d[((V >> i) & 1)]{-1}} )
+  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.d[i].d[((V >> i) & 1)]{-1}} )
   sizing {p_n_mode <- 1; leak_adjust <- 1; _req{-1} }
 }
 
@@ -664,14 +664,14 @@ defproc writeport(sdtvar<W> var; sdtchan<W> in)
 {
   bool _wack[W];
   prs {
-    (i:W: [keeper=0] in.d.r[i].t -> var.r[i].f-
-          [keeper=0] in.d.r[i].f -> var.r[i].t-
+    (i:W: [keeper=0] in.d.d[i].t -> var.d[i].f-
+          [keeper=0] in.d.d[i].f -> var.d[i].t-
 
-       (in.d.r[i].t & var.r[i].t) | (in.d.r[i].f & var.r[i].f) -> _wack[i]-
-       ~in.d.r[i].t & ~in.d.r[i].f -> _wack[i]+
+       (in.d.d[i].t & var.d[i].t) | (in.d.d[i].f & var.d[i].f) -> _wack[i]-
+       ~in.d.d[i].t & ~in.d.d[i].f -> _wack[i]+
      )
   }
-  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; var.r[i].f{-1}; var.r[i].t{-1}; _wack[i]{-1} })
+  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; var.d[i].f{-1}; var.d[i].t{-1}; _wack[i]{-1} })
   ctree<W,false> wa(_wack);
   prs {
     Reset | wa.out => in.a-
@@ -690,13 +690,13 @@ defproc readport(sdtvar<W> var; sdtexprchan<W> out)
     out.r => xout-
       
     (i:W:
-     ~_xout & ~var.r[i].t -> out.d.r[i].f+
-     ~_xout & ~var.r[i].f -> out.d.r[i].t+
-     _xout -> out.d.r[i].f-
-     _xout -> out.d.r[i].t-
+     ~_xout & ~var.d[i].t -> out.d.d[i].f+
+     ~_xout & ~var.d[i].f -> out.d.d[i].t+
+     _xout -> out.d.d[i].f-
+     _xout -> out.d.d[i].t-
      )
   }
-  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.r[i].f{-1}; out.d.r[i].t{-1}})
+  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.d[i].f{-1}; out.d.d[i].t{-1}})
   sizing {p_n_mode <- 1; leak_adjust <- 1; xout{-1} }
 }
 
@@ -705,7 +705,7 @@ defproc wrap_to_array(sdtexprchan<W> in; sdtexprchan<1> out[W])
 {
   (i:W: 
         in.r = out[i].r;
-        in.d.r[i] = out[i].d.r[0];
+        in.d.d[i] = out[i].d.d[0];
         )
 }
 
@@ -714,7 +714,7 @@ defproc wrap_from_array(sdtexprchan<1> in[W]; sdtexprchan<W> out)
 {
   (i:W: 
         out.r = in[i].r;
-        out.d.r[i] = in[i].d.r[0];
+        out.d.d[i] = in[i].d.d[0];
         )
 }
 

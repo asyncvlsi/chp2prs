@@ -62,12 +62,12 @@ defproc var_init(sdtvar<W> v)
 {
   prs * {
     (i:W:
-       v.r[i].f<8> -> v.r[i].t-
-       v.r[i].t<8> -> v.r[i].f-
-      [weak=1] ~v.r[i].t<4,4> -> v.r[i].f+
-      [weak=1] ~v.r[i].f<4,4> -> v.r[i].t+
+       v.d[i].f<8> -> v.d[i].t-
+       v.d[i].t<8> -> v.d[i].f-
+      [weak=1] ~v.d[i].t<4,4> -> v.d[i].f+
+      [weak=1] ~v.d[i].f<4,4> -> v.d[i].t+
 
-      Reset -> v.r[i].d[int(~I)]-
+      Reset -> v.d[i].d[int(~I)]-
      )
   }
 }
@@ -169,7 +169,7 @@ defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
         }
 
 
-        //(i:W: sizing {leak_adjust <- 1; _t[i]{-1};  _f[i]{-1}; c.d.r[i].t{-1};  c.d.r[i].f{-1}} )
+        //(i:W: sizing {leak_adjust <- 1; _t[i]{-1};  _f[i]{-1}; c.d.d[i].t{-1};  c.d.d[i].f{-1}} )
   ]
 }
 
@@ -191,8 +191,8 @@ defproc writeport(sdtvar<W> var; sdtchan<W> in)
   delay<5> dly(req_in);
   sigbuf<W> s(in.r,req_in);
   prs {
-    (i:W: [keeper=0] in.d[i] & req_in & _dly_req_in -> var.r[i].f-
-          [keeper=0] _d_B[i] & req_in & _dly_req_in -> var.r[i].t-
+    (i:W: [keeper=0] in.d[i] & req_in & _dly_req_in -> var.d[i].f-
+          [keeper=0] _d_B[i] & req_in & _dly_req_in -> var.d[i].t-
           in.d[i] => _d_B[i]-
      )
     dly.out => _dly_req_in-
@@ -215,7 +215,7 @@ defproc readport(sdtvar<W> var; sdtexprchan<W> out)
   prs {
     out.r => xout-
     (i:W:
-     ~_xout & ~var.r[i].f -> out.d[i]+
+     ~_xout & ~var.d[i].f -> out.d[i]+
      _xout -> out.d[i]-
      )
   }

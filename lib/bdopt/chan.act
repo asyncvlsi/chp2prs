@@ -19,10 +19,11 @@
  *
  **************************************************************************
  */
-namespace syn {
+import std;
+open std::data;
+open std::channel;
 
-/* control */
-export defchan a1of1 <: chan(bool) (bool r; bool a) { }
+namespace syn {
 
 /* variables */  
 export template<pint N>
@@ -33,20 +34,7 @@ deftype bundelddata <: int<1> (bool d)
 export template<pint N>
 deftype bundelddatas <: int<N> (bool d[N]) { }
 
-export template<pint N>
-deftype dualrail <: int<1> (bool d[2],t,f)
-{
-  d[0] = f;
-  d[1] = t;
-  spec {
-    exclhi(t,f)
-  }
-}
-
-export template<pint N>
-deftype dualrails <: int<N> (dualrail r[N]) { }
-
-export deftype sdtvar <: dualrails() { }
+export deftype sdtvar <: Mx1of2 () { }
 
 export deftype sdtboolvar <: bool (sdtvar<1> x) { }
   

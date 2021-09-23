@@ -36,7 +36,7 @@
 int BasicSDT::_gen_stmt_id ()
 {
   int tmp = SDTEngine::_gen_stmt_id ();
-  fprintf (output_stream, "   syn::a1of1 c%d;\n", tmp);
+  fprintf (output_stream, "   a1of1 c%d;\n", tmp);
   return tmp;
 }
 

@@ -19,41 +19,29 @@
  *
  **************************************************************************
  */
+import std;
+open std::data;
+open std::channel;
+
 namespace syn {
 
-/* control */
-export defchan a1of1 <: chan(bool) (bool?! r; bool!? a) { }
-
-/* variables */  
-export template<pint N>
-deftype dualrail <: int<1> (bool d[2],t,f)
-{
-  d[0] = f;
-  d[1] = t;
-  spec {
-    exclhi(t,f)
-  }
-}
-
-export template<pint N>
-deftype dualrails <: int<N> (dualrail r[N]) { }
-
-export deftype sdtvar <: dualrails() { }
+export deftype sdtvar <: Mx1of2 () { }
 
 export deftype sdtboolvar <: bool (sdtvar<1> x) { }
   
 export template<pint N>
-defchan ax1of2 <: chan(int<N>) (dualrails<N> d; bool a) { }
+defchan ax1of2 <: chan(int<N>) (Mx1of2<N> d; bool a) { }
 
 export template<pint N>
-defchan rx1of2 <: chan(int<N>) (bool r; dualrails<N> d) { }
+defchan rx1of2 <: chan(int<N>) (bool r; Mx1of2<N> d) { }
 
 // specify qdi datapath channels
 export defchan sdtchan <: ax1of2 () { }
 export defchan sdtexprchan <: rx1of2 () { }
 
 //export defchan r1of2 <: chan(bool) (bool r, t, f) { }
-export defchan r1of2 <: sdtexprchan<1> (bool t, f) { t = d.r[0].t; f = d.r[0].f; }
+export defchan r1of2 <: sdtexprchan<1> (bool t, f)
+{ t = d.d[0].t; f = d.d[0].f; }
 
 export template<pint W>
 defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c)

@@ -1,8 +1,8 @@
 
 assert t.c0.r 0
 
-watch t.x.r[0].t
-watch t.x.r[0].f
+watch t.x.d[0].t
+watch t.x.d[0].f
 
 set Reset 0
 mode run
