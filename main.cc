@@ -108,57 +108,7 @@ int emit_refinement_header (FILE *fp, UserDef *u)
   fprintf(fp, "sdt_");
   ActNamespace::Act()->mfprintfproc (fp, u);
   fprintf (fp, " <: ");
-
-  const char *procnm = u->getName();
-  int len = strlen (procnm);
-  if (procnm[len-1] == '>' && procnm[len-2] == '<') {
-    /* strip empty <> */
-    for (int i=0; i < len-2; i++) {
-      fputc (procnm[i], fp);
-    }
-  }
-  else {
-     /* XXX: replace 0 with false, 1 with true for Booleans */
-    int arg = -1;
-    int change = 0;
-    for (int i=0; i < len; i++) {
-       if (arg >= 0 && change) {
-	InstType *it = u->getPortType (-(arg+1));
-	if (TypeFactory::isPBoolType (it)) {
-	  if (procnm[i] == '0') {
-	    fprintf (fp, "false");
-	  }
-	  else if (procnm[i] == '1') {
-	    fprintf (fp, "true");
-	  }
-	  else {
-	    fprintf (fp, "ERR");
-	  }
-	}
-	else {
-	  if (procnm[i] == '{') {
-	    warning ("Array template parameters currently unsupported (%s)",
-		     procnm);
-	  }
-	  fputc (procnm[i], fp);
-	}
-      }
-      else {
-	fputc (procnm[i], fp);
-      }
-      if (procnm[i] == '<') {
-	change = 1;
-	arg = 0;
-      }
-      else if (procnm[i] == ',') {
-	change = 1;
-	arg++;
-      }
-      else {
-	change = 0;
-      }
-    }
-  }
+  u->printActName (fp);
   fprintf (fp, " ()\n");
 
   int bw = 0;
