@@ -25,17 +25,7 @@ open std::channel;
 
 namespace syn {
 
-/* variables */  
-export template<pint N>
-deftype bundelddata <: int<1> (bool d)
-{
-}
-
-export template<pint N>
-deftype bundelddatas <: int<N> (bool d[N]) { }
-
 export deftype sdtvar <: Mx1of2 () { }
-
 export deftype sdtboolvar <: bool (sdtvar<1> x) { }
   
 export template<pint N>
@@ -45,7 +35,7 @@ export template<pint N>
 defchan rx1of1 <: chan(int<N>) (bool r; bool a; bool d[N]) { }
 
 // specify bd datapath channels
-export defchan sdtchan <: ax1of1 () { }
+export defchan sdtchan <: std::channel::bd () { }
 export defchan sdtexprchan <: rx1of1 () { }
 
 export defchan r1of2 <: sdtexprchan<1> (bool t, f) { }
