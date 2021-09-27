@@ -67,3 +67,4 @@ As part of her senior project, Amanda Hansen took Zeb's version, added many of t
 In collaboration with Linc Berkeley, she also added certain optimizations to the translation to reduce overhead (~2020).
 After several discussions with Marly Roncken and Ebele Esimai who were modifying the tool to support their own flow, the entire implementation was re-factored
 in summer/fall 2020. The tool was converted over to the ACT pass framework in 2021.
+In 2021, Ole Richter added external expression optimization that invokes existing logic synthesis tools to optimize the logic for expressions.
