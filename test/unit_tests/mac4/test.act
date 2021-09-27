@@ -1,0 +1,10 @@
+
+defproc mac4 (chan?(int<4>) A, B, C; chan!(int<4>) Y)
+{
+  int<4> a, b, c;
+  int<4> y;
+  chp {
+   *[ A?a, B?b, C?c; y:=(a*b)+c; Y!y ]
+  }
+}
+

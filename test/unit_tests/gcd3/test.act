@@ -1,0 +1,14 @@
+deftype pair (int x, y) { }
+
+defproc gcd3(chan?(int) X,  Y; chan!(int) O) {
+  pair p;
+
+  chp {
+   *[ X?p.x,Y?p.y;
+     *[ p.x > p.y -> p.x := p.x - p.y
+     [] p.y > p.x -> p.y := p.y - p.x
+      ];
+      O!p.x
+    ]
+  }
+}

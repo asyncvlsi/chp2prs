@@ -1,0 +1,56 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2020 Rajit Manohar
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+import std;
+open std::data;
+open std::channel;
+
+namespace syn {
+
+export deftype sdtvar <: Mx1of2 () { }
+export deftype sdtboolvar <: bool (sdtvar<1> x) { }
+  
+export template<pint N>
+defchan ax1of1 <: chan(int<N>) (bool d[N]; bool a; bool r) { }
+
+export template<pint N>
+defchan rx1of1 <: chan(int<N>) (bool r; bool a; bool d[N]) { }
+
+// specify bd datapath channels
+export defchan sdtchan <: std::channel::bd () { }
+export defchan sdtexprchan <: rx1of1 () { }
+
+export defchan r1of2 <: sdtexprchan<1> (bool t, f) { }
+
+
+export template<pint W>
+defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c)
+{
+  e.d = c.d;
+}
+
+export
+defproc varconnect (sdtboolvar v; sdtvar<1> vi)
+{
+  v.x = vi;
+}
+  
+}  

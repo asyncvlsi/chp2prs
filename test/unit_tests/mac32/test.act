@@ -1,0 +1,27 @@
+defproc sink(chan?(int<64>) x)
+{
+  int t;
+  chp {
+   *[ x?t; log("got: ",x) ]
+  }
+}
+
+defproc mac32 (chan?(int) A, B, C; chan!(int<32>) Y)
+{
+  int a, b, c;
+  int<32> y;
+  chp {
+   *[ A?a, B?b, C?c; y:=(a*b)+c; Y!y ]
+  }
+}
+
+defproc test()
+{
+
+  chan(int) tA, tB, tC;
+  sink bucket;
+  mac32 b(tA, tB, tC, bucket.x);
+  chp{
+    tA!2, tB!3, tC!5
+  }
+}

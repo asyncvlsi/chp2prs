@@ -25,18 +25,165 @@
 #include <unistd.h>
 #include <string.h>
 #include <act/act.h>
-#include <act/passes/netlist.h>
-#include "config.h"
-#include "check_chp.h"
-#include "cartographer.h"
-#ifdef CHP_OPTIMIZE
+#include <act/iter.h>
+#include <act/passes.h>
+#include "config_pkg.h"
+
+#ifdef FOUND_chp_opt
 #include <act/chp-opt/optimize.h>
 #endif
 
+
 static void usage(char *name)
 {
-  fprintf(stderr, "Usage: %s <actfile> <process> <outfile> [--optimize] [--bundled]\n", name);
+  fprintf(stderr, "Usage BasicSDT: %s [-Ob] [-e <exprfile>] <actfile> <process> <out>\n", name);
+  fprintf(stderr, "Usage ExrpOptSDT: %s [-Ob] -o [<yosys,genus>] [-e <exprfile>] <actfile> <process> <out>\n", name);
   exit(1);
+}
+
+static void begin_sdtout (const char *output_file,
+			  const char *expr_file,
+			  const char *import_file,
+			  int bundled_data,
+			  int expropt,
+			  FILE **output_stream)
+{
+  /* initialize the output location */ 
+  if (output_file) {
+    *output_stream = fopen(output_file, "w");
+    if (!*output_stream) {
+      fatal_error ("Could not open file `%s' for writing", output_file);
+    }
+  }
+  else {
+    *output_stream = stdout;
+  }
+
+  if (import_file) {
+    fprintf (*output_stream, "import \"%s\";\n", import_file);
+  }
+  
+  /* print imports */
+  if (bundled_data) {
+    fprintf(*output_stream, "import \"syn/bdopt/_all_.act\";\n");
+  }
+  else {
+    fprintf(*output_stream, "import \"syn/qdi/_all_.act\";\n");
+  }
+  // open the operating namespace
+  fprintf(*output_stream, "open syn;\n");
+
+
+  if (expr_file) {
+    FILE *efp = fopen (expr_file, "w");
+    if (!efp) {
+      fatal_error ("Could not open expression file `%s' for writing",
+		   expr_file);
+    }
+    fprintf (*output_stream, "import \"%s\";\n", expr_file);
+    fprintf (efp, "namespace syn {\n\nexport namespace expr {\n\n");
+    fclose (efp);
+  }
+  fprintf(*output_stream, "\n");
+}
+
+
+static void end_sdtout (FILE *fpout, const char *expr_file)
+{
+  if (fpout != stdout) {
+    fclose (fpout);
+  }
+  if (expr_file) {
+    FILE *efp = fopen (expr_file, "a");
+    fprintf (efp, "\n}\n\n}\n");
+    fclose (efp);
+  }
+}
+
+
+int emit_refinement_header (FILE *fp, UserDef *u)
+{
+  int has_overrides = 0;
+  
+  fprintf(fp, "sdt_");
+  ActNamespace::Act()->mfprintfproc (fp, u);
+  fprintf (fp, " <: ");
+  u->printActName (fp);
+  fprintf (fp, " ()\n");
+
+  int bw = 0;
+
+#define OVERRIDE_OPEN				\
+  do {						\
+    if (!has_overrides) {			\
+      fprintf(fp, "+{\n");			\
+      has_overrides = true;			\
+    }						\
+  } while (0)
+    
+  /* iterate through Scope Hashtable to find all chp variables */
+  ActInstiter iter(u->CurScope());
+  for (iter = iter.begin(); iter != iter.end(); iter++) {
+    ValueIdx *vx = *iter;
+    /* chan variable found */
+    if (TypeFactory::isChanType (vx->t)) {
+      bw = TypeFactory::bitWidth(vx->t);
+      OVERRIDE_OPEN;
+      fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
+    }
+    else if (TypeFactory::isIntType (vx->t)) {
+      /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
+      bw = TypeFactory::bitWidth(vx->t);
+      OVERRIDE_OPEN;
+      fprintf(fp, "  syn::sdtvar<%d> %s;\n", bw, vx->getName());
+    }
+    else if (TypeFactory::isBoolType (vx->t)) {
+      OVERRIDE_OPEN;
+      fprintf (fp, " syn::sdtboolvar %s;\n", vx->getName());
+    }
+    else if (TypeFactory::isProcessType (vx->t)) {
+      OVERRIDE_OPEN;
+      fprintf (fp, " sdt_");
+      Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
+      Assert (proc, "Why am I here?");
+      ActNamespace::Act()->mfprintfproc (fp, proc);
+      fprintf (fp, " %s;\n", vx->getName());
+    }
+    else if (TypeFactory::isStructure (vx->t)) {
+      OVERRIDE_OPEN;
+      fprintf (fp, " sdt_");
+      Data *d = dynamic_cast <Data *> (vx->t->BaseType());
+      Assert (d, "Why am I here?");
+      ActNamespace::Act()->mfprintfproc (fp, d);
+      fprintf (fp, " %s;\n", vx->getName());
+    }
+  }
+  /* end param declaration */
+  if (has_overrides) {
+    fprintf(fp, "}\n{\n");
+  }
+  else {
+    fprintf(fp, "{\n");
+  }
+  return has_overrides;
+#undef OVERRIDE_OPEN
+}
+
+static void _struct_check (void *cookie, Data *d)
+{
+  FILE *fp;
+  if (!cookie || !d) return;
+
+  fp = (FILE *) cookie;
+
+  if (!TypeFactory::isStructure (d)) {
+    return;
+  }
+
+  fprintf (fp, "deftype ");
+  emit_refinement_header (fp, d);
+
+  fprintf (fp, "}\n");
 }
 
 int main(int argc, char **argv)
@@ -45,81 +192,123 @@ int main(int argc, char **argv)
   char *proc;
   bool chpopt = false;
   bool bundled = false;
+  char *exprfile = NULL;
+  char *syntesistool = NULL;
+  int emit_import = 0;
+  int external_opt = 0;
 
   /* initialize ACT library */
   Act::Init(&argc, &argv);
 
-  /* some usage check */
-  if (argc < 4 || argc > 6)
-  {
-    usage(argv[0]);
+  int ch;
+  while ((ch = getopt (argc, argv, "Obe:o:")) != -1) {
+    switch (ch) {
+    case 'O':
+      chpopt = true;
+      break;
+    case 'b':
+      bundled = true;
+      break;
+    case 'e':
+      if (exprfile) {
+        FREE (exprfile);
+      }
+      exprfile = Strdup (optarg);
+      break;
+    case 'o':
+      external_opt = 1;
+      syntesistool = Strdup (optarg);
+      break;
+    default:
+      usage (argv[0]);
+      break;
+    }
   }
-    
-  /* check if optimize */
-  if ((argc == 5 && strcmp(argv[4], "--optimize") == 0)
-       || (argc == 6 && strcmp(argv[5], "--optimize") == 0)) {
-    chpopt = true;
-    printf("> Sequencer Optimization turned ON\n");
+
+  if ( optind != argc - 3 ) {
+    usage (argv[0]);
   }
-  else
-  {
-    printf("> Sequencer Optimization turned OFF\n");
-  }
-  
-  /* check if bundled data */
-  if ((argc == 5 && strcmp(argv[4], "--bundled") == 0)
-       || (argc == 6 && strcmp(argv[5], "--bundled") == 0))
-  {
-    bundled = true;
-    printf("> Bundled data turned ON\n");
-  }
-  else
-  {
-    printf("> Bundled data turned OFF\n");
-  }
-  
+      
   /* read in the ACT file */
-  a = new Act(argv[1]);
+  a = new Act(argv[optind]);
 
   /* expand it */
   a->Expand();
 
-  /* read configuration file, if any */
-  config_read("prs2net.conf");
-
   /* find the process specified on the command line */
-  Process *p = a->findProcess(argv[2]);
+  Process *p = a->findProcess(argv[optind+1]);
 
   if (!p)
   {
-    fatal_error("Could not find process `%s' in file `%s'", argv[2], argv[1]);
+    fatal_error("Could not find process `%s' in file `%s'", argv[optind+1], argv[optind]);
   }
 
   if (!p->isExpanded())
   {
-    fatal_error("Process `%s' is not expanded.", argv[2]);
+    //fatal_error("Process `%s' is not expanded.", argv[optind+1]);
+    p = p->Expand (ActNamespace::Global(), p->CurScope(), 0, NULL);
+    emit_import = 1;
   }
-
-  /* extract the chp */
-  if (p->getlang() == NULL || p->getlang()->getchp() == NULL)
-  {
-    fatal_error("Input file `%s' does not have any chp.", argv[2]);
+  else {
+    emit_import = 0;
   }
+  Assert (p, "What?");
 
   if (chpopt)
   {
-#ifdef CHP_OPTIMIZE    
-    ChpOpt::optimize(p, a->getTypeFactory());
-    printf("> Optimized CHP:\n");
-    chp_print(stdout, p->getlang()->getchp()->c);
-    printf("\n");
+#ifdef FOUND_chp_opt    
+    ChpOptPass *copt = new ChpOptPass (a);
 #else
     fatal_error ("Optimize flag is not currently enabled in the build.");
 #endif
   }
+
+  ActApplyPass *app = new ActApplyPass (a);
   
-  struct Hashtable * chan_sends = check_chp(p);
-  generate_act(p, argv[1], argv[3], bundled, 0, chpopt, chan_sends);
-  hash_free(chan_sends);
+  ActCHPFuncInline *ip = new ActCHPFuncInline (a);
+  ip->run (p);
+
+  ActDynamicPass *c2p = new ActDynamicPass (a, "chp2prs", "libactchp2prspass.so", "chp2prs");
+
+  if (!c2p || (c2p->loaded() == false)) {
+    fatal_error ("Could not load dynamic pass!");
+  }
+
+  if (!exprfile) {
+    exprfile = Strdup ("expr.act");
+  }
+
+  FILE *fpout, *efp;
+
+  begin_sdtout (argv[optind+2], exprfile, emit_import ? argv[optind] : NULL,
+		bundled, external_opt, &fpout);
+
+
+  /* now find all structures and channels with user-defined structs 
+
+     chan(struct) needs more stuff...
+       
+     defchan sdtchan_... <: chan(struct) (...)
+   */
+  app->setCookie (fpout);
+  app->setDataFn (_struct_check);
+  app->run_per_type (p);
+  app->setCookie (NULL);
+  app->setDataFn (NULL);
+ 
+
+  c2p->setParam ("chp_optimize", chpopt);
+  c2p->setParam ("externopt", external_opt);
+  c2p->setParam ("bundled_dpath", bundled);
+  if (external_opt) {
+    c2p->setParam ("use_yosys", strcmp (syntesistool, "genus") ? 1 : 0);
+  }
+  c2p->setParam ("expr_file", exprfile);
+  c2p->setParam ("output_fp", fpout);
+
+  c2p->run (p);
+
+  end_sdtout (fpout, exprfile);
+  
   return 0;
 }

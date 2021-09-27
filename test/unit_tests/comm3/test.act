@@ -1,9 +1,0 @@
-defproc comm3(chan(int<32>) a) {
-  int<32> y;
-
-  chp {
-    y:=0; [ #a -> y:=1 ]
-  }
-}
-
-comm3 com;

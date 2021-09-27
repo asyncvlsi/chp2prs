@@ -21,22 +21,46 @@
 BINARY=chp2prs.$(EXT)
 
 TARGETS=$(BINARY)
+TARGETLIBS=libactchp2prspass_$(EXT).so
 
-OBJS=main.o check_chp.o cartographer.o
 
-SRCS=$(OBJS:.o=.cc)
+include config.mk
 
+ifdef expropt_INCLUDE
+OBJS=main.o
+else
+OBJS=main.o
+endif
+
+ifdef expropt_INCLUDE
+SHOBJS=chp2prs_pass.os sdt.os basicsdt.os externoptsdt.os
+else
+SHOBJS=chp2prs_pass.os sdt.os basicsdt.os
+endif
+
+SRCS=$(OBJS:.o=.cc) $(SHOBJS:.os=.cc)
+
+ifdef chp_opt_INCLUDE
+CHPOPT=-lchpopt
+else
 CHPOPT=
-#CHPOPT=-lchpopt
+endif
 
 SUBDIRS=lib
 
-include $(VLSI_TOOLS_SRC)/scripts/Makefile.std
+include $(ACT_HOME)/scripts/Makefile.std
 
-#DFLAGS+=-DCHP_OPTIMIZE
+ifdef expropt_INCLUDE
+EXPRLIB=-lexpropt_sh
+else
+EXPRLIB=
+endif
 
 $(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
-	$(CXX) $(CFLAGS) $(OBJS) -o $(BINARY) $(LIBACTPASS) $(CHPOPT)
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS) 
+
+$(TARGETLIBS): $(SHOBJS)
+	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB)
 
 testreps:
 	@if [ -d test -a -x test/repeat_unit.sh ]; \
@@ -50,6 +74,16 @@ testreps:
 	fi
 
 debug: obj_main obj_cartographer obj_checkchp start_lldb
+
+obj_chpexpr2verilog:
+	@if [ -d $(EXT) -a -f $(EXT)/externoptsdt.o ] ; \
+	then \
+		(mv $(EXT)/externoptsdt.o externoptsdt.o); \
+	fi
+	@if [ -d $(EXT) -a -f $(EXT)/syntesis_helper.o ] ; \
+	then \
+		(mv $(EXT)/syntesis_helper.o syntesis_helper.o); \
+	fi
 
 obj_cartographer:
 	@if [ -d $(EXT) -a -f $(EXT)/cartographer.o ] ; \

@@ -1,186 +1,43 @@
-initialize
-random
-watch Reset
-watch _Reset
-watch t.go.r
-watch t.var_x[0].v.t
-watch t.var_x[0].v.f
-watch t.var_x[1].v.t
-watch t.var_x[1].v.f
-watch t.var_x[2].v.t
-watch t.var_x[2].v.f
-watch t.var_x[3].v.t
-watch t.var_x[3].v.f
-watch t.var_y[0].v.t
-watch t.var_y[0].v.f
-watch t.var_y[1].v.t
-watch t.var_y[1].v.f
-watch t.var_z[0].v.t
-watch t.var_z[0].v.f
-watch t.var_z[1].v.t
-watch t.var_z[1].v.f
-watch t.var_z[2].v.t
-watch t.var_z[2].v.f
-watch t.var_z[3].v.t
-watch t.var_z[3].v.f
-watch t.go.a
-set_principal t.go.r
-set_principal t.var_x[0].v.t
-set_principal t.var_x[0].v.f
-set_principal t.var_x[1].v.t
-set_principal t.var_x[1].v.f
-set_principal t.var_x[2].v.t
-set_principal t.var_x[2].v.f
-set_principal t.var_x[3].v.t
-set_principal t.var_x[3].v.f
-set_principal t.var_y[0].v.t
-set_principal t.var_y[0].v.f
-set_principal t.var_y[1].v.t
-set_principal t.var_y[1].v.f
-set_principal t.var_z[0].v.t
-set_principal t.var_z[0].v.f
-set_principal t.var_z[1].v.t
-set_principal t.var_z[1].v.f
-set_principal t.var_z[2].v.t
-set_principal t.var_z[2].v.f
-set_principal t.var_z[3].v.t
-set_principal t.var_z[3].v.f
-set_principal t.go.a
-
-mode reset
-set Reset 1
-set _Reset 0
-set t.go.r 0
-set t.go.a 0
+set-channel-neutral "t.A" 32
 cycle
 set Reset 0
-set _Reset 1
-cycle
 mode run
-set t.go.r 0
-set t.go.a 0
+cycle
+system "echo 'reset complete'"
+status X
+system "echo 'send 1'"
+set-channel-valid "t.A" 32 1
 cycle
 
-assert t.go.r 0
-assert t.var_x[0].v.t 0
-assert t.var_x[0].v.f 1
-assert t.var_x[1].v.t 0
-assert t.var_x[1].v.f 1
-assert t.var_x[2].v.t 0
-assert t.var_x[2].v.f 1
-assert t.var_x[3].v.t 0
-assert t.var_x[3].v.f 1
-assert t.var_y[0].v.t 0
-assert t.var_y[0].v.f 1
-assert t.var_y[1].v.t 0
-assert t.var_y[1].v.f 1
-assert t.var_z[0].v.t 0
-assert t.var_z[0].v.f 1
-assert t.var_z[1].v.t 0
-assert t.var_z[1].v.f 1
-assert t.var_z[2].v.t 0
-assert t.var_z[2].v.f 1
-assert t.var_z[3].v.t 0
-assert t.var_z[3].v.f 1
-assert t.go.a 0
-set t.go.r 1
-cycle t.var_x[0].v.t
+assert t.A.a 1
+set-channel-neutral "t.A" 32
+assert-var-int "t.y" 32 1
+cycle
+system "echo 'send 2'"
+set-channel-valid "t.A" 32 2
+assert t.A.a 0
+cycle
 
-assert t.go.r 1
-assert t.var_x[0].v.t 1
-assert t.var_x[0].v.f 0
-assert t.var_x[1].v.t 0
-assert t.var_x[1].v.f 1
-assert t.var_x[2].v.t 0
-assert t.var_x[2].v.f 1
-assert t.var_x[3].v.t 0
-assert t.var_x[3].v.f 1
-assert t.var_y[0].v.t 0
-assert t.var_y[0].v.f 1
-assert t.var_y[1].v.t 0
-assert t.var_y[1].v.f 1
-assert t.var_z[0].v.t 0
-assert t.var_z[0].v.f 1
-assert t.var_z[1].v.t 0
-assert t.var_z[1].v.f 1
-assert t.var_z[2].v.t 0
-assert t.var_z[2].v.f 1
-assert t.var_z[3].v.t 0
-assert t.var_z[3].v.f 1
-assert t.go.a 0
-cycle t.var_x[1].v.t
+assert t.A.a 1
+set-channel-neutral "t.A" 32
+assert-var-int "t.y" 32 2
+cycle
+system "echo 'send 3'"
+set-channel-valid "t.A" 32 3
+assert t.A.a 0
+cycle
 
-assert t.var_x[1].v.t 1
-assert t.var_x[1].v.f 0
-assert t.var_x[2].v.t 0
-assert t.var_x[2].v.f 1
-assert t.var_x[3].v.t 0
-assert t.var_x[3].v.f 1
-assert t.var_y[0].v.t 1
-assert t.var_y[0].v.f 0
-assert t.var_y[1].v.t 0
-assert t.var_y[1].v.f 1
-assert t.var_z[0].v.t 0
-assert t.var_z[0].v.f 1
-assert t.var_z[1].v.t 0
-assert t.var_z[1].v.f 1
-assert t.var_z[2].v.t 0
-assert t.var_z[2].v.f 1
-assert t.var_z[3].v.t 0
-assert t.var_z[3].v.f 1
-assert t.go.a 0
-cycle t.var_x[2].v.t
+assert t.A.a 1
+set-channel-neutral "t.A" 32
+assert-var-int "t.y" 32 3
+cycle
 
-assert t.var_x[0].v.t 0
-assert t.var_x[0].v.f 1
-assert t.var_x[2].v.t 1
-assert t.var_x[2].v.f 0
-assert t.var_x[3].v.t 0
-assert t.var_x[3].v.f 1
-assert t.var_y[0].v.t 0
-assert t.var_y[0].v.f 1
-assert t.var_y[1].v.t 1
-assert t.var_y[1].v.f 0
-assert t.var_z[0].v.t 0
-assert t.var_z[0].v.f 1
-assert t.var_z[1].v.t 0
-assert t.var_z[1].v.f 1
-assert t.var_z[2].v.t 0
-assert t.var_z[2].v.f 1
-assert t.var_z[3].v.t 0
-assert t.var_z[3].v.f 1
-assert t.go.a 0
-cycle t.var_x[3].v.t
+system "echo 'send 4'"
+set-channel-valid "t.A" 32 4
+assert t.A.a 0
+cycle
 
-assert t.var_x[0].v.t 0
-assert t.var_x[0].v.f 1
-assert t.var_x[1].v.t 0
-assert t.var_x[1].v.f 1
-assert t.var_x[3].v.t 1
-assert t.var_x[3].v.f 0
-assert t.var_y[0].v.t 1
-assert t.var_y[0].v.f 0
-assert t.var_y[1].v.t 1
-assert t.var_y[1].v.f 0
-assert t.var_z[0].v.t 0
-assert t.var_z[0].v.f 1
-assert t.var_z[1].v.t 0
-assert t.var_z[1].v.f 1
-assert t.var_z[2].v.t 0
-assert t.var_z[2].v.f 1
-assert t.var_z[3].v.t 0
-assert t.var_z[3].v.f 1
-assert t.go.a 0
-cycle t.go.a 
-
-assert t.var_x[2].v.t 0
-assert t.var_x[2].v.f 1
-assert t.var_z[0].v.t 0
-assert t.var_z[0].v.f 1
-assert t.var_z[1].v.t 0
-assert t.var_z[1].v.f 1
-assert t.var_z[2].v.t 0
-assert t.var_z[2].v.f 1
-assert t.var_z[3].v.t 1
-assert t.var_z[3].v.f 0
-assert t.go.a 1
+assert t.A.a 1
+set-channel-neutral "t.A" 32
+assert-var-int "t.y" 32 4
+cycle

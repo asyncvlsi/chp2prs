@@ -1,0 +1,24 @@
+watch Reset
+watch t.c0.a
+
+set t.x.a 0
+cycle
+
+status U
+
+assert t.c0.r 0
+assert-channel-neutral "t.x" 32
+
+mode run
+set Reset 0
+cycle
+
+assert-channel-valid "t.x" 32 1
+set t.x.a 1
+cycle
+
+assert-channel-neutral "t.x" 32
+set t.x.a 0
+cycle
+
+assert t.c0.a 0

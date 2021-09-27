@@ -1,0 +1,723 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2020 Rajit Manohar
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+import globals;
+
+namespace syn {
+  
+export namespace expr {
+
+export template<pint W1,W2>
+defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  bool _t[wmax], _f[wmax];
+
+  prs {
+    (i:wmin: a.d.d[i].t & b.d.d[i].t -> _t[i]-
+     a.d.d[i].f & (b.d.d[i].t | b.d.d[i].f) | a.d.d[i].t & b.d.d[i].f -> _f[i]-
+     ~a.d.d[i].t & ~b.d.d[i].t -> _t[i]+
+     ~a.d.d[i].t & ~b.d.d[i].t & ~a.d.d[i].f & ~b.d.d[i].f -> _f[i]+
+
+     _t[i] => out.d.d[i].t-
+     _f[i] => out.d.d[i].f-
+     )
+  }
+  
+  [ W1 > W2 ->
+    prs {
+        (i:wmin..wmax-1:  a.d.d[i].t | a.d.d[i].f -> _f[i]-
+                         ~a.d.d[i].t & ~a.d.d[i].f -> _f[i]+
+                          _f[i] => out.d.d[i].f-
+        )
+    }
+ [] else ->
+    prs {
+      (i:wmin..wmax-1:  b.d.d[i].t | b.d.d[i].f -> _f[i]-
+                     ~b.d.d[i].t & ~b.d.d[i].f -> _f[i]+
+                      _f[i] => out.d.d[i].f-
+      )
+    }
+  ]
+  (i:wmin..wmax-1: GND = out.d.d[i].t;)
+
+  out.r = a.r;
+  out.r = b.r;  
+}
+
+export template<pint W1,W2>
+defproc or(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  bool _t[wmax], _f[wmax];
+
+  prs {
+    (i:wmin: a.d.d[i].f & b.d.d[i].f  -> _f[i]-
+     a.d.d[i].t & (b.d.d[i].t | b.d.d[i].f) | a.d.d[i].f & b.d.d[i].t -> _t[i]-
+     ~a.d.d[i].f & ~b.d.d[i].f -> _f[i]+
+     ~a.d.d[i].t & ~b.d.d[i].t & ~a.d.d[i].f & ~b.d.d[i].f -> _t[i]+
+
+     _t[i] => out.d.d[i].t-
+     _f[i] => out.d.d[i].f-
+    )
+  }
+  
+  [ W1 > W2 ->
+    (i:wmin..wmax-1: a.d.d[i].d = out.d.d[i].d;)
+ [] else ->
+    (i:wmin..wmax-1: b.d.d[i].d = out.d.d[i].d;)
+  ]
+  out.r = a.r;
+  out.r = b.r;  
+}
+
+export template<pint W1,W2>
+defproc xor(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  bool _t[wmax], _f[wmax];
+
+  prs {
+    (i:wmin: a.d.d[i].f & b.d.d[i].t | a.d.d[i].t & b.d.d[i].f -> _t[i]-
+     a.d.d[i].t & b.d.d[i].t | a.d.d[i].f & b.d.d[i].f -> _f[i]-
+     ~a.d.d[i].t & ~b.d.d[i].t & ~a.d.d[i].f & ~b.d.d[i].f -> _t[i]+
+     ~a.d.d[i].t & ~b.d.d[i].t & ~a.d.d[i].f & ~b.d.d[i].f -> _f[i]+
+
+     _t[i] => out.d.d[i].t-
+     _f[i] => out.d.d[i].f-
+    )
+  }
+  
+  [ W1 > W2 ->
+    (i:wmin..wmax-1: a.d.d[i].d = out.d.d[i].d;)
+ [] else ->
+    (i:wmin..wmax-1: b.d.d[i].d = out.d.d[i].d;)
+  ]
+  out.r = a.r;
+  out.r = b.r;
+}
+  
+export template<pint W>
+defproc not(sdtexprchan<W> a; sdtexprchan<W> out)
+{
+  a.r = out.r;
+  (i:W: a.d.d[i].t = out.d.d[i].f;
+        a.d.d[i].f = out.d.d[i].t;
+   )
+}
+
+defproc fadd(dualrail a, b, cin; dualrail s, cout)
+{
+  bool _st, _sf, _ct, _cf;
+  prs {
+    a.t & b.t | (a.t | b.t) & cin.t -> _ct-
+    ~a.t & ~a.f & ~b.t & ~b.f & ~cin.t & ~cin.f -> _ct+
+
+    a.f & b.f | (a.f | b.f) & cin.f -> _cf-
+    ~a.t & ~a.f & ~b.t & ~b.f & ~cin.t & ~cin.f -> _cf+
+
+      cin.t & (a.t & b.t | a.f & b.f) |
+      cin.f & (a.t & b.f | a.f & b.t) -> _st-
+      ~a.t & ~a.f & ~b.t & ~b.f & ~cin.t & ~cin.f -> _st+
+
+      cin.t & (a.f & b.t | a.t & b.f) |
+      cin.f & (a.f & b.f | a.t & b.t) -> _sf-
+      ~a.t & ~a.f & ~b.t & ~b.f & ~cin.t & ~cin.f -> _sf+
+
+    _ct => cout.t-
+    _cf => cout.f-
+    _st => s.t-
+    _sf => s.f-
+ }
+}
+
+defproc hadd(dualrail a, b; dualrail s, cout)
+{
+  bool _st, _sf, _ct, _cf;
+  prs {
+    a.t & b.t -> _ct-
+    ~a.t & ~a.f -> _ct+
+
+    a.f & (b.t | b.f) | b.f & a.t -> _cf-
+    ~a.t & ~a.f -> _cf+
+
+    a.t & b.f | a.f & b.t -> _st-
+    ~b.t & ~b.f -> _st+
+
+    a.f & b.f | a.t & b.t -> _sf-
+   ~b.t & ~b.f -> _sf+
+
+    _ct => cout.t-
+    _cf => cout.f-
+    _st => s.t-
+    _sf => s.f-
+ }
+}
+
+defproc hadd1(dualrail a, b; dualrail s, cout)
+{
+  bool _st, _sf, _ct, _cf;
+  prs {
+    a.t & (b.t|b.f) | a.f & b.t -> _ct-
+    ~a.t & ~a.f -> _ct+
+
+    a.f & b.f -> _cf-
+    ~a.t & ~a.f -> _cf+
+
+    a.t & b.f | a.f & b.t -> _sf-
+    ~b.t & ~b.f -> _sf+
+
+    a.f & b.f | a.t & b.t -> _st-
+   ~b.t & ~b.f -> _st+
+
+    _ct => cout.t-
+    _cf => cout.f-
+    _st => s.t-
+    _sf => s.f-
+ }
+}
+
+template<pint W1,W2>
+defproc addfblock(Mx1of2<W1> a; Mx1of2<W2> b; dualrail cin;
+		  Mx1of2<max(W1,W2)> s; dualrail cout)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  { wmin > 0 : "addfblock: minimum width is zero?" };
+
+  fadd fa[wmin];
+  [ wmax > wmin -> hadd ha[wmin..wmax-1]; ]
+
+  /* wire up primary inputs and outputs */
+
+  (i:wmin: fa[i](.a=a.d[i], .b=b.d[i], .s=s.d[i]);)
+  [ W1 > W2 -> (i:wmin..wmax-1: ha[i](.a=a.d[i],.s=s.d[i]);
+		[ i != wmin -> ha[i-1].cout=ha[i].b;
+    [] else -> fa[wmin-1].cout=ha[i].b;]
+		)
+ [] W2 > W1 -> (i:wmin..wmax-1: ha[i](.a=b.d[i],.s=s.d[i]);
+		[ i != wmin -> ha[i-1].cout=ha[i].b;
+    [] else -> fa[wmin-1].cout=ha[i].b;]
+		)
+  ]
+
+  /* carries */
+  fa[0].cin = cin;
+  (i:wmin-1: fa[i].cout = fa[i+1].cin;)
+
+  [wmax > wmin -> ha[wmax-1].cout = cout;
+ [] else -> fa[wmax-1].cout = cout;
+  ]   
+}
+
+export template<pint W1,W2>
+defproc add(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  { wmin > 0 : "add: minimum width is zero?" };
+
+  out.r = a.r;
+  out.r = b.r;
+
+  [ wmin = 1 ->
+    // this is only a half adder
+    hadd ha[wmax];
+    [ W1 > W2 ->  (i:wmax: ha[i](.a=a.d.d[i],.s=out.d.d[i]);)
+                  ha[0].b=b.d.d[0];
+                 (i:1..wmax-1: ha[i].b=ha[i-1].cout;)
+                 ha[wmax-1].cout=out.d.d[wmax];
+   [] W2 > W1 ->  (i:wmax: ha[i](.a=b.d.d[i],.s=out.d.d[i]);)
+                  ha[0].b=a.d.d[0];
+                 (i:1..wmax-1: ha[i].b=ha[i-1].cout;)
+                 ha[wmax-1].cout=out.d.d[wmax];
+      [] else -> ha[0](.a = a.d.d[0], .b = b.d.d[0], .s = out.d.d[0],
+		       .cout = out.d.d[1]);
+    ]
+  [] else ->
+       /* lsb is a half adder */
+       hadd ha[1];
+       addfblock<W1-1,W2-1> fb;
+       fb.a.d = a.d.d[1..W1-1];
+       fb.b.d = b.d.d[1..W2-1];
+       fb.s.d = out.d.d[1..wmax-1];
+       fb.cout = out.d.d[wmax];
+       ha[0](.a=a.d.d[0],.b=b.d.d[0],.s=out.d.d[0],.cout=fb.cin);
+  ]
+}
+
+export template<pint W1,W2>
+defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  { wmin > 0 : "add: minimum width is zero?" };
+
+  out.r = a.r;
+  out.r = b.r;
+
+  Mx1of2<W2> bc;
+
+  (i:W2: bc.d[i].t = b.d.d[i].f;  bc.d[i].f = b.d.d[i].t; )
+
+  [ wmin = 1 ->
+    hadd1 ha0;
+    hadd ha[1..wmax-1];
+    [ W1 > W2 ->  (i:1..wmax-1: ha[i](.a=a.d.d[i],.s=out.d.d[i]);)
+                  ha0(.a=a.d.d[0],.s=out.d.d[0]);
+                  ha0.b=bc.d[0];
+                  [ wmax > 1 -> ha[1].b=ha0.cout; ]
+                 (i:2..wmax-1: ha[i].b=ha[i-1].cout;)
+                 [ wmax = 1 -> ha0.cout=out.d.d[wmax];
+		 [] else ->  ha[wmax-1].cout=out.d.d[wmax];
+		 ]
+
+    [] W2 > W1 ->  (i:1..wmax-1: ha[i](.a=bc.d[i],.s=out.d.d[i]);)
+                  ha0(.a=bc.d[0],.s=out.d.d[0]);
+                  ha0.b=a.d.d[0];
+                  [ wmax > 1 -> ha[1].b=ha0.cout; ]
+                 (i:2..wmax-1: ha[i].b=ha[i-1].cout;)
+                 [ wmax = 1 -> ha0.cout=out.d.d[wmax];
+		 [] else ->  ha[wmax-1].cout=out.d.d[wmax];
+		 ]
+      [] else -> ha0(.a = a.d.d[0], .b = bc.d[0], .s = out.d.d[0],
+		       .cout = out.d.d[1]);
+    ]
+  [] else ->
+       /* lsb is a half adder */
+       hadd1 ha1;
+       addfblock<W1-1,W2-1> fb;
+       fb.a.d = a.d.d[1..W1-1];
+       fb.b.d = bc.d[1..W2-1];
+       fb.s.d = out.d.d[1..wmax-1];
+       fb.cout = out.d.d[wmax];
+       ha1(.a=a.d.d[0],.b=bc.d[0],.s=out.d.d[0],.cout=fb.cin);
+  ]
+}
+
+export defproc and2 (dualrail? A, B; dualrail! Y) 
+{
+  bool _f,_t;
+  prs {
+     A.f & (B.t | B.f) | B.f & A.t -> _f-
+     A.t & B.t -> _t-
+     ~A.t & ~A.f & ~B.t & ~B.f -> _t+
+     ~A.t & ~A.f & ~B.t & ~B.f -> _f+
+     _f => Y.f-
+     _t => Y.t-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; Y.t {-1}; Y.f {-1}; _t{-1}; _f{-1}}
+} 
+
+export template<pint W1,W2>
+defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out)
+{
+  /* reference single cycle multiplier https://inst.eecs.berkeley.edu/~eecs151/sp18/files/Lecture21.pdf @TODO change to more optimal version */
+  fadd fa[W1][W2];
+  and2 and[W1][W2];
+  const<W1,0> zeroa;
+  const<W2,0> zerob;
+  zeroa.out.r = a.r;
+  zerob.out.r = b.r;
+  out.r = b.r;
+  out.r = a.r;
+  (i:W1: (j:W2:
+    and[i][j].A = a.d.d[i];
+    and[i][j].B = b.d.d[j];
+    fa[i][j].a = and[i][j].Y;
+    [ i <= 0 & j <= 0 -> fa[i][j].cin = zeroa.out.d.d[i];
+                         fa[i][j].b = zerob.out.d.d[j];
+                         fa[i][j].s = out.d.d[i];
+                         fa[i][j].cout = fa[i][j+1].cin;
+    [] i > 0 & j <= 0 -> fa[i][j].cin = zeroa.out.d.d[i];
+                         fa[i][j].s = out.d.d[i];
+                         fa[i][j].cout = fa[i][j+1].cin;
+    [] i <= 0 & j < W2-1  & j > 0 -> fa[i][j].s = fa[i+1][j-1].b;
+                                     fa[i][j].cout = fa[i][j+1].cin;
+                                     fa[i][j].b = zerob.out.d.d[j];
+    [] i <= 0 & j >= W2-1 -> fa[i][j].s = fa[i+1][j-1].b;
+                             fa[i][j].cout = fa[i+1][j].b; 
+                             fa[i][j].b = zerob.out.d.d[j];                                
+    [] i < W1-1 & j >= W2-1 & i > 0 -> fa[i][j].s = fa[i+1][j-1].b;
+                               fa[i][j].cout = fa[i+1][j].b;
+    [] i >= W1-1 & j < W2-1  & j > 0 -> fa[i][j].s = out.d.d[W1+j-1];
+                                fa[i][j].cout = fa[i][j+1].cin;
+    [] i >= W1-1 & j >= W2-1 -> fa[i][j].s = out.d.d[W1+j-1];
+                                fa[i][j].cout = out.d.d[W1+j];
+    [] else -> fa[i][j].s = fa[i+1][j-1].b;
+               fa[i][j].cout = fa[i][j+1].cin;
+    ]
+  ))
+
+}
+
+export template<pint W1,W2>
+defproc div(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out)
+{
+  { false : "Division operator not yet implemented" };
+}
+  
+export template<pint W1,W2>
+defproc mod(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W2> out)
+{
+  { false : "Modulo operator not yet implemented" };
+}
+  
+export template<pint W1,W2>
+defproc lsl(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+(1<<W2)-1> out)
+{
+  { false : "Shifters missing" };
+}
+
+export template<pint W1,W2>
+defproc lsr(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out)
+{
+  { false : "Shifters missing" };
+}
+  
+export template<pint W1,W2>
+defproc asr(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out)
+{
+  { false : "Shifters missing" };
+}
+
+/*------------------------------------------------------------------------*/
+
+defchan d1of3 <: chan(enum<3>) (bool gt, lt, eq) { }
+
+
+/*
+  one bit a cmp b
+*/
+defproc fcmpgen(dualrail a, b; d1of3 out)
+{
+  bool _cgt, _clt, _ceq;
+  prs {
+    a.t & b.f -> _cgt-
+    a.f & b.t -> _clt-
+    a.t & b.t | a.f & b.f -> _ceq-
+    ~a.t & ~b.f -> _cgt+
+    ~a.f & ~b.t -> _clt+
+    ~a.t & ~a.f & ~b.t & ~b.f -> _ceq+
+
+   _cgt => out.gt-
+   _clt => out.lt-
+   _ceq => out.eq-
+  }
+}
+
+/*
+  a cmp 0
+*/
+defproc fcmpa0(dualrail a; d1of3 out)
+{
+  bool _cgt, _clt, _ceq;
+  a.t = out.gt;
+  a.f = out.eq;
+  GND = out.lt;
+}
+
+/*
+  0 cmp b
+*/
+defproc fcmpb0(dualrail b; d1of3 out)
+{
+  bool _cgt, _clt, _ceq;
+  b.t = out.lt;
+  b.f = out.eq;
+  GND = out.gt;
+}
+
+
+defproc fcmpmerge (d1of3 msb, lsb; d1of3 out)
+{
+  bool _gt, _lt, _eq;
+  prs {
+    (msb.gt | msb.eq) & lsb.gt | msb.gt & (lsb.eq | lsb.lt) -> _gt-
+    (msb.lt | msb.eq) & lsb.lt | msb.lt & (lsb.eq | lsb.gt) -> _lt-
+    msb.eq & lsb.eq -> _eq-
+
+   ~msb.gt & ~msb.eq & ~lsb.gt & ~lsb.eq & ~lsb.lt -> _gt+
+   ~msb.lt & ~msb.eq & ~lsb.gt & ~lsb.eq & ~lsb.lt -> _lt+
+   ~msb.eq & ~lsb.eq -> _eq+
+
+   _lt => out.lt-
+   _gt => out.gt-
+   _eq => out.eq-
+  }
+}
+
+/* higher index is msb */
+template<pint N>
+defproc fcmptree(d1of3 in[N]; d1of3 out)
+{
+  { N > 0 : "fcmptree: needs to be positive!" };
+  [ N = 1 -> out = in[0];
+  [] else -> fcmptree<N/2> t1(in[0..N/2-1]);
+             fcmptree<N-N/2> t2(in[N/2..N-1]);
+             fcmpmerge m(.msb=t2.out, .lsb=t1.out, .out=out);
+  ]
+}
+
+
+export template<pint W1, W2>
+defproc cmp(Mx1of2<W1> a; Mx1of2<W2> b; d1of3 out)
+{
+  pint wmin = min(W1,W2);
+  pint wmax = max(W1,W2);
+
+  { wmin > 0 : "lt with no bits?" };
+
+  d1of3 cr[wmax];
+    
+  fcmpgen gen[wmin];
+  (i:wmin: gen[i](.a = a.d[i], .b=b.d[i], .out=cr[i]);)
+
+  [ W1 > W2 ->
+    fcmpa0 ra[W1-W2];
+    (i:W1-W2: ra[i](.a=a.d[i+wmin], .out=cr[i+wmin]);)
+  [] W1 < W2 ->
+    fcmpb0 rb[W2-W1];
+    (i:W2-W1: rb[i](.b=b.d[i+wmin], .out=cr[i+wmin]);)
+  ]
+  
+  fcmptree<wmax> t(cr,out);
+}
+
+export template<pint W1,W2>
+defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  pint wmin = min(W1,W2);
+  
+  { wmin > 0 : "lt with no bits?" };
+
+  out.r = a.r;
+  out.r = b.r;
+
+  cmp<W1,W2> c(a.d,b.d);
+
+  bool _of;
+  out.d.d[0].t = c.out.lt;
+  prs {
+    c.out.gt | c.out.eq => _of-
+    _of => out.d.d[0].f-
+  }
+}
+
+export template<pint W1,W2>
+defproc gt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  lt<W2,W1> l(b,a,out);
+}
+  
+export template<pint W1,W2>
+defproc le(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  gt<W1,W2> g(a,b);
+  g.out.r = out.r;
+  g.out.d.d[0].t=out.d.d[0].f;
+  g.out.d.d[0].f=out.d.d[0].t;
+}
+
+export template<pint W1,W2>
+defproc ge(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  lt<W1,W2> l(a,b);
+  l.out.r = out.r;
+  l.out.d.d[0].t=out.d.d[0].f;
+  l.out.d.d[0].f=out.d.d[0].t;
+}
+
+export template<pint W1,W2>
+defproc eq(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  pint wmin = min(W1,W2);
+  
+  { wmin > 0 : "lt with no bits?" };
+
+  out.r = a.r;
+  out.r = b.r;
+
+  cmp<W1,W2> c(a.d,b.d);
+
+  bool _of;
+  out.d.d[0].t = c.out.eq;
+  prs {
+    c.out.gt | c.out.lt => _of-
+    _of => out.d.d[0].f-
+  }
+}
+
+export template<pint W1,W2>
+defproc ne(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out)
+{
+  eq<W1,W2> x(a,b);
+  x.out.d.d[0].t = out.d.d[0].f;
+  x.out.d.d[0].f = out.d.d[0].t;
+  x.out.r = out.r;
+  out.r = a.r;
+  out.r = b.r;
+}
+
+export template<pint W>
+defproc uminus(sdtexprchan<W> a; sdtexprchan<W> out);
+  
+
+export template<pint W1,W2>
+defproc ite(sdtexprchan<1> a; sdtexprchan<W1> opt1; sdtexprchan<W2> opt2; sdtexprchan<max(W1,W2)> out);
+
+
+export template<pint W, LSB, MSB>
+defproc bitfield(sdtexprchan<W> a; sdtexprchan<MSB-LSB+1> out)
+{
+  { LSB >= 0 & MSB < W : "Illegal bit-field specifier" };
+
+  out.r = a.r;
+  out.d.d = a.d.d[LSB..MSB];
+
+  // XXX: dangling signals!
+}
+
+export template<pint W1, W2>
+defproc concat2(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out)
+{
+  a.r = out.r;
+  b.r = out.r;
+
+  out.d.d[0..W2-1] = b.d.d;
+  out.d.d[W2..W1+W2-1] = a.d.d;
+}
+
+
+export template<pint W1, W2>
+defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
+{
+  [ W1 = W2 -> a = out;
+  [] W1 < W2 ->
+    bool _xv;
+    out.r = a.r;
+    a.d.d = out.d.d[0..W1-1];
+    prs {
+      a.d.d[W1-1].t | a.d.d[W1-1].f => _xv-
+      (i:W1..W2-1:  _xv => out.d.d[i].f- )
+   }
+   (i:W1..W2-1: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.d[i].f{-1}} )
+   sizing {p_n_mode <- 1; leak_adjust <- 1; _xv{-1} }
+   (i:W1..W2-1: GND = out.d.d[i].t;)
+    
+  [] W1 > W2 ->
+     out.r = a.r;
+     a.d.d[0..W2-1] = out.d.d;
+     // XXX: dangling signals!
+ ]
+}
+
+export template<pint W,V>
+defproc const(sdtexprchan<W> out)
+{
+  bool _req;
+  sigbuf<W> s(_req);
+
+  prs {
+    out.r => _req-
+    (i:W:
+      ~_req => out.d.d[i].d[((V >> i) & 1)]+
+     Reset -> out.d.d[i].d[1-(V >> i) & 1]-
+    )
+  }
+  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.d[i].d[((V >> i) & 1)]{-1}} )
+  sizing {p_n_mode <- 1; leak_adjust <- 1; _req{-1} }
+}
+
+
+/*-- variable access ports --*/
+	     
+export template<pint W>
+defproc writeport(sdtvar<W> var; sdtchan<W> in)
+{
+  bool _wack[W];
+  prs {
+    (i:W: [keeper=0] in.d.d[i].t -> var.d[i].f-
+          [keeper=0] in.d.d[i].f -> var.d[i].t-
+
+       (in.d.d[i].t & var.d[i].t) | (in.d.d[i].f & var.d[i].f) -> _wack[i]-
+       ~in.d.d[i].t & ~in.d.d[i].f -> _wack[i]+
+     )
+  }
+  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; var.d[i].f{-1}; var.d[i].t{-1}; _wack[i]{-1} })
+  ctree<W,false> wa(_wack);
+  prs {
+    Reset | wa.out => in.a-
+  }
+  sizing {p_n_mode <- 1; leak_adjust <- 1; in.a{-1} }
+}
+
+export template<pint W>
+defproc readport(sdtvar<W> var; sdtexprchan<W> out)
+{
+  bool xout, _xout;
+
+  sigbuf<2*W> s(xout,_xout);
+  
+  prs {
+    out.r => xout-
+      
+    (i:W:
+     ~_xout & ~var.d[i].t -> out.d.d[i].f+
+     ~_xout & ~var.d[i].f -> out.d.d[i].t+
+     _xout -> out.d.d[i].f-
+     _xout -> out.d.d[i].t-
+     )
+  }
+  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.d[i].f{-1}; out.d.d[i].t{-1}})
+  sizing {p_n_mode <- 1; leak_adjust <- 1; xout{-1} }
+}
+
+export template<pint W>
+defproc wrap_to_array(sdtexprchan<W> in; sdtexprchan<1> out[W])
+{
+  (i:W: 
+        in.r = out[i].r;
+        in.d.d[i] = out[i].d.d[0];
+        )
+}
+
+export template<pint W>
+defproc wrap_from_array(sdtexprchan<1> in[W]; sdtexprchan<W> out)
+{
+  (i:W: 
+        out.r = in[i].r;
+        out.d.d[i] = in[i].d.d[0];
+        )
+}
+
+}
+
+}

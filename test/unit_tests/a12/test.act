@@ -1,0 +1,9 @@
+defproc a12() {
+
+  chan(int) w;
+  int x;
+
+  chp {
+	w!15,(w?x;x:=x+1)
+  }
+}

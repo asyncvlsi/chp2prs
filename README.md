@@ -3,11 +3,27 @@
 ### Usage
 
 ```
-Usage: [executable] <actfile> <process> <outfile> [--optimize] [--bundled]
+Usage: [executable] [-Ob] [-e <exprfile>] [-o yosys] <actfile> <process> <outfile>
 ```
-Note that `process` should be of the form `"[procname]<>"` to ensure correct execution.
-The `--optimize` flag will add sequencer optimization to the chp2prs compilation.
-The `--bundled` flag will use bundled data instead of dualrails to represent data.
+The options are:
+   * `-b` : use bundled data datapath. Default is to use a QDI datapath
+   * `-O` : run CHP optimizations. Requires the chp-opt package.
+   * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. The default is `expr.act`
+   * `-o yosys` : run expression optimization using `yosys`. Requires the expropt package.
+   * `<actfile>` : the input ACT file that contains the design
+   * `<process>` : the name of the ACT process to be translated (the top-level process)
+   * `<outfile>` : where the result should be saved.
+
+
+### Installation
+
+This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act).
+
+   * Please install the ACT toolkit first; installation instructions are [here](https://github.com/asyncvlsi/act/blob/master/README.md).
+   * Install the ACT standard [library](https://github.com/asyncvlsi/stdlib)
+   * Run ./configure
+   * Build this program using the standard ACT tool install instructions [here](https://github.com/asyncvlsi/act/blob/master/README_tool.md).
+
 
 ### Overview
 
@@ -19,42 +35,23 @@ defproc foo() {
     ...
   }
 }
-
-foo f;
 ```
 and compiles the constituent CHP into ACT:
 ```
-defproc toplevel(a1of1 go) {
+defproc sdt_foo <: foo() {
   /* compiled ACT */
   ...
 }
-
-toplevel t;
 ```
-using the libraries provided.
+using the libraries provided. The translation is created by using the `refine { ... }` module, and so use the `-ref=1` command-line option to ACT tools to use the generated circuit.
 
 The conversion is accomplished using syntax-directed translation, which is jusfitied using direct process decomposition.
-
-### Notes and Installation
-
-This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act).
-
-   * Please install the ACT toolkit first; installation instructions are [here](https://github.com/asyncvlsi/act/blob/master/README.md).
-   * Build this program using the standard ACT tool install instructions [here](https://github.com/asyncvlsi/act/blob/master/README_tool.md).
 
 ### Test Suite
 ```
 make runtest
 ```
-will test the correctness of the repository by iterating through the the test/unit_tests folder and reporting the number of passing or failing tests.
-`make runtest optimize=1` will pass the "--optimize" flag to the chp2prs executable to check the correctness of the unit tests with sequencer optimizations.
-`make runtest bundled=1` will pass the "--bundled" flag to the chp2prs executable to check the correctness of the unit tests with bundled data.
-
-```
-make testreps unit={unit_test_name}
-```
-can be used to test the robustness of a test in terms of random timing. The command repeatedly runs the prsim script of unit test and feeds a different random_seed number each time. The output of the prsim tests are fed into a unit_test's `test_rand.prsim` file. The script will stop when it encounters a prsim failure.
-
+will test the correctness of the repository by iterating through the the test/unit_tests folder and reporting the number of passing or failing tests. This runs through all variants of the translation as well.
 
 ### License
 

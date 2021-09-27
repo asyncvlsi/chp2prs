@@ -14,9 +14,8 @@ defproc assign3 () {
     a:=(v >= y);  // 1
     b:=(x <= y);  // 1
     y:=(v != b);  // 0
-    x:=(z = y); // 1
-    y:=1
+    x:=(z = y);   // 1
+    y:=1;
+    a:=a
   }
 }
-
-assign3 assign;

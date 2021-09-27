@@ -2,6 +2,8 @@ i386*
 *.i386*
 x86_64*
 *.x86_64*
+arm64_*
+*.arm64_*
 *~
 *.deps
 tst/*
@@ -13,3 +15,6 @@ output_bundled.act
 test_rand.prsim
 prsim.out
 .DS_Store
+config_pkg.h
+config.mk
+*.so

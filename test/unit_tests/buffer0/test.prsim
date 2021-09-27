@@ -1,0 +1,51 @@
+
+set-channel-neutral "t.A" 32
+set t.Y.a 0
+watch t.c0.r
+watch t.c0.a
+watch t.c1.r
+watch t.c1.a
+watch t.c2.r
+watch t.c2.a
+watch t.c3.r
+watch t.c3.a
+
+
+cycle
+system "echo 'reset completed'"
+status X
+set Reset 0
+mode run
+cycle
+
+assert t.c0.a 0
+assert t.A.a 0
+assert-channel-neutral "t.Y" 32
+
+set-channel-valid "t.A" 32 2
+
+system "echo 'sending first set A'"
+cycle
+assert t.A.a 1
+set-channel-neutral "t.A" 32
+cycle
+assert t.A.a 0
+
+system "echo 'checking first set'"
+assert-var-int "t.y" 32 2
+assert-channel-valid "t.Y" 32 2
+set t.Y.a 1
+
+cycle
+assert-channel-neutral "t.Y" 32
+set t.Y.a 0
+
+system "echo 'sending second set'"
+set-channel-valid "t.A" 32 15063
+cycle
+assert t.A.a 1
+set-channel-neutral "t.A" 32
+cycle
+system "echo 'checking second set'"
+assert t.A.a 0
+assert-channel-valid "t.Y" 32 15063

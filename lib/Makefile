@@ -18,14 +18,28 @@
 #  Boston, MA  02110-1301, USA.
 #
 #-------------------------------------------------------------------------
-TARGETACT=globals.act channel.act
+TARGETINSTALL=
+TARGETINSTALL_QDI=qdi/_all_.act qdi/dpath.act qdi/chan.act qdi/math.act qdi/stdcells.act
+TARGETINSTALL_BDOPT=bdopt/_all_.act bdopt/stdcells.act bdopt/dpath.act bdopt/chan.act
+TARGETINSTALL_LIBERTY=osu018_stdcells.lib LICENSE.osu018_stdcells.lib
 
-include $(VLSI_TOOLS_SRC)/scripts/Makefile.std
+TARGETACT=syn.act syngates.act
+TARGETACTSUBDIR=syn
+
+include $(ACT_HOME)/scripts/Makefile.std
+
+all:
+	@echo "Done"
+
+install: install_act $(TARGETINSTALL) $(TARGETINSTALL_QDI) $(TARGETINSTALL_BDOPT)
+	@if [ ! -d $(ACT_HOME)/act/syn ]; then mkdir $(ACT_HOME)/act/syn; fi
+	@for i in $(TARGETINSTALL); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
+	@if [ ! -d $(ACT_HOME)/act/syn/qdi ]; then mkdir $(ACT_HOME)/act/syn/qdi; fi
+	@for i in $(TARGETINSTALL_QDI); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
+	@if [ ! -d $(ACT_HOME)/act/syn/bdopt ]; then mkdir $(ACT_HOME)/act/syn/bdopt; fi
+	@for i in $(TARGETINSTALL_BDOPT); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
+	@if [ ! -d $(ACT_HOME)/act/syn/liberty ]; then mkdir $(ACT_HOME)/act/syn/liberty; fi
+	@for i in $(TARGETINSTALL_LIBERTY); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/liberty/$$i; done
+
 
 -include Makefile.deps
-
-install: install_act
-	@if [ ! -d $(ACT_HOME)/act/syn ]; then mkdir $(ACT_HOME)/act/syn; fi
-	@$(VLSI_TOOLS_SRC)/scripts/install syn.act $(ACT_HOME)/act/syn/_all_.act
-	@if [ ! -d $(ACT_HOME)/act/bundled ]; then mkdir $(ACT_HOME)/act/bundled; fi
-	@$(VLSI_TOOLS_SRC)/scripts/install bundled.act $(ACT_HOME)/act/bundled/_all_.act

@@ -1,0 +1,13 @@
+defproc gcd2(chan?(int) X,  Y; chan!(int) O) {
+  int x;
+  int y;
+
+  chp {
+   *[ X?x,Y?y;
+     *[ x > y -> x := x - y
+     [] y > x -> y := y - x
+      ];
+      O!x
+    ]
+  }
+}

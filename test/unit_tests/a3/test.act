@@ -1,0 +1,8 @@
+defproc a3() {
+
+  int x;
+
+  chp {
+	x:=17;skip;x:=x
+  }
+}
