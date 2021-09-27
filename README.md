@@ -57,3 +57,13 @@ will test the correctness of the repository by iterating through the the test/un
 
 The source code for this tool is released under the GNU GPLv2. The ACT files
 that provide supporting library functions (the lib/ directory) are released under GNU LGPLv2.1.
+
+### Contributors and History
+
+Many have contributed to this implementation over the years, and the history is roughly the following. 
+The initial version was hacked together by Rajit Manohar, as a sample solution to a class lab assignment, with support for a small subset of CHP. 
+Zeb Mehring took this and turned it into a much more complete implementation (see [the original](https://github.com/zebmehring/ADCO)) as part of his senior project at Yale (~2018).
+As part of her senior project, Amanda Hansen took Zeb's version, added many of the tests, and made many significant changes to the generated ACT as well as the library.
+In collaboration with Linc Berkeley, she also added certain optimizations to the translation to reduce overhead (~2020).
+After several discussions with Marly Roncken and Ebele Esimai who were modifying the tool to support their own flow, the entire implementation was re-factored
+in summer/fall 2020. The tool was converted over to the ACT pass framework in 2021.
