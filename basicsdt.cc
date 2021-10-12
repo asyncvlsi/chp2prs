@@ -404,14 +404,24 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
 {
   Assert (v->fischan, "What?");
   if (v->nread > 0) {
-    fprintf (output_stream, "   syn::muxinport<%d,%d> ", v->width, v->nread);
+    if (v->fisbool) {
+      fprintf (output_stream, "   syn::mux_bool_inport<%d> ", v->nread);
+    }
+    else {
+      fprintf (output_stream, "   syn::muxinport<%d,%d> ", v->width, v->nread);
+    }
     _emit_mangled_id (output_stream, v->id);
     fprintf (output_stream, "_muxi(");
     v->id->Print (output_stream);
     fprintf (output_stream, ");\n");
   }
   if (v->nwrite > 0) {
-    fprintf (output_stream, "   syn::muxoutport<%d,%d> ", v->width, v->nwrite);
+    if (v->fisbool) {
+      fprintf (output_stream, "   syn::mux_bool_outport<%d> ", v->nwrite);
+    }
+    else {
+      fprintf (output_stream, "   syn::muxoutport<%d,%d> ", v->width, v->nwrite);
+    }
     _emit_mangled_id (output_stream, v->id);
     fprintf (output_stream, "_muxo(");
     v->id->Print (output_stream);
@@ -597,7 +607,12 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
     if (TypeFactory::isChanType (vx->t)) {
       bw = TypeFactory::bitWidth(vx->t);
       OVERRIDE_OPEN;
-      fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
+      if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
+         fprintf(fp, "  syn::sdtboolchan %s;\n", vx->getName());
+      }
+      else {
+         fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
+      }
     }
     else if (TypeFactory::isIntType (vx->t)) {
       /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
@@ -1025,6 +1040,9 @@ varmap_info *BasicSDT::_var_getinfo (ActId *id)
     v->fisbool = 0;
     if (TypeFactory::isChanType (it)) {
       v->fischan = 1;
+      if (TypeFactory::isBoolType (TypeFactory::getChanDataType (it))) {
+	v->fisbool = 1;
+      }
       if (it->getDir() == Type::direction::IN) {
 	v->fisinport = 1;
       }

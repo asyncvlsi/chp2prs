@@ -37,6 +37,7 @@ defchan rx1of1 <: chan(int<N>) (bool r; bool a; bool d[N]) { }
 // specify bd datapath channels
 export defchan sdtchan <: std::channel::bd () { }
 export defchan sdtexprchan <: rx1of1 () { }
+export defchan sdtboolchan <: chan(bool) (sdtchan<1> x) { }
 
 export defchan r1of2 <: sdtexprchan<1> (bool t, f) { }
 
@@ -47,10 +48,4 @@ defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c)
   e.d = c.d;
 }
 
-export
-defproc varconnect (sdtboolvar v; sdtvar<1> vi)
-{
-  v.x = vi;
-}
-  
 }  

@@ -39,7 +39,7 @@ struct varmap_info {
   unsigned int fcurexpr:1;	// found in current expression
   unsigned int fischan:1;	// channel or int?
   unsigned int fisinport:2;	// 1 if input, 0 if output, 2 if both
-  unsigned int fisbool:1;	// bool variable
+  unsigned int fisbool:1;	// bool variable or bool chan
 
   int width;			// bitwidth
 

@@ -269,4 +269,16 @@ defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
   ]
 }
 
+export template<pint N>
+defproc mux_bool_outport(sdtboolchan! c; sdtchan<1> m[N])
+{
+  muxoutport<1,N> i(c.x,m);
+}
+
+export template<pint N>
+defproc mux_bool_inport(sdtboolchan? c; sdtchan<1> m[N]; a1of1 ctrl[N])
+{
+  muxinport<1,N> i(c.x,m,ctrl);
+}
+
 }
