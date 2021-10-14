@@ -121,7 +121,11 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
 	_emit_expr (&eid, bitWidth (c->u.comm.chan), e);
       }
       else {
-	eid = -1;
+	Expr *tmpe;
+	NEW (tmpe, Expr);
+	tmpe->type = E_FALSE;
+	_emit_expr (&eid, bitWidth (c->u.comm.chan), tmpe);
+	FREE (tmpe);
       }
       _emit_transfer (id, eid, c->u.comm.chan);
     }
