@@ -99,7 +99,7 @@ defproc loop(a1of1? c; r1of2? g[N]; a1of1! s[N])
 }
 
 export template<pint N;pbool has_else>
-defproc select(a1of1? c; r1of2 g[N]; a1of1! s[N+int(has_else)])
+defproc select(a1of1 c; r1of2 g[N]; a1of1! s[N+int(has_else)])
 {
   (i:N-1: g[i].f = g[i+1].r;)
 
@@ -115,7 +115,7 @@ defproc select(a1of1? c; r1of2 g[N]; a1of1! s[N+int(has_else)])
 }
 
 export template<pint N>
-defproc parselect(a1of1? c; r1of2 g[N]; a1of1 s[N])
+defproc parselect(a1of1 c; r1of2 g[N]; a1of1 s[N])
 {
   sigbuf<N> sig(c.r);
   (i:N: sig.out = g[i].r;)
@@ -144,7 +144,7 @@ defproc parselect(a1of1? c; r1of2 g[N]; a1of1 s[N])
 }
 
 export template<pint N;pbool has_else>
-defproc arb_select(a1of1? c; sdtexprchan?<1> g[N]; a1of1! s[N+int(has_else)])
+defproc arb_select(a1of1 c; sdtexprchan?<1> g[N]; a1of1! s[N+int(has_else)])
 {
   { false : "Need to implement non-deterministic selection!" };
 }
