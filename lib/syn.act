@@ -108,7 +108,7 @@ defproc select(a1of1 c; r1of2 g[N]; a1of1! s[N+int(has_else)])
   ortree<N+int(has_else)> ot;
   (i:N:  s[i](.r=g[i].t, .a=ot.in[i]);)
   [ has_else -> s[N].r = g[N-1].f;
-                s[N].a = ot.in[N-1];
+                s[N].a = ot.in[N];
   ]
    
   ot.out = c.a;    
