@@ -225,7 +225,7 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
     break;
     
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
+    _emit_skip (id);
     break;
     
   default:
