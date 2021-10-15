@@ -251,12 +251,10 @@ void BasicSDT::_emit_transfer (int cid, int eid, ActId *id)
 void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
 {
   varmap_info *v;
-  if (id) {
-    v = _var_getinfo (id);
+  if (!id) {
+    Assert (_gen_fresh_var_writeonly (bitWidth (chid), &id), "Could not allocate fresh variable");
   }
-  else {
-    v = NULL;
-  }
+  v = _var_getinfo (id);
   varmap_info *ch = _var_getinfo (chid);
   int c;
   if (ch->nread > 1) {
@@ -505,6 +503,34 @@ int BasicSDT::_gen_fresh_var (int width, ActId **id)
   v->nwrite = 1;
   fprintf (output_stream, "   syn::sdtvar<%d> %s;\n", v->width, buf);
   fprintf (output_stream, "   syn::var_int_ports<%d,1,1> var_%s(%s);\n", v->width, buf, buf);
+  return 1;
+}
+
+int BasicSDT::_gen_fresh_var_writeonly (int width, ActId **id)
+{
+  static int vid = 0;
+  varmap_info *v;
+  char buf[32];
+
+  do {
+    snprintf (buf, 32, "fvar%d", vid++);
+  } while (P->CurScope()->Lookup (buf));
+
+  InstType *it = TypeFactory::Factory()->NewInt (P->CurScope(), Type::NONE,
+					    0, const_expr ((long)width));
+  it = it->Expand (NULL, NULL);
+
+  Assert (P->CurScope()->Add (buf, it), "What?");
+
+  *id = new ActId (buf);
+
+  v = _var_getinfo (*id);
+  v->iread = 0;
+  v->iwrite = 0;
+  v->nread = 0;
+  v->nwrite = 1;
+  fprintf (output_stream, "   syn::sdtvar<%d> %s;\n", v->width, buf);
+  fprintf (output_stream, "   syn::var_int_in_ports<%d,1> var_%s(%s);\n", v->width, buf, buf);
   return 1;
 }
 

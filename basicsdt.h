@@ -155,6 +155,7 @@ class BasicSDT : public SDTEngine {
   void _emit_trueseq (int cid, int sid);
 
   int _gen_fresh_var (int width, ActId **);
+  int _gen_fresh_var_writeonly (int width, ActId **id);
   int _gen_safe_bool (int eid);
 
   void _emit_loop (int cid, list_t *guards, list_t *stmts);
