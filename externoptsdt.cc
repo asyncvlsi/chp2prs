@@ -145,9 +145,25 @@ void ExternOptSDT::_emit_bd_ctl_bypass (int id, list_t *all_leaves, double delay
   if (number_of_leaves > 0) 
   {
     int index = 0;
+    int stages = 50;
     fprintf(output_stream, "   syn::ctree<%u,false> ackmerge%u;\n", number_of_leaves, id);
     fprintf (output_stream, "   /* delay: %g */\n", delay_max);
-    fprintf(output_stream, "   syn::delay<50> delayblk%u (ackmerge%u.out, e%u.out.a);\n", id, id, id);
+    if (delay_max != -1) {
+      double delay_units;
+      if (config_exists ("net.delay")) {
+	delay_units = config_get_real ("net.delay");
+      }
+      else {
+	delay_units = config_get_real ("net.lambda")*1e-3;
+      }
+      stages = delay_max / delay_units;
+      if (delay_max != 0) {
+	if (stages < 1) {
+	  stages = 1;
+	}
+      }
+    }
+    fprintf(output_stream, "   syn::delay<%d> delayblk%u (ackmerge%u.out, e%u.out.a);\n", stages, id, id, id);
     for (li = list_first (all_leaves); li; li = list_next (li))
     {
       fprintf(output_stream, "   e%u.out.a = ackmerge%u.in[%u];\n", ihash_lookup(_inexprmap, (long) list_value (li))->i, id, index);
