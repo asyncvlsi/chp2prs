@@ -1,0 +1,54 @@
+
+set Reset 0
+cycle
+
+assert t.c0.a 0
+
+assert t.x.d[0].t 0
+assert t.x.d[0].f 1
+assert t.x.d[1].t 0
+assert t.x.d[1].f 1
+assert t.x.d[2].t 1
+assert t.x.d[2].f 0
+assert t.x.d[3].t 1
+assert t.x.d[3].f 0
+assert t.x.d[4].t 1
+assert t.x.d[4].f 0
+assert t.x.d[5].t 1
+assert t.x.d[5].f 0
+assert t.x.d[6].t 0
+assert t.x.d[6].f 1
+assert t.x.d[7].t 0
+assert t.x.d[7].f 1
+assert t.y.d[0].t 1
+assert t.y.d[0].f 0
+assert t.y.d[1].t 0
+assert t.y.d[1].f 1
+assert t.y.d[2].t 0
+assert t.y.d[2].f 1
+assert t.y.d[3].t 0
+assert t.y.d[3].f 1
+assert t.y.d[4].t 1
+assert t.y.d[4].f 0
+assert t.y.d[5].t 0
+assert t.y.d[5].f 1
+assert t.y.d[6].t 0
+assert t.y.d[6].f 1
+assert t.y.d[7].t 0
+assert t.y.d[7].f 1
+assert t.z.d[0].t 1
+assert t.z.d[0].f 0
+assert t.z.d[1].t 0
+assert t.z.d[1].f 1
+assert t.z.d[2].t 1
+assert t.z.d[2].f 0
+assert t.z.d[3].t 0
+assert t.z.d[3].f 1
+assert t.z.d[4].t 1
+assert t.z.d[4].f 0
+assert t.z.d[5].t 0
+assert t.z.d[5].f 1
+assert t.z.d[6].t 1
+assert t.z.d[6].f 0
+assert t.z.d[7].t 1
+assert t.z.d[7].f 0

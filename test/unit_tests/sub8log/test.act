@@ -1,0 +1,13 @@
+defproc sub8log() {
+  int<8> x;
+  int<8> y;
+  int<8> z;
+
+  chp {
+    x := 60 ;  // [00111100]
+    y := 17 ;  // [00010001]
+    log ("Hello, world!");
+    z := y - x; // [11010101] -43
+    z := z
+  }
+}
