@@ -166,7 +166,7 @@ class ExternOptSDT : public BasicSDT {
      * @param id the id of the out channel
      * @param all_leaves all the in channels
      */
-    void _emit_bd_ctl_bypass (int id, list_t *all_leaves);
+    void _emit_bd_ctl_bypass (int id, list_t *all_leaves, double delay_max);
 
 };  
 

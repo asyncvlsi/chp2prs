@@ -107,8 +107,17 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
   *id = myid;
   /*-- handshake bypass --*/
   if (bundled_data == 1) 
-  { 
-    _emit_bd_ctl_bypass (*id, all_leaves);
+  {
+    double delay;
+
+    delay = block_info->delay_max;
+    if (delay == 0) {
+      delay = block_info->delay_typ;
+    }
+    if (delay == 0) {
+      delay = block_info->delay_min;
+    }
+    _emit_bd_ctl_bypass (*id, all_leaves, delay);
   }
   fprintf (output_stream,"   //end expr blk%u\n",xid);
 
@@ -122,7 +131,7 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
   fflush(output_stream);
 }
 
-void ExternOptSDT::_emit_bd_ctl_bypass (int id, list_t *all_leaves)
+void ExternOptSDT::_emit_bd_ctl_bypass (int id, list_t *all_leaves, double delay_max)
 {
   // distribute the request signal off the pull channel
   // in case of BD connect all the ack signals via a c element tree
@@ -137,6 +146,7 @@ void ExternOptSDT::_emit_bd_ctl_bypass (int id, list_t *all_leaves)
   {
     int index = 0;
     fprintf(output_stream, "   syn::ctree<%u,false> ackmerge%u;\n", number_of_leaves, id);
+    fprintf (output_stream, "   /* delay: %g */\n", delay_max);
     fprintf(output_stream, "   syn::delay<50> delayblk%u (ackmerge%u.out, e%u.out.a);\n", id, id, id);
     for (li = list_first (all_leaves); li; li = list_next (li))
     {
