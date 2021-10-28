@@ -58,7 +58,7 @@ defproc delay (bool in, out)
  * @param W: how many bits the variable has
  * @param I: the default bool the variable is set to on reset
  */ 
-template<pbool I>
+export template<pbool I>
 defcell var_one_bit(bool dt, df)
 {
   prs* {
