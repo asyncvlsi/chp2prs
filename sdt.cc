@@ -20,6 +20,7 @@
  **************************************************************************
  */
 #include <act/lang.h>
+#include <common/int.h>
 #include "sdt.h"
 
 #ifndef MAX
@@ -621,18 +622,24 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
     if (collect_phase) {
       int w = 0;
       int val = e->u.v;
-      if (val < 0) {
-	val = -val;
-	w = 32;
+
+      if (e->u.v_extra) {
+	w = ((BigInt *)e->u.v_extra)->getWidth ();
       }
       else {
-      while (val) {
-	val >>= 1;
-	w++;
-      }
-      }
-      if (w == 0) {
-	w = 1;
+	if (val < 0) {
+	  val = -val;
+	  w = 32;
+	}
+	else {
+	  while (val) {
+	    val >>= 1;
+	    w++;
+	  }
+	}
+	if (w == 0) {
+	  w = 1;
+	}
       }
       id = _gen_expr_id ();
       list_iappend (_intconst, id);
