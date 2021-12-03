@@ -178,7 +178,7 @@ defproc sigbuf (bool in, out)
 
  pint N = M/3;
   
- { N < 56 : "sigbuf: please revise your circuit, sigbuf with drive strength of 64+ requested" };
+ // { N < 56 : "sigbuf: please revise your circuit, sigbuf with drive strength of 64+ requested" };
 
  bool _out;
 
@@ -234,7 +234,7 @@ defproc sigbuf (bool in, out)
       [] else ->
         sizing {
           leak_adjust <- 1; 
-          _out {-N/4}; out {-N}
+          _out {-N/4,(N/16)}; out {-N,(N/4)}
         }
       ]
  ]
