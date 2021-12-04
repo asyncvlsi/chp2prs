@@ -343,11 +343,24 @@ int ExternOptSDT::get_expr_width(Expr *ex) {
 
     /* XXX: here */
   case E_CONCAT:
-    fatal_error ("fix concat");
+    {
+      int w = 0;
+      Expr *tmp = ex;
+      while (tmp) {
+	w += get_expr_width (ex->u.e.l);
+	tmp = tmp->u.e.r;
+      }
+      return w;
+    }
     break;
 
   case E_BITFIELD:
-    fatal_error ("fix bitfield");
+    if (ex->u.e.r->u.e.l) {
+      return (ex->u.e.r->u.e.r->u.v - ex->u.e.r->u.e.l->u.v + 1);
+    }
+    else {
+      return 1;
+    }
     break;
 
   case E_REAL:
@@ -516,11 +529,17 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
 
     /* XXX: here */
   case E_CONCAT:
-    fatal_error ("fix concat");
+    {
+      Expr *tmp = e;
+      while (tmp) {
+	_expr_collect_vars (tmp->u.e.l, collect_phase);
+	tmp = tmp->u.e.r;
+      }
+    }
     break;
 
   case E_BITFIELD:
-    fatal_error ("fix bitfield");
+    _expr_collect_vars (e->u.e.l, collect_phase);
     break;
 
   case E_REAL:
