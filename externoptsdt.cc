@@ -347,7 +347,7 @@ int ExternOptSDT::get_expr_width(Expr *ex) {
       int w = 0;
       Expr *tmp = ex;
       while (tmp) {
-	w += get_expr_width (ex->u.e.l);
+	w += get_expr_width (tmp->u.e.l);
 	tmp = tmp->u.e.r;
       }
       return w;
@@ -355,6 +355,7 @@ int ExternOptSDT::get_expr_width(Expr *ex) {
     break;
 
   case E_BITFIELD:
+    _var_getinfo ((ActId *)ex->u.e.l);
     if (ex->u.e.r->u.e.l) {
       return (ex->u.e.r->u.e.r->u.v - ex->u.e.r->u.e.l->u.v + 1);
     }
@@ -538,10 +539,6 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
     }
     break;
 
-  case E_BITFIELD:
-    _expr_collect_vars (e->u.e.l, collect_phase);
-    break;
-
   case E_REAL:
     fatal_error ("No real expressions please.");
     break;
@@ -616,6 +613,7 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
     }
     break;
 
+  case E_BITFIELD:
   case E_VAR:
     if (collect_phase) {
       varmap_info *v;
