@@ -1048,6 +1048,13 @@ varmap_info *BasicSDT::_var_getinfo (ActId *id)
   varmap_info *v;
   InstType *it;
 
+  if (id->isDynamicDeref()) {
+    fprintf (stderr, "id: ");
+    id->Print (stderr);
+    fprintf (stderr, "\n");
+    fatal_error ("Dynamic de-references need explicit memory decomposition");
+  }
+  
   c = id->Canonical (P->CurScope());
   Assert (c, "What?");
   
