@@ -39,12 +39,12 @@ export defcell INVX8 <: szinv<4>() { }
 /*-- clock delay buffers --*/
 
 template<pint N>
-defproc dbuf (bool? in; bool! out)
+defproc dbuf (bool? A; bool! Y)
 {
   {N > 0 : "Delay buffer needs at least one stage!"};
   bool sig[2*N+1];
-  sig[0] = in;
-  sig[2*N] = out;
+  sig[0] = A;
+  sig[2*N] = Y;
   prs {
     (i:2*N: ~sig[i] <80;2> -> sig[i+1]+
              sig[i] <40;2> -> sig[i+1]-
