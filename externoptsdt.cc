@@ -519,8 +519,9 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
     break;
 
   case E_QUERY:
-    e = e->u.e.r;
-    BINARY_OP;
+    _expr_collect_vars (e->u.e.l, collect_phase);
+    _expr_collect_vars (e->u.e.r->u.e.l, collect_phase);
+    _expr_collect_vars (e->u.e.r->u.e.r, collect_phase);
     break;
 
   case E_COLON:
@@ -563,8 +564,8 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
     break;
     
   case E_FALSE:
+    if (0) {
     if (!bundled_data) {
-      if (0) {
         ihash_bucket_t *b_name;
         b_name = ihash_add (_inexprmap, (long) e);
         b_name->i = _gen_expr_id ();
