@@ -265,10 +265,10 @@ function min(pint a, b) : pint
 }
 
 export 
-defproc null(sdtexprchan<1> out) { }
+defproc null(sdtexprchan<1> out) { prs { } }
 
 export template<pint W>
-defproc nullint(sdtexprchan<W> out) { }
+defproc nullint(sdtexprchan<W> out) { prs { } }
 
 export template<pint W1,W2>
 defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out);
