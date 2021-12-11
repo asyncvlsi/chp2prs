@@ -393,8 +393,9 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
 
   case E_BUILTIN_BOOL:
     UNARY_OP;
-    rid = _gen_expr_id ();
-    _emit_expr_const (rid, 1, 0);
+    rid = list_ivalue (_intiter);
+    _intiter = list_next (_intiter);
+    _intiter = list_next (_intiter);
     *width = 1;
     _emit_expr_binary (id, *width, E_NE, lid, lw, rid, *width);
     break;
@@ -545,13 +546,31 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
   case E_ASR:
     BINARY_OP;
     break;
-    
+
   case E_UMINUS:
   case E_NOT:
   case E_COMPLEMENT:
   case E_BUILTIN_INT:
+    UNARY_OP;
+    break;
+
   case E_BUILTIN_BOOL:
     UNARY_OP;
+    if (collect_phase) {
+      int w = 1;
+      int val = 0;
+      id = _gen_expr_id ();
+      list_iappend (_intconst, id);
+      list_iappend (_intconst, w);
+    }
+    else {
+      int w;
+      id = list_ivalue (_intiter);
+      _intiter = list_next (_intiter);
+      w = list_ivalue (_intiter);
+      _intiter = list_next (_intiter);
+      _emit_expr_const (id, w, 0);
+    }
     break;
 
   case E_QUERY:

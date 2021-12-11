@@ -1060,6 +1060,7 @@ varmap_info *BasicSDT::_var_getinfo (ActId *id)
   
   b = ihash_lookup (_varmap, (long)c);
   if (!b) {
+    InstType *it2;
     b = ihash_add (_varmap, (long)c);
     NEW (v, varmap_info);
 
@@ -1068,7 +1069,13 @@ varmap_info *BasicSDT::_var_getinfo (ActId *id)
     v->iread = 0;
     v->iwrite = 0;
     v->id = id;
-    it = P->Lookup (id);
+    it = P->CurScope()->FullLookup (id, NULL);
+    if (id->Rest()) {
+      it2 = P->CurScope()->Lookup (id->getName());
+    }
+    else {
+      it2 = NULL;
+    }
     v->width = bitWidth (id);
     v->fisbool = 0;
     if (TypeFactory::isChanType (it)) {
@@ -1076,10 +1083,12 @@ varmap_info *BasicSDT::_var_getinfo (ActId *id)
       if (TypeFactory::isBoolType (TypeFactory::getChanDataType (it))) {
 	v->fisbool = 1;
       }
-      if (it->getDir() == Type::direction::IN) {
+      if (it->getDir() == Type::direction::IN &&
+	  (!it2 || !TypeFactory::isProcessType (it2))) {
 	v->fisinport = 1;
       }
-      else if (it->getDir() == Type::direction::OUT) {
+      else if (it->getDir() == Type::direction::OUT &&
+	       (!it2 || !TypeFactory::isProcessType (it2))) {
 	v->fisinport = 0;
       }
       else {
@@ -1108,6 +1117,12 @@ int BasicSDT::_get_isinport (varmap_info *v)
   }
   else if (v->fisinport == 1) {
     return 1;
+  }
+  else if (v->fisinport == 2 && (v->nread > 0 && v->nwrite == 0)) {
+    return 1;
+  }
+  else if (v->fisinport == 2 && (v->nread == 0)) {
+    return 0;
   }
   else {
     if (v->block_in < 0 || v->block_out < 0) {

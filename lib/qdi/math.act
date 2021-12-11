@@ -508,7 +508,7 @@ defproc cmp(Mx1of2<W1> a; Mx1of2<W2> b; d1of3 out)
     (i:W2-W1: rb[i](.b=b.d[i+wmin], .out=cr[i+wmin]);)
   ]
   
-  fcmptree<wmax> t(cr,out);
+  fcmptree<wmax> cmpres(cr,out);
 }
 
 export template<pint W1,W2>
