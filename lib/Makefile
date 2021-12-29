@@ -23,7 +23,7 @@ TARGETINSTALL_QDI=qdi/_all_.act qdi/dpath.act qdi/chan.act qdi/math.act qdi/stdc
 TARGETINSTALL_BDOPT=bdopt/_all_.act bdopt/stdcells.act bdopt/dpath.act bdopt/chan.act
 TARGETINSTALL_LIBERTY=osu018_stdcells.lib LICENSE.osu018_stdcells.lib
 
-TARGETACT=syn.act syngates.act
+TARGETACT=syn.act
 TARGETACTSUBDIR=syn
 
 include $(ACT_HOME)/scripts/Makefile.std

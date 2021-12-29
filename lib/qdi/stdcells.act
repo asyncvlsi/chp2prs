@@ -44,8 +44,8 @@ export template<pint N>
 defproc inv (syn::sdtexprchan?<1> A; syn::sdtexprchan!<1> Y)
 {
   A.r = Y.r;
-  sigbuf<N*3> _f(A.d.d[0].t,Y.d.d[0].f);
-  sigbuf<N*3> _t(A.d.d[0].f,Y.d.d[0].t);
+  std::gates::sigbuf<N*3> _f(A.d.d[0].t,Y.d.d[0].f);
+  std::gates::sigbuf<N*3> _t(A.d.d[0].f,Y.d.d[0].t);
 }
 
 export defcell INVX1 <: inv<1>() { } 
@@ -80,8 +80,8 @@ export template<pint N>
 defproc buf (syn::sdtexprchan?<1> A; syn::sdtexprchan!<1> Y)
 {
   A.r = Y.r;
-  sigbuf<N*3> _f(A.d.d[0].f,Y.d.d[0].f);
-  sigbuf<N*3> _t(A.d.d[0].t,Y.d.d[0].t);
+  std::gates::sigbuf<N*3> _f(A.d.d[0].f,Y.d.d[0].f);
+  std::gates::sigbuf<N*3> _t(A.d.d[0].t,Y.d.d[0].t);
 }
   
 export defcell BUFX1 <: buf<1>() { }

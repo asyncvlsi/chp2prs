@@ -20,6 +20,7 @@
  **************************************************************************
  */
 import globals;
+import std::gates;
 
 namespace syn {
 
@@ -127,7 +128,7 @@ defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
   [ N = 1 -> m[0] = c;
   [] else -> 
        delay<3> dly[N];
-       sigbuf<N/3> ctl_req[N];
+       std::gates::sigbuf<N/3> ctl_req[N];
        (i:N: ctl_req[i].in = ctrl[i].r;)
        AND2X1 data_and[N][W];
        (i:N: (j:W: data_and[i][j].A = ctl_req[i].out;
@@ -149,7 +150,7 @@ defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
        }
 
        (i:N: m[i].a = ctrl[i].a;)
-       ortree<N> o(,c.a);
+       std::gates::ortree<N> o(,c.a);
        (i:N: m[i].a=o.in[i];)
   ]
 
@@ -169,10 +170,10 @@ defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
   [ N = 1 -> m[0] = c;
   [] else ->
        bool c_a;
-       sigbuf<W> s(c.a,c_a);
+       std::gates::sigbuf<W> s(c.a,c_a);
        AND2X1 _mux[W][N];
-       ortree<N> ortr[W];
-       ortree<N> orreq;
+       std::gates::ortree<N> ortr[W];
+       std::gates::ortree<N> orreq;
        (i:W: (j:N: 
                   _mux[i][j].A = m[j].d[i]; 
                   _mux[i][j].B = m[j].r;
@@ -224,7 +225,7 @@ defproc writeport(sdtvar<W> var; sdtchan<W> in)
   bool _d_B[W];
   bool req_in, _dly_req_in;
   delay<5> dly(req_in);
-  sigbuf<W> s(in.r,req_in);
+  std::gates::sigbuf<W> s(in.r,req_in);
 
   prs {
     (i:W: [keeper=0] in.d[i] & req_in & _dly_req_in -> var.d[i].f-
@@ -253,7 +254,7 @@ defproc readport(sdtvar<W> var; sdtexprchan<W> out)
 {
   bool xout, _xout;
 
-  sigbuf<2*W> s(xout,_xout);
+  std::gates::sigbuf<2*W> s(xout,_xout);
   delay<4> dly(out.r, out.a);
 
   INVX1 ix(out.r,xout);

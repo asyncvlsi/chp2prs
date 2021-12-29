@@ -146,7 +146,7 @@ void ExternOptSDT::_emit_bd_ctl_bypass (int id, list_t *all_leaves, double delay
   {
     int index = 0;
     int stages = 50;
-    fprintf(output_stream, "   syn::ctree<%u,false> ackmerge%u;\n", number_of_leaves, id);
+    fprintf(output_stream, "   std::gates::ctree<%u,false> ackmerge%u;\n", number_of_leaves, id);
     fprintf (output_stream, "   /* delay: %g */\n", delay_max);
     if (delay_max != -1) {
       double delay_units;

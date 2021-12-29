@@ -643,7 +643,7 @@ export template<pint W,V>
 defproc const(sdtexprchan<W> out)
 {
   bool _req;
-  sigbuf<W> s(_req);
+  std::gates::sigbuf<W> s(_req);
 
   prs {
     out.r => _req-
@@ -672,7 +672,7 @@ defproc writeport(sdtvar<W> var; sdtchan<W> in)
      )
   }
   (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; var.d[i].f{-1}; var.d[i].t{-1}; _wack[i]{-1} })
-  ctree<W,false> wa(_wack);
+  std::gates::ctree<W,false> wa(_wack);
   prs {
     Reset | wa.out => in.a-
   }
@@ -684,7 +684,7 @@ defproc readport(sdtvar<W> var; sdtexprchan<W> out)
 {
   bool xout, _xout;
 
-  sigbuf<2*W> s(xout,_xout);
+  std::gates::sigbuf<2*W> s(xout,_xout);
   
   prs {
     out.r => xout-

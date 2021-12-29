@@ -20,6 +20,7 @@
  **************************************************************************
  */
 import globals;
+import std::gates;
 
 namespace syn {
 
@@ -79,8 +80,8 @@ defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
   [ NI = 1 -> w.in=in[0];
   [] NI > 1 -> 
       bool _a[NI];
-      ortree<NI> ot[W];
-      ortree<NI> of[W];
+      std::gates::ortree<NI> ot[W];
+      std::gates::ortree<NI> of[W];
       (i:W: (j:NI: 
                 in[j].d.d[i].t = ot[i].in[j];
                 in[j].d.d[i].f = of[i].in[j];)
@@ -158,7 +159,7 @@ export template<pint W>
 defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
 {
   bool cr;
-  sigbuf<2*W> s(c.r,cr);
+  std::gates::sigbuf<2*W> s(c.r,cr);
 
   bool wack[W];
     
@@ -174,7 +175,7 @@ defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
   (j:W: sizing {p_n_mode <- 1; leak_adjust <- 1;  wack[j]{-1}; var.d[j].t{-1};  var.d[j].f{-1} })
   
 
-  ctree<W,false> ct(wack);
+  std::gates::ctree<W,false> ct(wack);
   
   prs {
     Reset | ct.out => c.a-
@@ -195,7 +196,7 @@ export template<pint W>
 defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W> port)
 {
   bool cr;
-  sigbuf<2*W> s(c.r,cr);
+  std::gates::sigbuf<2*W> s(c.r,cr);
   bool _t[W], _f[W];
 
   prs {
@@ -223,7 +224,7 @@ defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
 
   [ N = 1 -> m[0] = c;
   [] else -> 
-       sigbuf<2*W> s[N];
+       std::gates::sigbuf<2*W> s[N];
        bool _t[N][W], _f[N][W];
        (i:N: s[i](.in=ctrl[i].r);)
        prs {
@@ -236,7 +237,7 @@ defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
        (i:W: (j:N:  sizing {p_n_mode <- 1; leak_adjust <- 1; _t[j][i]{-1};  _f[j][i]{-1}; m[j].d.d[i].t{-1};  m[j].d.d[i].f{-1}} ))
 
        (i:N: m[i].a = ctrl[i].a;)
-       ortree<N> o(,c.a);
+       std::gates::ortree<N> o(,c.a);
        (i:N: m[i].a=o.in[i];)
   ]
 
@@ -256,8 +257,8 @@ defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
   [] else ->
        bool _v[N];
        bool _a;
-      ortree<N> ot[W];
-      ortree<N> of[W];
+      std::gates::ortree<N> ot[W];
+      std::gates::ortree<N> of[W];
       (i:W: (j:N: 
                 m[j].d.d[i].t = ot[i].in[j];
                 m[j].d.d[i].f = of[i].in[j];)
