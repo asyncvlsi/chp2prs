@@ -80,8 +80,8 @@ defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
   [ NI = 1 -> w.in=in[0];
   [] NI > 1 -> 
       bool _a[NI];
-      std::gates::ortree<NI> ot[W];
-      std::gates::ortree<NI> of[W];
+      std::gates::ortree<NI,false> ot[W];
+      std::gates::ortree<NI,false> of[W];
       (i:W: (j:NI: 
                 in[j].d.d[i].t = ot[i].in[j];
                 in[j].d.d[i].f = of[i].in[j];)
@@ -244,7 +244,7 @@ defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
        (i:W: (j:N:  sizing {p_n_mode <- 1; leak_adjust <- 1; _t[j][i]{-1};  _f[j][i]{-1}; m[j].d.d[i].t{-1};  m[j].d.d[i].f{-1}} ))
 
        (i:N: m[i].a = ctrl[i].a;)
-       std::gates::ortree<N> o(,c.a);
+       std::gates::ortree<N,false> o(,c.a);
        (i:N: m[i].a=o.in[i];)
   ]
 
@@ -264,8 +264,8 @@ defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
   [] else ->
        bool _v[N];
        bool _a;
-      std::gates::ortree<N> ot[W];
-      std::gates::ortree<N> of[W];
+      std::gates::ortree<N,false> ot[W];
+      std::gates::ortree<N,false> of[W];
       (i:W: (j:N: 
                 m[j].d.d[i].t = ot[i].in[j];
                 m[j].d.d[i].f = of[i].in[j];)

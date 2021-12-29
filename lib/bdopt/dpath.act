@@ -151,7 +151,7 @@ defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
        }
 
        (i:N: m[i].a = ctrl[i].a;)
-       std::gates::ortree<N> o(,c.a);
+       std::gates::ortree<N,false> o(,c.a);
        (i:N: m[i].a=o.in[i];)
   ]
 
@@ -173,8 +173,8 @@ defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
        bool c_a;
        std::gates::sigbuf<W> s(c.a,c_a);
        AND2X1 _mux[W][N];
-       std::gates::ortree<N> ortr[W];
-       std::gates::ortree<N> orreq;
+       std::gates::ortree<N,false> ortr[W];
+       std::gates::ortree<N, false> orreq;
        (i:W: (j:N: 
                   _mux[i][j].A = m[j].d[i]; 
                   _mux[i][j].B = m[j].r;
