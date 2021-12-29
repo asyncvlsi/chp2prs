@@ -267,7 +267,8 @@ void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
     list_free (tmp);
   }
   
-  fprintf (output_stream, "   syn::recvport<%d> s_%d(c%d,", ch->width,
+  fprintf (output_stream, "   syn::recvport<%d,%d> s_%d(c%d,", ch->width,
+	   v->width,
 	   _gen_inst_id(), cid);
   Assert (_get_isinport (ch), "What?");
   _emit_mangled_id (output_stream, ch->id);

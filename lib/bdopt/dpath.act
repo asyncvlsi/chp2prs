@@ -97,8 +97,8 @@ defproc transfer(a1of1? c; sdtexprchan<W> e; sdtchan<W> ch)
  * recvport gates/triggers a variable write on a connected write port.
  * @param W: width of the port and channel
  */
-export template<pint W>
-defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W> port)
+export template<pint W, W2>
+defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port)
 {
   bool _r;
   prs {
@@ -109,7 +109,8 @@ defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W> port)
     _r {-1}
   }
   INVX1 ix(_r,port.r);
-  ch.d = port.d;
+  ch.d[0..std::min(W,W2)-1] = port.d[0..std::min(W,W2)-1];
+  [ W2 > W -> (i:W..W2-1: port.d[i] = GND;) ]
   ch.a = port.a;
   c.a = port.a;
 }
