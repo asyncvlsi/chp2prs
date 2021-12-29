@@ -1,0 +1,8 @@
+defproc send(chan?(int) X,  Y; chan!(int) O) {
+  int x;
+  int y;
+
+  chp {
+   *[ X?x,Y?y;O!x;O!(x+y) ]
+  }
+}
