@@ -208,14 +208,26 @@ defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port)
   }
   (j:std::min(W,W2): sizing {p_n_mode <- 1; leak_adjust <- 1; _t[j]{-1};  _f[j]{-1}; port.d.d[j].t{-1};  port.d.d[j].f{-1} })
     
-  // XXX: dangling ports if W > W2
   [ W2 > W ->
     port.d.d[W2-1].t = GND;
     port.d.d[W2-1].f = cr;
     (i:W..W2-2: port.d.d[i] = port.d.d[W2-1];)
+    port.a = c.a;
+  [] W2 = W ->
+    // exact match, nothing to do
+    port.a = c.a;
+  [] W2 < W ->
+    // complete the dangling input channel signals and combine with
+    // port.a to generate the ack
+    bool _v[W-W2], _pa;
+    prs {
+      (i:W2..W-1: ch.d.d[i].t | ch.d.d[i].f => _v[i-W2]-)
+      port.a => _pa-
+    }
+    // inverting completion tree 
+    std::gates::ctree<W-W2+1,true> ct({_pa} # _v, c.a);
   ]
-  port.a = c.a;
-  port.a = ch.a;
+  c.a = ch.a;
 }
 
 /**
