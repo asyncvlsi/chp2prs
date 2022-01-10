@@ -600,9 +600,25 @@ defproc bitfield(sdtexprchan<W> a; sdtexprchan<MSB-LSB+1> out)
   { LSB >= 0 & MSB < W : "Illegal bit-field specifier" };
 
   out.r = a.r;
-  out.d.d = a.d.d[LSB..MSB];
 
-  // XXX: dangling signals!
+  [ LSB != 0 | MSB != W-1 ->
+    // dangling inputs, complete them
+    bool _t, _f;
+    bool _v[LSB + (W-1-MSB)];
+    bool _cx;
+    prs {
+      (i:LSB: a.d.d[i].t | a.d.d[i].f => _v[i]-)
+      (i:MSB+1..W-1: a.d.d[i].t | a.d.d[i].f => _v[LSB+i-MSB-1]-)
+      a.d.d[MSB].t => _t-
+      a.d.d[MSB].f => _f-
+      _t & _cx #> out.d.d[MSB-LSB].t-
+      _f & _cx #> out.d.d[MSB-LSB].f-
+    }
+    std::gates::ctree<W-(MSB-LSB+1),false> ct(_v,_cx);
+    [ MSB != LSB -> out.d.d[0..MSB-LSB-1] = a.d.d[LSB..MSB-1]; ]
+ [] else ->
+    out.d.d = a.d.d[LSB..MSB];
+  ]
 }
 
 export template<pint W1, W2>
@@ -619,6 +635,8 @@ defproc concat2(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out)
 export template<pint W1, W2>
 defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
 {
+  { W2 > 0 : "No data?" };
+  { W1 > 0 : "No data?" };
   [ W1 = W2 -> a = out;
   [] W1 < W2 ->
     bool _xv;
@@ -634,9 +652,21 @@ defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
     
   [] W1 > W2 ->
      out.r = a.r;
-     a.d.d[0..W2-1] = out.d.d;
-     // XXX: dangling signals!
- ]
+     [ W1 > 0 -> a.d.d[0..W2-2] = out.d.d[0..W2-2]; ]
+
+     // complete dangling signals
+     bool _t, _f;
+     bool _v[W1-W2];
+     bool _cx;
+     prs {
+       (i:W2..W1-1: a.d.d[i].t | a.d.d[i].f => _v[i-W2]-)
+       a.d.d[W2-1].t => _t-
+       a.d.d[W2-1].f => _f-
+       _t & _cx #> out.d.d[W2-1].t-
+       _f & _cx #> out.d.d[W2-1].f-
+     }
+    std::gates::ctree<W1-W2,false> ct(_v,_cx);
+  ]
 }
 
 export template<pint W,V>
