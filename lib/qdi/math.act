@@ -669,6 +669,40 @@ defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out)
   ]
 }
 
+// Given an channel of width W1, take bits in the doubly inclusive range [LSB..MSB] and put them into `out`
+// It must be the case that both `0 <= LSB <= MSB < W1` and `(MSB-LSB+1) == W2`
+export template<pint W1, LSB, MSB, W2>
+defproc bitslice(sdtexprchan<W1> a; sdtexprchan<W2> out)
+{
+  { W2 > 0 : "No data?" };
+  { W1 > 0 : "No data?" };
+  { 0 <= LSB : "Invalid LSB" };
+  { LSB <= MSB : "Invalid range" };
+  { MSB < W1 : "Invalid range" };
+  { (MSB-LSB+1) = W2 : "width dont match" };
+
+  [ W1 = W2 ->
+    a = out;
+  [] W1 > W2 ->
+     out.r = a.r;
+     [ W1 > 0 -> a.d.d[LSB..MSB-1] = out.d.d[0..W2-2]; ]
+
+     // complete dangling signals
+     bool _t, _f;
+     bool _v[W1-W2];
+     bool _cx;
+     prs {
+       (i:0..LSB-1: a.d.d[i].t | a.d.d[i].f => _v[i]-)
+       (i:MSB+1..W1-1: a.d.d[i].t | a.d.d[i].f => _v[i - (MSB+1) + LSB]-)
+       a.d.d[W2-1].t => _t-
+       a.d.d[W2-1].f => _f-
+       _t & _cx #> out.d.d[W2-1].t-
+       _f & _cx #> out.d.d[W2-1].f-
+     }
+    std::gates::ctree<W1-W2,false> ct(_v,_cx);
+  ]
+}
+
 export template<pint W,V>
 defproc const(sdtexprchan<W> out)
 {

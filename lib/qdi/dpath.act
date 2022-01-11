@@ -238,9 +238,10 @@ defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port)
 export template<pint W>
 defproc recvport_drop(a1of1 c; sdtchan<W> ch)
 {
-  bool cr;
-  std::gates::sigbuf<2*W> s(c.r,cr);
-  bool _t[W], _f[W];
+  bool _cr;
+  prs {
+    c.r => _cr-
+  }
 
   // complete the dangling input channel signals and combine with
   // port.a to generate the ack
@@ -249,7 +250,7 @@ defproc recvport_drop(a1of1 c; sdtchan<W> ch)
     (i:0..W-1: ch.d.d[i].t | ch.d.d[i].f => _v[i]-)
   }
   // inverting completion tree
-  std::gates::ctree<W,true> ct(_v, c.a);
+  std::gates::ctree<W+1,true> ct({_cr} # _v, c.a);
 
   c.a = ch.a;
 }

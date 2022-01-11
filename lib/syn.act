@@ -359,6 +359,9 @@ defproc ite(sdtexprchan<1> a; sdtexprchan<W1> opt1; sdtexprchan<W2> opt2; sdtexp
 export template<pint W1, W2>
 defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out);
 
+export template<pint W1, LSB, MSB, W2>
+defproc bitslice(sdtexprchan<W1> a; sdtexprchan<W2> out);
+
 export template<pint W,V>
 defproc const(sdtexprchan<W> out);
 
