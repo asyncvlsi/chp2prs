@@ -252,9 +252,11 @@ void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
 {
   varmap_info *v;
   if (!id) {
-    Assert (_gen_fresh_var_writeonly (bitWidth (chid), &id), "Could not allocate fresh variable");
+    v = NULL;
   }
-  v = _var_getinfo (id);
+  else {
+    v = _var_getinfo (id);
+  }
   varmap_info *ch = _var_getinfo (chid);
   int c;
   if (ch->nread > 1) {
@@ -266,15 +268,19 @@ void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
     c = list_ivalue (list_next (list_first (tmp)));
     list_free (tmp);
   }
-  
-  fprintf (output_stream, "   syn::recvport<%d,%d> s_%d(c%d,", ch->width,
-	   v->width,
-	   _gen_inst_id(), cid);
+  if (!id) {
+    fprintf (output_stream, "   syn::recvport_drop<%d> s_%d(c%d,", ch->width, _gen_inst_id(), cid);
+  }
+  else {
+    fprintf (output_stream, "   syn::recvport<%d,%d> s_%d(c%d,", ch->width,
+	     v->width,
+	     _gen_inst_id(), cid);
+  }
   Assert (_get_isinport (ch), "What?");
   _emit_mangled_id (output_stream, ch->id);
   fprintf (output_stream, "_muxi.m[%d]", ch->iread++);
-  fprintf (output_stream, ",");
-  if (v) {
+  if (id) {
+    fprintf (output_stream, ",");
     fprintf (output_stream, "var_");
     _emit_mangled_id (output_stream, v->id);
     fprintf (output_stream, ".in[%d]", v->iwrite++);

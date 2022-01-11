@@ -1,0 +1,8 @@
+defproc recv3(chan?(int) X,  Y; chan!(int) O) {
+  int x;
+  int y;
+
+  chp {
+   *[ X?,Y?y;X?x,Y?y;O!(x+y) ]
+  }
+}
