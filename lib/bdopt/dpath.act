@@ -116,6 +116,25 @@ defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port)
 }
 
 /**
+ * recvport_drop is like recvport but does not actually write to any variable. This save a write in the case of a `L?`
+ * without an associated variable
+ */
+export template<pint W>
+defproc recvport_drop(a1of1 c; sdtchan<W> ch)
+{
+  bool _r;
+  prs {
+    c.r & ch.r #> _r-
+  }
+  sizing {
+   leak_adjust <- 1;
+    _r {-1}
+  }
+  INVX1 ix(_r,c.a);
+  ch.a = c.a;
+}
+
+/**
  * a port mux for reading c that selects from multiple send channels based on control channels
  * @param W: wodth of the channels
  * @param N: number of input channels

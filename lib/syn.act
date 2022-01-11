@@ -259,6 +259,11 @@ defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);
 export template<pint W, W2>
 defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port);
 
+// The same as the case above, but for a width of "0" on the second variable.
+// This is to avoid a length-0 array error
+export template<pint W>
+defproc recvport_drop(a1of1 c; sdtchan<W> ch);
+
 export template<pint W,N>
 defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N]);
 
