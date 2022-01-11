@@ -18,3 +18,5 @@ prsim.out
 config_pkg.h
 config.mk
 *.so
+.idea
+cmake-build-debug
