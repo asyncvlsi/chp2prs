@@ -706,19 +706,19 @@ defproc roffsetmux_fblock(Mx1of2<W1> a; Mx1of2<1> c, highfill; Mx1of2<W1> out)
 
   [ W1-Offset-1 >= 0 -> 
         (i:0..W1-Offset-1:
-            mx[i].A.d[0] = a.d[i];
-            mx[i].B.d[0] = a.d[i+Offset];
+            mx[i].A.d[0] = a.d[i+Offset];
+            mx[i].B.d[0] = a.d[i];
             mx[i].S.d[0] = c.d[0];
             mx[i].Y.d[0] = out.d[i];)
         (i:W1-Offset..W1-1:
-            mx[i].A.d[0] = a.d[i];
-            mx[i].B.d[0] = highfill.d[0];
+            mx[i].A.d[0] = highfill.d[0];
+            mx[i].B.d[0] = a.d[i];
             mx[i].S.d[0] = c.d[0];
             mx[i].Y.d[0] = out.d[i];)
   [] else ->
         (i:0..W1-1:
-            mx[i].A.d[0] = a.d[i];
-            mx[i].B.d[0] = highfill.d[0];
+            mx[i].A.d[0] = highfill.d[0];
+            mx[i].B.d[0] = a.d[i];
             mx[i].S.d[0] = c.d[0];
             mx[i].Y.d[0] = out.d[i];)
   ]
