@@ -178,6 +178,17 @@ void BasicSDT::_emit_expr_binary (int id, int width,
 	   sdt_expr_name (type), lw, rw, id, lid, rid);
 }
 
+void BasicSDT::_emit_expr_ite (int id, int width,
+			       int type, int tid,
+				  int lid, int lw,
+				  int rid, int rw)
+{
+  FILE *o = (_efp == NULL ? output_stream : _efp);
+  
+  fprintf (o, "   syn::expr::ite<%d,%d> e%d (e%d.out,e%d.out,e%d.out);\n",
+	   lw, rw, id, tid, lid, rid);
+}
+
 void BasicSDT::_emit_expr_unary (int id, int width,
 				 int type, int lid, int lw)
 {

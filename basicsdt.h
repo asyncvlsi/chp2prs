@@ -126,6 +126,11 @@ class BasicSDT : public SDTEngine {
   
   void _emit_expr_unary (int id, int width,
 			 int type, int lid, int lw);
+
+  void _emit_expr_ite (int id, int width, 
+		       int type, int tid,
+		       int lid, int lw,
+		       int rid, int rw);
   
   void _emit_expr_bitfield (int eid, int lsb, int msb, int lid, int lw);
   

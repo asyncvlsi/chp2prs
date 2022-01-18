@@ -272,6 +272,7 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
 {
   int lw, rw;
   int lid, rid;
+  int tw, tid;
 
   Assert (e, "Hmm");
 
@@ -401,10 +402,17 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
     break;
 
   case E_QUERY:
+    CHECK_EXPR (e->u.e.l, tid, tw);
+    if (tw != 1) {
+      warning ("Typechecking should have failed on ternary expression!");
+      fprintf (stderr, "  Expr: ");
+      print_uexpr (stderr, e);
+      fprintf (stderr, "\n");
+    }
     CHECK_EXPR (e->u.e.r->u.e.l, lid, lw);
     CHECK_EXPR (e->u.e.r->u.e.r, rid, rw);
     *width = MAX(lw,rw);
-    _emit_expr_binary (id, *width, e->type, lid, lw, rid, rw);
+    _emit_expr_ite (id, *width, e->type, tid, lid, lw, rid, rw);
     break;
 
   case E_COLON:
@@ -574,6 +582,7 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
     break;
 
   case E_QUERY:
+    UNARY_OP;
     e = e->u.e.r;
     BINARY_OP;
     break;

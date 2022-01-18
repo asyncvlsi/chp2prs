@@ -161,6 +161,11 @@ protected:
   virtual void _emit_expr_binary (int eid, int width, int type,
 				  int lid, int lw, int rid, int rw) = 0;
 
+
+  /* -- ite: if then else, for query expressions -- */
+  virtual void _emit_expr_ite (int eid, int width, int type, int tid,
+				  int lid, int lw, int rid, int rw) = 0;
+
   /*--
     Emit unary operation (args follow binary operation)
   --*/
