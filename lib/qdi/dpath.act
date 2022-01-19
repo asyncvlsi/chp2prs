@@ -224,6 +224,7 @@ defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port)
       (i:W2..W-1: ch.d.d[i].t | ch.d.d[i].f => _v[i-W2]-)
       port.a => _pa-
     }
+    sizing { p_n_mode <- 1; leak_adjust <- 1; (;i:W2..W-1: _v[i-W2]{-1}); _pa{-1}}
     // inverting completion tree 
     std::gates::ctree<W-W2+1,true> ct({_pa} # _v, c.a);
   ]
