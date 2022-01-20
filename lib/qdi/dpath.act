@@ -158,18 +158,17 @@ defproc transfer(a1of1? c; sdtexprchan<W> e; sdtchan<W> ch)
 export template<pint W>
 defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
 {
-  bool cr;
-  std::gates::sigbuf<2*W> s(c.r,cr);
+  std::gates::sigbuf<W> s(c.r);
 
   bool wack[W];
     
   prs {
     (i:W:
-       [keeper=0] cr & ch.d.d[i].t -> var.d[i].f-
-       [keeper=0] cr & ch.d.d[i].f -> var.d[i].t-
+       [keeper=0] s.out[i] & ch.d.d[i].t -> var.d[i].f-
+       [keeper=0] s.out[i] & ch.d.d[i].f -> var.d[i].t-
 
-      cr & ((var.d[i].t & ch.d.d[i].t) | (var.d[i].f & ch.d.d[i].f)) -> wack[i]-
-      ~cr  & ~ch.d.d[i].t & ~ch.d.d[i].f -> wack[i]+
+      s.out[i] & ((var.d[i].t & ch.d.d[i].t) | (var.d[i].f & ch.d.d[i].f)) -> wack[i]-
+      ~s.out[i]  & ~ch.d.d[i].t & ~ch.d.d[i].f -> wack[i]+
      )
   }
   (j:W: sizing {p_n_mode <- 1; leak_adjust <- 1;  wack[j]{-1}; var.d[j].t{-1};  var.d[j].f{-1} })
@@ -195,13 +194,12 @@ defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
 export template<pint W, W2>
 defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port)
 {
-  bool cr;
-  std::gates::sigbuf<2*W> s(c.r,cr);
+  std::gates::sigbuf<W2> s(c.r);
   bool _t[W], _f[W];
 
   prs {
-    (i:std::min(W,W2): cr & ch.d.d[i].t #> _t[i]-
-            cr & ch.d.d[i].f #> _f[i]-
+    (i:std::min(W,W2): s.out[i] & ch.d.d[i].t #> _t[i]-
+                       s.out[i] & ch.d.d[i].f #> _f[i]-
         _t[i] => port.d.d[i].t-
         _f[i] => port.d.d[i].f-
       )
@@ -209,9 +207,8 @@ defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port)
   (j:std::min(W,W2): sizing {p_n_mode <- 1; leak_adjust <- 1; _t[j]{-1};  _f[j]{-1}; port.d.d[j].t{-1};  port.d.d[j].f{-1} })
     
   [ W2 > W ->
-    port.d.d[W2-1].t = GND;
-    port.d.d[W2-1].f = cr;
-    (i:W..W2-2: port.d.d[i] = port.d.d[W2-1];)
+    (i:W..W2-1: port.d.d[i].t = GND;
+                port.d.d[i].f = s.out[i];)
     port.a = c.a;
   [] W2 = W ->
     // exact match, nothing to do
@@ -269,12 +266,12 @@ defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
 
   [ N = 1 -> m[0] = c;
   [] else -> 
-       std::gates::sigbuf<2*W> s[N];
+       std::gates::sigbuf<W> s[N];
        bool _t[N][W], _f[N][W];
        (i:N: s[i](.in=ctrl[i].r);)
        prs {
-        (i:W: (j:N: c.d.d[i].t & s[j].out #> _t[j][i]-
-          c.d.d[i].f & s[j].out #> _f[j][i]-
+        (i:W: (j:N: c.d.d[i].t & s[j].out[i] #> _t[j][i]-
+          c.d.d[i].f & s[j].out[i] #> _f[j][i]-
           _t[j][i] => m[j].d.d[i].t-
           _f[j][i] => m[j].d.d[i].f-
         ) )

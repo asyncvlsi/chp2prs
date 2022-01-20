@@ -1126,7 +1126,7 @@ defproc const(sdtexprchan<W> out)
   prs {
     out.r => _req-
     (i:W:
-      ~_req => out.d.d[i].d[((V >> i) & 1)]+
+      ~s.out[i] => out.d.d[i].d[((V >> i) & 1)]+
      Reset -> out.d.d[i].d[1-(V >> i) & 1]-
     )
   }
@@ -1160,18 +1160,18 @@ defproc writeport(sdtvar<W> var; sdtchan<W> in)
 export template<pint W>
 defproc readport(sdtvar<W> var; sdtexprchan<W> out)
 {
-  bool xout, _xout;
+  bool xout;
 
-  std::gates::sigbuf<2*W> s(xout,_xout);
+  std::gates::sigbuf<W> s(xout);
   
   prs {
     out.r => xout-
       
     (i:W:
-     ~_xout & ~var.d[i].t -> out.d.d[i].f+
-     ~_xout & ~var.d[i].f -> out.d.d[i].t+
-     _xout -> out.d.d[i].f-
-     _xout -> out.d.d[i].t-
+     ~s.out[i] & ~var.d[i].t -> out.d.d[i].f+
+     ~s.out[i] & ~var.d[i].f -> out.d.d[i].t+
+     s.out[i] -> out.d.d[i].f-
+     s.out[i] -> out.d.d[i].t-
      )
   }
   (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; out.d.d[i].f{-1}; out.d.d[i].t{-1}})
