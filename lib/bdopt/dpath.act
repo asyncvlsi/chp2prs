@@ -168,6 +168,7 @@ defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
        (i:N: ix[i](_in[i], dly[i].in); )
        sizing {
 	 leak_adjust <- 1;
+         p_n_mode <- 1;
 	 (;i:N: _in[i]{-1})
        }
 
