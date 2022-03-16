@@ -243,7 +243,10 @@ void SDTEngine::run_sdt (Process *p)
   ihash_bucket_t *b;
 
   P = p;
-  if (p->getlang() != NULL && p->getlang()->getchp() != NULL) {
+  if (p->getlang() != NULL && p->getlang()->getchp() != NULL
+      /* hse/prs has not already been specified */
+      && !p->getlang()->gethse() 
+      && !p->getlang()->getprs()) {
     chp = p->getlang()->getchp();
   }
   else {
