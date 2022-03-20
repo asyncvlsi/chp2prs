@@ -1,0 +1,15 @@
+defproc proc(chan?(int) L)
+{
+  int x;
+  chp {
+   *[ L?x ]
+  }
+}
+
+defproc port()
+{
+   proc x;
+   chp {
+     x.L!0
+   }
+}
