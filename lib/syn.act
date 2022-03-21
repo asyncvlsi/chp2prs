@@ -50,6 +50,11 @@ export
 defproc sinit (a1of1 c)
 {
    bool final_sig, _final_sig;
+
+   spec {
+     timing final_sig- -> c.r+
+   }
+
    prs { Reset | final_sig => c.r-
           Reset -> final_sig-
           c.a => _final_sig-
@@ -84,6 +89,10 @@ defproc loop(a1of1? c; r1of2? g[N]; a1of1! s[N])
   (i:N: s[i](.r=g[i].t, .a=ot.in[i]); )
 
   bool _r;
+
+  spec {
+    timing ot.out- -> g[0].r+
+  }
 
   prs {
     c.r => _r-
@@ -153,6 +162,10 @@ defproc doloop(a1of1? c; r1of2 g; a1of1! s)
   s.a = g.r;
   c.a = g.f;
 
+  spec {
+    timing g.t- -> s.r+
+  }
+
   prs {
     c.r => _r-
     _r | g.t => s.r-
@@ -184,6 +197,10 @@ defproc comma(a1of1? c; a1of1 stmts[N])
 export defproc fullseq (a1of1? go; a1of1! r)
 {
   bool x, _gor, _goa, _ra;
+
+  spec {
+    timing x- -> r.r+
+  }
   prs {
       /**XXX FIX ***/
       ~Reset & ~x & ~_gor -> r.r+
