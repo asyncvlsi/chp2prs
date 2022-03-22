@@ -42,7 +42,7 @@ namespace syn {
  * @param I: the default bool the variable is set to on reset
  */ 
 template<pbool I>
-defcell var_one_bit(bool R; bool dt, df)
+defcell var_one_bit(bool dt, df; bool Reset)
 {
   prs* {
     [iskeeper=1] df<8> -> dt-
@@ -50,8 +50,8 @@ defcell var_one_bit(bool R; bool dt, df)
     [weak=1] ~dt<4,4> -> df+
     [weak=1] ~df<4,4> -> dt+
   }
-  [I -> prs { R -> df- }
- []else -> prs { R -> dt- }
+  [I -> prs { Reset -> df- }
+ []else -> prs { Reset -> dt- }
   ]    
 }
 
@@ -59,7 +59,7 @@ export template<pint W; pbool I>
 defproc var_init(sdtvar<W> v) 
 {
   var_one_bit<I> bits[W];
-  (i:W: bits[i](Reset,v.d[i].t,v.d[i].f);)
+  (i:W: bits[i](v.d[i].t,v.d[i].f,Reset);)
 }
 
 /**

@@ -20,6 +20,7 @@
  **************************************************************************
  */
 #include <act/lang.h>
+#include <act/extmacro.h>
 #include <common/int.h>
 #include "sdt.h"
 
@@ -245,8 +246,17 @@ void SDTEngine::run_sdt (Process *p)
   P = p;
   if (p->getlang() != NULL && p->getlang()->getchp() != NULL
       /* hse/prs has not already been specified */
-      && !p->getlang()->gethse() 
-      && !p->getlang()->getprs()) {
+      && !p->getlang()->gethse() && !p->getlang()->getprs()) {
+    /* check if this is a macro */
+    ExternMacro *macro = new ExternMacro (p);
+    if (macro->isValid()) {
+      /*-- then we already have an external definition! --*/
+      delete macro;
+      _emit_begin ();
+      _emit_end (-1);
+      return;
+    }
+    delete macro;
     chp = p->getlang()->getchp();
   }
   else {
