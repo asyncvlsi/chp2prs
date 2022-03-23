@@ -5,6 +5,8 @@ random
 mode reset
 set Reset 1
 cycle
+rand_init
+cycle
 status U
 
 mode run

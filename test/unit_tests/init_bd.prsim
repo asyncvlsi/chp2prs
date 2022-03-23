@@ -8,5 +8,7 @@ mode nounstab
 
 set Reset 1
 cycle
+rand_init
+cycle
 status U
 
