@@ -1154,12 +1154,18 @@ defproc writeport(bool! wt[W], wf[W]; sdtvar<W> var; sdtchan<W> in)
        ~wt[i] &  ~wf[i] -> _wack[i]+
      )
   }
-  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; var.d[i].f{-1}; var.d[i].t{-1}; _wack[i]{-1} })
+  (i:W: sizing {p_n_mode <- 1; leak_adjust <- 1; _wack[i]{-1} })
   std::gates::ctree<W,false> wa(_wack);
   prs {
     Reset | wa.out => in.a-
   }
-  sizing {p_n_mode <- 1; leak_adjust <- 1; in.a{-1} }
+  sizing {
+    p_n_mode <- 1;
+    leak_adjust <- 1;
+    in.a{-1};
+    (;i:W: _invt[i]{-1}; _invf[i]{-1};
+     wt[i]{-1}; wf[i]{-1})
+    }
 }
 
 export template<pint W>
