@@ -21,6 +21,7 @@
  */
 import globals;
 import std::gates;
+import "syn/qdi/var.act";
 
 namespace syn {
 
@@ -53,32 +54,6 @@ defproc delay (bool in, out)
   ]
 }
 
-/**
- * a variable, represented by a cross coupled inverter.
- * with a week pullup, the variable is written with a strong pulldown
- * @param W: how many bits the variable has
- * @param I: the default bool the variable is set to on reset
- */ 
-export template<pbool I>
-defcell var_one_bit(bool dt, df; bool Reset)
-{
-  prs* {
-    [iskeeper=1] df<8> -> dt-
-    [iskeeper=1] dt<8> -> df-
-    [weak=1] ~dt<4,4> -> df+
-    [weak=1] ~df<4,4> -> dt+
-  }
-  [I -> prs { Reset -> df- }
- []else -> prs { Reset -> dt- }
-  ]    
-}
-
-export template<pint W; pbool I>
-defproc var_init(sdtvar<W> v) 
-{
-  var_one_bit<I> bits[W];
-  (i:W: bits[i](v.d[i].t,v.d[i].f,Reset);)
-}
 
 /**
  * a transfer triggers a pull channel (sdtexprchan) and puts the result on a push channel (sdtchan).
@@ -242,27 +217,41 @@ defproc mux_bool_outport(sdtboolchan! c; sdtchan<1> m[N])
  * NOTE: @TODO if timing analysis is to hard go back to validation tree
  */
 export template<pint W>
-defproc writeport(sdtvar<W> var; sdtchan<W> in)
+defproc writeport(bool! wt[W], wf[W]; sdtvar<W> var; sdtchan<W> in)
 {
-  bool _wack[W];
   bool _d_B[W];
-  bool _dly_req_in;
   std::gates::sigbuf<W+1> s(in.r);
-  delay<5> dly(s.out[W]);
 
-  prs {
-    (i:W: [keeper=0] in.d[i] & s.out[i] & _dly_req_in -> var.d[i].f-
-          [keeper=0] _d_B[i] & s.out[i] & _dly_req_in -> var.d[i].t-
-     )
-  }
-  (i:W: sizing {
-    leak_adjust <- 1;
-    var.d[i].f{-1};
-    var.d[i].t{-1}
-  })
+  /*-- inverted data value --*/
   INVX1 id[W];
   (i:W: id[i](.A=in.d[i],.Y=_d_B[i]);)
-    
+
+  INVX1 gwt[W], gwf[W];
+
+  (i:W: gwt[i](.Y = wt[i]);
+        gwf[i](.Y = wf[i]);
+   )
+
+  bool _dly_req_in;
+  
+  prs {
+    (i:W:
+    s.out[i] & in.d[i] & _dly_req_in -> gwt[i].A-
+   ~s.out[i] -> gwt[i].A+
+
+    s.out[i] & _d_B[i] & _dly_req_in -> gwf[i].A-
+   ~s.out[i] -> gwf[i].A+
+    )
+   }
+  sizing {
+       leak_adjust <- 1;
+       p_n_mode <- 1;
+       (;i:W:gwt[i].A{-1}; gwf[i].A{-1})
+  }
+  
+
+  delay<10> dly(s.out[W]);
+
   INVX1 ix(dly.out, _dly_req_in);
   NOR2X1 iy(Reset,_dly_req_in, in.a);
     
@@ -307,8 +296,9 @@ defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
   [ NO > 0 -> readport<W> r[NO]; 
               (i:NO: r[i].var=x.v; r[i].out=out[i];)
   ]
-  [ NI > 0 -> writeport<W> wr[NI]; 
-              (j:NI: wr[j].var=x.v; wr[j].in=in[j];)
+  writeport<W> w(x.wt,x.wf,v);
+  [ NI = 1 -> w.in = in[0];
+  [] NI > 1 -> muxoutport<W,NI> mx(w.in,in);
   ]
 } 
 
@@ -350,18 +340,6 @@ defproc var_bool_out_ports(sdtboolvar v; sdtexprchan<1> out[NO])
   x.in[0].r = GND;
   x.v = v.x;  
 } 
-
-/**
- * recv is a write port - so a write to a variable - that is triggered/gated by a ctl channel.
- * @param W: width of the variable and channel
- */
-export template<pint W>
-defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
-{
-  sdtchan<W> portch;
-  recvport<W> gate(.c=c,.ch=ch,.port=portch);
-  writeport<W> port(.var=var,.in=portch);
-}
 
 export defproc trueto1of2(r1of2 out)
 {

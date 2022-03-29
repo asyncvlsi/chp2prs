@@ -21,6 +21,7 @@
  */
 import globals;
 import std::gates;
+import "syn/qdi/var.act";
 
 namespace syn {
 
@@ -35,32 +36,6 @@ namespace syn {
  *
  */
 
-/**
- * a variable, represented by a cross coupled inverter.
- * with a week pullup, the variable is written with a strong pulldown
- * @param W: how many bits the variable has
- * @param I: the default bool the variable is set to on reset
- */ 
-template<pbool I>
-defcell var_one_bit(bool dt, df; bool Reset)
-{
-  prs* {
-    [iskeeper=1] df<8> -> dt-
-    [iskeeper=1] dt<8> -> df-
-    [weak=1] ~dt<4,4> -> df+
-    [weak=1] ~df<4,4> -> dt+
-  }
-  [I -> prs { Reset -> df- }
- []else -> prs { Reset -> dt- }
-  ]    
-}
-
-export template<pint W; pbool I>
-defproc var_init(sdtvar<W> v) 
-{
-  var_one_bit<I> bits[W];
-  (i:W: bits[i](v.d[i].t,v.d[i].f,Reset);)
-}
 
 /**
  * initialises a variable and creates the appropriate read and write ports.
@@ -72,10 +47,11 @@ export template<pint W; pint NI,NO>
 defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
 {
   var_init<W,false> x(v);
-  expr::writeport<W> w(v);
   [ NO > 0 -> expr::readport<W> r[NO]; 
               (i:NO: r[i](.var=x.v, .out=out[i]);)
   ]
+
+  expr::writeport<W> w(x.wt,x.wf,v);
 
   [ NI = 1 -> w.in=in[0];
   [] NI > 1 -> 

@@ -28,7 +28,7 @@ namespace syn {
 
 /*-- variable state --*/
 export template<pint W; pbool I>
-defproc var_init(sdtvar<W> v);
+defproc var_init(sdtvar<W> v; bool? wt[W], wf[W]);
 
 /*-- var with ports --*/
 export template<pint W; pint NI,NO>
@@ -381,7 +381,7 @@ defproc const(sdtexprchan<W> out);
 
 /*-- we need to fix this for variables ---*/
 export template<pint W>
-defproc writeport(sdtvar<W> var; sdtchan<W> in);
+defproc writeport(bool! wt[W], wf[W]; sdtvar<W> var; sdtchan<W> in);
 
 export template<pint W>
 defproc readport(sdtvar<W> var; sdtexprchan<W> out);

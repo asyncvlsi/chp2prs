@@ -1,0 +1,70 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2020 Rajit Manohar
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+import globals;
+import std::gates;
+
+namespace syn {
+
+/*
+ * Datapath elements
+ *
+ *   Need to define:
+ *      - variables
+ *      - send
+ *      - receive
+ *      - expression evaluation
+ *
+ */
+
+/**
+ * a variable, represented by a cross coupled inverter.
+ * with a week pullup, the variable is written with a strong pulldown
+ * @param W: how many bits the variable has
+ * @param I: the default bool the variable is set to on reset
+ */ 
+template<pbool I>
+defcell var_one_bit(bool? wt, wf; bool! dt, df; bool? Reset)
+{
+  prs* {
+    /* write port */
+    wf<8> -> dt-
+    wt<8> -> df-
+
+    /* hold state */
+    [iskeeper=1] df<8> -> dt-
+    [iskeeper=1] dt<8> -> df-
+    [weak=1] ~dt<4,4> -> df+
+    [weak=1] ~df<4,4> -> dt+
+  }
+  [I -> prs { Reset -> df- }
+ []else -> prs { Reset -> dt- }
+  ]    
+}
+
+export template<pint W; pbool I>
+defproc var_init(sdtvar<W> v; bool? wt[W], wf[W]) 
+{
+  var_one_bit<I> bits[W];
+  (i:W: bits[i](wt[i],wf[i],v.d[i].t,v.d[i].f,Reset);)
+}
+
+}
