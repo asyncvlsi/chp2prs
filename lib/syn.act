@@ -129,7 +129,7 @@ defproc parselect(a1of1 c; r1of2 g[N]; a1of1 s[N])
   std::gates::sigbuf<N> sig(c.r);
   (i:N: sig.out[i] = g[i].r;)
 
-  std::gates::ortree<N,true> ot;
+  std::gates::ortree<N,false> ot;
   (i:N: s[i](.r = g[i].t, .a = ot.in[i]);)
 
   bool _x[N];
@@ -137,8 +137,10 @@ defproc parselect(a1of1 c; r1of2 g[N]; a1of1 s[N])
     (i:N: g[i].t | g[i].f => _x[i]-)
   }
   std::gates::ctree<N,true> ct(_x);
+  bool _ack;
   prs {
-    ct.out & ot.out #> c.a-
+    ct.out & ot.out #> _ack-
+    _ack => c.a-
   }
   sizing { 
     leak_adjust <- 1; 
