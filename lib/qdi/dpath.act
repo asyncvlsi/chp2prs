@@ -306,4 +306,27 @@ defproc mux_bool_inport(sdtboolchan? c; sdtchan<1> m[N]; a1of1 ctrl[N])
   muxinport<1,N> i(c.x,m,ctrl);
 }
 
+export template<pint N; pint idx[N]; pint T>
+defproc probed_clause (r1of2 g[N]; sdtchan<1> probe[T];
+		       bool! out)
+{
+  pint tstval, tmp;
+  pint lo_idx[N];
+  tstval = 0;
+  tmp = 0;
+  *[ tmp < N -> lo_idx[tmp] = tstval; tstval = tstval + idx[tmp]; tmp = tmp + 1; ]
+  { T = tstval : "Inconsistent template parameters" };
+  bool _out;
+  prs {
+    (|i:N: g[i].t & (&j: idx[i] : probe[j + lo_idx[i]].d.d[0].t | probe[j+lo_idx[i]].d.d[0].f)) -> _out-
+    (&i:N: ~g[i].t) -> _out+
+    _out => out-
+  }
+  sizing {
+    leak_adjust <- 1;
+    p_n_mode <- 1;
+    _out{-1}; out{-1}
+  }
+}
+
 }
