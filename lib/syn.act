@@ -138,7 +138,6 @@ defproc parselect(a1of1 c; r1of2 g[N]; a1of1 s[N+int(has_else)])
     (i:N: g[i].t | g[i].f => _x[i]-)
   }
   std::gates::ctree<N,false> ct(_x);
-  bool _ca;
   prs {
     ct.out & ot.out #> c.a-
   }
@@ -146,7 +145,6 @@ defproc parselect(a1of1 c; r1of2 g[N]; a1of1 s[N+int(has_else)])
     leak_adjust <- 1;
     p_n_mode <- 1;
     c.a{-1};
-    _ca{-1};
     (;j:N: _x[j]{-1})
   }
 }
