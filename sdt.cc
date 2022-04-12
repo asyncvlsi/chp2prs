@@ -283,8 +283,7 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
 		list_iappend (data_gl, eid);
 	      }
 	      else {
-		Assert (tmp->type == E_AND, "Hmm");
-		_emit_one_guard_expr (tmp->u.e.r, m);
+		_emit_one_guard_expr (tmp, m);
 		list_iappend (data_gl,
 			      list_ivalue (list_tail (m)));
 	      }
@@ -317,9 +316,6 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
 	      if (tmp->type == E_PROBE) {
 		int pid = _emit_chan_to_probe ((ActId *)tmp->u.e.l);
 		list_iappend (pl, pid);
-	      }
-	      else {
-		Assert (tmp->type == E_AND, "Hmm");
 	      }
 
 	      list_append (p, pl);
