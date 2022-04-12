@@ -157,21 +157,27 @@ defproc parselect(a1of1 c; r1of2 g[N]; a1of1 s[N+int(has_else)])
 export template<pint N; pint idx[N]; pint T>
 defproc probed_clause (r1of2 g[N]; sdtchan<1> probe[T]; bool! out);
 
-export template<pint N>
-defproc probed_select(a1of1 c; r1of2 g[N]; bool probe_out[N]; a1of1 s[N])
+export 
+defproc dummy_probed_clause (r1of2 g; bool! out) { out = g.t; }
+
+export template<pint W>
+defproc sdtchan_to_probe (sdtchan<W> ch; sdtchan<1> probe);
+
+export template<pint N,M>
+defproc probed_select(a1of1 c; r1of2 g[M]; bool probe_out[N]; a1of1 s[N])
 {
   /* evaluate guards */
-  std::gates::sigbuf<N> sig(c.r);
-  (i:N: sig.out[i] = g[i].r;)
+  std::gates::sigbuf<M> sig(c.r);
+  (i:M: sig.out[i] = g[i].r;)
 
   std::gates::ortree<N,true> ot;
   (i:N: s[i](.r = probe_out[i], .a = ot.in[i]);)
 
-  bool _x[N];
+  bool _x[M];
   prs {
-    (i:N: g[i].t | g[i].f => _x[i]-)
+    (i:M: g[i].t | g[i].f => _x[i]-)
   }
-  std::gates::ctree<N,false> ct(_x);
+  std::gates::ctree<M,false> ct(_x);
   bool _ca;
   prs {
     ct.out & ot.out #> c.a-
@@ -181,7 +187,7 @@ defproc probed_select(a1of1 c; r1of2 g[N]; bool probe_out[N]; a1of1 s[N])
     p_n_mode <- 1;
     c.a{-1};
     _ca{-1};
-    (;j:N: _x[j]{-1})
+    (;j:M: _x[j]{-1})
   }
 }
 

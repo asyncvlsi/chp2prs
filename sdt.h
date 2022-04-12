@@ -53,6 +53,7 @@ protected:
   int bitWidth (ActId *id);
 
   virtual void _emit_guardlist (int isloop, act_chp_gc_t *gc, list_t *reslist);
+  virtual void _emit_one_guard_expr (Expr *e, list_t *reslist);
 
   /*-- used for block expression construction --*/
   struct iHashtable *_exprmap;
@@ -190,7 +191,7 @@ protected:
        val : value of the constant
      width : bit-width of the constant
   */
-  virtual void _emit_expr_const (int eid, int width, int val) = 0;
+  virtual void _emit_expr_const (int eid, int width, int val, bool forced = false) = 0;
 
   /*--
     Bit-width conversion
@@ -273,6 +274,17 @@ protected:
     guards, stmts: same as loop
   */
   virtual void _emit_select (int is_nondet, int cid, list_t *guards, list_t *stmts) = 0;
+
+
+  /* For probed selections */
+  
+  virtual void _emit_probed_select (int cid, list_t *dataguards,
+				    list_t *guards, list_t *stmts) = 0;
+  
+  virtual int _emit_chan_to_probe (ActId *chid) = 0;
+  virtual int _emit_probed_clause (list_t *guards, list_t *probe_list) = 0;
+
+  
 
   /*--- need emit_select_probe: guards, probes, stmts ---*/
 

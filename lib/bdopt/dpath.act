@@ -370,6 +370,14 @@ export defproc bdto1of2(r1of2 out)
   }
 }
 
+export template<pint W>
+defproc sdtchan_to_probe (sdtchan<W> ch; sdtchan<1> probe)
+{
+  ch.r = probe.r;
+  ch.d[0] = probe.d[0];
+  ch.a = probe.a;
+}
+
 
 export template<pint N; pint idx[N]; pint T>
 defproc probed_clause (r1of2 g[N]; sdtchan<1> probe[T];

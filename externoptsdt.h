@@ -114,8 +114,7 @@ class ExternOptSDT : public BasicSDT {
      * @param val the value the constant emmits
      * @param isguard if it is a guard so it is created also in bundled data mode
      */
-    void _emit_expr_const (int id, int width, int val);
-    void _emit_expr_const (int id, int width, int val, bool isguard);
+    void _emit_expr_const (int id, int width, int val, bool forced);
 
     /**
      * creates a wrapper for the expression block from wires in to a channel, 

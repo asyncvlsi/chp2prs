@@ -215,7 +215,7 @@ void BasicSDT::_emit_expr_concat2 (int eid, int width,
 	   lw, rw, eid, lid, rid);
 }
 
-void BasicSDT::_emit_expr_const (int id, int width, int val)
+void BasicSDT::_emit_expr_const (int id, int width, int val, bool forced = false)
 {
   fprintf (output_stream, "   syn::expr::const<%d,%d> e%d;\n", width, val, id);
 }
@@ -409,6 +409,105 @@ void BasicSDT::_emit_select (int is_nondet, int cid, list_t *guards, list_t *stm
   }
   fprintf (output_stream, "});\n");
 }
+
+int BasicSDT::_emit_chan_to_probe (ActId *chid)
+{
+  varmap_info *ch = _var_getinfo (chid);
+  int idx = _gen_inst_id ();
+
+  Assert (_get_isinport (ch), "What?");
+  
+  fprintf (output_stream, " syn::sdtchan_to_probe<%d> s_%d(", ch->width,
+	   idx);
+  ch->id->Print (output_stream);
+  fprintf (output_stream, ");\n");
+  return idx;
+}
+
+int BasicSDT::_emit_probed_clause (list_t *guards, list_t *probe_list)
+{
+  int count = 0;
+  listitem_t *pi;
+  int idx;
+
+  idx = _gen_inst_id ();
+  for (pi = list_first (probe_list); pi; pi = list_next (pi)) {
+    count += list_length ((list_t *)list_value (pi));
+  }
+  if (count == 0) {
+    Assert (list_length (guards) == 1, "What?");
+    fprintf (output_stream, " syn::dummy_probed_clause s_%d(e%d.out);\n",
+	     idx, list_ivalue (list_first (guards)));
+  }
+  else {
+    fprintf (output_stream, " syn::probed_clause<%d,{", list_length (guards));
+    for (pi = list_first (probe_list); pi; pi = list_next (pi)) {
+      if (pi != list_first (probe_list)) {
+	fprintf (output_stream, ",");
+      }
+      fprintf (output_stream, "%d", list_length ((list_t *)list_value (pi)));
+    }
+    fprintf (output_stream, "},%d> s_%d({", count, idx);
+    
+    for (listitem_t *li = list_first (guards); li; li = list_next (li)) {
+      if (li != list_first (guards)) {
+	fprintf (output_stream, ",");
+    }
+      fprintf (output_stream, "e%d.out", list_ivalue (li));
+    }
+    fprintf (output_stream, "},{");
+
+    int emit_comma = 0;
+    for (pi = list_first (probe_list); pi; pi = list_next (pi)) {
+      for (listitem_t *qi = list_first ((list_t *)list_value (pi));
+	   qi; qi = list_next (qi)) {
+	if (emit_comma) {
+	  fprintf (output_stream, ",");
+	}
+	fprintf (output_stream, "s_%d.probe", list_ivalue (qi));
+	emit_comma = 1;
+      }
+    }
+    fprintf (output_stream, "});\n");
+  }
+  
+  return idx;
+}
+
+void BasicSDT::_emit_probed_select (int cid, list_t *data_guards, list_t *guards, list_t *stmts)
+{
+  listitem_t *li;
+  Assert (list_length (guards) == list_length (stmts), "emit_loop issue");
+
+  fprintf (output_stream, "   syn::probed_select<%d,%d> s_%d(c%d,{",
+	   list_length (guards),
+	   list_length (data_guards), _gen_inst_id(), cid);
+
+  for (li = list_first (data_guards); li; li = list_next (li)) {
+    if (li != list_first (data_guards)) {
+      fprintf (output_stream, ",");
+    }
+    fprintf (output_stream, "e%d.out", list_ivalue (li));
+  }
+  fprintf (output_stream, "},{");
+
+  for (li = list_first (guards); li; li = list_next (li)) {
+    if (li != list_first (guards)) {
+      fprintf (output_stream, ",");
+    }
+    fprintf (output_stream, "s_%d.out", list_ivalue (li));
+  }
+  fprintf (output_stream, "},{");
+
+  for (li = list_first (stmts); li; li = list_next (li)) {
+    if (li != list_first (stmts)) {
+      fprintf (output_stream, ",");
+    }
+    fprintf (output_stream, "c%d", list_ivalue (li));
+  }
+  fprintf (output_stream, "});\n");
+}
+
 
 void BasicSDT::_emit_doloop (int cid, int guard, int stmt)
 {
@@ -904,8 +1003,10 @@ void BasicSDT::_construct_varmap_expr (Expr *e)
     v = _var_getinfo ((ActId *)e->u.e.l);
     if (!_shared_expr_var || !v->fcurexpr) {
       Assert (v->fischan, "What?");
+#if 0      
       v->nread++;
       v->fcurexpr = 1;
+#endif      
     }
     break;
 

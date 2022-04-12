@@ -306,6 +306,14 @@ defproc mux_bool_inport(sdtboolchan? c; sdtchan<1> m[N]; a1of1 ctrl[N])
   muxinport<1,N> i(c.x,m,ctrl);
 }
 
+export template<pint W>
+defproc sdtchan_to_probe (sdtchan<W> ch; sdtchan<1> probe)
+{
+  ch.d.d[0] = probe.d.d[0];
+  ch.a = probe.a;
+}
+
+
 export template<pint N; pint idx[N]; pint T>
 defproc probed_clause (r1of2 g[N]; sdtchan<1> probe[T];
 		       bool! out)

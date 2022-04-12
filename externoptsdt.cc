@@ -383,48 +383,33 @@ int ExternOptSDT::get_expr_width(Expr *ex) {
   return 0;
 }
 
-void ExternOptSDT::_emit_expr_const (int id, int width, int val)
-{
-  // some how overwriting and optional overload dont work together
-  _emit_expr_const (id, width, val, false);
-}
-
-void ExternOptSDT::_emit_expr_const (int id, int width, int val, bool isguard)
+void ExternOptSDT::_emit_expr_const (int id, int width, int val, bool forced)
 {
   // for QDI emmit constant
   if (bundled_data != 1) fprintf (output_stream, "   syn::expr::const<%d,%d> e%d;\n", width, val, id);
   // for BD emmit only if its a guard for eg infinit loop
-  else if (isguard) fprintf (output_stream, "   syn::trueto1of2 e%d;\n", id);
+  else if (forced) fprintf (output_stream, "   syn::trueto1of2 e%d;\n", id);
   // print for debugging BD constants, they should be handed to the syntesis tool
-  else fprintf (output_stream, "   // would emit const e%d <%d> %d %d\n", id, width,val,isguard);
+  else fprintf (output_stream, "   // would emit const e%d <%d> %d %d\n", id, width,val,forced);
 }
 
-void ExternOptSDT::_emit_guardlist (int isloop, act_chp_gc_t *gc, list_t *res)
+void ExternOptSDT::_emit_guardlist (int isloop,
+				    act_chp_gc_t *gc, list_t *res)
 {
   act_chp_gc_t *tmp;
   int eid;
   Assert (gc, "Why am I here?");
-  // if it is a infinit loop indicate that to the const gen so its not ommited for BD
+
   if (isloop && !gc->g) {
     /*-- infinite loop --*/
     eid = _gen_expr_id ();
     _emit_expr_const (eid, 1, 1, true);
     list_iappend (res, eid);
   }
-  //run through all guards, @TODO rewrite guard handling to combine them into one optimisation block
-  // that needs also new control structures
   else {
     tmp = gc;
     while (tmp) {
-      if (tmp->g) {
-        _emit_expr (&eid, 1, tmp->g);
-        eid = _gen_safe_bool (eid);
-        list_iappend (res, eid);
-      }
-      else {
-        eid = -1;
-        list_iappend (res, eid);
-      }
+      _emit_one_guard_expr (tmp->g, res);
       tmp = tmp->next;
     }
   }
@@ -557,7 +542,7 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
       }
       else {
         id = ihash_lookup(_inexprmap, (long) e)->i;
-        _emit_expr_const (id, 1, 1);
+        _emit_expr_const (id, 1, 1, false);
       }
     }
     
@@ -575,7 +560,7 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
       }
       else {
         id = ihash_lookup(_inexprmap, (long) e)->i;
-        _emit_expr_const (id, 1, 0);
+        _emit_expr_const (id, 1, 0, false);
       }
     }
     break;
@@ -609,7 +594,7 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
         int w;
         id = ihash_lookup(_inexprmap, (long) e)->i;
         w = ihash_lookup(_inwidthmap, (long) e)->i;
-        _emit_expr_const (id, w, e->u.v);
+        _emit_expr_const (id, w, e->u.v, false);
       }
     }
     break;

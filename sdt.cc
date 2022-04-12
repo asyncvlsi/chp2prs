@@ -28,6 +28,54 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
+
+static int _expr_has_probe (Expr *e)
+{
+  auto is_basic_probe =
+    [] (const Expr *e) {
+      return e->type == E_PROBE
+	|| (e->type == E_AND && e->u.e.l->type == E_PROBE);
+    };
+
+  if (!e) return 0;
+
+  if (is_basic_probe (e)) {
+    return 1;
+  }
+  if (e->type == E_OR && is_basic_probe (e->u.e.l)) {
+    return 1;
+  }
+  return 0;
+}
+
+static int _guards_have_probes (act_chp_gc_t *gc)
+{
+  while (gc) {
+    if (gc->g) {
+      if (_expr_has_probe (gc->g)) {
+	return 1;
+      }
+    }
+    gc = gc->next;
+  }
+  return 0;
+}
+
+
+void SDTEngine::_emit_one_guard_expr (Expr *e, list_t *res)
+{
+  int eid;
+  if (e) {
+    _emit_expr (&eid, 1, e);
+    eid = _gen_safe_bool (eid);
+    list_iappend (res, eid);
+  }
+  else {
+    eid = -1;
+    list_iappend (res, eid);
+  }
+}
+
 void SDTEngine::_emit_guardlist (int isloop,
 				 act_chp_gc_t *gc, list_t *res)
 {
@@ -38,21 +86,13 @@ void SDTEngine::_emit_guardlist (int isloop,
   if (isloop && !gc->g) {
     /*-- infinite loop --*/
     eid = _gen_expr_id ();
-    _emit_expr_const (eid, 1, 1);
+    _emit_expr_const (eid, 1, 1, true);
     list_iappend (res, eid);
   }
   else {
     tmp = gc;
     while (tmp) {
-      if (tmp->g) {
-	_emit_expr (&eid, 1, tmp->g);
-	eid = _gen_safe_bool (eid);
-	list_iappend (res, eid);
-      }
-      else {
-	eid = -1;
-	list_iappend (res, eid);
-      }
+      _emit_one_guard_expr (tmp->g, res);
       tmp = tmp->next;
     }
   }
@@ -189,13 +229,141 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
     }
     {
       list_t *gl;
+      list_t *data_gl;
       list_t *idl;
       int gid, sid;
+      int have_probes = 0;
       gl = list_new ();
       idl = list_new ();
 
       /* 1. Emit all guards */
-      _emit_guardlist (1, c->u.gc, gl);
+      if (_guards_have_probes (c->u.gc)) {
+	if (c->type != ACT_CHP_SELECT) {
+	  act_error_ctxt (stderr);
+	  fatal_error ("Unable to handle generalized probes");
+	}
+	have_probes = 1;
+      }
+
+      if (have_probes) {
+	/* creat ea list of list of guards! */
+	act_chp_gc_t *gc = c->u.gc;
+
+	data_gl = list_new ();
+	while (gc) {
+	  if (!gc->g) {
+	    act_error_ctxt (stderr);
+	    fatal_error ("Probed guards cannot include an else clause");
+	  }
+	  if (_expr_has_probe (gc->g)) {
+	    list_t *m, *p;
+	    Expr *tmp;
+	    Expr *egc;
+
+	    /*
+	      (#A & ... ) | (#B & ... ) | ... 
+	      m = list of guard expressions (non-probed pieces)
+	    */
+	    m = list_new ();
+	    egc = gc->g;
+	    while (egc) {
+	      if (egc->type == E_OR) {
+		tmp = egc->u.e.l;
+	      }
+	      else {
+		tmp = egc;
+	      }
+	      while (tmp && tmp->type == E_AND && tmp->u.e.l->type == E_PROBE) {
+		tmp = tmp->u.e.r;
+	      }
+	      if (tmp->type == E_PROBE) {
+		int eid = _gen_expr_id ();
+		_emit_expr_const (eid, 1, 1, true);
+		list_iappend (m, eid);
+		list_iappend (data_gl, eid);
+	      }
+	      else {
+		Assert (tmp->type == E_AND, "Hmm");
+		_emit_one_guard_expr (tmp->u.e.r, m);
+		list_iappend (data_gl,
+			      list_ivalue (list_tail (m)));
+	      }
+	      if (egc->type == E_OR) {
+		egc = egc->u.e.r;
+	      }
+	      else {
+		break;
+	      }
+	    }
+
+	    /* 
+	       p = list of list of probes
+	    */
+	    p = list_new ();
+	    egc = gc->g;
+	    while (egc) {
+	      list_t *pl = list_new ();
+	      if (egc->type == E_OR) {
+		tmp = egc->u.e.l;
+	      }
+	      else {
+		tmp = egc;
+	      }
+	      while (tmp && tmp->type == E_AND && tmp->u.e.l->type == E_PROBE) {
+		int pid = _emit_chan_to_probe ((ActId *)tmp->u.e.l->u.e.l);
+		list_iappend (pl, pid);
+		tmp = tmp->u.e.r;
+	      }
+	      if (tmp->type == E_PROBE) {
+		int pid = _emit_chan_to_probe ((ActId *)tmp->u.e.l);
+		list_iappend (pl, pid);
+	      }
+	      else {
+		Assert (tmp->type == E_AND, "Hmm");
+	      }
+
+	      list_append (p, pl);
+
+	      if (egc->type == E_OR) {
+		egc = egc->u.e.r;
+	      }
+	      else {
+		break;
+	      }
+	    }
+
+	    /* now emit probed clause! */
+	    int pc = _emit_probed_clause (m, p);
+	    list_iappend (gl, pc);
+
+	    list_free (m);
+	    for (listitem_t *li = list_first (p); li; li = list_next (li)) {
+	      list_free ((list_t *) list_value (li));
+	    }
+	    list_free (p);
+	  }
+	  else {
+	    list_t *m = list_new ();
+	    list_t *p = list_new ();
+	    /* singleton guard, no probes */
+	    _emit_one_guard_expr (gc->g, m);
+	    list_iappend (data_gl, list_ivalue (list_tail (m)));
+	    list_append (p, list_new ());
+	    
+	    int pc = _emit_probed_clause (m, p);
+	    
+	    list_free (m);
+	    list_free ((list_t *)list_first (p));
+	    list_free (p);
+
+	    list_iappend (gl, pc);
+	  }
+	  gc = gc->next;
+	}
+      }
+      else {
+	_emit_guardlist (1, c->u.gc, gl);
+      }
 
       /* 2. Emit all statements */
       for (act_chp_gc_t *gc = c->u.gc; gc; gc = gc->next) {
@@ -209,7 +377,13 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
 	_emit_loop (id, gl, idl);
       }
       else if (c->type == ACT_CHP_SELECT) {
-	_emit_select (0, id, gl, idl);
+	if (have_probes) {
+	  _emit_probed_select (id, data_gl, gl, idl);
+	  list_free (data_gl);
+	}
+	else {
+	  _emit_select (0, id, gl, idl);
+	}
       }
       else if (c->type == ACT_CHP_SELECT_NONDET) {
 	_emit_select (1, id, gl, idl);

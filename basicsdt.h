@@ -141,7 +141,7 @@ class BasicSDT : public SDTEngine {
   void _emit_expr_width_conv (int from, int from_w,
 			      int to, int to_w);
   
-  void _emit_expr_const (int eid, int width, int val);
+  void _emit_expr_const (int eid, int width, int val, bool forced);
 
   /* id = variable port for this identifier */
   void _emit_var_read   (int eid, ActId *id);
@@ -167,6 +167,11 @@ class BasicSDT : public SDTEngine {
   void _emit_doloop (int cid, int guard, int stmt);
   
   void _emit_select (int is_nondet, int cid, list_t *guards, list_t *stmts);
+  void _emit_probed_select (int cid, list_t *dataguards,
+			    list_t *guards, list_t *stmts);
+  int _emit_chan_to_probe (ActId *chid);
+  int _emit_probed_clause (list_t *guards, list_t *probe_list);
+
 
   void _emit_begin ();
   void _emit_end (int toplev);
