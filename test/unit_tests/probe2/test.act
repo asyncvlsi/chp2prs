@@ -1,0 +1,23 @@
+defproc prproc(chan?(int) A, B; chan!(int) C)
+{
+  int x;
+  bool b;
+  chp {
+    b+;
+   *[[#A & b -> A?x [] #B & ~b -> B?x]; C!x; b := ~b ]
+  }
+}
+
+defproc alt (chan?(int) A; chan!(int<32>) Y, Z)
+{
+  int<32> y;
+  chp {
+   *[ A?y ; Y!y; A?y; Z!y ]
+  }
+}
+
+defproc probe2(chan?(int) A; chan!(int) Y)
+{
+  alt ax(A);
+  prproc pr(ax.Y, ax.Z, Y);
+}
