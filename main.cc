@@ -268,6 +268,9 @@ int main(int argc, char **argv)
   ActCHPFuncInline *ip = new ActCHPFuncInline (a);
   ip->run (p);
 
+  ActCHPMemory *mp = new ActCHPMemory (a);
+  mp->run (p);
+
   ActDynamicPass *c2p = new ActDynamicPass (a, "chp2prs", "libactchp2prspass.so", "chp2prs");
 
   if (!c2p || (c2p->loaded() == false)) {
