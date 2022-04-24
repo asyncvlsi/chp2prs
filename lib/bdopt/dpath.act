@@ -22,6 +22,7 @@
 import globals;
 import std::gates;
 import "syn/qdi/var.act";
+import "std/arb.act";
 
 namespace syn {
 
@@ -409,9 +410,44 @@ defproc arbiter_builtin <: std::arbiter ()
    std::channel::bd<M> B, Bp;
 }
 {
+   std::raw_arbiter rx(A.r,B.r);
+   bool _u, _v;
+
+   bool _dA[N], _dB[M];
+   bool _ap, _bp;
+
    prs {
- 
-   }
+     rx.u => _u-
+     rx.v => _v-
+
+     ~_u & ~Bp.a => Ap.r+
+     ~_v & ~Ap.a => Bp.r+
+
+     (i:N: A.d[i] => _dA[i]-
+           _dA[i] => Ap.d[i]- )
+
+     (i:M: B.d[i] => _dB[i]-
+           _dB[i] => Bp.d[i]- )
+
+    Ap.a => _ap-
+    Bp.a => _bp-
+    _ap => A.a-
+    _bp => B.a-
+  }
+  sizing {
+    leak_adjust <- 1;
+    p_n_mode <- 1;
+    _u{-1}; _v{-1};
+    Ap.r{-1}; Bp.r{-1};
+    _ap{-1}; _bp{-1};
+    A.a{-1}; B.a{-1}
+  } 
+  sizing {
+    leak_adjust <- 1;
+    p_n_mode <- 0;
+    (;i:N: _dA[i]{-1}; Ap.d[i]{-1});
+    (;i:M: _dB[i]{-1}; Bp.d[i]{-1})
+  } 
 }
 
 }

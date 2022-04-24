@@ -344,8 +344,57 @@ defproc arbiter_builtin <: std::arbiter ()
    std::channel::aMx1of2<M> B, Bp;
 }
 {
-  prs {
+   bool goA, goB;
+   bool rA, _rA, rB, _rB;
+   bool _u, _v;
 
+   std::raw_arbiter rx(rA,rB);
+
+   std::gates::sigbuf<N> sA(goA);
+   std::gates::sigbuf<M> sB(goB);
+
+   bool _at[N], _af[N];
+   bool _bt[M], _bf[M];
+   bool _ap, _bp;
+
+   prs {
+     A.d.d[0].t | A.d.d[0].f => _rA-
+     _rA => rA-
+     B.d.d[0].t | B.d.d[0].f => _rB-
+     _rB => rB-
+
+     rx.u => _u-
+     rx.v => _v-
+
+     ~_u & ~Bp.a => goA+
+     ~_v & ~Ap.a => goB+
+
+    (i:N: A.d.d[i].t & sA.out[i] #> _at[i]-
+          A.d.d[i].f & sA.out[i] #> _af[i]-
+          _at[i] => Ap.d.d[i].t-
+          _af[i] => Ap.d.d[i].f-
+     )
+
+    (i:M: B.d.d[i].t & sB.out[i] #> _bt[i]-
+          B.d.d[i].f & sB.out[i] #> _bf[i]-
+          _bt[i] => Bp.d.d[i].t-
+          _bf[i] => Bp.d.d[i].f-
+     )
+    Ap.a => _ap-
+    Bp.a => _bp-
+    _ap => A.a-
+    _bp => B.a-
+  }
+  sizing {
+    leak_adjust <- 1;
+    p_n_mode <- 1;
+    _rA{-1}; _rB{-1}; rA{-1}; rB{-1};
+    _u{-1}; _v{-1}; goA{-1}; goB{-1};
+    (;i:N: _at[i]{-1};Ap.d.d[i].t{-1};
+           _af[i]{-1};Ap.d.d[i].f{-1});
+    (;i:M: _bt[i]{-1};Bp.d.d[i].t{-1};
+           _bf[i]{-1};Bp.d.d[i].f{-1});
+    _ap{-1}; _bp{-1}; A.a{-1}; B.a{-1}
   }
 }
 

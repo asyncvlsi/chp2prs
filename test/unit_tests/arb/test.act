@@ -1,0 +1,22 @@
+import std;
+
+defproc myproc(chan?(int) A, B; chan!(int) Z) {
+  int x;
+  chp {
+    *[[| #A -> A?x [] #B -> B?x |]; Z!x ]
+  }
+}
+
+defproc alt (chan?(int) A; chan!(int<32>) Y, Z)
+{
+  int<32> y;
+  chp {
+   *[ A?y ; Y!y; A?y; Z!y ]
+  }
+}
+
+defproc arb(chan?(int) A; chan!(int) Y)
+{
+  alt ax(A);
+  myproc pr(ax.Y, ax.Z, Y);
+}
