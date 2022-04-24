@@ -861,21 +861,19 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
 	  Assert (proc, "Why am I here?");
 	  char buf[1024];
 	  int pos;
+	  int found = 0;
 	  ActNamespace::Act()->unmangle_string (proc->getName(), buf, 1024);
 	  for (pos=0; buf[pos]; pos++) {
 	    if (buf[pos] == '<') {
 	      buf[pos] = '\0';
+	      found = 1;
 	      break;
 	    }
 	  }
-	  if (strcmp (buf,  "arbiter") == 0) {
-	    fprintf (fp, "syn::arbiter_builtin");
+	  fprintf (fp, "syn::%s_builtin", buf);
+	  if (found) {
 	    buf[pos] = '<';
 	    fprintf (fp, "%s", buf+pos);
-	  }
-	  else {
-	    warning ("Decomposition of an unknown process; this is unlikely to work");
-	    ActNamespace::Act()->mfprintfproc (fp, proc);
 	  }
 	  fprintf (fp, " %s;\n", vx->getName());
 	}
@@ -899,6 +897,11 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
       }
     }
   }
+
+  if (special_vx) {
+    list_free (special_vx);
+  }
+
   return has_overrides;
 }
 

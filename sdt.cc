@@ -440,16 +440,15 @@ void SDTEngine::run_sdt (Process *p)
     */
     if (p->getns() && p->getns() != ActNamespace::Global()) {
       if (strcmp (p->getns()->getName(), "std") == 0) {
-	char buf[1024];
-	ActNamespace::Act()->unmangle_string (p->getName(), buf, 1024);
-	for (int i=0; buf[i]; i++) {
-	  if (buf[i] == '<') {
-	    buf[i] = '\0';
-	    break;
+	list_t *l = ActNamespace::Act()->getDecompTypes ();
+	if (l) {
+	  for (listitem_t *li = list_first (l); li; li = list_next (li)) {
+	    if (p == (Process *) list_value (li)) {
+	      list_free (l);
+	      return;
+	    }
 	  }
-	}
-	if (strcmp (buf, "arbiter") == 0) {
-	  return;
+	  list_free (l);
 	}
       }
     }
