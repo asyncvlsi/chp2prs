@@ -337,4 +337,17 @@ defproc probed_clause (r1of2 g[N]; sdtchan<1> probe[T];
   }
 }
 
+export
+defproc arbiter_builtin <: std::arbiter ()
++{
+   std::channel::aMx1of2<N> A, Ap;
+   std::channel::aMx1of2<M> B, Bp;
+}
+{
+  prs {
+
+  }
+}
+
+
 }

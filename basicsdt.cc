@@ -724,10 +724,18 @@ BasicSDT::BasicSDT (int isbundled, int isopt, FILE *fpout, const char *ef)
 bool BasicSDT::write_process_definition(FILE *fp, Process * p)
 {
   bool has_overrides = 0;
+  list_t *special_vx;
+
+  special_vx = ActNamespace::Act()->getDecomp (p);
 
   fprintf(fp, "defproc sdt_");
   ActNamespace::Act()->mfprintfproc (fp, p);
   fprintf (fp, " <: ");
+  if (p->getns() != ActNamespace::Global()) {
+    char *nsname = p->getns()->Name();
+    fprintf (fp, "%s::", nsname);
+    FREE (nsname);
+  }
   p->printActName (fp);
   fprintf (fp, " ()\n");
 
@@ -746,15 +754,37 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
   ActInstiter iter(p->CurScope());
   for (iter = iter.begin(); iter != iter.end(); iter++) {
     ValueIdx *vx = *iter;
+    if (special_vx) {
+      /* these are fresh instances introduced during decomposition;
+	 we need to declare them, not refine them!
+      */
+      int sp = 0;
+      for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
+	for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
+	     li = list_next (li)) {
+	  if (vx == (ValueIdx *) list_value (li)) {
+	    sp = 1;
+	    break;
+	  }
+	}
+	if (sp) {
+	  break;
+	}
+      }
+      if (sp) {
+	continue;
+      }
+    }
+
     /* chan variable found */
     if (TypeFactory::isChanType (vx->t)) {
       bw = TypeFactory::bitWidth(vx->t);
       OVERRIDE_OPEN;
       if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
-         fprintf(fp, "  syn::sdtboolchan %s;\n", vx->getName());
+	fprintf(fp, "  syn::sdtboolchan %s;\n", vx->getName());
       }
       else {
-         fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
+	fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
       }
     }
     else if (TypeFactory::isIntType (vx->t)) {
@@ -795,7 +825,80 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
   if (p->getlang() && p->getlang()->getchp()) {
     fprintf (fp, " refine {\n");
   }
-  
+
+  if (special_vx) {
+    /* these are fresh instances introduced during decomposition;
+       we need to declare them, not refine them!
+    */
+    for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
+      for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
+	   li = list_next (li)) {
+	ValueIdx *vx = (ValueIdx *) list_value (li);
+
+	if (TypeFactory::isChanType (vx->t)) {
+	  bw = TypeFactory::bitWidth(vx->t);
+	  if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
+	    fprintf(fp, "  syn::sdtboolchan %s;\n", vx->getName());
+	  }
+	  else {
+	    fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
+	  }
+	}
+	else if (TypeFactory::isIntType (vx->t)) {
+	  bw = TypeFactory::bitWidth(vx->t);
+	  fprintf(fp, "  syn::sdtvar<%d> %s;\n", bw, vx->getName());
+	}
+	else if (TypeFactory::isBoolType (vx->t)) {
+	  fprintf (fp, " syn::sdtboolvar %s;\n", vx->getName());
+	}
+	else if (TypeFactory::isProcessType (vx->t)) {
+	  /*
+	    These are specially inserted processes during process
+	    decomposition, and hence they should have pre-defined
+	    translations in the library
+	  */
+	  Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
+	  Assert (proc, "Why am I here?");
+	  char buf[1024];
+	  int pos;
+	  ActNamespace::Act()->unmangle_string (proc->getName(), buf, 1024);
+	  for (pos=0; buf[pos]; pos++) {
+	    if (buf[pos] == '<') {
+	      buf[pos] = '\0';
+	      break;
+	    }
+	  }
+	  if (strcmp (buf,  "arbiter") == 0) {
+	    fprintf (fp, "syn::arbiter_builtin");
+	    buf[pos] = '<';
+	    fprintf (fp, "%s", buf+pos);
+	  }
+	  else {
+	    warning ("Decomposition of an unknown process; this is unlikely to work");
+	    ActNamespace::Act()->mfprintfproc (fp, proc);
+	  }
+	  fprintf (fp, " %s;\n", vx->getName());
+	}
+	else if (TypeFactory::isStructure (vx->t)) {
+	  OVERRIDE_OPEN;
+	  fprintf (fp, " sdt_");
+	  Data *d = dynamic_cast <Data *> (vx->t->BaseType());
+	  Assert (d, "Why am I here?");
+	  ActNamespace::Act()->mfprintfproc (fp, d);
+	  fprintf (fp, " %s;\n", vx->getName());
+	}
+      }
+    }
+    for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
+      for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
+	   li = list_next (li)) {
+	ValueIdx *vx = (ValueIdx *) list_value (li);
+	if (vx->hasConnection()) {
+	  Scope::printConnections (fp, vx->connection(), true);
+	}
+      }
+    }
+  }
   return has_overrides;
 }
 

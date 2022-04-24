@@ -271,6 +271,9 @@ int main(int argc, char **argv)
   ActCHPMemory *mp = new ActCHPMemory (a);
   mp->run (p);
 
+  ActCHPArbiter *arbp = new ActCHPArbiter (a);
+  arbp->run (p);
+
   ActDynamicPass *c2p = new ActDynamicPass (a, "chp2prs", "libactchp2prspass.so", "chp2prs");
 
   if (!c2p || (c2p->loaded() == false)) {

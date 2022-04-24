@@ -428,6 +428,31 @@ void SDTEngine::run_sdt (Process *p)
     }
     delete macro;
     chp = p->getlang()->getchp();
+
+    /*
+      For all built-in translations with production rules that
+      are specified in the chp2prs confguration file, we need to
+      omit syntax-directed translation since we already have the
+      circuit in the library.
+
+      The CHP for the standard components must be in a namespace
+      called "std" (could be nested)
+    */
+    if (p->getns() && p->getns() != ActNamespace::Global()) {
+      if (strcmp (p->getns()->getName(), "std") == 0) {
+	char buf[1024];
+	ActNamespace::Act()->unmangle_string (p->getName(), buf, 1024);
+	for (int i=0; buf[i]; i++) {
+	  if (buf[i] == '<') {
+	    buf[i] = '\0';
+	    break;
+	  }
+	}
+	if (strcmp (buf, "arbiter") == 0) {
+	  return;
+	}
+      }
+    }
   }
   else {
     _emit_begin ();
