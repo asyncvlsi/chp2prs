@@ -22,6 +22,7 @@
 #include <act/lang.h>
 #include <act/extmacro.h>
 #include <common/int.h>
+#include <string.h>
 #include "sdt.h"
 
 #ifndef MAX
