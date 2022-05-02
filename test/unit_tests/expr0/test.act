@@ -1,11 +1,13 @@
+
+
 defproc expr0() {
   int<1> x;
   int<32> y;
   int<32> z;
-  
+
   chp {
-    z:=16384;
-    y:=32768;
+    z := 16384;
+    y := 32768;
     x := int((z > y) | (y > z));
     x := x
   }

@@ -1,8 +1,11 @@
 
-defproc bufferb (chan?(bool) A; chan!(bool) Y)
-{
+
+defproc bufferb(chan?(bool) A; chan!(bool) Y) {
   bool y;
   chp {
-   *[ A?y ; Y!y ]
+    *[
+      A?y;
+      Y!y
+    ]
   }
 }

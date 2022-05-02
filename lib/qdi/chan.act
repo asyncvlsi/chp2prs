@@ -1,3 +1,4 @@
+
 /*************************************************************************
  *
  *  Copyright (c) 2020 Rajit Manohar
@@ -24,25 +25,25 @@ open std::data;
 open std::channel;
 
 namespace syn {
+  export deftype sdtvar <: Mx1of2 () {}
+  export deftype sdtboolvar <: bool (sdtvar<1> x) {}
 
-export deftype sdtvar <: Mx1of2 () { }
-export deftype sdtboolvar <: bool (sdtvar<1> x) { }
+  // specify qdi datapath channels
+  export defchan sdtchan <: aMx1of2 () {}
+  export defchan sdtboolchan <: chan(bool) (sdtchan<1> x) {}
 
-// specify qdi datapath channels
-export defchan sdtchan <: aMx1of2 () { }
-export defchan sdtboolchan <: chan(bool) (sdtchan<1> x) { }
+  export template<pint N>
+  defchan rx1of2 <: chan(int<N>) (bool r; Mx1of2<N> d) {}
+  export defchan sdtexprchan <: rx1of2 () {}
 
-export template<pint N>
-defchan rx1of2 <: chan(int<N>) (bool r; Mx1of2<N> d) { }
-export defchan sdtexprchan <: rx1of2 () { }
+  export
+  defchan r1of2 <: sdtexprchan<1> (bool t, f) {
+    t = d.d[0].t;
+    f = d.d[0].f;
+  }
 
-export defchan r1of2 <: sdtexprchan<1> (bool t, f)
-{ t = d.d[0].t; f = d.d[0].f; }
-
-export template<pint W>
-defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c)
-{
-  e.d = c.d;
+  export template<pint W>
+  defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c) {
+    e.d = c.d;
+  }
 }
-
-}  

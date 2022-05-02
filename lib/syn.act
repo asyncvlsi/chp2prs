@@ -1,3 +1,4 @@
+
 /*************************************************************************
  *
  *  Copyright (c) 2020 Rajit Manohar
@@ -23,222 +24,246 @@ import globals;
 import std::gates;
 
 /* Syntax directed translation */
-  
+
 namespace syn {
+  /*-- variable state --*/
+  export template<pint W; pbool I>
+  defproc var_init(sdtvar<W> v; bool? wt[W], wf[W]);
 
-/*-- variable state --*/
-export template<pint W; pbool I>
-defproc var_init(sdtvar<W> v; bool? wt[W], wf[W]);
+  /*-- var with ports --*/
+  export template<pint W; pint NI, NO>
+  defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO]);
 
-/*-- var with ports --*/
-export template<pint W; pint NI,NO>
-defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO]);
-
-
-/*-- bool var conversion --*/
-export template<pint NI,NO>
-defproc var_bool_ports(sdtboolvar v; sdtchan<1> in[NI]; sdtexprchan<1> out[NO])
-{
-  var_int_ports<1,NI,NO> x;
-  (i:NI: x.in[i]=in[i];)
-  (i:NO: x.out[i]=out[i];)
-  x.v = v.x;  
-}  
-
-/*-- initialize -- */
-export
-defproc sinit (a1of1 c)
-{
-   bool final_sig, _final_sig;
-
-   spec {
-     timing final_sig- -> c.r+
-   }
-
-   prs { Reset | final_sig => c.r-
-          Reset -> final_sig-
-          c.a => _final_sig-
-          ~_final_sig -> final_sig+ 
-   }
-  sizing {
-    leak_adjust <- 1;
-    p_n_mode <- 1;
-    c.r{-1}; 
-    _final_sig{-1};
-    final_sig{-1}
-  }
-}
-
-
-/*-- basic statements --*/
-export
-defproc sskip(a1of1 c)
-{
-  c.r = c.a;
-}
-
-/*-- compound statements --*/
-export template<pint N>
-defproc loop(a1of1? c; r1of2? g[N]; a1of1! s[N])
-{
-  /* loop: evaluate guards serially */
-  (i:N-1: g[i].f = g[i+1].r;)
-  g[N-1].f = c.a;
-    
-  std::gates::ortree<N,false> ot;
-  (i:N: s[i](.r=g[i].t, .a=ot.in[i]); )
-
-  bool _r;
-
-  spec {
-    timing ot.out- -> g[0].r+
+  /*-- bool var conversion --*/
+  export template<pint NI, NO>
+  defproc var_bool_ports(
+    sdtboolvar v;
+    sdtchan<1> in[NI];
+    sdtexprchan<1> out[NO]
+  ) {
+    var_int_ports<1, NI, NO> x;
+    ( i : NI:
+      x.in[i] = in[i];
+    )
+    ( i : NO:
+      x.out[i] = out[i];
+    )
+    x.v = v.x;
   }
 
-  prs {
-    c.r => _r-
-    _r | ot.out => g[0].r-
+  /*-- initialize -- */
+  export
+  defproc sinit(a1of1 c) {
+    bool final_sig, _final_sig;
+
+    spec {
+      timing final_sig- -> c.r+
+    }
+
+    prs {
+      Reset | final_sig => c.r-
+      Reset -> final_sig-
+      c.a => _final_sig-
+      ~_final_sig -> final_sig+
+    }
+    sizing{
+      leak_adjust <- 1;
+      p_n_mode <- 1;
+      c.r{- 1};
+      _final_sig{- 1};
+      final_sig{- 1}
+    }
   }
 
-  sizing {
-    leak_adjust <- 1;
-    p_n_mode <- 1;
-    _r{-1}; 
-    g[0].r{-1}
+  /*-- basic statements --*/
+  export
+  defproc sskip(a1of1 c) {
+    c.r = c.a;
   }
-}
 
-export template<pint N;pbool has_else>
-defproc select(a1of1 c; r1of2 g[N]; a1of1! s[N+int(has_else)])
-{
-  (i:N-1: g[i].f = g[i+1].r;)
+  /*-- compound statements --*/
+  export template<pint N>
+  defproc loop(a1of1? c; r1of2? g[N]; a1of1! s[N]) {
+    /* loop: evaluate guards serially */
+    ( i : N - 1:
+      g[i].f = g[i + 1].r;
+    )
+    g[N - 1].f = c.a;
 
-  c.r = g[0].r;
+    std::gates::ortree<N, false> ot;
+    ( i : N:
+      s[i](.r = g[i].t, .a = ot.in[i]);
+    )
 
-  std::gates::ortree<N+int(has_else),false> ot;
-  (i:N:  s[i](.r=g[i].t, .a=ot.in[i]);)
-  [ has_else -> s[N].r = g[N-1].f;
-                s[N].a = ot.in[N];
-  ]
-   
-  ot.out = c.a;    
-}
+    bool _r;
 
-export template<pint N; pbool has_else>
-defproc parselect(a1of1 c; r1of2 g[N]; a1of1 s[N+int(has_else)])
-{
-  std::gates::sigbuf<N> sig(c.r);
-  (i:N: sig.out[i] = g[i].r;)
+    spec {
+      timing ot.out- -> g[0].r+
+    }
 
-  std::gates::ortree<N+int(has_else),true> ot;
-  (i:N: s[i](.r = g[i].t, .a = ot.in[i]);)
-  [ has_else -> s[N].r = g[N-1].f; s[N].a = ot.in[N]; ]
+    prs {
+      c.r => _r-
+      _r | ot.out => g[0].r-
+    }
 
-  bool _x[N];
-  prs {
-    (i:N: g[i].t | g[i].f => _x[i]-)
+    sizing{
+      leak_adjust <- 1;
+      p_n_mode <- 1;
+      _r{- 1};
+      g[0].r{- 1}
+    }
   }
-  std::gates::ctree<N,false> ct(_x);
-  prs {
-    ct.out & ot.out #> c.a-
-  }
-  sizing {
-    leak_adjust <- 1;
-    p_n_mode <- 1;
-    c.a{-1};
-    (;j:N: _x[j]{-1})
-  }
-}
 
-/*
+  export template<pint N; pbool has_else>
+  defproc select(a1of1 c; r1of2 g[N]; a1of1! s[N + int(has_else)]) {
+    ( i : N - 1:
+      g[i].f = g[i + 1].r;
+    )
+
+    c.r = g[0].r;
+
+    std::gates::ortree<N + int(has_else), false> ot;
+    ( i : N:
+      s[i](.r = g[i].t, .a = ot.in[i]);
+    )
+    [ has_else ->
+      s[N].r = g[N - 1].f;
+      s[N].a = ot.in[N]; ]
+
+    ot.out = c.a;
+  }
+
+  export template<pint N; pbool has_else>
+  defproc parselect(a1of1 c; r1of2 g[N]; a1of1 s[N + int(has_else)]) {
+    std::gates::sigbuf<N> sig(c.r);
+    ( i : N:
+      sig.out[i] = g[i].r;
+    )
+
+    std::gates::ortree<N + int(has_else), true> ot;
+    ( i : N:
+      s[i](.r = g[i].t, .a = ot.in[i]);
+    )
+    [ has_else ->
+      s[N].r = g[N - 1].f;
+      s[N].a = ot.in[N]; ]
+
+    bool _x[N];
+    prs {
+      ( i : N :  g[i].t | g[i].f => _x[i]- )
+    }
+    std::gates::ctree<N, false> ct(_x);
+    prs {
+      ct.out & ot.out #> c.a-
+    }
+    sizing{
+      leak_adjust <- 1;
+      p_n_mode <- 1;
+      c.a{- 1};
+      (; j : N:
+        _x[j]{- 1}
+      )
+    }
+  }
+
+  /*
    This generates one probed guard for a selection statement. It
    depends on the channel type, so the implementation is in the qdi/
    or bdopt/ directories.
  */
-export template<pint N; pint idx[N]; pint T>
-defproc probed_clause (r1of2 g[N]; sdtchan<1> probe[T]; bool! out);
+  export template<pint N; pint idx[N]; pint T>
+  defproc probed_clause(r1of2 g[N]; sdtchan<1> probe[T]; bool! out);
 
-export 
-defproc dummy_probed_clause (r1of2 g; bool! out) { out = g.t; }
-
-export template<pint W>
-defproc sdtchan_to_probe (sdtchan<W> ch; sdtchan<1> probe);
-
-export template<pint N,M>
-defproc probed_select(a1of1 c; r1of2 g[M]; bool probe_out[N]; a1of1 s[N])
-{
-  /* evaluate guards */
-  std::gates::sigbuf<M> sig(c.r);
-  (i:M: sig.out[i] = g[i].r;)
-
-  std::gates::ortree<N,true> ot;
-  (i:N: s[i](.r = probe_out[i], .a = ot.in[i]);)
-
-  bool _x[M];
-  prs {
-    (i:M: g[i].t | g[i].f => _x[i]-)
-  }
-  std::gates::ctree<M,false> ct(_x);
-  bool _ca;
-  prs {
-    ct.out & ot.out #> c.a-
-  }
-  sizing {
-    leak_adjust <- 1;
-    p_n_mode <- 1;
-    c.a{-1};
-    _ca{-1};
-    (;j:M: _x[j]{-1})
-  }
-}
-
-export 
-defproc doloop(a1of1? c; r1of2 g; a1of1! s)
-{
-  bool _r;
-
-  s.a = g.r;
-  c.a = g.f;
-
-  spec {
-    timing g.t- -> s.r+
+  export
+  defproc dummy_probed_clause(r1of2 g; bool! out) {
+    out = g.t;
   }
 
-  prs {
-    c.r => _r-
-    _r | g.t => s.r-
+  export template<pint W>
+  defproc sdtchan_to_probe(sdtchan<W> ch; sdtchan<1> probe);
+
+  export template<pint N, M>
+  defproc probed_select(a1of1 c; r1of2 g[M]; bool probe_out[N]; a1of1 s[N]) {
+    /* evaluate guards */
+    std::gates::sigbuf<M> sig(c.r);
+    ( i : M:
+      sig.out[i] = g[i].r;
+    )
+
+    std::gates::ortree<N, true> ot;
+    ( i : N:
+      s[i](.r = probe_out[i], .a = ot.in[i]);
+    )
+
+    bool _x[M];
+    prs {
+      ( i : M :  g[i].t | g[i].f => _x[i]- )
+    }
+    std::gates::ctree<M, false> ct(_x);
+    bool _ca;
+    prs {
+      ct.out & ot.out #> c.a-
+    }
+    sizing{
+      leak_adjust <- 1;
+      p_n_mode <- 1;
+      c.a{- 1};
+      _ca{- 1};
+      (; j : M:
+        _x[j]{- 1}
+      )
+    }
   }
-  sizing {
-    leak_adjust <- 1;
-    p_n_mode <- 1;
-    _r{-1}; s.r{-1}
+
+  export
+  defproc doloop(a1of1? c; r1of2 g; a1of1! s) {
+    bool _r;
+
+    s.a = g.r;
+    c.a = g.f;
+
+    spec {
+      timing g.t- -> s.r+
+    }
+
+    prs {
+      c.r => _r-
+      _r | g.t => s.r-
+    }
+    sizing{
+      leak_adjust <- 1;
+      p_n_mode <- 1;
+      _r{- 1};
+      s.r{- 1}
+    }
   }
-}
 
+  /*-- composition --*/
+  export template<pint N>
+  defproc comma(a1of1? c; a1of1 stmts[N]) {
+    /* fanout driver */
+    std::gates::sigbuf<N> s(c.r);
 
-/*-- composition --*/
-export template<pint N>
-defproc comma(a1of1? c; a1of1 stmts[N])
-{
-  /* fanout driver */
-  std::gates::sigbuf<N> s(c.r);
-  
-  (i:N: s.out[i] = stmts[i].r;)
-    
-  /* completion tree */
-  std::gates::ctree<N,false> ct(,c.a);
-  (i:N: ct.in[i] = stmts[i].a;)
-}
+    ( i : N:
+      s.out[i] = stmts[i].r;
+    )
 
-
-/*-- full sequencer --*/
-export defproc fullseq (a1of1? go; a1of1! r)
-{
-  bool x, _gor, _goa, _ra;
-
-  spec {
-    timing x- -> r.r+
+    /* completion tree */
+    std::gates::ctree<N, false> ct(, c.a);
+    ( i : N:
+      ct.in[i] = stmts[i].a;
+    )
   }
-  prs {
+
+  /*-- full sequencer --*/
+  export
+  defproc fullseq(a1of1? go; a1of1! r) {
+    bool x, _gor, _goa, _ra;
+
+    spec {
+      timing x- -> r.r+
+    }
+    prs {
       /**XXX FIX ***/
       ~Reset & ~x & ~_gor -> r.r+
       ~_ra -> x+
@@ -249,180 +274,215 @@ export defproc fullseq (a1of1? go; a1of1! r)
       go.r => _gor-
       _goa => go.a-
       r.a => _ra-
- }
-   sizing {
-    leak_adjust <- 1;
-    p_n_mode <- 1;
-    r.r{-1}; 
-    x{-1};
-    _goa{-1};
-    _gor{-1};
-    go.a{-1};
-    _ra{-1}
     }
-}
-  
-export template<pint N>
-defproc semi(a1of1? c; a1of1! stmts[N])
-{
-  fullseq f[N];
-  (i:N: f[i].r = stmts[i];)
-  (i:N-1: f[i].go.a = f[i+1].go.r;)
-  c.r = f[0].go.r;
-  c.a = f[N-1].go.a;
-}
-
-export template<pint N>
-defproc semiopt(a1of1? c; a1of1! stmts[N])
-{
-  c.r = stmts[0].r;
-  c.a = stmts[N-1].a;
-  (i:N-1: stmts[i].a = stmts[i+1].r;)
-}
-
-export template<pint N>
-defproc ctrl_mux(a1of1? c[N]; a1of1! cout)
-{
-  std::gates::ortree<N,false> ot;
-  (i:N: ot.in[i] = c[i].r;)
-  ot.out = cout.r;
-  bool _ack[N];
-  prs {
-    (i:N: cout.a & c[i].r #> _ack[i]-
-          _ack[i] => c[i].a-
-     )
+    sizing{
+      leak_adjust <- 1;
+      p_n_mode <- 1;
+      r.r{- 1};
+      x{- 1};
+      _goa{- 1};
+      _gor{- 1};
+      go.a{- 1};
+      _ra{- 1}
+    }
   }
-  sizing {
-    leak_adjust <- 1;
-    p_n_mode <- 1;
 
-    (;i:N: _ack[i] {-1});
-    (;i:N: c[i].a {-1})
+  export template<pint N>
+  defproc semi(a1of1? c; a1of1! stmts[N]) {
+    fullseq f[N];
+    ( i : N:
+      f[i].r = stmts[i];
+    )
+    ( i : N - 1:
+      f[i].go.a = f[i + 1].go.r;
+    )
+    c.r = f[0].go.r;
+    c.a = f[N - 1].go.a;
   }
-}
 
-export template<pint W>
-defproc transfer(a1of1? c; sdtexprchan<W> e; sdtchan<W> ch);
+  export template<pint N>
+  defproc semiopt(a1of1? c; a1of1! stmts[N]) {
+    c.r = stmts[0].r;
+    c.a = stmts[N - 1].a;
+    ( i : N - 1:
+      stmts[i].a = stmts[i + 1].r;
+    )
+  }
+
+  export template<pint N>
+  defproc ctrl_mux(a1of1? c[N]; a1of1! cout) {
+    std::gates::ortree<N, false> ot;
+    ( i : N:
+      ot.in[i] = c[i].r;
+    )
+    ot.out = cout.r;
+    bool _ack[N];
+    prs {
+      ( i : N :
+        cout.a & c[i].r #> _ack[i]-
+        _ack[i] => c[i].a- )
+    }
+    sizing{
+      leak_adjust <- 1;
+      p_n_mode <- 1;
+
+      (; i : N:
+        _ack[i]{- 1}
+      );
+      (; i : N:
+        c[i].a{- 1}
+      )
+    }
+  }
+
+  export template<pint W>
+  defproc transfer(a1of1? c; sdtexprchan<W> e; sdtchan<W> ch);
+
+  /*-- used for direct variable write --*/
+  export template<pint W> defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);
+
+  /*-- used for varport write --*/
+  export template<pint W, W2>
+  defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port);
+
+  // The same as the case above, but for a width of "0" on the second variable.
+  // This is to avoid a length-0 array error
+  export template<pint W> defproc recvport_drop(a1of1 c; sdtchan<W> ch);
+
+  export template<pint W, N> defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N]);
+
+  export template<pint W, N>
+  defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N]);
+
+  export namespace expr {
+
+    function max(pint a, b) : pint {
+      chp {
+        self := (a > b) ? a : b
+      }
+    }
 
 
-/*-- used for direct variable write --*/
-export template<pint W>
-defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var);
+    function min(pint a, b) : pint {
+      chp {
+        self := (a < b) ? a : b
+      }
+    }
 
-/*-- used for varport write --*/
-export template<pint W, W2>
-defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port);
+    export
+    defproc null(sdtexprchan<1> out) {
+      prs {}
+    }
 
-// The same as the case above, but for a width of "0" on the second variable.
-// This is to avoid a length-0 array error
-export template<pint W>
-defproc recvport_drop(a1of1 c; sdtchan<W> ch);
+    export template<pint W>
+    defproc nullint(sdtexprchan<W> out) {
+      prs {}
+    }
 
-export template<pint W,N>
-defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N]);
+    export template<pint W1, W2>
+    defproc and(
+      sdtexprchan<W1> a;
+      sdtexprchan<W2> b;
+      sdtexprchan<max(W1, W2)> out
+    );
 
-export template<pint W,N>
-defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N]);
+    export template<pint W1, W2>
+    defproc or(
+      sdtexprchan<W1> a;
+      sdtexprchan<W2> b;
+      sdtexprchan<max(W1, W2)> out
+    );
 
-export namespace expr {
+    export template<pint W1, W2>
+    defproc xor(
+      sdtexprchan<W1> a;
+      sdtexprchan<W2> b;
+      sdtexprchan<max(W1, W2)> out
+    );
 
-function max(pint a, b) : pint
-{
- chp {
-   self := (a > b) ? a : b
- }     
-}
+    export template<pint W1, W2>
+    defproc add(
+      sdtexprchan<W1> a;
+      sdtexprchan<W2> b;
+      sdtexprchan<max(W1, W2) + 1> out
+    );
 
-function min(pint a, b) : pint
-{
- chp {
-   self := (a < b) ? a : b
- }     
-}
+    export template<pint W1, W2>
+    defproc sub(
+      sdtexprchan<W1> a;
+      sdtexprchan<W2> b;
+      sdtexprchan<max(W1, W2) + 1> out
+    );
 
-export 
-defproc null(sdtexprchan<1> out) { prs { } }
+    export template<pint W1, W2>
+    defproc mult(
+      sdtexprchan<W1> a;
+      sdtexprchan<W2> b;
+      sdtexprchan<W1 + W2> out
+    );
 
-export template<pint W>
-defproc nullint(sdtexprchan<W> out) { prs { } }
+    export template<pint W1, W2>
+    defproc div(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
 
-export template<pint W1,W2>
-defproc and(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out);
+    export template<pint W1, W2>
+    defproc mod(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W2> out);
 
-export template<pint W1,W2>
-defproc or(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out);
+    export template<pint W1, W2>
+    defproc lsl(
+      sdtexprchan<W1> a;
+      sdtexprchan<W2> b;
+      sdtexprchan<W1 + (1 << W2) - 1> out
+    );
 
-export template<pint W1,W2>
-defproc xor(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)> out);
+    export template<pint W1, W2>
+    defproc lsr(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
 
-  
-export template<pint W1,W2>
-defproc add(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out);
+    export template<pint W1, W2>
+    defproc asr(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
 
-export template<pint W1,W2>
-defproc sub(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<max(W1,W2)+1> out);
+    export template<pint W1, W2>
+    defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
-export template<pint W1,W2>
-defproc mult(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+W2> out);
+    export template<pint W1, W2>
+    defproc gt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
-export template<pint W1,W2>
-defproc div(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
-  
-export template<pint W1,W2>
-defproc mod(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W2> out);
-  
-export template<pint W1,W2>
-defproc lsl(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1+(1<<W2)-1> out);
+    export template<pint W1, W2>
+    defproc le(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
-export template<pint W1,W2>
-defproc lsr(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
-  
-export template<pint W1,W2>
-defproc asr(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<W1> out);
+    export template<pint W1, W2>
+    defproc ge(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
-export template<pint W1,W2>
-defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+    export template<pint W1, W2>
+    defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
-export template<pint W1,W2>
-defproc gt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
-  
-export template<pint W1,W2>
-defproc le(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+    export template<pint W1, W2>
+    defproc eq(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
-export template<pint W1,W2>
-defproc ge(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
-  
-export template<pint W1,W2>
-defproc lt(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+    export template<pint W1, W2>
+    defproc ne(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
 
-export template<pint W1,W2>
-defproc eq(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+    export template<pint W>
+    defproc uminus(sdtexprchan<W> a; sdtexprchan<W> out);
 
-export template<pint W1,W2>
-defproc ne(sdtexprchan<W1> a; sdtexprchan<W2> b; sdtexprchan<1> out);
+    export template<pint W> defproc not(sdtexprchan<W> a; sdtexprchan<W> out);
 
-export template<pint W>
-defproc uminus(sdtexprchan<W> a; sdtexprchan<W> out);
-  
-export template<pint W>
-defproc not(sdtexprchan<W> a; sdtexprchan<W> out);
-  
-export template<pint W1,W2>
-defproc ite(sdtexprchan<1> a; sdtexprchan<W1> opt1; sdtexprchan<W2> opt2; sdtexprchan<max(W1,W2)> out);
+    export template<pint W1, W2>
+    defproc ite(
+      sdtexprchan<1> a;
+      sdtexprchan<W1> opt1;
+      sdtexprchan<W2> opt2;
+      sdtexprchan<max(W1, W2)> out
+    );
 
-export template<pint W1, W2>
-defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out);
+    export template<pint W1, W2>
+    defproc widthconv(sdtexprchan<W1> a; sdtexprchan<W2> out);
 
-export template<pint W,V>
-defproc const(sdtexprchan<W> out);
+    export template<pint W, V> defproc const(sdtexprchan<W> out);
 
-/*-- we need to fix this for variables ---*/
-export template<pint W>
-defproc writeport(bool! wt[W], wf[W]; sdtvar<W> var; sdtchan<W> in);
+    /*-- we need to fix this for variables ---*/
+    export template<pint W>
+    defproc writeport(bool! wt[W], wf[W]; sdtvar<W> var; sdtchan<W> in);
 
-export template<pint W>
-defproc readport(sdtvar<W> var; sdtexprchan<W> out);
-
-}
-
+    export template<pint W> defproc readport(sdtvar<W> var; sdtexprchan<W> out);
+  }
 }

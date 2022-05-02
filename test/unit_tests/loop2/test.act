@@ -1,7 +1,12 @@
-defproc loop2 (chan?(int<32>) A) {
+
+
+defproc loop2(chan?(int<32>) A) {
   int<32> y;
-  
+
   chp {
-     *[ A?y;skip ]
+    *[
+      A?y;
+      skip
+    ]
   }
 }

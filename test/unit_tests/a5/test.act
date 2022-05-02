@@ -1,8 +1,11 @@
-defproc a5(chan!(int) x) {
 
+
+defproc a5(chan!(int) x) {
   int y;
 
   chp {
-	y:=65;x!y;skip
+    y := 65;
+    x!y;
+    skip
   }
 }

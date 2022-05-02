@@ -1,15 +1,17 @@
-defproc assign2 () {
+
+
+defproc assign2() {
   int<1> x;
   int<1> y;
   int<1> z;
   int<1> v;
 
   chp {
-    x:=1;
-    y:=0;
-    z:=1;
-    v:= (x & z) | y;   // 1
-    x:=0;
-    v:=v
+    x := 1;
+    y := 0;
+    z := 1;
+    v := (x & z) | y; // 1
+    x := 0;
+    v := v
   }
 }
