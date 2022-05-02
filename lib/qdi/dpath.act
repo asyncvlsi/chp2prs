@@ -1,3 +1,4 @@
+
 /*************************************************************************
  *
  *  Copyright (c) 2020 Rajit Manohar
@@ -24,8 +25,7 @@ import std::gates;
 import "syn/qdi/var.act";
 
 namespace syn {
-
-/*
+  /*
  * Datapath elements
  *
  *   Need to define:
@@ -36,367 +36,452 @@ namespace syn {
  *
  */
 
-
-/**
+  /**
  * initialises a variable and creates the appropriate read and write ports.
  * @param W: width of the variable
  * @param NO: number of output ports
  * @param NI: number of input ports
  */
-export template<pint W; pint NI,NO>
-defproc var_int_ports(sdtvar<W> v; sdtchan<W> in[NI]; sdtexprchan<W> out[NO])
-{
-  var_init<W,false> x(v);
-  [ NO > 0 -> expr::readport<W> r[NO]; 
-              (i:NO: r[i](.var=x.v, .out=out[i]);)
-  ]
+  export template<pint W; pint NI, NO>
+  defproc var_int_ports(
+    sdtvar<W> v;
+    sdtchan<W> in[NI];
+    sdtexprchan<W> out[NO]
+  ) {
+    var_init<W, false> x(v);
+    [ NO > 0 ->
+      expr::readport<W> r[NO];
+      ( i : NO:
+        r[i](.var = x.v, .out = out[i]);
+      ) ]
 
-  expr::writeport<W> w(x.wt,x.wf,v);
+    expr::writeport<W> w(x.wt, x.wf, v);
 
-  [ NI = 1 -> w.in=in[0];
-  [] NI > 1 -> 
+    [
+      NI = 1 ->
+      w.in = in[0];
+    [] NI > 1 ->
       bool _a[NI];
-      std::gates::ortree<NI,false> ot[W];
-      std::gates::ortree<NI,false> of[W];
-      (i:W: (j:NI: 
-                in[j].d.d[i].t = ot[i].in[j];
-                in[j].d.d[i].f = of[i].in[j];)
-                w.in.d.d[i].f = of[i].out;
-                w.in.d.d[i].t = ot[i].out;)
-      prs {
-        (i:NI: 
-          w.in.a & (in[i].d.d[0].t|in[i].d.d[0].f) -> _a[i]-
-          ~w.in.a & ~(in[i].d.d[0].t|in[i].d.d[0].f) -> _a[i]+
-          _a[i] => in[i].a-
+      std::gates::ortree<NI, false> ot[W];
+      std::gates::ortree<NI, false> of[W];
+      ( i : W:
+        ( j : NI:
+          in[j].d.d[i].t = ot[i].in[j];
+          in[j].d.d[i].f = of[i].in[j];
         )
+        w.in.d.d[i].f = of[i].out;
+        w.in.d.d[i].t = ot[i].out;
+      )
+      prs {
+        ( i : NI :
+          w.in.a & (in[i].d.d[0].t | in[i].d.d[0].f) -> _a[i]-
+          ~w.in.a & ~(in[i].d.d[0].t | in[i].d.d[0].f) -> _a[i]+
+          _a[i] => in[i].a- )
       }
-      (i:NI: sizing {p_n_mode <- 1; leak_adjust <- 1; in[i].a{-1}; _a[i]{-1}})
-  ]
-}
+      ( i : NI:
+        sizing{
+          p_n_mode <- 1;
+          leak_adjust <- 1;
+          in[i].a{- 1};
+          _a[i]{- 1}
+        }
+      )
+    ]
+  }
 
-/*
+  /*
  * this is a workarround for simulation cases where you have 0 read ports, in a physical implementation that would not make sense,
  * zero length arrays are not allowed.
  */
-export template<pint W; pint NI>
-defproc var_int_in_ports(sdtvar<W> v; sdtchan<W> in[NI])
-{
-  var_int_ports<W,NI,1> ports(v,in);
-  ports.out[0].r = GND;
-}
+  export template<pint W; pint NI>
+  defproc var_int_in_ports(sdtvar<W> v; sdtchan<W> in[NI]) {
+    var_int_ports<W, NI, 1> ports(v, in);
+    ports.out[0].r = GND;
+  }
 
-export template<pint W; pint NO>
-defproc var_int_out_ports(sdtvar<W> v; sdtexprchan<W> out[NO])
-{
-  var_int_ports<W,1,NO> ports(v,,out);
-  (i:W: ports.in[0].d.d[i].t = GND; ports.in[0].d.d[i].f = GND;)
-}
-  
-/*
+  export template<pint W; pint NO>
+  defproc var_int_out_ports(sdtvar<W> v; sdtexprchan<W> out[NO]) {
+    var_int_ports<W, 1, NO> ports(v, , out);
+    ( i : W:
+      ports.in[0].d.d[i].t = GND;
+      ports.in[0].d.d[i].f = GND;
+    )
+  }
+
+  /*
  * this is a workarround for simulation cases where you have 0 read ports, in a physical implementation that would not make sense,
  * zero length arrays are not allowed.
  */
-export template<pint NI>
-defproc var_bool_in_ports(sdtboolvar v; sdtchan<1> in[NI])
-{
-  var_int_ports<1,NI,1> x;
-  (i:NI: x.in[i]=in[i];)
-  x.out[0].r = GND;
-  x.v = v.x;  
-} 
+  export template<pint NI>
+  defproc var_bool_in_ports(sdtboolvar v; sdtchan<1> in[NI]) {
+    var_int_ports<1, NI, 1> x;
+    ( i : NI:
+      x.in[i] = in[i];
+    )
+    x.out[0].r = GND;
+    x.v = v.x;
+  }
 
-export template<pint NO>
-defproc var_bool_out_ports(sdtboolvar v; sdtexprchan<1> out[NO])
-{
-  var_int_ports<1,1,NO> x;
-  (i:NO: x.out[i]=out[i];)
-  x.in[0].d.d[0].t = GND; x.in[0].d.d[0].f = GND;
-  x.v = v.x;  
-} 
-  
+  export template<pint NO>
+  defproc var_bool_out_ports(sdtboolvar v; sdtexprchan<1> out[NO]) {
+    var_int_ports<1, 1, NO> x;
+    ( i : NO:
+      x.out[i] = out[i];
+    )
+    x.in[0].d.d[0].t = GND;
+    x.in[0].d.d[0].f = GND;
+    x.v = v.x;
+  }
 
-/**
+  /**
  * a transfer triggers a pull channel (sdtexprchan) and puts the result on a push channel (sdtchan).
  * @param W: width of the push and pull channels
  */
-export template<pint W>
-defproc transfer(a1of1? c; sdtexprchan<W> e; sdtchan<W> ch)
-{
-  c.r = e.r;
-  e.d = ch.d;
-  c.a = ch.a;
-}
+  export template<pint W>
+  defproc transfer(a1of1? c; sdtexprchan<W> e; sdtchan<W> ch) {
+    c.r = e.r;
+    e.d = ch.d;
+    c.a = ch.a;
+  }
 
-/**
+  /**
  * recv is a write port - so a write to a variable - that is triggered/gated by a ctl channel.
  * @param W: width of the variable and channel
  */
-export template<pint W>
-defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var)
-{
-  std::gates::sigbuf<W> s(c.r);
+  export template<pint W>
+  defproc recv(a1of1 c; sdtchan<W> ch; sdtvar<W> var) {
+    std::gates::sigbuf<W> s(c.r);
 
-  bool wack[W];
-    
-  prs {
-    (i:W:
-       [keeper=0] s.out[i] & ch.d.d[i].t -> var.d[i].f-
-       [keeper=0] s.out[i] & ch.d.d[i].f -> var.d[i].t-
+    bool wack[W];
 
-      s.out[i] & ((var.d[i].t & ch.d.d[i].t) | (var.d[i].f & ch.d.d[i].f)) -> wack[i]-
-      ~s.out[i]  & ~ch.d.d[i].t & ~ch.d.d[i].f -> wack[i]+
-     )
+    prs {
+      ( i : W :
+        [keeper=0] s.out[i] & ch.d.d[i].t -> var.d[i].f-
+        [keeper=0] s.out[i] & ch.d.d[i].f -> var.d[i].t-
+
+        s.out[i] &
+        ((var.d[i].t & ch.d.d[i].t) | (var.d[i].f & ch.d.d[i].f)) -> wack[i]-
+        ~s.out[i] & ~ch.d.d[i].t & ~ch.d.d[i].f -> wack[i]+ )
+    }
+    ( j : W:
+      sizing{
+        p_n_mode <- 1;
+        leak_adjust <- 1;
+        wack[j]{- 1};
+        var.d[j].t{- 1};
+        var.d[j].f{- 1}
+      }
+    )
+
+    std::gates::ctree<W, false> ct(wack);
+
+    prs {
+      Reset | ct.out => c.a-
+    }
+    sizing{
+      leak_adjust <- 1;
+      p_n_mode <- 1;
+      c.a{- 1}
+    }
+    c.a = ch.a;
   }
-  (j:W: sizing {p_n_mode <- 1; leak_adjust <- 1;  wack[j]{-1}; var.d[j].t{-1};  var.d[j].f{-1} })
-  
 
-  std::gates::ctree<W,false> ct(wack);
-  
-  prs {
-    Reset | ct.out => c.a-
-  }
-  sizing {
-    leak_adjust <- 1; 
-    p_n_mode <- 1;
-    c.a{-1}
-  }
-  c.a = ch.a;
-}
-
-/**
+  /**
  * recvport gates/triggers a variable write on a connected write port.
  * @param W: width of the port and channel
  */
-export template<pint W, W2>
-defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port)
-{
-  std::gates::sigbuf<W2> s(c.r);
-  bool _t[W], _f[W];
+  export template<pint W, W2>
+  defproc recvport(a1of1 c; sdtchan<W> ch; sdtchan<W2> port) {
+    std::gates::sigbuf<W2> s(c.r);
+    bool _t[W], _f[W];
 
-  prs {
-    (i:std::min(W,W2): s.out[i] & ch.d.d[i].t #> _t[i]-
-                       s.out[i] & ch.d.d[i].f #> _f[i]-
+    prs {
+      ( i : std::min(W, W2) :
+        s.out[i] & ch.d.d[i].t #> _t[i]-
+        s.out[i] & ch.d.d[i].f #> _f[i]-
         _t[i] => port.d.d[i].t-
-        _f[i] => port.d.d[i].f-
+        _f[i] => port.d.d[i].f- )
+    }
+    ( j : std::min(W, W2):
+      sizing{
+        p_n_mode <- 1;
+        leak_adjust <- 1;
+        _t[j]{- 1};
+        _f[j]{- 1};
+        port.d.d[j].t{- 1};
+        port.d.d[j].f{- 1}
+      }
+    )
+
+    [
+      W2 > W ->
+      ( i : W..W2 - 1:
+        port.d.d[i].t = GND;
+        port.d.d[i].f = s.out[i];
       )
+      port.a = c.a;
+    [] W2 = W ->
+      // exact match, nothing to do
+      port.a = c.a;
+    [] W2 < W ->
+      // complete the dangling input channel signals and combine with
+      // port.a to generate the ack
+      bool _v[W - W2], _pa;
+      prs {
+        ( i : W2..W - 1 :  ch.d.d[i].t | ch.d.d[i].f => _v[i - W2]- )
+        port.a => _pa-
+      }
+      sizing{
+        p_n_mode <- 1;
+        leak_adjust <- 1;
+        (; i : W2..W - 1:
+          _v[i - W2]{- 1}
+        );
+        _pa{- 1}
+      }
+      // inverting completion tree
+      std::gates::ctree<W - W2 + 1, true> ct({_pa}#_v, c.a);
+    ]
+    c.a = ch.a;
   }
-  (j:std::min(W,W2): sizing {p_n_mode <- 1; leak_adjust <- 1; _t[j]{-1};  _f[j]{-1}; port.d.d[j].t{-1};  port.d.d[j].f{-1} })
-    
-  [ W2 > W ->
-    (i:W..W2-1: port.d.d[i].t = GND;
-                port.d.d[i].f = s.out[i];)
-    port.a = c.a;
-  [] W2 = W ->
-    // exact match, nothing to do
-    port.a = c.a;
-  [] W2 < W ->
+
+  /**
+ * recvport gates/triggers a variable write on a connected write port.
+ * @param W: width of the port and channel
+ */
+  export template<pint W>
+  defproc recvport_drop(a1of1 c; sdtchan<W> ch) {
+    bool _cr;
+    prs {
+      c.r => _cr-
+    }
+
     // complete the dangling input channel signals and combine with
     // port.a to generate the ack
-    bool _v[W-W2], _pa;
+    bool _v[W];
     prs {
-      (i:W2..W-1: ch.d.d[i].t | ch.d.d[i].f => _v[i-W2]-)
-      port.a => _pa-
+      ( i : 0..W - 1 :  ch.d.d[i].t | ch.d.d[i].f => _v[i]- )
     }
-    sizing { p_n_mode <- 1; leak_adjust <- 1; (;i:W2..W-1: _v[i-W2]{-1}); _pa{-1}}
-    // inverting completion tree 
-    std::gates::ctree<W-W2+1,true> ct({_pa} # _v, c.a);
-  ]
-  c.a = ch.a;
-}
+    // inverting completion tree
+    std::gates::ctree<W + 1, true> ct({_cr}#_v, c.a);
 
-
-/**
- * recvport gates/triggers a variable write on a connected write port.
- * @param W: width of the port and channel
- */
-export template<pint W>
-defproc recvport_drop(a1of1 c; sdtchan<W> ch)
-{
-  bool _cr;
-  prs {
-    c.r => _cr-
+    c.a = ch.a;
   }
 
-  // complete the dangling input channel signals and combine with
-  // port.a to generate the ack
-  bool _v[W];
-  prs {
-    (i:0..W-1: ch.d.d[i].t | ch.d.d[i].f => _v[i]-)
-  }
-  // inverting completion tree
-  std::gates::ctree<W+1,true> ct({_cr} # _v, c.a);
-
-  c.a = ch.a;
-}
-
-/**
+  /**
  * a port mux for reading c that selects from multiple send channels based on control channels
  * @param W: wodth of the channels
  * @param N: number of input channels
  */
-export template<pint W,N>
-defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N])
-{
-  { N > 0 : "Parameter out of range" };
+  export template<pint W, N>
+  defproc muxinport(sdtchan?<W> c; sdtchan<W> m[N]; a1of1 ctrl[N]) {
+    { N > 0 : "Parameter out of range" };
 
+    [
+      N = 1 ->
+      m[0] = c;
+    [] else ->
+      std::gates::sigbuf<W> s[N];
+      bool _t[N][W], _f[N][W];
+      ( i : N:
+        s[i](.in = ctrl[i].r);
+      )
+      prs {
+        ( i : W :
+          ( j : N :
+            c.d.d[i].t & s[j].out[i] #> _t[j][i]-
+            c.d.d[i].f & s[j].out[i] #> _f[j][i]-
+            _t[j][i] => m[j].d.d[i].t-
+            _f[j][i] => m[j].d.d[i].f- ) )
+      }
+      ( i : W:
+        ( j : N:
+          sizing{
+            p_n_mode <- 1;
+            leak_adjust <- 1;
+            _t[j][i]{- 1};
+            _f[j][i]{- 1};
+            m[j].d.d[i].t{- 1};
+            m[j].d.d[i].f{- 1}
+          }
+        )
+      )
 
-  [ N = 1 -> m[0] = c;
-  [] else -> 
-       std::gates::sigbuf<W> s[N];
-       bool _t[N][W], _f[N][W];
-       (i:N: s[i](.in=ctrl[i].r);)
-       prs {
-        (i:W: (j:N: c.d.d[i].t & s[j].out[i] #> _t[j][i]-
-          c.d.d[i].f & s[j].out[i] #> _f[j][i]-
-          _t[j][i] => m[j].d.d[i].t-
-          _f[j][i] => m[j].d.d[i].f-
-        ) )
-       }
-       (i:W: (j:N:  sizing {p_n_mode <- 1; leak_adjust <- 1; _t[j][i]{-1};  _f[j][i]{-1}; m[j].d.d[i].t{-1};  m[j].d.d[i].f{-1}} ))
+      ( i : N:
+        m[i].a = ctrl[i].a;
+      )
+      std::gates::ortree<N, false> o(, c.a);
+      ( i : N:
+        m[i].a = o.in[i];
+      )
+    ]
+  }
 
-       (i:N: m[i].a = ctrl[i].a;)
-       std::gates::ortree<N,false> o(,c.a);
-       (i:N: m[i].a=o.in[i];)
-  ]
-
-}
-
-/**
+  /**
  * a port mux for writing c from multiple channels
  * @param W: wodth of the channels
  * @param N: number of output channels
  */
-export template<pint W,N>
-defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N])
-{
-  { N > 0 : "Parameter out of range" };
+  export template<pint W, N>
+  defproc muxoutport(sdtchan!<W> c; sdtchan<W> m[N]) {
+    { N > 0 : "Parameter out of range" };
 
-  [ N = 1 -> m[0] = c;
-  [] else ->
-       bool _v[N];
-       bool _a;
-      std::gates::ortree<N,false> ot[W];
-      std::gates::ortree<N,false> of[W];
-      (i:W: (j:N: 
-                m[j].d.d[i].t = ot[i].in[j];
-                m[j].d.d[i].f = of[i].in[j];)
-                c.d.d[i].f = of[i].out;
-                c.d.d[i].t = ot[i].out;)
-       prs {
-          /* check which input is pending */
-          (i:N: m[i].d.d[0].t | m[i].d.d[0].f => _v[i]- )
-            c.a => _a-
-          /* ack the appropriate input */
-          (i:N: _a & _v[i] #> m[i].a-)
+    [
+      N = 1 ->
+      m[0] = c;
+    [] else ->
+      bool _v[N];
+      bool _a;
+      std::gates::ortree<N, false> ot[W];
+      std::gates::ortree<N, false> of[W];
+      ( i : W:
+        ( j : N:
+          m[j].d.d[i].t = ot[i].in[j];
+          m[j].d.d[i].f = of[i].in[j];
+        )
+        c.d.d[i].f = of[i].out;
+        c.d.d[i].t = ot[i].out;
+      )
+      prs {
+        /* check which input is pending */
+        ( i : N :  m[i].d.d[0].t | m[i].d.d[0].f => _v[i]- )
+        c.a => _a-
+        /* ack the appropriate input */
+        ( i : N :  _a & _v[i] #> m[i].a- )
+      }
+      ( i : N:
+        sizing{
+          p_n_mode <- 1;
+          leak_adjust <- 1;
+          m[i].a{- 1};
+          _v[i]{- 1}
         }
-        (i:N: sizing {p_n_mode <- 1; leak_adjust <- 1; m[i].a{-1}; _v[i]{-1}} )
-        sizing {p_n_mode <- 1; leak_adjust <- 1;  _a{-1}}
-  ]
-}
-
-export template<pint N>
-defproc mux_bool_outport(sdtboolchan! c; sdtchan<1> m[N])
-{
-  muxoutport<1,N> i(c.x,m);
-}
-
-export template<pint N>
-defproc mux_bool_inport(sdtboolchan? c; sdtchan<1> m[N]; a1of1 ctrl[N])
-{
-  muxinport<1,N> i(c.x,m,ctrl);
-}
-
-export template<pint W>
-defproc sdtchan_to_probe (sdtchan<W> ch; sdtchan<1> probe)
-{
-  ch.d.d[0] = probe.d.d[0];
-  ch.a = probe.a;
-}
-
-
-export template<pint N; pint idx[N]; pint T>
-defproc probed_clause (r1of2 g[N]; sdtchan<1> probe[T];
-		       bool! out)
-{
-  pint tstval, tmp;
-  pint lo_idx[N];
-  tstval = 0;
-  tmp = 0;
-  *[ tmp < N -> lo_idx[tmp] = tstval; tstval = tstval + idx[tmp]; tmp = tmp + 1; ]
-  { T = tstval : "Inconsistent template parameters" };
-  bool _out;
-  prs {
-    (|i:N: g[i].t & (&j: idx[i] : probe[j + lo_idx[i]].d.d[0].t | probe[j+lo_idx[i]].d.d[0].f)) -> _out-
-    (&i:N: ~g[i].t) -> _out+
-    _out => out-
+      )
+      sizing{
+        p_n_mode <- 1;
+        leak_adjust <- 1;
+        _a{- 1}
+      }
+    ]
   }
-  sizing {
-    leak_adjust <- 1;
-    p_n_mode <- 1;
-    _out{-1}; out{-1}
+
+  export template<pint N>
+  defproc mux_bool_outport(sdtboolchan! c; sdtchan<1> m[N]) {
+    muxoutport<1, N> i(c.x, m);
   }
-}
 
-export
-defproc arbiter_builtin <: std::arbiter ()
-+{
-   std::channel::aMx1of2<N> A, Ap;
-   std::channel::aMx1of2<M> B, Bp;
-}
-{
-   bool goA, goB;
-   bool rA, _rA, rB, _rB;
-   bool _u, _v;
-
-   std::raw_arbiter rx(rA,rB);
-
-   std::gates::sigbuf<N> sA(goA);
-   std::gates::sigbuf<M> sB(goB);
-
-   bool _at[N], _af[N];
-   bool _bt[M], _bf[M];
-   bool _ap, _bp;
-
-   prs {
-     A.d.d[0].t | A.d.d[0].f => _rA-
-     _rA => rA-
-     B.d.d[0].t | B.d.d[0].f => _rB-
-     _rB => rB-
-
-     rx.u => _u-
-     rx.v => _v-
-
-     ~_u & ~Bp.a => goA+
-     ~_v & ~Ap.a => goB+
-
-    (i:N: A.d.d[i].t & sA.out[i] #> _at[i]-
-          A.d.d[i].f & sA.out[i] #> _af[i]-
-          _at[i] => Ap.d.d[i].t-
-          _af[i] => Ap.d.d[i].f-
-     )
-
-    (i:M: B.d.d[i].t & sB.out[i] #> _bt[i]-
-          B.d.d[i].f & sB.out[i] #> _bf[i]-
-          _bt[i] => Bp.d.d[i].t-
-          _bf[i] => Bp.d.d[i].f-
-     )
-    Ap.a => _ap-
-    Bp.a => _bp-
-    _ap => A.a-
-    _bp => B.a-
+  export template<pint N>
+  defproc mux_bool_inport(sdtboolchan? c; sdtchan<1> m[N]; a1of1 ctrl[N]) {
+    muxinport<1, N> i(c.x, m, ctrl);
   }
-  sizing {
-    leak_adjust <- 1;
-    p_n_mode <- 1;
-    _rA{-1}; _rB{-1}; rA{-1}; rB{-1};
-    _u{-1}; _v{-1}; goA{-1}; goB{-1};
-    (;i:N: _at[i]{-1};Ap.d.d[i].t{-1};
-           _af[i]{-1};Ap.d.d[i].f{-1});
-    (;i:M: _bt[i]{-1};Bp.d.d[i].t{-1};
-           _bf[i]{-1};Bp.d.d[i].f{-1});
-    _ap{-1}; _bp{-1}; A.a{-1}; B.a{-1}
+
+  export template<pint W>
+  defproc sdtchan_to_probe(sdtchan<W> ch; sdtchan<1> probe) {
+    ch.d.d[0] = probe.d.d[0];
+    ch.a = probe.a;
   }
-}
 
+  export template<pint N; pint idx[N]; pint T>
+  defproc probed_clause(r1of2 g[N]; sdtchan<1> probe[T]; bool! out) {
+    pint tstval, tmp;
+    pint lo_idx[N];
+    tstval = 0;
+    tmp = 0;
+    *[ tmp < N ->
+      lo_idx[tmp] = tstval;
+      tstval = tstval + idx[tmp];
+      tmp = tmp + 1; ]
+    { T = tstval : "Inconsistent template parameters" };
+    bool _out;
+    prs {
+      (| i: N: g[i].t &
+      (& j: idx[i]: probe[j + lo_idx[i]].d.d[0].t |
+      probe[j + lo_idx[i]].d.d[0].f)) -> _out-
+      (& i: N: ~g[i].t) -> _out+
+      _out => out-
+    }
+    sizing{
+      leak_adjust <- 1;
+      p_n_mode <- 1;
+      _out{- 1};
+      out{- 1}
+    }
+  }
 
+  export
+  defproc arbiter_builtin <: std::arbiter ()
+  +{
+    std::channel::aMx1of2<N> A, Ap;
+    std::channel::aMx1of2<M> B, Bp;
+  }{
+    bool goA, goB;
+    bool rA, _rA, rB, _rB;
+    bool _u, _v;
+
+    std::raw_arbiter rx(rA, rB);
+
+    std::gates::sigbuf<N> sA(goA);
+    std::gates::sigbuf<M> sB(goB);
+
+    bool _at[N], _af[N];
+    bool _bt[M], _bf[M];
+    bool _ap, _bp;
+
+    prs {
+      A.d.d[0].t | A.d.d[0].f => _rA-
+      _rA => rA-
+      B.d.d[0].t | B.d.d[0].f => _rB-
+      _rB => rB-
+
+      rx.u => _u-
+      rx.v => _v-
+
+      ~_u & ~Bp.a => goA+
+      ~_v & ~Ap.a => goB+
+
+      ( i : N :
+        A.d.d[i].t & sA.out[i] #> _at[i]-
+        A.d.d[i].f & sA.out[i] #> _af[i]-
+        _at[i] => Ap.d.d[i].t-
+        _af[i] => Ap.d.d[i].f- )
+
+      ( i : M :
+        B.d.d[i].t & sB.out[i] #> _bt[i]-
+        B.d.d[i].f & sB.out[i] #> _bf[i]-
+        _bt[i] => Bp.d.d[i].t-
+        _bf[i] => Bp.d.d[i].f- )
+      Ap.a => _ap-
+      Bp.a => _bp-
+      _ap => A.a-
+      _bp => B.a-
+    }
+    sizing{
+      leak_adjust <- 1;
+      p_n_mode <- 1;
+      _rA{- 1};
+      _rB{- 1};
+      rA{- 1};
+      rB{- 1};
+      _u{- 1};
+      _v{- 1};
+      goA{- 1};
+      goB{- 1};
+      (; i : N:
+        _at[i]{- 1};
+        Ap.d.d[i].t{- 1};
+        _af[i]{- 1};
+        Ap.d.d[i].f{- 1}
+      );
+      (; i : M:
+        _bt[i]{- 1};
+        Bp.d.d[i].t{- 1};
+        _bf[i]{- 1};
+        Bp.d.d[i].f{- 1}
+      );
+      _ap{- 1};
+      _bp{- 1};
+      A.a{- 1};
+      B.a{- 1}
+    }
+  }
 }

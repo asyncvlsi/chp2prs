@@ -1,6 +1,7 @@
-defproc a0() {
 
+
+defproc a0() {
   chp {
-	skip
+    skip
   }
 }

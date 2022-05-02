@@ -1,22 +1,27 @@
-defproc onebuf (chan?(int) L; chan!(int) R)
-{
+
+
+defproc onebuf(chan?(int) L; chan!(int) R) {
   int x;
   chp {
-    *[ L?x; R!x ]
+    *[
+      L?x;
+      R!x
+    ]
   }
 }
 
 template<pint N>
-defproc nbuf (chan?(int) L; chan!(int) R)
-{
-  { N > 0  : "Need at least one buffer!" };
+defproc nbuf(chan?(int) L; chan!(int) R) {
+  { N > 0 : "Need at least one buffer!" };
   onebuf b[N];
-  (i:N-1: b[i].R=b[i+1].L;)
-  b[0].L=L;
-  b[N-1].R = R;
+  ( i : N - 1:
+    b[i].R = b[i + 1].L;
+  )
+  b[0].L = L;
+  b[N - 1].R = R;
 }
 
-defproc buffer8 (chan?(int) A; chan!(int<32>) Y)
-{
-  nbuf<8> x (.L=A, .R=Y);
+
+defproc buffer8(chan?(int) A; chan!(int<32>) Y) {
+  nbuf<8> x(.L = A, .R = Y);
 }

@@ -1,3 +1,4 @@
+
 /*************************************************************************
  *
  *  Copyright (c) 2020 Rajit Manohar
@@ -24,28 +25,24 @@ open std::data;
 open std::channel;
 
 namespace syn {
+  export deftype sdtvar <: Mx1of2 () {}
+  export deftype sdtboolvar <: bool (sdtvar<1> x) {}
 
-export deftype sdtvar <: Mx1of2 () { }
-export deftype sdtboolvar <: bool (sdtvar<1> x) { }
-  
-export template<pint N>
-defchan ax1of1 <: chan(int<N>) (bool d[N]; bool a; bool r) { }
+  export template<pint N>
+  defchan ax1of1 <: chan(int<N>) (bool d[N]; bool a; bool r) {}
 
-export template<pint N>
-defchan rx1of1 <: chan(int<N>) (bool r; bool a; bool d[N]) { }
+  export template<pint N>
+  defchan rx1of1 <: chan(int<N>) (bool r; bool a; bool d[N]) {}
 
-// specify bd datapath channels
-export defchan sdtchan <: std::channel::bd () { }
-export defchan sdtexprchan <: rx1of1 () { }
-export defchan sdtboolchan <: chan(bool) (sdtchan<1> x) { }
+  // specify bd datapath channels
+  export defchan sdtchan <: std::channel::bd () {}
+  export defchan sdtexprchan <: rx1of1 () {}
+  export defchan sdtboolchan <: chan(bool) (sdtchan<1> x) {}
 
-export defchan r1of2 <: sdtexprchan<1> (bool t, f) { }
+  export defchan r1of2 <: sdtexprchan<1> (bool t, f) {}
 
-
-export template<pint W>
-defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c)
-{
-  e.d = c.d;
+  export template<pint W>
+  defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c) {
+    e.d = c.d;
+  }
 }
-
-}  

@@ -1,15 +1,18 @@
-defproc seqgc () {
+
+
+defproc seqgc() {
   int<1> x;
   int<1> y;
   int<1> z;
 
   chp {
-    x := 0 ;
-    y := 1 ;
-    [x = y -> z := 0 [] x != y -> z := 1];
+    x := 0;
+    y := 1;
+    [  x = y ->  z := 0
+    [] x != y ->  z := 1
+    ];
     z := z
   }
 }
 
 seqgc seq;
-

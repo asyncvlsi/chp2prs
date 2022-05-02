@@ -1,8 +1,11 @@
-defproc a2() {
 
+
+defproc a2() {
   bool x;
 
   chp {
-	x+;skip;x:=x
+    x+;
+    skip;
+    x := x
   }
 }

@@ -1,8 +1,11 @@
 
-defproc buffer0 (chan?(int) A; chan!(int<32>) Y)
-{
+
+defproc buffer0(chan?(int) A; chan!(int<32>) Y) {
   int<32> y;
   chp {
-   *[ A?y ; Y!y ]
+    *[
+      A?y;
+      Y!y
+    ]
   }
 }

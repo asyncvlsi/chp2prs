@@ -1,8 +1,14 @@
-defproc a10(chan?(int) x) {
 
+
+defproc a10(chan?(int) x) {
   int y;
 
   chp {
-	skip;x?y;y:=y+1;skip;x?y;skip
+    skip;
+    x?y;
+    y := y + 1;
+    skip;
+    x?y;
+    skip
   }
 }

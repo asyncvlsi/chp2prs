@@ -1,8 +1,12 @@
-defproc a7(chan!(int) x) {
 
+
+defproc a7(chan!(int) x) {
   int y, z;
 
   chp {
-	y:=64;z:=1; x!(y|z);skip
+    y := 64;
+    z := 1;
+    x!(y | z);
+    skip
   }
 }

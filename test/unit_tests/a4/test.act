@@ -1,8 +1,12 @@
-defproc a4(chan?(int) x) {
 
+
+defproc a4(chan?(int) x) {
   int y;
 
   chp {
-	skip;x?y;skip;y:=y
+    skip;
+    x?y;
+    skip;
+    y := y
   }
 }

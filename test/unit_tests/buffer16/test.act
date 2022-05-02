@@ -1,16 +1,22 @@
-defproc onebuf (chan?(int) L; chan!(int) R)
-{
+
+
+defproc onebuf(chan?(int) L; chan!(int) R) {
   int x;
   chp {
-    *[ L?x; R!x ]
+    *[
+      L?x;
+      R!x
+    ]
   }
 }
 
-defproc buffer16 (chan?(int) A; chan!(int<32>) Y)
-{
+
+defproc buffer16(chan?(int) A; chan!(int<32>) Y) {
   pint N = 16;
   onebuf b[N];
-  (i:N-1: b[i].R=b[i+1].L;)
-  b[0].L=A;
-  b[N-1].R = Y;
+  ( i : N - 1:
+    b[i].R = b[i + 1].L;
+  )
+  b[0].L = A;
+  b[N - 1].R = Y;
 }

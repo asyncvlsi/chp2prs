@@ -1,4 +1,6 @@
-defproc recv2(chan?(int) X,  Y; chan?(bool) C; chan!(int) O) {
+
+
+defproc recv2(chan?(int) X, Y; chan?(bool) C; chan!(int) O) {
   int x;
   int y;
   bool b;
@@ -6,6 +8,12 @@ defproc recv2(chan?(int) X,  Y; chan?(bool) C; chan!(int) O) {
 
   chp {
     C?bool(x);
-  *[ X?tmp,Y?y;X?x,Y?y;O!(x+y) ]
+    *[
+      X?tmp,
+      Y?y;
+      X?x,
+      Y?y;
+      O!(x + y)
+    ]
   }
 }
