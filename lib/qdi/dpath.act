@@ -418,7 +418,7 @@ namespace syn {
     bool rA, _rA, rB, _rB;
     bool _u, _v;
 
-    std::raw_arbiter rx(rA, rB);
+    std::buf_arbiter rx(rA, rB);
 
     std::gates::sigbuf<N> sA(goA);
     std::gates::sigbuf<M> sB(goB);

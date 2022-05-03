@@ -439,7 +439,7 @@ namespace syn {
     std::channel::bd<N> A, Ap;
     std::channel::bd<M> B, Bp;
   }{
-    std::raw_arbiter rx(A.r, B.r);
+    std::buf_arbiter rx(A.r, B.r);
     bool _u, _v;
 
     bool _dA[N], _dB[M];
