@@ -268,9 +268,6 @@ int main(int argc, char **argv)
   ActCHPFuncInline *ip = new ActCHPFuncInline (a);
   ip->run (p);
 
-  ActCHPMemory *mp = new ActCHPMemory (a);
-  mp->run (p);
-
   ActCHPArbiter *arbp = new ActCHPArbiter (a);
   arbp->run (p);
 

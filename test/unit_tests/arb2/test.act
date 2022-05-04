@@ -1,0 +1,31 @@
+import std;
+
+defproc myproc(chan?(int) A, B; chan!(int) Z1, Z2) {
+  int x;
+  chp {
+    *[[| #A -> A?x; Z1!x [] #B -> B?x; Z2!x |] ]
+  }
+}
+
+defproc alt (chan?(int) A; chan!(int<32>) Y, Z)
+{
+  int<32> y;
+  chp {
+   *[ A?y ; Y!y; A?y; Z!y ]
+  }
+}
+
+defproc merge(chan?(int) A, B; chan!(int) Z)
+{
+  int<32> x;
+  chp {
+   *[[#A -> A?x [] #B -> B?x];Z!x]
+  }
+}
+
+defproc arb2(chan?(int) A; chan!(int) Y)
+{
+  alt ax(A);
+  myproc pr(ax.Y, ax.Z);
+  merge m(pr.Z1,pr.Z2,Y);
+}
