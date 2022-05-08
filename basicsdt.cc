@@ -36,12 +36,15 @@
 int BasicSDT::_gen_stmt_id ()
 {
   int tmp = SDTEngine::_gen_stmt_id ();
-  fprintf (output_stream, "   a1of1 c%d;\n", tmp);
+  if (!_isdynamic_var) {
+    fprintf (output_stream, "   a1of1 c%d;\n", tmp);
+  }
   return tmp;
 }
 
 void BasicSDT::_emit_skip (int id)
 {
+  if (_isdynamic_var) return;
   int inst = _gen_inst_id ();
   fprintf (output_stream, "   syn::sskip s_%d(c%d);\n", inst, id);
 }
@@ -173,6 +176,8 @@ void BasicSDT::_emit_expr_binary (int id, int width,
 				  int rid, int rw)
 {
   FILE *o = (_efp == NULL ? output_stream : _efp);
+
+  if (_isdynamic_var) return;
   
   fprintf (o, "   syn::expr::%s<%d,%d> e%d (e%d.out,e%d.out);\n",
 	   sdt_expr_name (type), lw, rw, id, lid, rid);
@@ -185,6 +190,8 @@ void BasicSDT::_emit_expr_ite (int id, int width,
 {
   FILE *o = (_efp == NULL ? output_stream : _efp);
   
+  if (_isdynamic_var) return;
+  
   fprintf (o, "   syn::expr::ite<%d,%d> e%d (e%d.out,e%d.out,e%d.out);\n",
 	   lw, rw, id, tid, lid, rid);
 }
@@ -194,6 +201,8 @@ void BasicSDT::_emit_expr_unary (int id, int width,
 {
   FILE *o = (_efp == NULL ? output_stream : _efp);
   
+  if (_isdynamic_var) return;
+  
   fprintf (o, "   syn::expr::%s<%d> e%d (e%d.out);\n",
 	   sdt_expr_name (type), lw, id, lid);
 }
@@ -201,6 +210,8 @@ void BasicSDT::_emit_expr_unary (int id, int width,
 void BasicSDT::_emit_expr_bitfield (int eid, int lsb, int msb, int lid, int lw)
 {
   FILE *o = (_efp == NULL ? output_stream : _efp);
+  
+  if (_isdynamic_var) return;
   
   fprintf (o, "   syn::expr::bitfield<%d,%d,%d> e%d (e%d.out);\n",
 	   lw, lsb, msb, eid, lid);
@@ -211,12 +222,15 @@ void BasicSDT::_emit_expr_concat2 (int eid, int width,
 {
   FILE *o = (_efp == NULL ? output_stream : _efp);
   
+  if (_isdynamic_var) return;
+  
   fprintf (o, "   syn::expr::concat2<%d,%d> e%d (e%d.out,e%d.out);\n",
 	   lw, rw, eid, lid, rid);
 }
 
 void BasicSDT::_emit_expr_const (int id, int width, int val, bool forced = false)
 {
+  if (_isdynamic_var) return;
   fprintf (output_stream, "   syn::expr::const<%d,%d> e%d;\n", width, val, id);
 }
 
@@ -225,13 +239,18 @@ void BasicSDT::_emit_expr_width_conv (int from, int from_w,
 {
   FILE *o = (_efp == NULL ? output_stream : _efp);
   
+  if (_isdynamic_var) return;
+  
   fprintf (o, "   syn::expr::widthconv<%d,%d> e%d(e%d.out);\n",
 	   from_w, to_w, to, from);
 }
 
 void BasicSDT::_emit_var_read (int eid, ActId *id)
 {
+  if (_isdynamic_var) return;
+  
   varmap_info *v = _var_getinfo (id);
+  
   fprintf (output_stream, "  syn::expr::nullint<%d> e%d(var_",
 	   v->width, eid);
   _emit_mangled_id (output_stream, v->id);
@@ -240,6 +259,8 @@ void BasicSDT::_emit_var_read (int eid, ActId *id)
 
 void BasicSDT::_emit_transfer (int cid, int eid, ActId *id)
 {
+  if (_isdynamic_var) return;
+  
   varmap_info *ch = _var_getinfo (id);
   fprintf (output_stream, "   syn::transfer<%d> s_%d(c%d, e%d.out,",
 	   ch->width, _gen_inst_id(), cid, eid);
@@ -261,6 +282,8 @@ void BasicSDT::_emit_transfer (int cid, int eid, ActId *id)
 
 void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
 {
+  if (_isdynamic_var) return;
+  
   varmap_info *v;
   if (!id) {
     v = NULL;
@@ -307,6 +330,8 @@ void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
 
 void BasicSDT::_emit_comma (int cid, list_t *stmts)
 {
+  if (_isdynamic_var) return;
+  
   listitem_t *li;
   fprintf (output_stream, "   syn::comma<%d> s_%d(c%d,{",
 	   list_length (stmts), _gen_inst_id(), cid);
@@ -321,6 +346,8 @@ void BasicSDT::_emit_comma (int cid, list_t *stmts)
 
 void BasicSDT::_emit_semi (int cid, list_t *stmts)
 {
+  if (_isdynamic_var) return;
+  
   listitem_t *li;
   fprintf (output_stream, "   syn::semi<%d> s_%d(c%d,{",
 	   list_length (stmts), _gen_inst_id(), cid);
@@ -335,6 +362,8 @@ void BasicSDT::_emit_semi (int cid, list_t *stmts)
 
 void BasicSDT::_emit_semiopt (int cid, list_t *stmts)
 {
+  if (_isdynamic_var) return;
+  
   listitem_t *li;
   fprintf (output_stream, "   syn::semiopt<%d> s_%d(c%d,{",
 	   list_length (stmts), _gen_inst_id(), cid);
@@ -349,6 +378,8 @@ void BasicSDT::_emit_semiopt (int cid, list_t *stmts)
 
 void BasicSDT::_emit_loop (int cid, list_t *guards, list_t *stmts)
 {
+  if (_isdynamic_var) return;
+  
   listitem_t *li;
   Assert (list_length (guards) == list_length (stmts), "emit_loop issue");
 
@@ -374,6 +405,8 @@ void BasicSDT::_emit_loop (int cid, list_t *guards, list_t *stmts)
 
 void BasicSDT::_emit_select (int is_nondet, int cid, list_t *guards, list_t *stmts)
 {
+  if (_isdynamic_var) return;
+  
   listitem_t *li;
   int else_case = 0;
   Assert (list_length (guards) == list_length (stmts), "emit_loop issue");
@@ -412,6 +445,8 @@ void BasicSDT::_emit_select (int is_nondet, int cid, list_t *guards, list_t *stm
 
 int BasicSDT::_emit_chan_to_probe (ActId *chid)
 {
+  if (_isdynamic_var) return 0;
+  
   varmap_info *ch = _var_getinfo (chid);
   int idx = _gen_inst_id ();
 
@@ -426,6 +461,8 @@ int BasicSDT::_emit_chan_to_probe (ActId *chid)
 
 int BasicSDT::_emit_probed_clause (list_t *guards, list_t *probe_list)
 {
+  if (_isdynamic_var) return 0;
+  
   int count = 0;
   listitem_t *pi;
   int idx;
@@ -476,6 +513,8 @@ int BasicSDT::_emit_probed_clause (list_t *guards, list_t *probe_list)
 
 void BasicSDT::_emit_probed_select (int cid, list_t *data_guards, list_t *guards, list_t *stmts)
 {
+  if (_isdynamic_var) return;
+  
   listitem_t *li;
   Assert (list_length (guards) == list_length (stmts), "emit_loop issue");
 
@@ -511,12 +550,16 @@ void BasicSDT::_emit_probed_select (int cid, list_t *data_guards, list_t *guards
 
 void BasicSDT::_emit_doloop (int cid, int guard, int stmt)
 {
+  if (_isdynamic_var) return;
+  
   fprintf (output_stream, "   syn::doloop s_%d(c%d,e%d.out,c%d);\n",
 	   _gen_inst_id(), cid, guard, stmt);
 }
 
 void BasicSDT::_emit_channel_mux (varmap_info *v)
 {
+  if (_isdynamic_var) return;
+  
   Assert (v->fischan, "What?");
   if (v->nread > 0) {
     if (v->fisbool) {
@@ -546,6 +589,8 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
 
 void BasicSDT::_emit_variable_mux (varmap_info *v)
 {
+  if (_isdynamic_var) return;
+  
   char tmpbuf[4096];
   /* if you need a mux for accessing variables, add it here */
   if (!v->fisbool) {
@@ -591,6 +636,8 @@ void BasicSDT::_emit_variable_mux (varmap_info *v)
 
 void BasicSDT::_emit_trueseq (int cid, int sid)
 {
+  if (_isdynamic_var) return;
+  
   fprintf (output_stream, "   syn::fullseq s_%d(c%d,c%d);\n",
 	   _gen_inst_id(), cid, sid);
 }
@@ -688,6 +735,8 @@ int BasicSDT::_gen_safe_bool (int eid)
 
 void BasicSDT::_emit_expr_block (int id, int blkid, list_t *exprs)
 {
+  if (_isdynamic_var) return;
+  
   listitem_t *li;
   fprintf (output_stream, "   syn::expr::blk%d e%d(", blkid, id);
   for (li = list_first (exprs); li; li = list_next (li)) {
@@ -706,6 +755,7 @@ BasicSDT::BasicSDT (int isbundled, int isopt, FILE *fpout, const char *ef)
   bundled_data = isbundled;
   optimize = isopt;
   _varmap = NULL;
+  _isdynamic_var = 0;
   
   _shared_expr_var = 0;
 
@@ -963,8 +1013,12 @@ void BasicSDT::_emit_begin ()
   }
 
   _varmap = ihash_new (4);
+  _isdynamic_var = 0;
   _construct_varmap (chp->c);
-
+  if (_isdynamic_var) {
+    return;
+  }
+    
   /*-- emit all the variable ports and channel muxes --*/
   ihash_iter_init (_varmap, &iter);
   while ((b = ihash_iter_next (_varmap, &iter))) {
@@ -998,17 +1052,20 @@ void BasicSDT::_emit_end (int id)
   /* connect toplevel "go" signal and print wrapper process instantiation */
 
   if (id >= 0) {
-    fprintf (output_stream, "/*--- connect reset to go signal ---*/\n");
+    if (!_isdynamic_var)  {
+      fprintf (output_stream, "/*--- connect reset to go signal ---*/\n");
 
-    fprintf (output_stream, "   syn::sinit s%d (c%d);\n", _gen_stmt_id(), id);
-
+      fprintf (output_stream, "   syn::sinit s%d (c%d);\n", _gen_stmt_id(), id);
+    }
+    else {
+      fprintf (output_stream, " { false : \"chp2prs error\" }; \n");
+    }
     /* matches refine block start */
     fprintf (output_stream, " }\n");
   }
   fprintf (output_stream, "}\n\n");
   fclose (_efp);
   _efp = NULL;
-
 
   if (_varmap) {
     ihash_iter_t iter;
@@ -1021,13 +1078,21 @@ void BasicSDT::_emit_end (int id)
     ihash_free (_varmap);
     _varmap = NULL;
   }
-
-  
 }
-  
 
 
-
+void BasicSDT::_chkdynamic (ActId *id)
+{
+  if (!_isdynamic_var && id->isDynamicDeref()) {
+    act_error_ctxt (stderr);
+    fprintf (stderr, "ID: ");
+    id->Print (stderr);
+    fprintf (stderr, "; unsupported---this process will be skipped!\n");
+    fprintf (stderr, "(generated output may not be valid)\n");
+    warning ("Memory access/dynamic arrays not natively supported; use memory decomposition.");
+    _isdynamic_var = 1;
+  }
+}
 
 void BasicSDT::_construct_varmap_expr (Expr *e)
 {
@@ -1098,6 +1163,10 @@ void BasicSDT::_construct_varmap_expr (Expr *e)
     break;
 
   case E_VAR:
+    _chkdynamic ((ActId *)e->u.e.l);
+    if (_isdynamic_var) {
+      return;
+    }
     v = _var_getinfo ((ActId *)e->u.e.l);
     if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
       v->nread++;
@@ -1106,6 +1175,10 @@ void BasicSDT::_construct_varmap_expr (Expr *e)
     break;
 
   case E_PROBE:
+    _chkdynamic ((ActId *)e->u.e.l);
+    if (_isdynamic_var) {
+      return;
+    }
     v = _var_getinfo ((ActId *)e->u.e.l);
     if (!_shared_expr_var || !v->fcurexpr) {
       Assert (v->fischan, "What?");
@@ -1164,6 +1237,10 @@ void BasicSDT::_construct_varmap (act_chp_lang_t *c)
   case ACT_CHP_SKIP:
     break;
   case ACT_CHP_ASSIGN:
+    _chkdynamic (c->u.assign.id);
+    if (_isdynamic_var) {
+      return;
+    }
     v = _var_getinfo (c->u.assign.id);
     x = v->nread;
     v->nwrite++;
@@ -1174,6 +1251,10 @@ void BasicSDT::_construct_varmap (act_chp_lang_t *c)
     }
     break;
   case ACT_CHP_SEND:
+    _chkdynamic (c->u.comm.chan);
+    if (_isdynamic_var) {
+      return;
+    }
     v = _var_getinfo (c->u.comm.chan);
     if (v->fisinport == 2) {
       if (v->block_out != -1 && v->block_out != pblock) {
@@ -1191,6 +1272,10 @@ void BasicSDT::_construct_varmap (act_chp_lang_t *c)
     }
     break;
   case ACT_CHP_RECV:
+    _chkdynamic (c->u.comm.chan);
+    if (_isdynamic_var) {
+      return;
+    }
     v = _var_getinfo (c->u.comm.chan);
     if (v->fisinport == 2) {
       if (v->block_in != -1 && v->block_in != pblock) {
@@ -1203,6 +1288,10 @@ void BasicSDT::_construct_varmap (act_chp_lang_t *c)
     }
     v->nread++;
     if (c->u.comm.var) {
+      _chkdynamic (c->u.comm.var);
+      if (_isdynamic_var) {
+	return;
+      }
       v = _var_getinfo (c->u.comm.var);
       v->nwrite++;
     }

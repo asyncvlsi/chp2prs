@@ -88,6 +88,9 @@ class BasicSDT : public SDTEngine {
   /*-- mode: currently not used --*/
   int _shared_expr_var;
 
+  /// mark this as a dynamic memory process
+  void _chkdynamic (ActId *id);
+
   /// Aux functions for variable information
   int _get_isinport (varmap_info *v);
 
@@ -109,6 +112,7 @@ class BasicSDT : public SDTEngine {
 
   /*-- the varmap table --*/
   struct iHashtable *_varmap;
+  int _isdynamic_var;
 
   
   /// Override stmt id to also emit the channel definition in the
