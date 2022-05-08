@@ -42,6 +42,8 @@ class SDTEngine {
    */
   void run_sdt (Process *p);
 
+  virtual int sdt_error () { return 0; }
+
 private:
   /*-- helper function for run_sdt --*/
   void _run_sdt_helper (int id, act_chp_lang_t *c);

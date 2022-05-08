@@ -484,6 +484,7 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
 
   Assert (e, "Hmm");
 
+
 #define CHECK_EXPR(ex,myid,myw)					\
   do {								\
     if ((ex)->type == E_VAR) {					\
@@ -936,6 +937,10 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
   /*-- recursively expand expression --*/
   if (!e) {
     fatal_error ("Emit NULL expression?!");
+  }
+
+  if (sdt_error()) {
+    return;
   }
 
   Assert (!_exprmap, "What?");
