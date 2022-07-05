@@ -236,7 +236,7 @@ int main(int argc, char **argv)
   a->Expand();
 
   /* find the process specified on the command line */
-  Process *p = a->findProcess(argv[optind+1]);
+  Process *p = a->findProcess(argv[optind+1], true);
 
   if (!p)
   {
@@ -247,12 +247,9 @@ int main(int argc, char **argv)
   {
     //fatal_error("Process `%s' is not expanded.", argv[optind+1]);
     p = p->Expand (ActNamespace::Global(), p->CurScope(), 0, NULL);
-    emit_import = 1;
-  }
-  else {
-    emit_import = 0;
   }
   Assert (p, "What?");
+  emit_import = 1;
 
   if (chpopt)
   {
