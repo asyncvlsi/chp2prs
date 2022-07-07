@@ -1280,13 +1280,14 @@ namespace syn {
         out.r => _req-
         ( i : W :
           ~s.out[i] => out.d.d[i].d[((V >> i) & 1)]+
-          Reset -> out.d.d[i].d[1 - (V >> i) & 1]- )
+          [keeper=0] Reset -> out.d.d[i].d[1 - (V >> i) & 1]- )
       }
       ( i : W:
-        sizing{
+        sizing {
           p_n_mode <- 1;
           leak_adjust <- 1;
-          out.d.d[i].d[((V >> i) & 1)]{- 1}
+          out.d.d[i].d[0]{- 1};
+          out.d.d[i].d[1]{- 1}
         }
       )
       sizing{
