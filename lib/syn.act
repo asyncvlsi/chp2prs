@@ -253,6 +253,9 @@ namespace syn {
     ( i : N:
       ct.in[i] = stmts[i].a;
     )
+    spec {
+      timing ?c.a- -> c.a-
+    }
   }
 
   /*-- full sequencer --*/
@@ -262,6 +265,7 @@ namespace syn {
 
     spec {
       timing x- -> r.r+
+      timing x- -> _goa+
     }
     prs {
       /**XXX FIX ***/

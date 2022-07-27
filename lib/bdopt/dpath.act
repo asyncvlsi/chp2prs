@@ -93,6 +93,9 @@ namespace syn {
       ) ]
     ch.a = port.a;
     c.a = port.a;
+    spec {
+      timing ?c.a- -> c.a-
+    }
   }
 
   /**
@@ -166,6 +169,14 @@ namespace syn {
         m[i].a = o.in[i];
       )
     ]
+    spec {
+      timing ?c.a- -> c.a-
+    }
+    (i:N:
+     spec {
+       timing ?m[i].a- -> m[i].a-
+     }
+     )
   }
 
   /**
@@ -215,6 +226,10 @@ namespace syn {
         ix[i](_ma[i], m[i].a);
       )
     ]
+    (i:N:
+    spec {
+      timing ?m[i].a- -> m[i].a-
+    })
   }
 
   export template<pint N>
@@ -276,6 +291,10 @@ namespace syn {
 
     INVX1 ix(dly.out, _dly_req_in);
     NOR2X1 iy(Reset, _dly_req_in, in.a);
+
+    spec {
+      timing dly.out+ -> _dly_req_in-
+    }
   }
 
   /**
@@ -288,6 +307,10 @@ namespace syn {
 
     std::gates::sigbuf<W> s(xout);
     delay<4> dly(out.r, out.a);
+
+    spec {
+      timing ?out.a- -> out.a-
+    }
 
     INVX1 ix(out.r, xout);
     prs {
