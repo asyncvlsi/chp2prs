@@ -265,7 +265,7 @@ namespace syn {
 
     spec {
       timing x- -> r.r+
-      timing x- -> _goa+
+      timing ?go.a- -> go.a-
     }
     prs {
       /**XXX FIX ***/
