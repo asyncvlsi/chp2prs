@@ -107,8 +107,8 @@ namespace syn {
     prs {
       A.d.d[0].f & B.d.d[0].f -> _t-
       A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _f+
+      ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _t+
+      ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -130,17 +130,9 @@ namespace syn {
     bool _f, _t;
     prs {
       A.d.d[0].f & B.d.d[0].f & C.d.d[0].f -> _t-
-      A.d.d[0].t & (B.d.d[0].t | B.d.d[0].f) & (C.d.d[0].t | C.d.d[0].f) |
-      B.d.d[0].t &
-      A.d.d[0].f &
-      (C.d.d[0].t | C.d.d[0].f) |
-      C.d.d[0].t &
-      B.d.d[0].f &
-      A.d.d[0].f -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f -> _f+
+      A.d.d[0].t & (B.d.d[0].t | B.d.d[0].f) & (C.d.d[0].t | C.d.d[0].f) | B.d.d[0].t & A.d.d[0].f & (C.d.d[0].t | C.d.d[0].f) | C.d.d[0].t & B.d.d[0].f & A.d.d[0].f -> _f-
+      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f -> _t+
+      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -162,8 +154,8 @@ namespace syn {
     prs {
       A.d.d[0].f & B.d.d[0].f -> _f-
       A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f -> _t-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _f+
+      ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _t+
+      ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -185,8 +177,8 @@ namespace syn {
     prs {
       A.d.d[0].f & B.d.d[0].f -> _f-
       A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f -> _t-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _f+
+      ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _t+
+      ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -206,10 +198,10 @@ namespace syn {
     B.r = Y.r;
     bool _f, _t;
     prs {
-      A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | A.d.d[0].t & B.d.d[0].f -> _t-
+      A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t  -> _t-
       A.d.d[0].t & B.d.d[0].t -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _f+
+      ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _t+
+      ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t &  ~B.d.d[0].t -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -230,18 +222,10 @@ namespace syn {
     C.r = Y.r;
     bool _f, _t;
     prs {
-      A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) & (C.d.d[0].t | C.d.d[0].f) |
-      B.d.d[0].f &
-      A.d.d[0].t &
-      (C.d.d[0].t | C.d.d[0].f) |
-      C.d.d[0].f &
-      A.d.d[0].t &
-      B.d.d[0].t -> _t-
+      A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) & (C.d.d[0].t | C.d.d[0].f) | B.d.d[0].f & A.d.d[0].t & (C.d.d[0].t | C.d.d[0].f) | C.d.d[0].f & A.d.d[0].t & B.d.d[0].t -> _t-
       A.d.d[0].t & B.d.d[0].t & C.d.d[0].t -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f -> _f+
+      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f -> _t+
+      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -263,8 +247,8 @@ namespace syn {
     prs {
       A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t -> _f-
       A.d.d[0].t & B.d.d[0].t -> _t-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _f+
+      ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _t+
+      ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -286,8 +270,8 @@ namespace syn {
     prs {
       A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t -> _f-
       A.d.d[0].t & B.d.d[0].t -> _t-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _f+
+      ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _t+
+      ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -309,8 +293,8 @@ namespace syn {
     prs {
       A.d.d[0].f & B.d.d[0].t | A.d.d[0].t & B.d.d[0].f -> _t-
       A.d.d[0].f & B.d.d[0].f | A.d.d[0].t & B.d.d[0].t -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _f+
+      ~A.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].f -> _t+
+      ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -332,8 +316,8 @@ namespace syn {
     prs {
       A.d.d[0].f & B.d.d[0].t | A.d.d[0].t & B.d.d[0].f -> _f-
       A.d.d[0].f & B.d.d[0].f | A.d.d[0].t & B.d.d[0].t -> _t-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _f+
+      ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _t+
+      ~A.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -354,16 +338,11 @@ namespace syn {
     S.r = Y.r;
     bool _f, _t;
     prs {
-      A.d.d[0].t & S.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t &
-      S.d.d[0].f &
-      (A.d.d[0].f | A.d.d[0].t) -> _f-
-      A.d.d[0].f & S.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].f &
-      S.d.d[0].f &
-      (A.d.d[0].f | A.d.d[0].t) -> _t-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~S.d.d[0].t &
-      ~S.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~S.d.d[0].t &
-      ~S.d.d[0].f -> _f+
+      A.d.d[0].t & S.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & S.d.d[0].f & (A.d.d[0].f | A.d.d[0].t) -> _f-
+      ~A.d.d[0].t & ~S.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~S.d.d[0].f & ~A.d.d[0].f -> _f+
+      A.d.d[0].f & S.d.d[0].t & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & S.d.d[0].f & (A.d.d[0].f | A.d.d[0].t) -> _t-
+      ~A.d.d[0].f & ~S.d.d[0].t & ~B.d.d[0].t & ~B.d.d[0].f & ~S.d.d[0].f & ~A.d.d[0].t-> _t+
+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -384,15 +363,10 @@ namespace syn {
     C.r = Y.r;
     bool _f, _t;
     prs {
-      A.d.d[0].f & B.d.d[0].f & C.d.d[0].t | C.d.d[0].f &
-      (A.d.d[0].t | A.d.d[0].f) &
-      (B.d.d[0].t | B.d.d[0].f) -> _t-
-      (A.d.d[0].t & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].t & A.d.d[0].f) &
-      C.d.d[0].t -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f -> _f+
+      A.d.d[0].f & B.d.d[0].f & C.d.d[0].t | C.d.d[0].f & (A.d.d[0].t | A.d.d[0].f) & (B.d.d[0].t | B.d.d[0].f) -> _t-
+      ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t-> _t+
+      (A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f) & C.d.d[0].t -> _f-
+      ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -413,15 +387,10 @@ namespace syn {
     C.r = Y.r;
     bool _f, _t;
     prs {
-      (A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t) &
-      C.d.d[0].f -> _t-
-      (A.d.d[0].t & B.d.d[0].t & C.d.d[0].f) | C.d.d[0].t &
-      (A.d.d[0].t | A.d.d[0].f) &
-      (B.d.d[0].t | B.d.d[0].f) -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f -> _f+
+      (A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t) & C.d.d[0].f -> _t-
+      ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t & ~C.d.d[0].f & ~C.d.d[0].t -> _t+
+      (A.d.d[0].t & B.d.d[0].t & C.d.d[0].f) | C.d.d[0].t & ( A.d.d[0].f | A.d.d[0].t) & (B.d.d[0].f |B.d.d[0].t ) -> _f-
+      ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].f & ~C.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -443,20 +412,10 @@ namespace syn {
     D.r = Y.r;
     bool _f, _t;
     prs {
-      (A.d.d[0].f & B.d.d[0].f & (C.d.d[0].f | C.d.d[0].t) &
-      (D.d.d[0].f | D.d.d[0].t)) |
-      (C.d.d[0].f & D.d.d[0].f & (A.d.d[0].f | A.d.d[0].t) &
-      (B.d.d[0].f | B.d.d[0].t)) -> _t-
-      (A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f) &
-      (C.d.d[0].t & (D.d.d[0].f | D.d.d[0].t) | D.d.d[0].t & C.d.d[0].f) -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f &
-      ~D.d.d[0].t &
-      ~D.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f &
-      ~D.d.d[0].t &
-      ~D.d.d[0].f -> _f+
+      (A.d.d[0].f & B.d.d[0].f & (C.d.d[0].f | C.d.d[0].t) & (D.d.d[0].f | D.d.d[0].t)) | (C.d.d[0].f & D.d.d[0].f & (A.d.d[0].t | A.d.d[0].f) & (B.d.d[0].t | B.d.d[0].f)) -> _t-
+      ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f & ~C.d.d[0].t & ~D.d.d[0].f & ~D.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].t-> _t+
+      (A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f) & (C.d.d[0].t & (D.d.d[0].f | D.d.d[0].t) | D.d.d[0].t & C.d.d[0].f) -> _f-
+      ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f & ~C.d.d[0].t & ~D.d.d[0].f & ~D.d.d[0].t & ~C.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -478,20 +437,10 @@ namespace syn {
     D.r = Y.r;
     bool _f, _t;
     prs {
-      (A.d.d[0].f & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].f & A.d.d[0].t) &
-      (C.d.d[0].f & (D.d.d[0].f | D.d.d[0].t) | D.d.d[0].f & C.d.d[0].t) -> _t-
-      (A.d.d[0].t & B.d.d[0].t & (C.d.d[0].f | C.d.d[0].t) &
-      (D.d.d[0].f | D.d.d[0].t)) |
-      (C.d.d[0].t & D.d.d[0].t & (A.d.d[0].f | A.d.d[0].t) &
-      (B.d.d[0].f | B.d.d[0].t)) -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f &
-      ~D.d.d[0].t &
-      ~D.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t &
-      ~C.d.d[0].f &
-      ~D.d.d[0].t &
-      ~D.d.d[0].f -> _f+
+      (A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t) & (C.d.d[0].f & (D.d.d[0].t | D.d.d[0].f) | D.d.d[0].f & C.d.d[0].t) -> _t-
+      ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t  & ~C.d.d[0].f & ~D.d.d[0].t & ~D.d.d[0].f & ~C.d.d[0].t -> _t+
+      (A.d.d[0].t & B.d.d[0].t & (C.d.d[0].f | C.d.d[0].t) & (D.d.d[0].f | D.d.d[0].t)) | (C.d.d[0].t & D.d.d[0].t & (A.d.d[0].f | A.d.d[0].t) & (B.d.d[0].f | B.d.d[0].t)) -> _f-
+      ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].f & ~C.d.d[0].t & ~D.d.d[0].f & ~D.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -516,15 +465,15 @@ namespace syn {
     prs {
       A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t -> _fc-
       A.d.d[0].t & B.d.d[0].t -> _tc-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _tc+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _fc+
+      ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _tc+
+      ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _fc+
       _fc => YC.d.d[0].f-
       _tc => YC.d.d[0].t-
 
       A.d.d[0].f & B.d.d[0].t | A.d.d[0].t & B.d.d[0].f -> _ts-
       A.d.d[0].f & B.d.d[0].f | A.d.d[0].t & B.d.d[0].t -> _fs-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _ts+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f -> _fs+
+      ~A.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].f -> _ts+
+      ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _fs+
       _fs => YS.d.d[0].f-
       _ts => YS.d.d[0].t-
     }
@@ -551,24 +500,16 @@ namespace syn {
     bool _st, _sf, _ct, _cf;
     prs {
       A.d.d[0].t & B.d.d[0].t | (A.d.d[0].t | B.d.d[0].t) & C.d.d[0].t -> _ct-
-      ~C.d.d[0].t & ~C.d.d[0].f & ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t &
-      ~B.d.d[0].f -> _ct+
+      ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].t & ~C.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].f-> _ct+
 
       A.d.d[0].f & B.d.d[0].f | (A.d.d[0].f | B.d.d[0].f) & C.d.d[0].f -> _cf-
-      ~C.d.d[0].t & ~C.d.d[0].f & ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t &
-      ~B.d.d[0].f -> _cf+
+      ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f  & ~C.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].t & -> _cf+
 
-      C.d.d[0].t & (A.d.d[0].t & B.d.d[0].t | A.d.d[0].f & B.d.d[0].f) |
-      C.d.d[0].f &
-      (A.d.d[0].t & B.d.d[0].f | A.d.d[0].f & B.d.d[0].t) -> _st-
-      ~C.d.d[0].t & ~C.d.d[0].f & ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t &
-      ~B.d.d[0].f -> _st+
+      C.d.d[0].t & (A.d.d[0].t & B.d.d[0].t | A.d.d[0].f & B.d.d[0].f) | C.d.d[0].f & (A.d.d[0].t & B.d.d[0].f | A.d.d[0].f & B.d.d[0].t) -> _st-
+      ~C.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f & -> _st+
 
-      C.d.d[0].t & (A.d.d[0].f & B.d.d[0].t | A.d.d[0].t & B.d.d[0].f) |
-      C.d.d[0].f &
-      (A.d.d[0].f & B.d.d[0].f | A.d.d[0].t & B.d.d[0].t) -> _sf-
-      ~C.d.d[0].t & ~C.d.d[0].f & ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t &
-      ~B.d.d[0].f -> _sf+
+      C.d.d[0].t & (A.d.d[0].f & B.d.d[0].t | A.d.d[0].t & B.d.d[0].f) | C.d.d[0].f & (A.d.d[0].f & B.d.d[0].f | A.d.d[0].t & B.d.d[0].t) -> _sf-
+      ~C.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t &  ~A.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].f -> _sf+
 
       _ct => YC.d.d[0].t-
       _cf => YC.d.d[0].f-
