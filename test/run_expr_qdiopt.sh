@@ -3,7 +3,12 @@
 ARCH=`$ACT_HOME/scripts/getarch`
 OS=`$ACT_HOME/scripts/getos`
 EXT=${ARCH}_${OS}
-ACTTOOL=../../chp2prs.$EXT
+if [ -z $ACT_TEST_INSTALL ] || [ ! -f ../../chp2prs.$EXT ]; then
+  ACTTOOL=$ACT_HOME/bin/chp2prs
+  echo "testing installation"
+else
+  ACTTOOL=../../chp2prs.$EXT
+fi
 
 if ! $ACT_HOME/scripts/findpkg -i expropt > /dev/null
 then

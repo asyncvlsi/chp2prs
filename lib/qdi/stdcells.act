@@ -59,10 +59,10 @@ namespace syn {
     _t.out[0] = Y.d.d[0].t;
   }
 
-  export defcell INVX1 <: inv<1> () {}
-  export defcell INVX2 <: inv<2> () {}
-  export defcell INVX4 <: inv<4> () {}
-  export defcell INVX8 <: inv<8> () {}
+  export defproc INVX1 <: inv<1> () {}
+  export defproc INVX2 <: inv<2> () {}
+  export defproc INVX4 <: inv<4> () {}
+  export defproc INVX8 <: inv<8> () {}
 
   /*-- clock delay buffers --*/
 
@@ -94,13 +94,13 @@ namespace syn {
     _t.out[0] = Y.d.d[0].t;
   }
 
-  export defcell BUFX1 <: buf<1> () {}
-  export defcell BUFX2 <: buf<2> () {}
-  export defcell BUFX4 <: buf<4> () {}
+  export defproc BUFX1 <: buf<1> () {}
+  export defproc BUFX2 <: buf<2> () {}
+  export defproc BUFX4 <: buf<4> () {}
 
   /*-- simple gates --*/
   export
-  defcell NOR2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
+  defproc NOR2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     bool _f, _t;
@@ -123,16 +123,16 @@ namespace syn {
   }
 
   export
-  defcell NOR3X1(syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y) {
+  defproc NOR3X1(syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     C.r = Y.r;
     bool _f, _t;
     prs {
       A.d.d[0].f & B.d.d[0].f & C.d.d[0].f -> _t-
-      A.d.d[0].t & (B.d.d[0].t | B.d.d[0].f) & (C.d.d[0].t | C.d.d[0].f) | B.d.d[0].t & A.d.d[0].f & (C.d.d[0].t | C.d.d[0].f) | C.d.d[0].t & B.d.d[0].f & A.d.d[0].f -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f -> _f+
+      ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f -> _t+
+      A.d.d[0].t & (B.d.d[0].t | B.d.d[0].f) & (C.d.d[0].t | C.d.d[0].f) | B.d.d[0].t & A.d.d[0].f & (C.d.d[0].f | C.d.d[0].t) | C.d.d[0].t & B.d.d[0].f & A.d.d[0].f -> _f-
+      ~A.d.d[0].t & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f & ~A.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -147,15 +147,15 @@ namespace syn {
   }
 
   export
-  defcell OR2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
+  defproc OR2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     bool _f, _t;
     prs {
       A.d.d[0].f & B.d.d[0].f -> _f-
+      ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _f+
       A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f -> _t-
-      ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f -> _f+
+      ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f -> _t+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -170,15 +170,15 @@ namespace syn {
   }
 
   export
-  defcell OR2X2(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
+  defproc OR2X2(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     bool _f, _t;
     prs {
       A.d.d[0].f & B.d.d[0].f -> _f-
+      ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _f+
       A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f -> _t-
-      ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f -> _f+
+      ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f -> _t+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -193,14 +193,14 @@ namespace syn {
   }
 
   export
-  defcell NAND2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
+  defproc NAND2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     bool _f, _t;
     prs {
       A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t  -> _t-
-      A.d.d[0].t & B.d.d[0].t -> _f-
       ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _t+
+      A.d.d[0].t & B.d.d[0].t -> _f-
       ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t &  ~B.d.d[0].t -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
@@ -216,16 +216,16 @@ namespace syn {
   }
 
   export
-  defcell NAND3X1(syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y) {
+  defproc NAND3X1(syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     C.r = Y.r;
     bool _f, _t;
     prs {
-      A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) & (C.d.d[0].t | C.d.d[0].f) | B.d.d[0].f & A.d.d[0].t & (C.d.d[0].t | C.d.d[0].f) | C.d.d[0].f & A.d.d[0].t & B.d.d[0].t -> _t-
+      A.d.d[0].f & (B.d.d[0].f | B.d.d[0].t) & (C.d.d[0].f | C.d.d[0].t) | B.d.d[0].f & A.d.d[0].t & (C.d.d[0].t | C.d.d[0].f) | C.d.d[0].f & B.d.d[0].t & A.d.d[0].t  -> _t-
+      ~A.d.d[0].f & ~B.d.d[0].f & ~B.d.d[0].t & ~C.d.d[0].f & ~C.d.d[0].t & ~A.d.d[0].t -> _t+
       A.d.d[0].t & B.d.d[0].t & C.d.d[0].t -> _f-
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f -> _t+
-      ~A.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f -> _f+
+      ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].t -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -240,15 +240,15 @@ namespace syn {
   }
 
   export
-  defcell AND2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
+  defproc AND2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     bool _f, _t;
     prs {
       A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t -> _f-
+      ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _f+
       A.d.d[0].t & B.d.d[0].t -> _t-
       ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _t+
-      ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -263,15 +263,15 @@ namespace syn {
   }
 
   export
-  defcell AND2X2(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
+  defproc AND2X2(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     bool _f, _t;
     prs {
       A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t -> _f-
+      ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _f+
       A.d.d[0].t & B.d.d[0].t -> _t-
       ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _t+
-      ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -286,7 +286,7 @@ namespace syn {
   }
 
   export
-  defcell XOR2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
+  defproc XOR2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     bool _f, _t;
@@ -309,7 +309,7 @@ namespace syn {
   }
 
   export
-  defcell XNOR2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
+  defproc XNOR2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     bool _f, _t;
@@ -332,7 +332,7 @@ namespace syn {
   }
 
   export
-  defcell MUX2X1(syn::sdtexprchan?<1> A, B, S; syn::sdtexprchan!<1> Y) {
+  defproc MUX2X1(syn::sdtexprchan?<1> A, B, S; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     S.r = Y.r;
@@ -357,7 +357,7 @@ namespace syn {
   }
 
   export
-  defcell OAI21X1(syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y) {
+  defproc OAI21X1(syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     C.r = Y.r;
@@ -381,7 +381,7 @@ namespace syn {
   }
 
   export
-  defcell AOI21X1(syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y) {
+  defproc AOI21X1(syn::sdtexprchan?<1> A, B, C; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     C.r = Y.r;
@@ -405,7 +405,7 @@ namespace syn {
   }
 
   export
-  defcell OAI22X1(syn::sdtexprchan?<1> A, B, C, D; syn::sdtexprchan!<1> Y) {
+  defproc OAI22X1(syn::sdtexprchan?<1> A, B, C, D; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     C.r = Y.r;
@@ -430,7 +430,7 @@ namespace syn {
   }
 
   export
-  defcell AOI22X1(syn::sdtexprchan?<1> A, B, C, D; syn::sdtexprchan!<1> Y) {
+  defproc AOI22X1(syn::sdtexprchan?<1> A, B, C, D; syn::sdtexprchan!<1> Y) {
     A.r = Y.r;
     B.r = Y.r;
     C.r = Y.r;
@@ -439,8 +439,8 @@ namespace syn {
     prs {
       (A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t) & (C.d.d[0].f & (D.d.d[0].t | D.d.d[0].f) | D.d.d[0].f & C.d.d[0].t) -> _t-
       ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t  & ~C.d.d[0].f & ~D.d.d[0].t & ~D.d.d[0].f & ~C.d.d[0].t -> _t+
-      (A.d.d[0].t & B.d.d[0].t & (C.d.d[0].f | C.d.d[0].t) & (D.d.d[0].f | D.d.d[0].t)) | (C.d.d[0].t & D.d.d[0].t & (A.d.d[0].f | A.d.d[0].t) & (B.d.d[0].f | B.d.d[0].t)) -> _f-
-      ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].f & ~C.d.d[0].t & ~D.d.d[0].f & ~D.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _f+
+      (A.d.d[0].t & B.d.d[0].t & (C.d.d[0].t | C.d.d[0].f) & (D.d.d[0].t | D.d.d[0].f)) | (C.d.d[0].t & D.d.d[0].t & (A.d.d[0].f | A.d.d[0].t) & (B.d.d[0].f | B.d.d[0].t)) -> _f-
+      ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].t & ~C.d.d[0].f & ~D.d.d[0].t & ~D.d.d[0].f & ~A.d.d[0].f & ~B.d.d[0].f -> _f+
       _f => Y.d.d[0].f-
       _t => Y.d.d[0].t-
     }
@@ -457,7 +457,7 @@ namespace syn {
   /*--- arithmetic ---*/
 
   export
-  defcell HAX1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> YC, YS) {
+  defproc HAX1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> YC, YS) {
     A.r = YS.r;
     B.r = YS.r;
     YC.r = YS.r;
@@ -503,10 +503,10 @@ namespace syn {
       ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].t & ~C.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].f-> _ct+
 
       A.d.d[0].f & B.d.d[0].f | (A.d.d[0].f | B.d.d[0].f) & C.d.d[0].f -> _cf-
-      ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f  & ~C.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].t & -> _cf+
+      ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f  & ~C.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].t -> _cf+
 
       C.d.d[0].t & (A.d.d[0].t & B.d.d[0].t | A.d.d[0].f & B.d.d[0].f) | C.d.d[0].f & (A.d.d[0].t & B.d.d[0].f | A.d.d[0].f & B.d.d[0].t) -> _st-
-      ~C.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f & -> _st+
+      ~C.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f -> _st+
 
       C.d.d[0].t & (A.d.d[0].f & B.d.d[0].t | A.d.d[0].t & B.d.d[0].f) | C.d.d[0].f & (A.d.d[0].f & B.d.d[0].f | A.d.d[0].t & B.d.d[0].t) -> _sf-
       ~C.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t &  ~A.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].f -> _sf+
