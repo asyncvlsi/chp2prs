@@ -303,28 +303,9 @@ namespace syn {
  */
   export template<pint W>
   defproc readport(sdtvar<W> var; sdtexprchan<W> out) {
-    bool xout;
-
-    std::gates::sigbuf<W> s(xout);
-    delay<4> dly(out.r, out.a);
-
-    spec {
-      timing ?out.a- -> out.a-
-    }
-
-    INVX1 ix(out.r, xout);
-    prs {
-      ( i : W :
-        ~s.out[i] & ~var.d[i].f -> out.d[i]+
-        s.out[i] -> out.d[i]- )
-    }
-    sizing{
-      leak_adjust <- 1;
-      p_n_mode <- 1;
-      (; i : W:
-        out.d[i]{- 1}
-      )
-    }
+    // sdt means the variable must be ready
+    (i:W: var.d[i].t = out.d[i];)
+    out.r = out.a;
   }
 
   /**
