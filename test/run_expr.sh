@@ -3,9 +3,10 @@
 ARCH=`$ACT_HOME/scripts/getarch`
 OS=`$ACT_HOME/scripts/getos`
 EXT=${ARCH}_${OS}
-if [ -z $ACT_TEST_INSTALL ] || [ ! -f ../../chp2prs.$EXT ]; then
+if [ ! x$ACT_TEST_INSTALL = x ] || [ ! -f ../../chp2prs.$EXT ]; then
   ACTTOOL=$ACT_HOME/bin/chp2prs
   echo "testing installation"
+echo
 else
   ACTTOOL=../../chp2prs.$EXT
 fi
@@ -45,12 +46,19 @@ EOF
 	    echo "${bold}*** simulation failed ***${normal}"
 	    faildirs="${faildirs} ${1}-sim"
 	    failed=1
+        if [ ! x$ACT_TEST_VERBOSE = x ]; then
+            cat $1/run/prsim.out
+        fi
 	    echo	
 	fi
     else
 	echo "${bold}*** circuit construction failed ***${normal}"
 	faildirs="${faildirs} ${1}-ckt"
 	failed=1
+    if [ ! x$ACT_TEST_VERBOSE = x ]; then
+            cat $1/run/sdt.act
+            cat $1/run/test.prs
+    fi
         echo
     fi
 }
