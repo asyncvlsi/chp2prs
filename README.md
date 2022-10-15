@@ -1,4 +1,6 @@
-# chp2prs
+# chp2prs: Syntax-directed translation of CHP programs into production rules
+
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/asyncvlsi/chp2prs/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/asyncvlsi/chp2prs/tree/master)
 
 ### Usage
 
