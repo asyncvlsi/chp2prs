@@ -1,10 +1,10 @@
 version: 2
 
 jobs:
-   ubuntu20:
-     # Ubuntu 20
+   ubuntu22:
+     # Ubuntu 22
      docker:
-       - image: ubuntu:20.04
+       - image: ubuntu:22.04
      steps:
        - checkout
        - run:
@@ -16,7 +16,7 @@ jobs:
           # tzdata is interactive so force no interaction
           command: |
               apt-get -q update -y
-              DEBIAN_FRONTEND=noninteractive apt-get -q install -y libedit-dev zlib1g-dev m4 build-essential git yosys 
+              DEBIAN_FRONTEND=noninteractive apt-get -q install -y libedit-dev zlib1g-dev m4 build-essential git yosys terminfo
        - run: 
           name: Install act base
           command: |
@@ -32,18 +32,28 @@ jobs:
               make install
               cd ..
        - run: 
-          name: Install interACT base
+          name: Install act stdlib
           command: |
-              git clone https://github.com/asyncvlsi/interact
+              git clone https://github.com/asyncvlsi/stdlib --depth 1
               export ACT_HOME=`pwd`/install
               export PATH=$ACT_HOME/bin:$PATH
               export VLSI_TOOLS_SRC=`pwd`/act
-              cd interact
-              echo "===== build interACT base ====="
+              cd stdlib
+              echo "===== install act stdlib ====="
+              make install
+              cd ..
+       - run: 
+          name: Install act expropt
+          command: |
+              git clone https://github.com/asyncvlsi/expropt --depth 1
+              export ACT_HOME=`pwd`/install
+              export PATH=$ACT_HOME/bin:$PATH
+              export VLSI_TOOLS_SRC=`pwd`/act
+              cd expropt
+              echo "===== build act expropt addon ====="
               ./configure
-              make depend
               make
-              echo "===== install interACT base ====="
+              echo "===== install act expropt addon ====="
               make install
               cd ..
        - run: 
@@ -58,52 +68,16 @@ jobs:
               make
               echo "===== install act addon ====="
               make install
+              
               echo "===== test act addon ====="
+              export ACT_TEST_VERBOSE=1
+              make runtest
+              export ACT_TEST_install=1
               make runtest
 
-   centos8:
-    # centos 8 / rhel 8
-     docker:
-       - image: centos:8
-     steps:
-       - checkout
-       - run:           
-          name: Dependencies
-          command: |
-              yum install -y 'dnf-command(config-manager)'
-              yum config-manager --set-enabled powertools -y
-              yum install -y gcc gcc-c++ diffutils make libedit-devel zlib-devel m4 git
-       - run: 
-          name: Install act base
-          command: |
-              git clone https://github.com/asyncvlsi/act
-              mkdir install
-              export ACT_HOME=`pwd`/install
-              cd act
-              echo "===== build act base ====="
-              export VLSI_TOOLS_SRC=`pwd`
-              ./configure $ACT_HOME
-              ./build
-              echo "===== install act base ====="
-              make install
-              cd ..
-       - run: 
-          name: Build install and test
-          command: |
-              export ACT_HOME=`pwd`/install
-              export PATH=$ACT_HOME/bin:$PATH
-              export VLSI_TOOLS_SRC=`pwd`/act
-              echo "===== build act addon ====="
-              make depend
-              make
-              echo "===== install act addon ====="
-              make install
-              echo "===== test act addon  ====="
-              make runtest
 workflows:
    version: 2
    build:
      jobs: 
-        - ubuntu20
-        #- centos8 #yosys not avalible set up compile
+        - ubuntu22
 
