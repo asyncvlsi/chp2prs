@@ -593,7 +593,7 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
     UNARY_OP;
     if (e->u.e.r) {
       Assert (e->u.e.r->type == E_INT, "What?");
-      *width = e->u.e.r->u.v;
+      *width = e->u.e.r->u.ival.v;
     }
     else {
       *width = 1;
@@ -685,13 +685,13 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
       if (e->u.e.r->u.e.l) {
 	/* r = msb, l = lsb */
 	Assert (e->u.e.r->u.e.r->type == E_INT, "What?");
-	msb = e->u.e.r->u.e.r->u.v;
+	msb = e->u.e.r->u.e.r->u.ival.v;
 	Assert (e->u.e.r->u.e.l->type == E_INT, "What?");
-	lsb = e->u.e.r->u.e.l->u.v;
+	lsb = e->u.e.r->u.e.l->u.ival.v;
       }
       else {
 	Assert (e->u.e.r->u.e.r->type == E_INT, "What?");
-	msb = e->u.e.r->u.e.r->u.v;
+	msb = e->u.e.r->u.e.r->u.ival.v;
 	lsb = msb;
       }
       *width = (msb - lsb + 1);
@@ -858,10 +858,10 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
   case E_INT:
     if (collect_phase) {
       int w = 0;
-      int val = e->u.v;
+      int val = e->u.ival.v;
 
-      if (e->u.v_extra) {
-	w = ((BigInt *)e->u.v_extra)->getWidth ();
+      if (e->u.ival.v_extra) {
+	w = ((BigInt *)e->u.ival.v_extra)->getWidth ();
       }
       else {
 	if (val < 0) {
@@ -888,7 +888,7 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
       _intiter = list_next (_intiter);
       w = list_ivalue (_intiter);
       _intiter = list_next (_intiter);
-      _emit_expr_const (id, w, e->u.v);
+      _emit_expr_const (id, w, e->u.ival.v);
     }
     break;
 

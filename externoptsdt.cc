@@ -327,7 +327,7 @@ int ExternOptSDT::get_expr_width(Expr *ex) {
   case E_BUILTIN_INT:
     if (ex->u.e.r) {
       Assert (ex->u.e.r->type == E_INT, "What?");
-      return ex->u.e.r->u.v;
+      return ex->u.e.r->u.ival.v;
     }
     else {
       return 1;
@@ -357,7 +357,7 @@ int ExternOptSDT::get_expr_width(Expr *ex) {
   case E_BITFIELD:
     _var_getinfo ((ActId *)ex->u.e.l);
     if (ex->u.e.r->u.e.l) {
-      return (ex->u.e.r->u.e.r->u.v - ex->u.e.r->u.e.l->u.v + 1);
+      return (ex->u.e.r->u.e.r->u.ival.v - ex->u.e.r->u.e.l->u.ival.v + 1);
     }
     else {
       return 1;
@@ -569,7 +569,7 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
     if (0) {
       if (collect_phase) {
         int w = 0;
-        int val = e->u.v;
+        int val = e->u.ival.v;
         if (val < 0) {
           val = -val;
           w = 32;
@@ -594,7 +594,7 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
         int w;
         id = ihash_lookup(_inexprmap, (long) e)->i;
         w = ihash_lookup(_inwidthmap, (long) e)->i;
-        _emit_expr_const (id, w, e->u.v, false);
+        _emit_expr_const (id, w, e->u.ival.v, false);
       }
     }
     break;
