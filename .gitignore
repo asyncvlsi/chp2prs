@@ -16,6 +16,7 @@ test_rand.prsim
 prsim.out
 .DS_Store
 config_pkg.h
+config_pkg.h.old
 config.mk
 *.so
 .idea
