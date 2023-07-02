@@ -37,7 +37,7 @@
 static void usage(char *name)
 {
   fprintf(stderr, "Usage BasicSDT: %s [-Ob] [-e <exprfile>] <actfile> <process> <out>\n", name);
-  fprintf(stderr, "Usage ExrpOptSDT: %s [-Ob] -o [<yosys,genus>] [-e <exprfile>] <actfile> <process> <out>\n", name);
+  fprintf(stderr, "Usage ExrpOptSDT: %s [-Ob] -o [<abc,yosys,genus>] [-e <exprfile>] <actfile> <process> <out>\n", name);
   exit(1);
 }
 
@@ -304,7 +304,20 @@ int main(int argc, char **argv)
   c2p->setParam ("externopt", external_opt);
   c2p->setParam ("bundled_dpath", bundled);
   if (external_opt) {
-    c2p->setParam ("use_yosys", strcmp (syntesistool, "genus") ? 1 : 0);
+    int param = 0;
+    if (strcmp (syntesistool, "genus") == 0) {
+       param = 0;
+    } 
+    else if (strcmp (syntesistool, "yosys") == 0) {
+       param = 1;
+    }
+    else if (strcmp (syntesistool, "abc") == 0) {
+       param = 2;
+    }
+    else {
+       fatal_error ("Unknown synthesis option %s", syntesistool);
+    }
+    c2p->setParam ("use_yosys", param);
   }
   c2p->setParam ("expr_file", exprfile);
   c2p->setParam ("output_fp", fpout);

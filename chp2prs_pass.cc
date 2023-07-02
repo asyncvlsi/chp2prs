@@ -75,7 +75,8 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
   if (externopt) {
 #ifdef FOUND_expropt
     sdt = new ExternOptSDT (bundled, chpopt, fp, exprfile,
-			      use_yosys ? yosys : genus );
+			      use_yosys == 1 ? yosys :  
+                             (use_yosys == 0 ? genus : abc ));
 #else
     fatal_error ("External optimization package not installed.");
 #endif    
@@ -88,7 +89,7 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
   }
   
   sdt->run_sdt (p);
-  
+
   delete sdt;
 
   return NULL;

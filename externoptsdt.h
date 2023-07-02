@@ -47,6 +47,10 @@ class ExternOptSDT : public BasicSDT {
       mapper = NULL;
     }
 
+  ~ExternOptSDT () {
+    if (mapper) { delete mapper; }
+   }
+
   private:
   expr_mapping_software _map;
 

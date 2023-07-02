@@ -51,7 +51,7 @@ SUBDIRS=lib
 include $(ACT_HOME)/scripts/Makefile.std
 
 ifdef expropt_INCLUDE
-EXPRLIB=-lexpropt_sh
+EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
 else
 EXPRLIB=
 endif

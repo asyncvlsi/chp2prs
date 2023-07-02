@@ -74,6 +74,8 @@ class BasicSDT : public SDTEngine {
    */
   BasicSDT (int isbundled, int isopt, FILE *fpout, const char *expr_file);
 
+  virtual ~BasicSDT () { };
+
   int sdt_error () { if (_isdynamic_var) return 1; else return 0; }
 
  protected:
