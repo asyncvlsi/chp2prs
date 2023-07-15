@@ -43,20 +43,6 @@ jobs:
               make install
               cd ..
        - run: 
-          name: Install act expropt
-          command: |
-              git clone https://github.com/asyncvlsi/expropt --depth 1
-              export ACT_HOME=`pwd`/install
-              export PATH=$ACT_HOME/bin:$PATH
-              export VLSI_TOOLS_SRC=`pwd`/act
-              cd expropt
-              echo "===== build act expropt addon ====="
-              ./configure
-              make
-              echo "===== install act expropt addon ====="
-              make install
-              cd ..
-       - run: 
           name: Build install and test
           command: |
               export ACT_HOME=`pwd`/install
