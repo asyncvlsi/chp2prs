@@ -37,11 +37,21 @@ void chp2prs_init (ActPass *dp)
   /* nothing has to be done */
 }
 
+
+static BasicSDT *_pending = NULL;
+
+static void kill_mapper_on_exit (void)
+{
+  if (_pending) {
+    delete _pending;
+  }
+  _pending = NULL;
+}
+
 void *chp2prs_proc (ActPass *ap, Process *p, int mode)
 {
   ActDynamicPass *dp = dynamic_cast<ActDynamicPass *> (ap);
   Assert (dp, "What?!");
-
 
   /* -- create sdt version if a chp body exists without a prs body -- */
   int chpopt, externopt, bundled;
@@ -73,10 +83,11 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
   }
 
   if (externopt) {
-#ifdef FOUND_expropt
+#if defined(FOUND_expropt) && defined (FOUND_abc)
     sdt = new ExternOptSDT (bundled, chpopt, fp, exprfile,
 			      use_yosys == 1 ? yosys :  
                              (use_yosys == 0 ? genus : abc ));
+    _pending = sdt;
 #else
     fatal_error ("External optimization package not installed.");
 #endif    
@@ -86,11 +97,12 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
       fatal_error ("Bundled-data not supported is Basic mode");
     }
     sdt = new BasicSDT (bundled, chpopt, fp, exprfile);
+    _pending = sdt;
   }
   
+  atexit (kill_mapper_on_exit);
   sdt->run_sdt (p);
-
-  delete sdt;
+  kill_mapper_on_exit ();
 
   return NULL;
 }

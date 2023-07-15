@@ -26,16 +26,14 @@ TARGETLIBS=libactchp2prspass_$(EXT).so
 
 include config.mk
 
-ifdef expropt_INCLUDE
 OBJS=main.o
-else
-OBJS=main.o
-endif
 
-ifdef expropt_INCLUDE
-SHOBJS=chp2prs_pass.os sdt.os basicsdt.os externoptsdt.os
-else
 SHOBJS=chp2prs_pass.os sdt.os basicsdt.os
+
+ifdef expropt_INCLUDE 
+ifdef abc_LIBDIR
+SHOBJS+=externoptsdt.os
+endif
 endif
 
 SRCS=$(OBJS:.o=.cc) $(SHOBJS:.os=.cc)
@@ -51,11 +49,12 @@ SUBDIRS=lib
 include $(ACT_HOME)/scripts/Makefile.std
 
 ifdef expropt_INCLUDE
+ifdef abc_LIBDIR
 EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
 else
 EXPRLIB=
 endif
-
+endif
 $(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS) 
 
