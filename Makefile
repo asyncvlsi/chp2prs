@@ -18,9 +18,9 @@
 #  Boston, MA  02110-1301, USA.
 #
 #-------------------------------------------------------------------------
-BINARY=chp2prs.$(EXT)
+BINARY=chp2prs.$(EXT) 
 
-TARGETS=$(BINARY)
+TARGETS=$(BINARY) synth2.$(EXT)
 TARGETLIBS=libactchp2prspass_$(EXT).so
 
 
@@ -56,7 +56,10 @@ EXPRLIB=
 endif
 endif
 $(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS) 
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS)
+
+synth2.$(EXT): $(LIB) main2.o $(ACTDEPEND)
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main2.o -o synth2.$(EXT) $(CHPOPT) $(TARGETLIBS) $(SHLIBACTPASS)
 
 $(TARGETLIBS): $(SHOBJS)
 	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB)

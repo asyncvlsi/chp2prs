@@ -90,14 +90,14 @@ static ActSynthesize *_init (ActPass *ap)
 
 void synthesis_init (ActPass *ap)
 {
-  ActDynamicPass *dp = dynamic_cast<ActDynamicPass *> (ap);
-  Assert (dp, "What?");
+  /* nothing to do here */
 }
 
-void synthesis_done (ActPass *ap)
+void synthesis_run (ActPass *ap, Process *p)
 {
   ActSynthesize *syn = _init (ap);
   if (syn) {
+    syn->finalSynthesis (p);
     delete syn;
     ActDynamicPass *dp = dynamic_cast<ActDynamicPass *>(ap);
     dp->setParam ("raw", (void *)NULL);
@@ -133,11 +133,12 @@ static int emit_refinement_header (ActSynthesize *syn,
 
   ActNamespace::Act()->msnprintfproc (buf, 10240, u);
   
-  pp_printf (pp, " %s <: ", buf);
-  pp_lazy (pp, 0);
+  pp_printf (pp, "%s <: ", buf);
+  pp_lazy (pp, 4);
   u->snprintActName (buf, 10240);
-  pp_printf_raw (pp, " %s()\n", buf);
-
+  pp_printf (pp, "%s()", buf);
+  pp_forced (pp, 0);
+  
   int bw = 0;
 
 #define OVERRIDE_OPEN				\
@@ -222,7 +223,7 @@ static int emit_refinement_header (ActSynthesize *syn,
   pp_forced (pp, 2);
   pp_setb (pp);
 
-  if (p->getlang() && p->getlang()->getchp()) {
+  if (u->getlang() && u->getlang()->getchp()) {
     pp_printf (pp, "refine {");
     pp_forced (pp, 2);
     pp_setb (pp);
@@ -325,11 +326,18 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
     int v = emit_refinement_header (syn, p);
 
     if (p->getlang() && p->getlang()->getchp()) {
+
+      syn->runSynth (p);
+      
       pp_endb (pp);
+      pp_printf (pp, "/* end refine */");
+      pp_forced (pp, 0);
       pp_printf (pp, "}");
       pp_forced (pp, 0);
     }
     pp_endb (pp);
+    pp_printf (pp, "/* end process */");
+    pp_forced (pp, 0);
     pp_printf (pp, "}");
     pp_forced (pp, 0);
   }

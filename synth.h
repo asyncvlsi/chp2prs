@@ -55,7 +55,24 @@ class ActSynthesize {
    * emitted at the top-level. These imports typically correspond to
    * any standard library that is used by the synthesis engine.
    */
-  virtual void emitTopImports () { };
+  virtual void emitTopImports () {
+    pp_printf_raw (_pp, "import \"%s\";\n", _ename);
+  };
+
+  /**
+   * Override this function to add any final text to the outputs
+   * generated 
+   */
+  virtual void emitFinal() {
+    _expr = fopen (_ename, "a");
+    if (!_expr) {
+      fatal_error ("Could not open %s for appending!", _ename);
+    }
+    fprintf (_expr, "}\n}\n");
+    fclose (_expr);
+    _expr = NULL;
+  }
+
 
   /**
    * Run the pre-synthesis steps needed. This calls decomposition
@@ -65,6 +82,13 @@ class ActSynthesize {
    * @return true on success, false if there was some error
    */
   bool prepSynthesis (Process *p);
+
+  /**
+   * Run any final steps at the end of the entire synthesis process.
+   *
+   * @param p is the top-level process
+   */
+  void finalSynthesis (Process *p);
 
   /**
    * Print the name of the type that implements an n-bit integer to
@@ -86,11 +110,17 @@ class ActSynthesize {
    * Return prefix
    */
   const char *getPrefix () { return _prefix; }
+
+  /**
+   * Run logic synthesis locally on a process
+   */
+  virtual void runSynth (Process *p) { }
   
- private:
+protected:
   FILE *_out;			///< output stream
   pp_t *_pp;			///< output pretty-printer
   FILE *_expr;			///< expr output file
+  char *_ename;			///< expr file name
 
   const char *_prefix;		///< synthesis prefix
   
