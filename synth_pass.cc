@@ -98,6 +98,8 @@ void synthesis_done (ActPass *ap)
   ActSynthesize *syn = _init (ap);
   if (syn) {
     delete syn;
+    ActDynamicPass *dp = dynamic_cast<ActDynamicPass *>(ap);
+    dp->setParam ("raw", (void *)NULL);
   }
 }
 
