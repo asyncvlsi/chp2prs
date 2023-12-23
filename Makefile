@@ -28,7 +28,7 @@ include config.mk
 
 OBJS=main.o
 
-SHOBJS=chp2prs_pass.os sdt.os basicsdt.os synth.os
+SHOBJS=chp2prs_pass.os sdt.os basicsdt.os synth.os synth_pass.os
 
 ifdef expropt_INCLUDE 
 ifdef abc_LIBDIR
