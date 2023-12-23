@@ -80,6 +80,9 @@ static ActSynthesize *_init (ActPass *ap)
 
   ret = (*f) (pref, ifile, ofile, efile);
   dp->setParam ("raw", (void *) ret);
+
+  ret->prepSynthesis (dp->getRoot());
+		     
   return ret;
 }
 

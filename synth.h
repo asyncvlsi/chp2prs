@@ -56,13 +56,13 @@ class ActSynthesize {
   virtual void emitTopImports () { };
 
   /**
-   * Run the synthesis engine given a top-level process. This writes
-   * the synthesis result to the pretty-printer output.
+   * Run the pre-synthesis steps needed. This calls decomposition
+   * passes.
    *
    * @param p is the top-level process
    * @return true on success, false if there was some error
    */
-  bool runSynthesis (Process *p);
+  bool prepSynthesis (Process *p);
 
  private:
   FILE *_out;			///< output stream

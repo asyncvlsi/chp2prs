@@ -113,7 +113,7 @@ ActSynthesize::~ActSynthesize ()
 }
 
 
-bool ActSynthesize::runSynthesis (Process *p)
+bool ActSynthesize::prepSynthesis (Process *p)
 {
   if (!p) {
     return false;
@@ -142,17 +142,5 @@ bool ActSynthesize::runSynthesis (Process *p)
   /*-- Emit any additional imports needed --*/
   emitTopImports ();
 
-  /*-- Refine all structures --*/
-
-  // We need to call synthesis-specific functions here
-
-  /*-- Run core synthesis steps --*/
-
-  // Dynamic pass infrastructure to call this.
-
-
-  /*-- Close output files --*/
-  Close ();
-  
   return true;
 }
