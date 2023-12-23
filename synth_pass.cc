@@ -24,13 +24,42 @@
 #include "synth.h"
 
 /*
+  Dynamic pass for logic synthesis.
+
+  Load the pass, and set the following parameters:
+
+  engine = pointer to a function that returns a new ActSynthesize
+  object; takes four char * arguments corresponding to the
+  constructor.
+
+  Constructor arguments are provided with the following parameters to
+  the dynamic pass:
+
+  prefix = prefix string
+  in = input file
+  out = output file
+  expr = expr file
+
+  To define a new synthesis engine, change the engine setting and run
+  the pass!
+*/
+
+/*
  * This should have the dynamic pass
  */
 static void _init (ActDynamicPass *dp)
 {
+  ActSynthesize *(*f) (char *, char *, char *, char *);
   if (dp->getPtrParam ("raw")) {
     return;
   }
+
+  f = (ActSynthesize * (*) (char *, char *, char *, char *))
+    dp->getPtrParam ("engine");
+  if (!f) {
+    return;
+  }
+  
   char *pref = (char *)dp->getPtrParam ("prefix");
   char *ifile = (char *)dp->getPtrParam ("in");
   char *ofile = (char *)dp->getPtrParam ("out");
@@ -38,7 +67,7 @@ static void _init (ActDynamicPass *dp)
 
   if (!ifile || !ofile || !pref) return;
 
-  dp->setParam ("raw", (void *) new ActSynthesize (pref, ifile, ofile, efile));
+  dp->setParam ("raw", (void *) (*f) (pref, ifile, ofile, efile));
 }
 
 void synthesis_init (ActPass *ap)

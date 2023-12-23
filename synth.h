@@ -27,7 +27,7 @@
 #include <act/act.h>
 
 /*
- *  Top-level logic synthesis harness.
+ *  Logic synthesis engine and helper methods.
  */
 class ActSynthesize {
  public:
@@ -71,18 +71,7 @@ class ActSynthesize {
   
   Process *_top;
 
-
   void Close (); ///< close output files
-};
-
-
-
-/*
- * Generic synthesis for one process or structure
- */
-class ActSynthesizeDef {
-  
-
 };
 
 
