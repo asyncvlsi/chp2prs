@@ -64,10 +64,32 @@ class ActSynthesize {
    */
   bool prepSynthesis (Process *p);
 
+  /**
+   * Print the name of the type that implements an n-bit integer to
+   * the provided buffer
+   */
+  void typeInt (char *buf, int sz, int bitwidth);
+  void typeBool (char *buf, int sz);
+  void typeChan (char *buf, int sz, int bitwidth);
+  void typeBidirChan (char *buf, int sz, int bitsend, int bitrecv);
+
+
+  /**
+   * Return pretty-printer
+   */
+  pp_t *getPP () { return _pp; }
+
+  /**
+   * Return prefix
+   */
+  const char *getPrefix () { return _prefix; }
+  
  private:
   FILE *_out;			///< output stream
   pp_t *_pp;			///< output pretty-printer
   FILE *_expr;			///< expr output file
+
+  const char *_prefix;		///< synthesis prefix
   
   Process *_top;
 

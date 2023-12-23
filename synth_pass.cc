@@ -21,6 +21,7 @@
  */
 #include "synth_pass.h"
 #include <act/act.h>
+#include <act/iter.h>
 #include "synth.h"
 
 /*
@@ -104,14 +105,107 @@ void synthesis_done (ActPass *ap)
 }
 
 
+static int emit_refinement_header (ActSynthesize *syn,
+				   UserDef *u)
+{
+  int has_overrides = 0;
+  char buf[10240];
+  list_t *special_vx;
+  pp_t *pp = syn->getPP ();
+  const char *prefix = syn->getPrefix ();
+
+  Process *p = dynamic_cast <Process *> (u);
+  if (p) {
+    special_vx = ActNamespace::Act()->getDecomp (p);
+  }
+  else {
+    special_vx = NULL;
+  }
+
+  pp_printf (pp, "%s_", prefix);
+
+  ActNamespace::Act()->msnprintfproc (buf, 10240, u);
+  
+  pp_printf (pp, " %s <: ", buf);
+  pp_lazy (pp, 0);
+  u->snprintActName (buf, 10240);
+  pp_printf_raw (pp, " %s()\n", buf);
+
+  int bw = 0;
+
+#define OVERRIDE_OPEN				\
+  do {						\
+    if (!has_overrides) {			\
+      pp_printf (pp, "+{");			\
+      pp_forced (pp, 2);			\
+      pp_setb (pp);				\
+      has_overrides = true;			\
+    }						\
+  } while (0)
+    
+  /* iterate through Scope Hashtable to find all chp variables */
+  ActInstiter iter(u->CurScope());
+  for (iter = iter.begin(); iter != iter.end(); iter++) {
+    ValueIdx *vx = *iter;
+    /* chan variable found */
+    if (TypeFactory::isChanType (vx->t)) {
+      bw = TypeFactory::bitWidth(vx->t);
+      OVERRIDE_OPEN;
+      syn->typeChan (buf, 10240, bw);
+      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+    }
+    else if (TypeFactory::isIntType (vx->t)) {
+      /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
+      bw = TypeFactory::bitWidth(vx->t);
+      OVERRIDE_OPEN;
+      syn->typeInt (buf, 10240, bw);
+      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+    }
+    else if (TypeFactory::isBoolType (vx->t)) {
+      OVERRIDE_OPEN;
+      syn->typeBool (buf, 10240);
+      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+    }
+    else if (TypeFactory::isProcessType (vx->t) || TypeFactory::isStructure (vx->t)) {
+      OVERRIDE_OPEN;
+      pp_printf (pp, "%s_", prefix);
+      UserDef *ud = dynamic_cast <UserDef *> (vx->t->BaseType());
+      Assert (ud, "Why am I here?");
+      ActNamespace::Act()->msnprintfproc (buf, 10240, ud);
+      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+    }
+  }
+  /* end param declaration */
+  if (has_overrides) {
+    pp_endb (pp);
+    pp_printf_raw (pp, "}\n{");
+  }
+  else {
+    pp_printf_raw (pp, "{");
+  }
+  pp_forced (pp, 2);
+  pp_setb (pp);
+  return has_overrides;
+#undef OVERRIDE_OPEN
+}
+
+
+
 void *synthesis_proc (ActPass *ap, Process *p, int mode)
 {
   ActSynthesize *syn = _init (ap);
   return NULL;
 }
 
+/*
+ * Emit structure refinement, if needed
+ */
 void *synthesis_data (ActPass *ap, Data *d, int mode)
 {
   ActSynthesize *syn = _init (ap);
+  if (TypeFactory::isStructure (d)) {
+    /* do something! */
+
+  }
   return NULL;
 }
