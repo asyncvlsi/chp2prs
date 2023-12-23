@@ -43,7 +43,9 @@ class ActSynthesize {
    * results
    * @param exprfile is the expression support file (default is expr.act)
    */
-  ActSynthesize (const char *prefix, char *infile, char *outfile,
+  ActSynthesize (const char *prefix,
+		 char *infile,
+		 char *outfile,
 		 char *exprfile = NULL);
   
   ~ActSynthesize ();
@@ -68,11 +70,12 @@ class ActSynthesize {
    * Print the name of the type that implements an n-bit integer to
    * the provided buffer
    */
-  void typeInt (char *buf, int sz, int bitwidth);
-  void typeBool (char *buf, int sz);
-  void typeChan (char *buf, int sz, int bitwidth);
-  void typeBidirChan (char *buf, int sz, int bitsend, int bitrecv);
+  virtual void typeInt (char *buf, int sz, int bitwidth) { buf[0] = '\0'; }
+  virtual void typeBool (char *buf, int sz) { buf[0] = '\0'; }
+  virtual void typeIntChan (char *buf, int sz, int bitwidth) { buf[0] = '\0'; }
+  virtual void typeBoolChan (char *buf, int sz) { buf[0] = '\0'; }
 
+  const char *getLibNamespace () { return "syn"; }
 
   /**
    * Return pretty-printer

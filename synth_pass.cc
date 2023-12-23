@@ -122,6 +122,13 @@ static int emit_refinement_header (ActSynthesize *syn,
     special_vx = NULL;
   }
 
+  if (TypeFactory::isProcessType (u)) {
+    pp_printf (pp, "defproc ");
+  }
+  else {
+    pp_printf (pp, "deftype ");
+  }
+
   pp_printf (pp, "%s_", prefix);
 
   ActNamespace::Act()->msnprintfproc (buf, 10240, u);
@@ -147,11 +154,39 @@ static int emit_refinement_header (ActSynthesize *syn,
   ActInstiter iter(u->CurScope());
   for (iter = iter.begin(); iter != iter.end(); iter++) {
     ValueIdx *vx = *iter;
+
+    if (special_vx) {
+      /* these are fresh instances introduced during decomposition;
+	 we need to declare them, not refine them!
+      */
+      int sp = 0;
+      for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
+	for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
+	     li = list_next (li)) {
+	  if (vx == (ValueIdx *) list_value (li)) {
+	    sp = 1;
+	    break;
+	  }
+	}
+	if (sp) {
+	  break;
+	}
+      }
+      if (sp) {
+	continue;
+      }
+    }
+    
     /* chan variable found */
     if (TypeFactory::isChanType (vx->t)) {
       bw = TypeFactory::bitWidth(vx->t);
       OVERRIDE_OPEN;
-      syn->typeChan (buf, 10240, bw);
+      if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
+	syn->typeBoolChan (buf, 10240);
+      }
+      else {
+	syn->typeIntChan (buf, 10240, bw);
+      }
       pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
     }
     else if (TypeFactory::isIntType (vx->t)) {
@@ -175,6 +210,7 @@ static int emit_refinement_header (ActSynthesize *syn,
       pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
     }
   }
+  
   /* end param declaration */
   if (has_overrides) {
     pp_endb (pp);
@@ -185,6 +221,94 @@ static int emit_refinement_header (ActSynthesize *syn,
   }
   pp_forced (pp, 2);
   pp_setb (pp);
+
+  if (p->getlang() && p->getlang()->getchp()) {
+    pp_printf (pp, "refine {");
+    pp_forced (pp, 2);
+    pp_setb (pp);
+  }
+
+  if (special_vx) {
+    /* these are fresh instances introduced during decomposition;
+       we need to declare them, not refine them!
+    */
+    for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
+      for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
+	   li = list_next (li)) {
+	ValueIdx *vx = (ValueIdx *) list_value (li);
+
+	if (TypeFactory::isChanType (vx->t)) {
+	  bw = TypeFactory::bitWidth(vx->t);
+	  if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
+	    syn->typeBoolChan (buf, 10240);
+	  }
+	  else {
+	    syn->typeIntChan (buf, 10240, bw);
+	  }
+	  pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+	}
+	else if (TypeFactory::isIntType (vx->t)) {
+	  bw = TypeFactory::bitWidth(vx->t);
+	  syn->typeInt (buf, 10240, bw);
+	  pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+	}
+	else if (TypeFactory::isBoolType (vx->t)) {
+	  syn->typeBool (buf, 10240);
+	  pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+	}
+	else if (TypeFactory::isProcessType (vx->t)) {
+	  /*
+	    These are specially inserted processes during process
+	    decomposition, and hence they should have pre-defined
+	    translations in the library
+	  */
+	  Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
+	  Assert (proc, "Why am I here?");
+	  char buf[1024];
+	  int pos;
+	  int found = 0;
+	  ActNamespace::Act()->unmangle_string (proc->getName(), buf, 1024);
+	  for (pos=0; buf[pos]; pos++) {
+	    if (buf[pos] == '<') {
+	      buf[pos] = '\0';
+	      found = 1;
+	      break;
+	    }
+	  }
+	  pp_printf (pp, "%s::%s_builtin", syn->getLibNamespace(), buf);
+	  if (found) {
+	    buf[pos] = '<';
+	    pp_printf (pp, "%s", buf+pos);
+	  }
+	  pp_printf_raw (pp, " %s;\n", vx->getName());
+	}
+	else if (TypeFactory::isStructure (vx->t)) {
+	  OVERRIDE_OPEN;
+	  pp_printf (pp, "%s_", prefix);
+	  Data *d = dynamic_cast <Data *> (vx->t->BaseType());
+	  Assert (d, "Why am I here?");
+	  ActNamespace::Act()->msnprintfproc (buf, 10240, d);
+	  pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+	}
+      }
+    }
+    pp_flush (pp);
+    pp_printf (pp, "/* raw output */");
+    pp_forced (pp, 0);
+    for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
+      for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
+	   li = list_next (li)) {
+	ValueIdx *vx = (ValueIdx *) list_value (li);
+	if (vx->hasConnection()) {
+	  Scope::printConnections (pp->fp, vx->connection(), true);
+	}
+      }
+    }
+    fflush (pp->fp);
+    pp_printf (pp, "/* end raw output */");
+    pp_forced (pp, 0);
+  }
+  
   return has_overrides;
 #undef OVERRIDE_OPEN
 }
@@ -194,6 +318,21 @@ static int emit_refinement_header (ActSynthesize *syn,
 void *synthesis_proc (ActPass *ap, Process *p, int mode)
 {
   ActSynthesize *syn = _init (ap);
+  if (!syn) return NULL;
+  
+  if (mode == 0) {
+    pp_t *pp = syn->getPP ();
+    int v = emit_refinement_header (syn, p);
+
+    if (p->getlang() && p->getlang()->getchp()) {
+      pp_endb (pp);
+      pp_printf (pp, "}");
+      pp_forced (pp, 0);
+    }
+    pp_endb (pp);
+    pp_printf (pp, "}");
+    pp_forced (pp, 0);
+  }
   return NULL;
 }
 
@@ -203,9 +342,18 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
 void *synthesis_data (ActPass *ap, Data *d, int mode)
 {
   ActSynthesize *syn = _init (ap);
-  if (TypeFactory::isStructure (d)) {
-    /* do something! */
+  if (!syn) return NULL;
 
+  if (mode == 0) {
+    if (TypeFactory::isStructure (d)) {
+      /* do something! */
+      pp_t *pp = syn->getPP ();
+      int v = emit_refinement_header (syn, d);
+
+      pp_endb (pp);
+      pp_printf (pp, "}");
+      pp_forced (pp, 0);
+    }
   }
   return NULL;
 }

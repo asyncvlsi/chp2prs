@@ -47,7 +47,10 @@
      
 */
 
-ActSynthesize::ActSynthesize (const char *prefix, char *infile, char *outfile, char *exprfile)
+ActSynthesize::ActSynthesize (const char *prefix,
+			      char *infile,
+			      char *outfile,
+			      char *exprfile)
 {
   const char *expr_file;
   
