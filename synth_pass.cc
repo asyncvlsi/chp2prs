@@ -19,8 +19,31 @@
  *
  **************************************************************************
  */
-
+#include "synth_pass.h"
+#include <act/act.h>
+#include "synth.h"
 
 /*
  * This should have the dynamic pass
  */
+static void _init (ActDynamicPass *dp)
+{
+  if (dp->getPtrParam ("raw")) {
+    return;
+  }
+  char *pref = (char *)dp->getPtrParam ("prefix");
+  char *ifile = (char *)dp->getPtrParam ("in");
+  char *ofile = (char *)dp->getPtrParam ("out");
+  char *efile = (char *)dp->getPtrParam ("expr");
+
+  if (!ifile || !ofile || !pref) return;
+
+  dp->setParam ("raw", (void *) new ActSynthesize (pref, ifile, ofile, efile));
+}
+
+void synthesis_init (ActPass *ap)
+{
+  ActDynamicPass *dp = dynamic_cast<ActDynamicPass *> (ap);
+  Assert (dp, "What?");
+}
+
