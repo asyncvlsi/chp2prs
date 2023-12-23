@@ -47,17 +47,26 @@
 /*
  * This should have the dynamic pass
  */
-static void _init (ActDynamicPass *dp)
+static ActSynthesize *_init (ActPass *ap)
 {
+  ActDynamicPass *dp;
   ActSynthesize *(*f) (char *, char *, char *, char *);
-  if (dp->getPtrParam ("raw")) {
-    return;
+  ActSynthesize *ret;
+
+  dp = dynamic_cast<ActDynamicPass *> (ap);
+  if (!dp) {
+    return NULL;
+  }
+
+  ret = (ActSynthesize *) dp->getPtrParam ("raw");
+  if (ret) {
+    return ret;
   }
 
   f = (ActSynthesize * (*) (char *, char *, char *, char *))
     dp->getPtrParam ("engine");
   if (!f) {
-    return;
+    return NULL;
   }
   
   char *pref = (char *)dp->getPtrParam ("prefix");
@@ -65,10 +74,15 @@ static void _init (ActDynamicPass *dp)
   char *ofile = (char *)dp->getPtrParam ("out");
   char *efile = (char *)dp->getPtrParam ("expr");
 
-  if (!ifile || !ofile || !pref) return;
+  if (!ifile || !ofile || !pref) {
+    return NULL;
+  }
 
-  dp->setParam ("raw", (void *) (*f) (pref, ifile, ofile, efile));
+  ret = (*f) (pref, ifile, ofile, efile);
+  dp->setParam ("raw", (void *) ret);
+  return ret;
 }
+
 
 void synthesis_init (ActPass *ap)
 {
@@ -76,3 +90,23 @@ void synthesis_init (ActPass *ap)
   Assert (dp, "What?");
 }
 
+void synthesis_done (ActPass *ap)
+{
+  ActSynthesize *syn = _init (ap);
+  if (syn) {
+    delete syn;
+  }
+}
+
+
+void *synthesis_proc (ActPass *ap, Process *p, int mode)
+{
+  ActSynthesize *syn = _init (ap);
+  return NULL;
+}
+
+void *synthesis_data (ActPass *ap, Data *d, int mode)
+{
+  ActSynthesize *syn = _init (ap);
+  return NULL;
+}
