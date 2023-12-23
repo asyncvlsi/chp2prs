@@ -21,6 +21,7 @@
  */
 #include "synth_pass.h"
 #include <act/act.h>
+#include <act/extmacro.h>
 #include <act/iter.h>
 #include "synth.h"
 
@@ -113,8 +114,8 @@ static int emit_refinement_header (ActSynthesize *syn,
   list_t *special_vx;
   pp_t *pp = syn->getPP ();
   const char *prefix = syn->getPrefix ();
-
   Process *p = dynamic_cast <Process *> (u);
+
   if (p) {
     special_vx = ActNamespace::Act()->getDecomp (p);
   }
@@ -309,6 +310,10 @@ static int emit_refinement_header (ActSynthesize *syn,
     pp_printf (pp, "/* end raw output */");
     pp_forced (pp, 0);
   }
+
+  if (special_vx) {
+    list_free (special_vx);
+  }
   
   return has_overrides;
 #undef OVERRIDE_OPEN
@@ -323,10 +328,34 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
   
   if (mode == 0) {
     pp_t *pp = syn->getPP ();
-    int v = emit_refinement_header (syn, p);
-
+    
     if (p->getlang() && p->getlang()->getchp()) {
+      /* check if we should synthesize this at all! */
+      ExternMacro *macro = new ExternMacro (p);
+      if (macro->isValid()) {
+	/*-- we already have an external definition --*/
+	delete macro;
+	return NULL;
+      }
+      delete macro;
 
+      if (p->getns() && p->getns() != ActNamespace::Global()) {
+	if (strcmp (p->getns()->getName(), "std") == 0) {
+	  list_t *l = ActNamespace::Act()->getDecompTypes ();
+	  if (l) {
+	    for (listitem_t *li = list_first (l); li; li = list_next (li)) {
+	      if (p == (Process *) list_value (li)) {
+		list_free (l);
+		return NULL;
+	      }
+	    }
+	    list_free (l);
+	  }
+	}
+      }
+    
+
+      int v = emit_refinement_header (syn, p);
       syn->runSynth (ap, p);
       
       pp_endb (pp);
@@ -334,6 +363,9 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
       pp_forced (pp, 0);
       pp_printf (pp, "}");
       pp_forced (pp, 0);
+    }
+    else {
+      int v = emit_refinement_header (syn, p);
     }
     pp_endb (pp);
     pp_printf (pp, "/* end process */");
