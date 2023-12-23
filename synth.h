@@ -55,7 +55,7 @@ class ActSynthesize {
    * emitted at the top-level. These imports typically correspond to
    * any standard library that is used by the synthesis engine.
    */
-  virtual void emitTopImports () {
+  virtual void emitTopImports (ActPass *ap) {
     pp_printf_raw (_pp, "import \"%s\";\n", _ename);
   };
 
@@ -78,10 +78,10 @@ class ActSynthesize {
    * Run the pre-synthesis steps needed. This calls decomposition
    * passes.
    *
-   * @param p is the top-level process
+   * @param ap is the pass
    * @return true on success, false if there was some error
    */
-  bool prepSynthesis (Process *p);
+  bool prepSynthesis (ActPass *ap);
 
   /**
    * Run any final steps at the end of the entire synthesis process.
@@ -114,7 +114,7 @@ class ActSynthesize {
   /**
    * Run logic synthesis locally on a process
    */
-  virtual void runSynth (Process *p) { }
+  virtual void runSynth (ActPass *ap, Process *p) { }
   
 protected:
   FILE *_out;			///< output stream

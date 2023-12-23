@@ -27,23 +27,40 @@
 #include <act/passes.h>
 #include "config_pkg.h"
 #include "synth.h"
+#include "basicsdt.h"
 
 #ifdef FOUND_chp_opt
 #include <act/chp-opt/optimize.h>
 #endif
+
+#ifdef FOUND_expropt
+#include "externoptsdt.h"
+#endif
+
+static BasicSDT *_pending = NULL;
+
+static void kill_mapper_on_exit (void)
+{
+  if (_pending) {
+    delete _pending;
+  }
+  _pending = NULL;
+}
+
 
 class SDTSynth : public ActSynthesize {
  public:
   SDTSynth (const char *prefix,
 	    char *infile,
 	    char *outfile,
-	    char *exprfile = NULL,
-	    int _bundled_data = 1)
-    : ActSynthesize (prefix, infile, outfile, exprfile) {
-    bundled_data = _bundled_data;
-  };
+	    char *exprfile = NULL)
+    : ActSynthesize (prefix, infile, outfile, exprfile) { }
   
-  void emitTopImports() {
+  void emitTopImports(ActPass *ap) {
+    ActDynamicPass *dp = dynamic_cast <ActDynamicPass *> (ap);
+    Assert (dp, "Hmm");
+    int bundled_data = dp->getIntParam ("bundled_dpath");
+
     /* print imports */
     if (bundled_data) {
       pp_printf_raw (_pp, "import \"syn/bdopt/_all_.act\";\n");
@@ -75,18 +92,68 @@ class SDTSynth : public ActSynthesize {
     snprintf (buf, sz, "syn::sdtboolchan");
   }
 
-  void runSynth (Process *p) {
+  void runSynth (ActPass *ap, Process *p) {
     pp_printf (_pp, "/* synthesis output */");
     pp_forced (_pp, 0);
-    pp_printf (_pp, "{ false : \"Implement me please!\" };");
+
+    pp_flush (_pp);
+    fprintf (_pp->fp, "/* start sdt */\n");
+    fflush (_pp->fp);
+
+    int chpopt, externopt, bundled;
+    BasicSDT *sdt;
+    int use_yosys;
+    ActDynamicPass *dp;
+
+    dp = dynamic_cast <ActDynamicPass *> (ap);
+    Assert (dp, "What?");
+
+    chpopt = dp->getIntParam ("chp_optimize");
+    externopt = dp->getIntParam ("externopt");
+    bundled = dp->getIntParam ("bundled_dpath");
+    use_yosys = dp->getIntParam ("use_yosys");
+
+    if (chpopt)
+    {
+#ifdef FOUND_chp_opt
+      ActPass *opt_p = dp->getAct()->pass_find ("chpopt");
+      if (opt_p && p->getlang()->getchp()) {
+	opt_p->run (p);
+	printf("> Optimized CHP:\n");
+	chp_print(stdout, p->getlang()->getchp()->c);
+	printf("\n");
+      }
+#else
+      fatal_error ("Optimize flag is not currently enabled in the build.");
+#endif
+    }
+
+    if (externopt) {
+#if defined(FOUND_expropt) && defined (FOUND_abc)
+      sdt = new ExternOptSDT (bundled, chpopt, _pp->fp, _ename,
+                              use_yosys == 1 ? yosys :
+			      (use_yosys == 0 ? genus : abc ));
+      _pending = sdt;
+#else
+      fatal_error ("External optimization package not installed.");
+#endif
+    }
+    else {
+      if (bundled) {
+	fatal_error ("Bundled-data not supported is Basic mode");
+      }
+      sdt = new BasicSDT (bundled, chpopt, _pp->fp, _ename);
+      _pending = sdt;
+    }
+
+    atexit (kill_mapper_on_exit);
+    sdt->run_sdt (p, 0);
+    kill_mapper_on_exit ();
+
+    fprintf (_pp->fp, "/* end sdt */\n");
+    
     pp_forced (_pp, 0);
   }
-
-
-
- private:
-  int bundled_data;
-
 };
 
 ActSynthesize *_gen_engine (const char *prefix,
@@ -95,7 +162,7 @@ ActSynthesize *_gen_engine (const char *prefix,
 			    char *exprfile)
 
 {
-  return new SDTSynth (prefix, infile, outfile, exprfile, 1);
+  return new SDTSynth (prefix, infile, outfile, exprfile);
 }
 
 static void usage(char *name)
@@ -191,12 +258,32 @@ int main(int argc, char **argv)
     exprfile = Strdup ("expr.act");
   }
 
-  c2p->setParam ("prefix", (void *)Strdup ("mypfx"));
+  c2p->setParam ("prefix", (void *)Strdup ("sdt"));
   c2p->setParam ("expr", (void *) exprfile);
   c2p->setParam ("out", (void *) argv[optind+2]);
   c2p->setParam ("in", (void *) argv[optind]);
   c2p->setParam ("engine", (void *) _gen_engine);
 
+  /* specific parameters for SDT */
+  c2p->setParam ("chp_optimize", chpopt);
+  c2p->setParam ("externopt", external_opt);
+  c2p->setParam ("bundled_dpath", bundled);
+  if (external_opt) {
+    int param = 0;
+    if (strcmp (syntesistool, "genus") == 0) {
+       param = 0;
+    } 
+    else if (strcmp (syntesistool, "yosys") == 0) {
+       param = 1;
+    }
+    else if (strcmp (syntesistool, "abc") == 0) {
+       param = 2;
+    }
+    else {
+       fatal_error ("Unknown synthesis option %s", syntesistool);
+    }
+    c2p->setParam ("use_yosys", param);
+  }
   c2p->run (p);
 
   return 0;

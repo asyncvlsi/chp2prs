@@ -408,7 +408,7 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
   _block_id = pblock;
 }
 				 
-void SDTEngine::run_sdt (Process *p)
+void SDTEngine::run_sdt (Process *p, int emit_end_braces)
 {
   struct act_chp *chp = NULL;
   ihash_iter_t iter;
@@ -423,8 +423,8 @@ void SDTEngine::run_sdt (Process *p)
     if (macro->isValid()) {
       /*-- then we already have an external definition! --*/
       delete macro;
-      _emit_begin ();
-      _emit_end (-1);
+      _emit_begin (emit_end_braces);
+      _emit_end (-1, emit_end_braces);
       return;
     }
     delete macro;
@@ -455,8 +455,8 @@ void SDTEngine::run_sdt (Process *p)
     }
   }
   else {
-    _emit_begin ();
-    _emit_end (-1);
+    _emit_begin (emit_end_braces);
+    _emit_end (-1, emit_end_braces);
     return;
   }
 
@@ -464,13 +464,13 @@ void SDTEngine::run_sdt (Process *p)
 
   _block_id = -1;
 
-  _emit_begin ();
+  _emit_begin (emit_end_braces);
 
 
   int toplev = _gen_stmt_id ();
   _block_id = -1;
   _run_sdt_helper (toplev, chp->c);
-  _emit_end (toplev);
+  _emit_end (toplev, emit_end_braces);
 }
 
 

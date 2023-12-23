@@ -121,8 +121,10 @@ ActSynthesize::~ActSynthesize ()
 }
 
 
-bool ActSynthesize::prepSynthesis (Process *p)
+bool ActSynthesize::prepSynthesis (ActPass *ap)
 {
+  Process *p = ap->getRoot ();
+  
   if (!p) {
     return false;
   }
@@ -148,7 +150,7 @@ bool ActSynthesize::prepSynthesis (Process *p)
   arbp->run (p);
 
   /*-- Emit any additional imports needed --*/
-  emitTopImports ();
+  emitTopImports (ap);
 
   return true;
 }

@@ -82,7 +82,7 @@ static ActSynthesize *_init (ActPass *ap)
   ret = (*f) (pref, ifile, ofile, efile);
   dp->setParam ("raw", (void *) ret);
 
-  ret->prepSynthesis (dp->getRoot());
+  ret->prepSynthesis (dp);
 		     
   return ret;
 }
@@ -327,7 +327,7 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
 
     if (p->getlang() && p->getlang()->getchp()) {
 
-      syn->runSynth (p);
+      syn->runSynth (ap, p);
       
       pp_endb (pp);
       pp_printf (pp, "/* end refine */");

@@ -983,14 +983,16 @@ void BasicSDT::initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
   fprintf(fp, "\n");
 }
 
-void BasicSDT::_emit_begin ()
+void BasicSDT::_emit_begin (int emit_header)
 {
   ihash_iter_t iter;
   ihash_bucket_t *b;
   struct act_chp *chp;
   
   /* Write process definition and variable declarations */
-  int overrides = write_process_definition(output_stream, P);
+  if (emit_header) {
+    int overrides = write_process_definition(output_stream, P);
+  }
 
   if (!P->getlang() || !P->getlang()->getchp()) {
     return;
@@ -1047,7 +1049,7 @@ void BasicSDT::_emit_begin ()
 }
 
 
-void BasicSDT::_emit_end (int id)
+void BasicSDT::_emit_end (int id, int emit_end_braces)
 {
   /* connect toplevel "go" signal and print wrapper process instantiation */
 
@@ -1061,9 +1063,13 @@ void BasicSDT::_emit_end (int id)
       fprintf (output_stream, " { false : \"chp2prs error\" }; \n");
     }
     /* matches refine block start */
-    fprintf (output_stream, " }\n");
+    if (emit_end_braces) {
+      fprintf (output_stream, " }\n");
+    }
   }
-  fprintf (output_stream, "}\n\n");
+  if (emit_end_braces) {
+    fprintf (output_stream, "}\n\n");
+  }
   fclose (_efp);
   _efp = NULL;
 

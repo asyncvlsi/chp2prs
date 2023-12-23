@@ -40,7 +40,7 @@ class SDTEngine {
   /*
    * Main method that executes the syntax-directed translation engine
    */
-  void run_sdt (Process *p);
+  void run_sdt (Process *p, int emit_end_braces = 1);
 
   virtual int sdt_error () { return 0; }
 
@@ -291,12 +291,12 @@ protected:
   /*--- need emit_select_probe: guards, probes, stmts ---*/
 
   /*-- header and footer --*/
-  virtual void _emit_begin () = 0;
+  virtual void _emit_begin (int emit_header) = 0;
 
   /// @param topid is a non-negative parameter with the top channel
   /// for the process. If it is negative, there were no statements to
   /// be translated for this process.
-  virtual void _emit_end (int topid) = 0;
+  virtual void _emit_end (int topid, int emit_end_braces) = 0;
 };
 
 #endif /* __CHP2PRS_STD_H__ */
