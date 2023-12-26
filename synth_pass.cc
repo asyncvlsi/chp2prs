@@ -23,6 +23,7 @@
 #include <act/act.h>
 #include <act/extmacro.h>
 #include <act/iter.h>
+#include <act/passes.h>
 #include "synth.h"
 
 /*
@@ -91,7 +92,16 @@ static ActSynthesize *_init (ActPass *ap)
 
 void synthesis_init (ActPass *ap)
 {
-  /* nothing to do here */
+  ActDynamicPass *dp;
+  dp = dynamic_cast <ActDynamicPass *> (ap);
+  Assert (dp, "What?");
+
+  /* add dependency to Booleanize */
+  ActPass *b = dp->getAct()->pass_find ("booleanize");
+  if (!b) {
+     b = new ActBooleanizePass (dp->getAct());
+  }
+  dp->addDependency ("booleanize");
 }
 
 void synthesis_run (ActPass *ap, Process *p)

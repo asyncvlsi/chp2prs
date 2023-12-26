@@ -75,8 +75,9 @@ class ActSynthesize {
 
 
   /**
-   * Run the pre-synthesis steps needed. This calls decomposition
-   * passes.
+   * Run the pre-synthesis steps needed for the entire design. This
+   * calls decomposition passes, and is called once for the entire
+   * design.
    *
    * @param ap is the pass
    * @return true on success, false if there was some error
@@ -92,7 +93,7 @@ class ActSynthesize {
 
   /**
    * Print the name of the type that implements an n-bit integer to
-   * the provided buffer
+   * the provided buffer.
    */
   virtual void typeInt (char *buf, int sz, int bitwidth) { buf[0] = '\0'; }
   virtual void typeBool (char *buf, int sz) { buf[0] = '\0'; }
@@ -107,12 +108,22 @@ class ActSynthesize {
   pp_t *getPP () { return _pp; }
 
   /**
-   * Return prefix
+   * Return prefix to be pre-pended to all process/type names in the
+   * implementation.
    */
   const char *getPrefix () { return _prefix; }
 
   /**
-   * Run logic synthesis locally on a process
+   * Run logic synthesis locally on a single process. This should
+   * print the results of the synthesis via the pretty-printer. Note
+   * that all boilerplate (type overrides, implementation headers,
+   * etc.) are taken care of so this should simply be the core
+   * translation.
+   *
+   * @param ap is the ActPass pointer, which will always be a dynamic
+   * pass. This can be used to extract run-time parameters that
+   * influence logic synthesis.
+   * @param p is the expanded process to be synthesized.
    */
   virtual void runSynth (ActPass *ap, Process *p) { }
   
