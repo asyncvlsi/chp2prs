@@ -29,9 +29,7 @@
 #include "synth.h"
 #include "basicsdt.h"
 
-#ifdef FOUND_chp_opt
-#include <act/chp-opt/optimize.h>
-#endif
+#include "opt/chp-opt.h"
 
 #ifdef FOUND_expropt
 #include "externoptsdt.h"
@@ -115,17 +113,7 @@ class SDTSynth : public ActSynthesize {
 
     if (chpopt)
     {
-#ifdef FOUND_chp_opt
-      ActPass *opt_p = dp->getAct()->pass_find ("chpopt");
-      if (opt_p && p->getlang()->getchp()) {
-	opt_p->run (p);
-	printf("> Optimized CHP:\n");
-	chp_print(stdout, p->getlang()->getchp()->c);
-	printf("\n");
-      }
-#else
-      fatal_error ("Optimize flag is not currently enabled in the build.");
-#endif
+      
     }
 
     if (externopt) {
@@ -237,16 +225,6 @@ int main(int argc, char **argv)
     p = p->Expand (ActNamespace::Global(), p->CurScope(), 0, NULL);
   }
   Assert (p, "What?");
-
-
-  if (chpopt)
-  {
-#ifdef FOUND_chp_opt    
-    ChpOptPass *copt = new ChpOptPass (a);
-#else
-    fatal_error ("Optimize flag is not currently enabled in the build.");
-#endif
-  }
 
   ActDynamicPass *c2p = new ActDynamicPass (a, "synth", "libactchp2prspass.so", "synthesis");
 

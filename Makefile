@@ -23,6 +23,7 @@ BINARY=chp2prs_dev.$(EXT)
 TARGETS=$(BINARY) synth2.$(EXT) synth3.$(EXT)
 TARGETLIBS=libactchp2prspass_$(EXT).so
 
+CPPSTD=c++20
 
 include config.mk
 
@@ -44,7 +45,7 @@ else
 CHPOPT=
 endif
 
-SUBDIRS=lib
+SUBDIRS=lib opt
 
 include $(ACT_HOME)/scripts/Makefile.std
 
@@ -55,11 +56,14 @@ else
 EXPRLIB=
 endif
 endif
+
+$(ACT_HOME)/lib/libactchpopt.so: opt
+
 $(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS)
 
-synth2.$(EXT): $(LIB) main2.o $(ACTDEPEND)
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main2.o -o synth2.$(EXT) $(CHPOPT) $(TARGETLIBS) $(SHLIBACTPASS)
+synth2.$(EXT): $(LIB) main2.o $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main2.o -o synth2.$(EXT) $(CHPOPT) $(TARGETLIBS) $(SHLIBACTPASS) $(ACT_HOME)/lib/libactchpopt.so
 
 synth3.$(EXT): $(LIB) main3.o $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main3.o -o synth3.$(EXT) $(CHPOPT) $(TARGETLIBS) $(SHLIBACTPASS) $(EXPRLIB)
