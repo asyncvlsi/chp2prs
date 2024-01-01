@@ -630,14 +630,8 @@ bool print_overrides(FILE *fp, Process * p)
 void print_refine_body(FILE *fp, Process *p, act_chp_lang_t *c, Hashtable *hvi)
 {
     Assert (c, "No CHP");
- 
     var_infos = hvi;
-
-    fprintf (fp, "{\nrefine{\n");
-
     circuit_forge(p,c,fp);
-
-    fprintf (fp, "}\n}");
 }
 
 /*

@@ -356,7 +356,7 @@ var_info *construct_var_info (act_chp_lang_t *c, ValueIdx *vidx, Process *p, var
     Construct a hashtable that contains the var_info objects for
     all the variables in a given process. 
 */
-Hashtable *construct_var_info_hashtable (FILE *fp, act_chp_lang_t *c, Process *p)
+Hashtable *construct_var_info_hashtable (act_chp_lang_t *c, Process *p)
 {
   Hashtable *var_infos = hash_new(4);
   hash_bucket_t *b;
