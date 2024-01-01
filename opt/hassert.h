@@ -26,15 +26,21 @@
 #include <cassert>
 #include <functional>
 #include <vector>
+#include <common/misc.h>
 
-template <typename T> inline void hassert(const T &x) {
+template <typename T> inline void localhassert(const T &x, const char *str, const char *file, int line) {
 #ifdef NDEBUG
     if (!(x))
         __builtin_unreachable();
 #else
-    assert(x);
+    if (!(x)) {
+       fprintf (stderr, "Assertion failed, file %s, line %d\n", file, line);
+       fprintf (stderr, "Assertion: %s\n", str);
+       exit (4);
+    }
 #endif
 }
+#define hassert(x)   localhassert(x, #x, __FILE__, __LINE__)
 
 template <class T> inline void hash_combine(std::size_t &seed, const T &v) {
     std::hash<T> hasher;
