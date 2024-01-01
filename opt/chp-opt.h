@@ -26,6 +26,7 @@
 
 #include "chp-cost-model.h"
 #include "chp-graph.h"
+#include "chp-print.h"
 
 namespace ChpOptimize {
 

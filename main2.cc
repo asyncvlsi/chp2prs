@@ -113,7 +113,15 @@ class SDTSynth : public ActSynthesize {
 
     if (chpopt)
     {
-      
+      // convert this to chpgraph format
+      // run optimizations
+      // convert back to ACT data structures
+      if (p->getlang() && p->getlang()->getchp()) {
+	auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
+						  p->CurScope ());
+	ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
+	ChpOptimize::print_chp (std::cout, g.graph);
+      }
     }
 
     if (externopt) {
