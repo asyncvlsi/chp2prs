@@ -1024,6 +1024,12 @@ bool eliminateDeadCode(ChpGraph &graph) {
         }
 
         changed = eliminateCompletelyDeadPass(all_blocks, table);
+
+	if (graph.m_seq.empty()) {
+	  // everything is dead!
+	  break;
+	}
+	
         changed |= pruneDeadBranchesPass(all_blocks, graph);
 
         //        print_chp(std::cerr, graph);
