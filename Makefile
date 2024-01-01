@@ -21,8 +21,8 @@
 BINARY=chp2prs_dev.$(EXT) 
 
 TARGETS=$(BINARY) synth2.$(EXT) synth3.$(EXT)
-# TARGETLIBS=libactchp2prspass_$(EXT).so
-TARGETLIBS=libactrsynpass_$(EXT).so
+TARGETLIBS=libactchp2prspass_$(EXT).so
+# TARGETLIBS=libactrsynpass_$(EXT).so
 
 CPPSTD=c++20
 
@@ -30,8 +30,8 @@ include config.mk
 
 OBJS=main.o
 
-# SHOBJS=chp2prs_pass.os sdt.os basicsdt.os synth.os synth_pass.os
-SHOBJS=rsyn_pass.os sdt.os basicsdt.os synth.os synth_pass.os 
+SHOBJS=chp2prs_pass.os sdt.os basicsdt.os synth.os synth_pass.os
+# SHOBJS=rsyn_pass.os sdt.os basicsdt.os synth.os synth_pass.os 
 
 ifdef expropt_INCLUDE 
 ifdef abc_LIBDIR
