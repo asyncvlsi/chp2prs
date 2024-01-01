@@ -1,0 +1,12 @@
+defproc gcd4(chan?(int) X, Y; chan!(int) O) {
+  int p[2];
+
+  chp {
+    *[
+      X?p[0],
+      Y?p[1];
+      *[  ([]i:2: p[i] > p[(i+1)%2] ->  p[i] := p[i] - p[(i+1)%2]) ];
+      O!p[0]
+    ]
+  }
+}
