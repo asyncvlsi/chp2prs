@@ -867,8 +867,14 @@ void _run_seq (Sequence seq,
 		return Algo::value_default(localmap.inputid_from_origid,
 					   orig_id, OptionalVarId::null_id());
 				    });
-
-	curr->u_select().splits.push_back({orig_id, ids_on_branches});
+	VarId curorig;
+	if (curmap.count(orig_id)) {
+	  curorig = curmap[orig_id];
+	}
+	else {
+	  curorig = orig_id;
+	}
+	curr->u_select().splits.push_back({curorig, ids_on_branches});
       }
 
       // Similar strategy for output phi function. Grab the def from

@@ -120,10 +120,11 @@ class SDTSynth : public ActSynthesize {
       if (p->getlang() && p->getlang()->getchp()) {
 	auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						  p->CurScope ());
-	ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
+       	ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
 	printf ("\n---- s t a r t --------\n");
+	//eliminateCopies (g.graph);
 	ChpOptimize::print_chp (std::cout, g.graph);
-#if 1
+#if 0
 	printf ("\n\n------- H-STF --------\n");
 	putIntoStaticTokenForm (g.graph);
 	ChpOptimize::print_chp (std::cout, g.graph);
@@ -131,11 +132,6 @@ class SDTSynth : public ActSynthesize {
 #endif	
 	printf ("\n\n------ STF ---------\n");
 	putIntoNewStaticTokenForm (g.graph);
-	ChpOptimize::print_chp (std::cout, g.graph);
-	printf ("\n\n -- after deadcode --\n");
-	// stf will automatically eliminate self-assignments
-	//eliminateDeadCode (g.graph);
-	eliminateCopies (g.graph);
 	ChpOptimize::print_chp (std::cout, g.graph);
 	printf ("\n---------------\n");
       }
