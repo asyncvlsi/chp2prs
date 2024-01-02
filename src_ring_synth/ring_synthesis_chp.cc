@@ -1,5 +1,27 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2024 Karthi Srinivasan
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+
 #include "reqs.h"
-#include "synthesis_struct.h"
+#include "ring_synthesis_struct.h"
 
 // Synchronization modes 
 #define SYNC_SEQ 0
@@ -1702,7 +1724,6 @@ int generate_pipe_element(act_chp_lang_t *c, FILE *fp, Process *p, int init_latc
             // TODO - finish
             e = c->u.assign.e;
             var = c->u.assign.id;
-            it = p->CurScope()->Lookup(var);
             fprintf(fp,"\n// Pipe block for action: ");
             chp_print(fp,c);
             fprintf(fp,"\n");
@@ -1716,7 +1737,7 @@ int generate_pipe_element(act_chp_lang_t *c, FILE *fp, Process *p, int init_latc
             b = hash_lookup(var_infos, tname);
             // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
             vi = (var_info *)b->v;
-            bw = TypeFactory::bitWidth(it);
+            bw = vi->width;
             expr_inst_id = generate_expr_block(e,bw,p,fp);
             if (init_latch == -1)
             {

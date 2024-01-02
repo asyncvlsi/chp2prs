@@ -74,7 +74,7 @@ class RingSynth : public ActSynthesize {
     snprintf (buf, sz, "bd<%d>", bitwidth);
   }
   void typeBoolChan (char *buf, int sz) {
-    fatal_error ("bool chans not supported, use bd<1> instead");
+    fatal_error ("bool chans not supported, use chan(int<1>) instead");
   }
 
   void runSynth (ActPass *ap, Process *p) {
@@ -134,14 +134,26 @@ class RingSynth : public ActSynthesize {
     act_chp_lang_t *c = p->getlang()->getchp()->c;
     Assert (c, "hmm c");
     mangle_init();
-    Hashtable *hvi = construct_var_info_hashtable (p->getlang()->getchp()->c, p);
-    // print_var_info_hashtable (hvi);
-    print_refine_body(_pp->fp, p, c, hvi);
-    pp_flush (_pp);
+    fill_in_else_explicit (c, p, 1);
 
-    fprintf (_pp->fp, "/* end rsyn */\n");
+    ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
+    Assert (b, "hmm b");
+
+    // act_boolean_netlist_t *bnl = b->getBNL(p);
+    // Assert (bnl, "hmm BNL");
+    // fprintf (stdout, "\nbrr\n\n");
+    fprintf (stdout, "\n\n\n");
+    fprintf (stdout, "\n\n");
+    // fprintf (stdout, "\n\n\n");
+
+    Hashtable *hvi = construct_var_info_hashtable (c, p, b);
+    print_var_info_hashtable (stdout, hvi);
+
+    print_refine_body(_pp->fp, p, c, hvi);
     
+    fprintf (_pp->fp, "/* end rsyn */\n");
     pp_forced (_pp, 0);
+    pp_flush (_pp);
   }
 };
 
@@ -248,15 +260,13 @@ int main (int argc, char **argv)
 
     // as->prepSynthesis();
 
-    fprintf (stdout, "\n gettin here");
-
+    // fprintf (stdout, "\n gettin here");
 
     ActDynamicPass *rsyn = new ActDynamicPass (a, "synth", "libactrsynpass.so", "synthesis");
     
     if (!rsyn || (rsyn->loaded() == false)) {
     fatal_error ("Could not load dynamic pass!");
     }
-
     char *exprfile = Strdup ("expr.act");
 
     rsyn->setParam ("prefix", (void *)Strdup ("ring"));
