@@ -19,22 +19,33 @@
  *
  **************************************************************************
  */
-#ifndef __ACT_CHP2PRS_PASS_H__
-#define __ACT_CHP2PRS_PASS_H__
 
-#include <act/act.h>
+#include "reqs.h"
+#include "ring_synthesis_struct.h"
 
-extern "C" {
+Act *a_mangle;
 
-  void rsyn_init (ActPass *ap);
-  void rsyn_run (ActPass *ap, Process *p);
-  void rsyn_recursive (ActPass *ap, UserDef *u, int mode);
-  void *rsyn_proc (ActPass *ap, Process *p, int mode);
-  void *rsyn_data (ActPass *ap, Data *d, int mode);
-  void *rsyn_chan (ActPass *ap, Channel *c, int mode);
-  void rsyn_free (ActPass *ap, void *v);
-  void rsyn_done (ActPass *ap);
+static const int style_global = 1;
 
+void mangle_init ()
+{ 
+  char u[6];
+  a_mangle = new Act;
+  snprintf(u,6,"[],."); /// characters to mangle
+  a_mangle->mangle(u);
 }
 
-#endif /* __ACT_CHP2PRS_PASS_H__ */
+void get_true_name (char *buf, ActId *id, Scope *s)
+{
+    char str[1024], t[1024];
+    id->sPrint(str,1024,NULL,style_global);
+    a_mangle->mangle_string(str,buf,1024);
+}
+
+void generate_array_suffix(char *buf, Array *a)
+{
+    char s[1024];
+    a->sPrint(s,1024,style_global);
+    a_mangle->mangle_string(s,buf,1024);
+    // return buf;
+}
