@@ -30,6 +30,7 @@
 #include "basicsdt.h"
 
 #include "opt/chp-opt.h"
+#include "opt/static-tokens.h"
 
 #ifdef FOUND_expropt
 #include "externoptsdt.h"
@@ -120,7 +121,23 @@ class SDTSynth : public ActSynthesize {
 	auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						  p->CurScope ());
 	ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
+	printf ("\n---- s t a r t --------\n");
 	ChpOptimize::print_chp (std::cout, g.graph);
+#if 1
+	printf ("\n\n------- H-STF --------\n");
+	putIntoStaticTokenForm (g.graph);
+	ChpOptimize::print_chp (std::cout, g.graph);
+	takeOutOfStaticTokenForm (g.graph);
+#endif	
+	printf ("\n\n------ STF ---------\n");
+	putIntoNewStaticTokenForm (g.graph);
+	ChpOptimize::print_chp (std::cout, g.graph);
+	printf ("\n\n -- after deadcode --\n");
+	// stf will automatically eliminate self-assignments
+	//eliminateDeadCode (g.graph);
+	eliminateCopies (g.graph);
+	ChpOptimize::print_chp (std::cout, g.graph);
+	printf ("\n---------------\n");
       }
     }
 

@@ -82,29 +82,39 @@ get_input_renames_after(const VarIdRemapPair &renames) {
 
 // The converted code will have the following properties.
 // - Every variable will be writen to exactly once.
-// - A variable *only* lives in the scope it is declared in, not subscopes.
+// - A variable *only* lives in the scope it is declared in, not
+// subscopes.
+ 
 // - No variable will share a VarId with the "default" id assigned by the
 // id_pool to the ActId.
+
 // - If a variable has a renaming in the `old_rename_from_input`, and that
 // variable is not assigned to, it will be
 //   assigned according to that map
+ 
 // - Every original variable id which is written will be in the
 // `renamed_from_output` map, where the value stored at the
 //   old id will be the final id used to write to it
-// - DoLoops and Selects will have correctly filled in Phi and PhiInv functions
+ 
+// - DoLoops and Selects will have correctly filled in Phi and PhiInv
+// - functions
+ 
 // - If a variable appears in the `renamed_from_input` map, reads of that value
 // will be renamed to that value.
 //   Otherwise, a new temporary id will be created and used for reads, and that
 //   will be added to the map. If a variable is reassigned, reads after that
 //   will not be read from the same id.
+ 
 // - Every write to a variable will appear in the final `renamed_from_output`
 // map. If a variable is reassigned, only the
 //   final write will appear in the map.
 
 // The correct mental representation of this code is as follows. The original
 // code `c` is a block which takes in I and outputs O. There is some map `sigma`
-// from I to a subset of I' which is encoded by `old_rename_from_input` we want
-// to create a bunch of code C which
+// from I to a subset of I' which is encoded by
+// `old_rename_from_input`.
+//
+// We want to create a bunch of code C which
 // - takes in I' and outputs O' such that union(I, O) is disjoint with union(I',
 // O')
 // - there is a map `sigma'` from I to I' which agrees with `sigma` on every
@@ -136,11 +146,52 @@ VarId do_expr_renaming(VarId input_id, VarIdRemapPair &renaming,
         return previous_renames.at(input_id);
     }
 
-    VarId new_id = id_pool.makeUniqueVar(id_pool.getBitwidth(input_id));
+    VarId new_id = id_pool.cloneVar (input_id);
     renaming.inputid_from_origid[input_id] = new_id;
     return new_id;
 }
 
+
+/*
+ * input_id is mapped to either the renamed version, or remains
+ * unchanged
+ */
+VarId new_do_expr_renaming(VarId input_id, VarIdRemap &renaming)
+ {
+  if (renaming.count(input_id)) {
+    return renaming.at(input_id);
+  }
+  return input_id;
+}
+
+ void add_to_blockin_phiinv (VarIdRemapPair &renaming,
+			     VarId use_id,
+			     VarId new_id)
+{
+  hassert (!renaming.inputid_from_origid.count(use_id));
+  renaming.inputid_from_origid[use_id] = new_id;
+}
+
+ /*
+ * input_id is mapped to either the renamed version, or is allocated a
+ * fresh identifier with the renaming map updated.
+ */
+VarId new_do_expr_renaming_fresh (VarId input_id, VarIdRemap &renaming,
+				  VarIdRemapPair &blockrename,
+				  IdPool &id_pool)
+{
+  if (renaming.count(input_id)) {
+    return renaming.at(input_id);
+  }
+  VarId new_id = id_pool.cloneVar (input_id);
+  renaming[input_id] = new_id;
+  add_to_blockin_phiinv (blockrename, input_id, new_id);
+  return new_id;
+}
+ 
+/*
+ * rename variables in an expression
+ */ 
 ChpExprDag do_expr_renaming(ChpExprDag dag, VarIdRemapPair &renaming,
                             const VarIdRemap &previous_renames,
                             IdPool &id_pool) {
@@ -152,6 +203,38 @@ ChpExprDag do_expr_renaming(ChpExprDag dag, VarIdRemapPair &renaming,
     });
     return dag;
 }
+
+
+/*
+ * rename variables in an expression, given a renaming map.
+ */ 
+ ChpExprDag new_do_expr_renaming(ChpExprDag dag, VarIdRemap &renaming)
+{
+  ChpExprDag::mapNodes(dag, [&](ChpExprDag::Node &n) {
+      if (n.type() == IRExprTypeKind::Var) {
+	n.u_var().id = new_do_expr_renaming(n.u_var().id, renaming);
+      }
+    });
+  return dag;
+}
+
+/*
+ * rename variables in an expression, given a renaming map.
+ */ 
+ChpExprDag new_do_expr_renaming_fresh(ChpExprDag dag, VarIdRemap &renaming,
+				      VarIdRemapPair &blockrename,
+				      IdPool &id_pool)
+{
+  ChpExprDag::mapNodes(dag, [&](ChpExprDag::Node &n) {
+      if (n.type() == IRExprTypeKind::Var) {
+	n.u_var().id = new_do_expr_renaming_fresh(n.u_var().id, renaming,
+						  blockrename, id_pool);
+      }
+    });
+  return dag;
+}
+
+
 ChpExprSingleRootDag do_expr_renaming(ChpExprSingleRootDag dag,
                                       VarIdRemapPair &renaming,
                                       const VarIdRemap &previous_renames,
@@ -160,15 +243,62 @@ ChpExprSingleRootDag do_expr_renaming(ChpExprSingleRootDag dag,
                                                  previous_renames, id_pool));
 }
 
+ChpExprSingleRootDag new_do_expr_renaming(ChpExprSingleRootDag dag,
+					  VarIdRemap &renaming)
+{
+  return ChpExprSingleRootDag(new_do_expr_renaming(std::move(dag.m_dag),
+						   renaming));
+}
+
+ChpExprSingleRootDag new_do_expr_renaming_fresh(ChpExprSingleRootDag dag,
+						VarIdRemap &renaming,
+						VarIdRemapPair &blockrename,
+						IdPool &id_pool)
+{
+  return ChpExprSingleRootDag(new_do_expr_renaming_fresh(std::move(dag.m_dag),
+							 renaming,
+							 blockrename,
+							 id_pool));
+}
+
+
 VarId do_assigning_renaming(
     VarId input_id, VarIdRemapPair &renaming,
     const std::unordered_map<VarId, VarId> & /*previous_renames*/,
     IdPool &id_pool) {
-    VarId new_id = id_pool.makeUniqueVar(id_pool.getBitwidth(input_id));
+  VarId new_id = id_pool.cloneVar (input_id);
     hassert(!renaming.outputid_from_origid.count(input_id));
     renaming.outputid_from_origid[input_id] = new_id;
     return new_id;
 }
+
+
+void add_to_blockout_phi (VarIdRemapPair &renaming,
+			  VarId assign_id,
+			  VarId new_id)
+{
+  /* add to PHI */
+  renaming.outputid_from_origid[assign_id] = new_id;
+}
+
+
+VarId new_do_assigning_renaming(VarId input_id,
+				VarIdRemap &curmap,
+				VarIdRemapPair &blockrename,
+				IdPool &id_pool)
+{
+  /* fresh LHS */
+  VarId new_id = id_pool.cloneVar (input_id);
+
+  /* add to PHI */
+  add_to_blockout_phi (blockrename, input_id, new_id);
+
+  /* future renames in this block use this updated map */
+  curmap[input_id] = new_id;
+  
+  return new_id;
+}
+
 
 template <typename K>
 std::unordered_set<K> absl_setminus(const std::unordered_set<K> &a,
@@ -291,15 +421,6 @@ VarIdRemapPair enforce_static_token_form(Sequence seq,
                     all_orig_output_ids.insert(orig_id);
             }
 
-            //            const auto &tables_after_select =
-            //            tables.at(curr->child()); all_orig_output_ids =
-            //            Algo::filter_set<VarId>(all_orig_output_ids, [&](const
-            //            VarId var_id) {
-            //                const LivenessLattice *lat =
-            //                tables_after_select.lookup(var_id); return lat &&
-            //                lat->is_alive == IsAlive::yes;
-            //            });
-
             // build the input phi functions
             for (const VarId orig_id :
                  Algo::as_sorted_vector<VarId>(all_orig_input_ids)) {
@@ -341,6 +462,7 @@ VarIdRemapPair enforce_static_token_form(Sequence seq,
 
             break;
         }
+	  
         case BlockType::Select: {
             hassert(curr->u_select().splits.empty());
             hassert(curr->u_select().merges.empty());
@@ -406,8 +528,7 @@ VarIdRemapPair enforce_static_token_form(Sequence seq,
                         if (!branch_remaps.inputid_from_origid.count(
                                 output_id)) {
                             branch_remaps.inputid_from_origid[output_id] =
-                                id_pool.makeUniqueVar(
-                                    id_pool.getBitwidth(output_id));
+			      id_pool.cloneVar (output_id);
                         }
                     }
                 }
@@ -457,6 +578,7 @@ VarIdRemapPair enforce_static_token_form(Sequence seq,
             }
             break;
         }
+	  
         case BlockType::DoLoop: {
             hassert(curr->u_doloop().in_phis.empty());
             hassert(curr->u_doloop().out_phis.empty());
@@ -549,6 +671,349 @@ VarIdRemapPair enforce_static_token_form(Sequence seq,
     return seq_renames;
 }
 
+
+/* 
+ * This converts the CHP to static token form
+ *
+ * The VarIdRemapPair contains two mappings:
+ *
+ *    - orig input var -> new var name (used for conditional uses)
+ *    - orig output var -> new var name (used for new defs)
+ *
+ * The "rename_input" flag is used to rename uses. This flag is set
+ * whenever we need a PHI' function: in loops and selects.
+ *
+ * We also keep track of an auxillary map which contains the
+ * correspondence between the original VarIds to the newly generated
+ * ones.
+ *
+ */
+VarIdRemapPair to_static_token_form(Sequence seq,
+				    IdPool &id_pool,
+				    bool rename_input);
+ 
+static
+void _run_seq (Sequence seq,
+	       VarIdRemapPair &blockrenames,
+	       VarIdRemap &curmap,
+	       IdPool &id_pool,
+	       bool rename_input)
+{
+  Block *curr = seq.startseq->child();
+  while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+      switch (curr->u_basic().stmt.type()) {
+      case StatementType::Assign: {
+	if (rename_input) {
+	  curr->u_basic().stmt.u_assign().e =
+	    new_do_expr_renaming_fresh
+	    (std::move(curr->u_basic().stmt.u_assign().e),
+	     curmap,  blockrenames, id_pool);
+	}
+	else {
+	  curr->u_basic().stmt.u_assign().e =
+	    new_do_expr_renaming (std::move(curr->u_basic().stmt.u_assign().e),
+				  curmap);
+	}
+	
+	for (auto &id : curr->u_basic().stmt.u_assign().ids)
+	  id = new_do_assigning_renaming(id, curmap,
+					 blockrenames, id_pool);
+	break;
+      }
+      case StatementType::Send: {
+	if (rename_input) {
+	curr->u_basic().stmt.u_send().e =
+	  new_do_expr_renaming_fresh(std::move(curr->u_basic().stmt.u_send().e),
+				     curmap, blockrenames, id_pool);
+	}
+	else {
+	curr->u_basic().stmt.u_send().e =
+	  new_do_expr_renaming(std::move(curr->u_basic().stmt.u_send().e),
+			       curmap);
+	}
+	break;
+      }
+      case StatementType::Receive: {
+	if (curr->u_basic().stmt.u_receive().var) {
+	  curr->u_basic().stmt.u_receive().var =
+	    new_do_assigning_renaming(
+				      *curr->u_basic().stmt.u_receive().var,
+				      curmap, blockrenames, id_pool);
+	}
+      }
+      }
+      break;
+    }
+    case BlockType::Par: {
+      // A well-formed program, according to professor Manohar, will
+      // satisfy the following conditions. In a Par block, each variable
+      // is either (1) never written OR (2) read/written on at most one
+      // branch. Therefore, the input rename table to each branch should
+      // include the renames by the previous branches, so if a new
+      // variable is read in one branch, it has the same name in every
+      // branch. The outputs should never have the same variable written
+      // to.
+
+      // This means we can just run the STF steps sequentially in each
+      // branch!
+      for (auto &branch : curr->u_par().branches) {
+	_run_seq (branch, blockrenames, curmap, id_pool, rename_input);
+      }
+      break;
+    }
+	  
+    case BlockType::Select: {
+      hassert(curr->u_select().splits.empty());
+      hassert(curr->u_select().merges.empty());
+      // conceptually, the order of pieces is `GUARD; PHI_INV; BRANCHES;
+      // PHI`
+      for (auto &branch : curr->u_select().branches) {
+	if (branch.g.type() == IRGuardType::Expression) {
+	  if (rename_input) {
+	    branch.g.u_e().e =
+	      new_do_expr_renaming_fresh (std::move(branch.g.u_e().e),
+					  curmap, blockrenames, id_pool);
+	  }
+	  else {
+	    branch.g.u_e().e =
+	      new_do_expr_renaming (std::move(branch.g.u_e().e), curmap);
+	  }
+	}
+      }
+
+      /* 
+	 compute variable renames for each branch, this time renaming
+	 uses as well as defs
+      */
+      std::vector<VarIdRemapPair> branch_remapses;
+      for (auto &branch : curr->u_select().branches) {
+	auto local_remap = to_static_token_form (branch.seq, id_pool, true);
+	branch_remapses.push_back(local_remap);
+      }
+
+      /* 
+	 Create the local phi/phiinv functions.
+
+	 phiinv functions are needed for all uses within the
+	 selection. So the variables to be remapped must include
+	 variables used in any of the branches.
+
+	 phi functions are needed for any defs within the
+	 selection. So the variables to be remapped must include any
+	 variables defined.
+
+	 Finally, if a variable is conditionally defined, then we need
+	 to "pass through" the original value by ensuring that the
+	 variable is in the phiinv block.
+      */
+
+      std::unordered_set<VarId> all_orig_input_ids;
+      for (const auto &branch_remaps : branch_remapses) {
+	for (const auto &[orig_id, _] : branch_remaps.inputid_from_origid)
+	  all_orig_input_ids.insert(orig_id);
+      }
+
+      std::unordered_set<VarId> all_orig_output_ids;
+      for (const auto &branch_remaps : branch_remapses) {
+	for (const auto &[orig_id, _] :
+	       branch_remaps.outputid_from_origid)
+	  all_orig_output_ids.insert(orig_id);
+      }
+
+      /* now check if there are variables in the def set that are not
+	 defined in one of the branches; for those, we augment the
+	 mapping by creating a fresh name
+      */
+
+      for (const auto output_id : all_orig_output_ids) {
+	/* these are all the def candidates */
+	for (VarIdRemapPair &branch_remaps : branch_remapses) {
+	  if (!branch_remaps.outputid_from_origid.count(output_id)) {
+	    /* a def is not present in the current branch; so add a
+	       fresh use and a def for this branch. */
+
+	    /* ensure it is in the phiinv set */
+	    all_orig_input_ids.insert(output_id);
+	    
+	    if (!branch_remaps.inputid_from_origid.count(output_id)) {
+	      /* not in the use set for this branch; create a fresh use */
+	      branch_remaps.inputid_from_origid[output_id] =
+		id_pool.cloneVar (output_id);
+	    }
+	  }
+	}
+      }
+
+      // Now we have the complete set of candidate reads and writes needed
+      // to build the phi functions. Now we hassert that every read value
+      // is alive, and we cut down out set to only include alive values.
+      // Next, we build one phi_inv function for each read variable. We
+      // sort these to make the code deterministic, as absl's hash tables
+      // arent (which is a good design choice on their part)
+      for (const VarId orig_id :
+	     Algo::as_sorted_vector<VarId>(all_orig_input_ids)) {
+
+	/* for variable orig_id, we generate a split that distributes
+	   this variable to each branch that (optionally) uses it.
+
+	   We map over all the remap tables, and either include the
+	   remapped ID (if found) or the null_id otherwise.
+	*/
+	std::vector<OptionalVarId> ids_on_branches =
+	  Algo::map1<OptionalVarId>(branch_remapses,
+	    [&](const VarIdRemapPair &localmap) {
+		return Algo::value_default(localmap.inputid_from_origid,
+					   orig_id, OptionalVarId::null_id());
+				    });
+
+	curr->u_select().splits.push_back({orig_id, ids_on_branches});
+      }
+
+      // Similar strategy for output phi function. Grab the def from
+      // the output_id_from_origid map; if it is not found there, then
+      // grab it from the input_id_from_origid map
+      for (const VarId orig_id :
+	     Algo::as_sorted_vector<VarId>(all_orig_output_ids)) {
+	std::vector<VarId> ids_on_branches =
+	  Algo::map1<VarId>(branch_remapses,
+	    [&](const VarIdRemapPair &branch_remaps) {
+		 return Algo::value_default_func(
+		        branch_remaps.outputid_from_origid, orig_id,
+			[&]() {
+			  // we should have added this up above if the
+			  // variable is not assigned
+			  return branch_remaps.inputid_from_origid.at(orig_id);
+			});
+        });
+
+	// generate a new def due to the phi-function
+	auto output_id = new_do_assigning_renaming(orig_id,
+						   curmap,
+						   blockrenames,
+						   id_pool);
+
+	curr->u_select().merges.push_back({ids_on_branches, output_id});
+      }
+      break;
+    }
+    case BlockType::DoLoop: {
+      hassert(curr->u_doloop().in_phis.empty());
+      hassert(curr->u_doloop().out_phis.empty());
+      hassert(curr->u_doloop().loop_phis.empty());
+      VarIdRemapPair branch_remaps =
+	to_static_token_form (curr->u_doloop().branch, id_pool, true);
+      
+      curr->u_doloop().guard =
+	new_do_expr_renaming(std::move(curr->u_doloop().guard),
+			     branch_remaps.outputid_from_origid);
+
+      // Now we need to build the phi functions. There are 3 cases
+      const auto all_orig_input_ids =
+	absl_keys(branch_remaps.inputid_from_origid);
+
+      const auto all_orig_output_ids =
+	absl_keys(branch_remaps.outputid_from_origid);
+
+      /* loop carried dependencies */
+      const auto loop_ids =
+	absl_intersection(all_orig_input_ids, all_orig_output_ids);
+
+      // These are variables that change each iteration of the loop. We
+      // apply the following transformation
+      // Before:   h := BLAH; *[ h := BLAH(h) <- g]; BLAH(h)
+      //  After:   h0 := BLAH; *[ h1 := phi(h0, h3); h2 := BLAH(h1);
+      //                          (h3, h4) := phiinv(h2) <- g]; BLAH(h4)
+      for (const auto &loop_id :
+	     Algo::as_sorted_vector<VarId>(loop_ids)) {
+
+	VarId pre_id;
+	if (curmap.count(loop_id)) {
+	  pre_id = curmap[loop_id];
+	}
+	else {
+	  pre_id = loop_id;
+	}
+	VarId post_id = new_do_assigning_renaming (loop_id,
+						   curmap,
+						   blockrenames,
+						   id_pool);
+
+	// this is the final output from the loop block
+	blockrenames.outputid_from_origid[loop_id] = post_id;
+	
+	curr->u_doloop().loop_phis.push_back(
+		     Block::Variant_DoLoop::LoopPhi
+		     {
+		         pre_id,
+			 branch_remaps.inputid_from_origid.at(loop_id),
+			 branch_remaps.outputid_from_origid.at(loop_id),
+			 post_id
+		      });
+      }
+      // These are variables that are non-conditional reads
+      // Before:   h := BLAH; *[ BLAH(h) <- g]; BLAH(h)
+      // After:   h0 := BLAH; *[ h1 := phi(h0, h2); (h2, h3) := phiinv(h1)
+      // <- g]; BLAH(h3)
+      for (const auto &read_id :
+	     Algo::as_sorted_vector<VarId>(absl_setminus(all_orig_input_ids, loop_ids))) {
+
+	VarId pre_id;
+	if (branch_remaps.inputid_from_origid.count(read_id)) {
+	  pre_id = branch_remaps.inputid_from_origid[read_id];
+	}
+	else {
+	  pre_id = read_id;
+	}
+	curr->u_doloop().in_phis.push_back(Block::Variant_DoLoop::InPhi{
+	    pre_id, branch_remaps.inputid_from_origid.at(read_id)});
+      }
+
+      // These are variables that are non-conditional writes. We dont need
+      // to loop the variable because it gets written on every loop
+      // Before:   *[ h := BLAH() <- g]; BLAH(h) After:   *[ h0 := BLAH;
+      // (_, h1) := phiinv(h0) <- g]; BLAH(h1)
+      for (auto write_id : Algo::as_sorted_vector<VarId>(
+							 absl_setminus(all_orig_output_ids, loop_ids))) {
+
+	VarId post_id = new_do_assigning_renaming (write_id,
+						   curmap,
+						   blockrenames,
+						   id_pool);
+	  curr->u_doloop().out_phis.push_back(
+					      Block::Variant_DoLoop::OutPhi{
+						branch_remaps.outputid_from_origid.at(write_id),
+						  post_id});
+      }
+      break;
+    }
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    curr = curr->child();
+  }
+}
+
+VarIdRemapPair to_static_token_form(Sequence seq,
+				    IdPool &id_pool,
+				    bool rename_input)
+{
+  /* the block renaming map is initially empty */
+  VarIdRemapPair blockrenames;
+
+  /* the current rename map is also empty */
+  VarIdRemap curmap;
+
+  _run_seq (seq, blockrenames, curmap, id_pool, rename_input);
+
+  return blockrenames;
+}
+ 
+
+  
 } // namespace
 
 void putIntoStaticTokenForm(ChpGraph &g) {
@@ -573,6 +1038,29 @@ void putIntoStaticTokenForm(ChpGraph &g) {
 
     g.is_static_token_form = true;
 }
+
+void putIntoNewStaticTokenForm(ChpGraph &g) {
+    hassert(!g.is_static_token_form);
+
+    auto remaps =
+      to_static_token_form (g.m_seq, g.id_pool(), false);
+
+    // the default value of variables in 0. However, the IR does not support
+    // uninitialized variables being read. Therefore, add assignments for each
+    // uninitialized variable.
+    for (const auto &[orig_id, new_id] : remaps.inputid_from_origid) {
+        Block *assign = g.blockAllocator().newBlock(
+            Block::makeBasicBlock(Statement::makeAssignment(
+                new_id, ChpExprSingleRootDag::makeConstant(
+                            BigInt{0}, g.id_pool().getBitwidth(new_id)))));
+        Block *start = g.m_seq.startseq->child();
+        Block::disconnect(g.m_seq.startseq, start);
+        Block::connect(g.m_seq.startseq, assign);
+        Block::connect(assign, start);
+    }
+    g.is_static_token_form = true;
+}
+
 
 namespace {
 

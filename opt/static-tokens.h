@@ -30,5 +30,7 @@ namespace ChpOptimize {
 
 void putIntoStaticTokenForm(ChpGraph &graph);
 void takeOutOfStaticTokenForm(ChpGraph &graph);
+void putIntoNewStaticTokenForm(ChpGraph &graph);
+
 
 } // namespace ChpOptimize
