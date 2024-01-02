@@ -1724,7 +1724,6 @@ int generate_pipe_element(act_chp_lang_t *c, FILE *fp, Process *p, int init_latc
             // TODO - finish
             e = c->u.assign.e;
             var = c->u.assign.id;
-            it = p->CurScope()->Lookup(var);
             fprintf(fp,"\n// Pipe block for action: ");
             chp_print(fp,c);
             fprintf(fp,"\n");
@@ -1738,7 +1737,7 @@ int generate_pipe_element(act_chp_lang_t *c, FILE *fp, Process *p, int init_latc
             b = hash_lookup(var_infos, tname);
             // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
             vi = (var_info *)b->v;
-            bw = TypeFactory::bitWidth(it);
+            bw = vi->width;
             expr_inst_id = generate_expr_block(e,bw,p,fp);
             if (init_latch == -1)
             {
