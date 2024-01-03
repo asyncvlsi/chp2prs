@@ -104,7 +104,6 @@ int action_type(act_chp_lang_t *c)
         return ACTION_NONE;
         break;
     }
-
 }
 
 /* 

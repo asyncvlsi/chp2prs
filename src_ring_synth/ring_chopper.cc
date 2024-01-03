@@ -568,7 +568,7 @@ void print_live_var_info (act_chp_lang_t *c, Process *p, int root)
     Compute the total number of bits that are live-in at any
     action. This is achieved by just summing the bitwidths of
     all the variables that are live-in at that action. This
-    info is used to determine good points for breaking the ring.
+    info will be used to determine good points for breaking the ring.
 */
 void generate_live_var_bits (act_chp_lang_t *c, Process *p, int root)
 {
@@ -663,10 +663,10 @@ void generate_live_var_bits (act_chp_lang_t *c, Process *p, int root)
 }
 
 /*
-    Breaking the ring apart based on live-variable info.
-    Tries to break just before variable assignments.
     Not used yet, will probably port this over to 
     CHP-stage processing within chp_optimize.
+    Breaking the ring apart based on live-variable info.
+    Tries to break just before variable assignments.
 */
 act_chp_lang_t *chop_ring (act_chp_lang_t *c, Process *p, int n_breaks, int root)
 {

@@ -24,7 +24,7 @@
 
 /* 
     For every selection that has an else guard,
-    replace an else guard with the correct explicit version,
+    replace the else guard with the correct explicit version,
     so that synthesis can happen correctly.
     For example,
 
