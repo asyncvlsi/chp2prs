@@ -323,8 +323,18 @@ class Block {
         Block *child;
         Block *parent;
         std::list<Sequence> branches;
+
+       /* this is a list of variable splits, one for each variable used in
+	  a parallel branch.
+	  This is used by the H-STF form.
+       */
         std::vector<PhiSplit> splits;
-        std::vector<PhiMerge> merges;
+
+      /* this is a list of defines, one for each variable defined in a
+	 parallel branch.
+	 This is used by the H-STF form.
+      */
+        std::vector<PhiMerge> merges; 
 
         Variant_Par(std::list<Sequence> branches, Block *child, Block *parent)
             : child{child}
@@ -374,14 +384,23 @@ class Block {
         // we conceive of a DoLoops guard as being run during the endseq block
         // in its subsequence
       public:
+      
+        /* This maps an inbound variable to a new value */
         struct InPhi {
             VarId pre_id;
             VarId bodyin_id;
         };
+
+        /* This maps an outbound variable to its final value */
         struct OutPhi {
             VarId bodyout_id;
             VarId post_id;
         };
+
+        /* 
+	   This contains the loop-inbound and loop-carried id, and has
+	   body_in mapping and body_out mapping
+	*/
         struct LoopPhi {
             VarId pre_id;
             VarId bodyin_id;

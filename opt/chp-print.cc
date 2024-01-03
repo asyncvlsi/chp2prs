@@ -340,20 +340,20 @@ void print_chp(std::ostream &o, Sequence sequence, int ilevel) {
                 o << str_of_id(phi.pre_id) << ", _ );" << std::endl;
             }
             for (const auto &phi : curr->u_doloop().loop_phis) {
-                o << indent << str_of_id(phi.bodyin_id) << " = phi(";
+                o << indent << str_of_id(phi.bodyin_id) << " = lphi(";
                 o << str_of_id(phi.pre_id) << ", tmp_"
                   << str_of_id(phi.bodyout_id) << ");" << std::endl;
             }
             print_chp(o, curr->u_doloop().branch, ilevel + 1);
             o << std::endl;
             for (const auto &phi : curr->u_doloop().out_phis) {
-                o << indent << "(tmp_" << str_of_id(phi.bodyout_id) << ",";
+                o << indent << "(dum_" << str_of_id(phi.bodyout_id) << ",";
                 o << str_of_id(phi.post_id) << ") = phi_inv("
                   << str_of_id(phi.bodyout_id) << ");" << std::endl;
             }
             for (const auto &phi : curr->u_doloop().loop_phis) {
                 o << indent << "(tmp_" << str_of_id(phi.bodyout_id) << ",";
-                o << str_of_id(phi.post_id) << ") = phi_inv("
+                o << str_of_id(phi.post_id) << ") = lphi_inv("
                   << str_of_id(phi.bodyout_id) << ");" << std::endl;
             }
             o << indent << "  <- ";

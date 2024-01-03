@@ -241,6 +241,11 @@ class IdPool {
 
     [[nodiscard]] VarId makeUniqueVar(int bitwidth, bool is_bool = false);
     [[nodiscard]] ChanId makeUniqueChan(int bitwidth, bool is_bool = false);
+    [[nodiscard]] VarId cloneVar (const VarId &id) {
+      hassert(id.m_id < m_varid_infos.size());
+      VarIdInfo idi = m_varid_infos[id.m_id];
+      return makeUniqueVar (idi.bitwidth, idi.is_bool);
+    }
 };
 
 
