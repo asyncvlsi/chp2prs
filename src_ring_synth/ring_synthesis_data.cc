@@ -24,8 +24,8 @@
 #include "ring_synthesis_struct.h"
 
 // Refer to synthesis_struct.h to see what a var_info object holds.
-// void generate_array_suffix(char *, Array *, Act *, int);
-// const char *get_true_name (ActId *, Scope *);
+
+
 
 /*
     Print the contents of the var_info object. Some fields are 
@@ -692,7 +692,7 @@ Hashtable *construct_var_info_hashtable (act_chp_lang_t *c, Process *p, ActBoole
     }
   }
 
-  // old ----------------------------------------
+  /* ---------- old ----------------------------------------
   // for (iter = iter.begin(); iter != iter.end(); iter++) {
   //   ValueIdx *vx = *iter;
     // if (!TypeFactory::isChanType (vx->t) && !vx->t->arrayInfo()) 
@@ -726,7 +726,7 @@ Hashtable *construct_var_info_hashtable (act_chp_lang_t *c, Process *p, ActBoole
   //     // fprintf (stdout, " : \n\n ");
   //   }
   // }
-  // old ----------------------------------------
+  */
 
   return var_infos;
 }
