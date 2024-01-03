@@ -33,7 +33,7 @@ void packAssignmentOneVar(ChpGraph &graph);
 
 void inlineOneWriteExprs(ChpGraph &graph);
 
-void uninlineBitfeildExprsHack(ChpGraph &graph);
+void uninlineBitfieldExprsHack(ChpGraph &graph);
 void unpackLargeConstantHack(ChpGraph &graph);
 void parallelizeGraph(ChpGraph &graph);
 

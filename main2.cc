@@ -31,6 +31,7 @@
 
 #include "opt/chp-opt.h"
 #include "opt/static-tokens.h"
+#include "opt/sequencers.h"
 
 #ifdef FOUND_expropt
 #include "externoptsdt.h"
@@ -133,6 +134,10 @@ class SDTSynth : public ActSynthesize {
 	printf ("\n\n------ STF ---------\n");
 	putIntoNewStaticTokenForm (g.graph);
 	ChpOptimize::print_chp (std::cout, g.graph);
+
+	// convert to normal CHP
+	uninlineBitfieldExprsHack (g.graph);
+	
 	printf ("\n---------------\n");
       }
     }

@@ -24,6 +24,7 @@
  */
 
 #include "static-tokens.h"
+#include "chp-opt.h"
 #include "algos.h"
 
 namespace ChpOptimize {
@@ -1045,6 +1046,186 @@ void putIntoStaticTokenForm(ChpGraph &g) {
     g.is_static_token_form = true;
 }
 
+static
+void checkLiveness (Sequence seq, std::unordered_set<VarId> &potentially_dead)
+{
+  Block *curr = seq.startseq->child();
+  while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+      switch (curr->u_basic().stmt.type()) {
+      case StatementType::Assign: {
+	ChpExprDag::mapNodes(curr->u_basic().stmt.u_assign().e,
+			     [&](ChpExprDag::Node &n) {
+			       if (n.type() == IRExprTypeKind::Var) {
+				 if (potentially_dead.count(n.u_var().id)) {
+				   potentially_dead.erase(n.u_var().id);
+				 }
+			       }
+			     });
+	for (const auto &var : curr->u_basic().stmt.u_assign().ids) {
+	  if (potentially_dead.count(var)) {
+	    potentially_dead.erase (var);
+	  }
+	}
+	break;
+      }
+      case StatementType::Send: {
+	ChpExprDag::mapNodes(curr->u_basic().stmt.u_send().e.m_dag,
+			     [&](ChpExprDag::Node &n) {
+			       if (n.type() == IRExprTypeKind::Var) {
+				 if (potentially_dead.count(n.u_var().id)) {
+				   potentially_dead.erase(n.u_var().id);
+				 }
+			       }
+			     });
+	break;
+      }
+      case StatementType::Receive: {
+	if (curr->u_basic().stmt.u_receive().var) {
+	  if (potentially_dead.count(*curr->u_basic().stmt.u_receive().var)) {
+	    potentially_dead.erase (*curr->u_basic().stmt.u_receive().var);
+	  }
+	}
+	break;
+      }
+      }
+      break;
+    }
+    case BlockType::Par: {
+      for (auto &branch : curr->u_par().branches) {
+	checkLiveness (branch, potentially_dead);
+      }
+      break;
+    }
+    case BlockType::Select: {
+      for (auto &branch : curr->u_select().branches) {
+	if (branch.g.type() == IRGuardType::Expression) {
+	  ChpExprDag::mapNodes(branch.g.u_e().e.m_dag,
+			     [&](ChpExprDag::Node &n) {
+			       if (n.type() == IRExprTypeKind::Var) {
+				 if (potentially_dead.count(n.u_var().id)) {
+				   potentially_dead.erase(n.u_var().id);
+				 }
+			       }
+			     });
+	  
+	}
+	checkLiveness (branch.seq, potentially_dead);
+      }
+      break;
+    }
+    case BlockType::DoLoop: {
+      checkLiveness (curr->u_doloop().branch, potentially_dead);
+      ChpExprDag::mapNodes(curr->u_doloop().guard.m_dag,
+			   [&](ChpExprDag::Node &n) {
+			     if (n.type() == IRExprTypeKind::Var) {
+			       if (potentially_dead.count(n.u_var().id)) {
+				 potentially_dead.erase(n.u_var().id);
+			       }
+			     }
+			   });
+      break;
+    }
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    curr = curr->child();
+  }
+}
+
+static
+void prunePhis (Sequence seq, std::unordered_set<VarId> &deadvars,
+		std::unordered_set<VarId> &new_pot_dead)
+{
+  Block *curr = seq.startseq->child();
+  while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+      break;
+    }
+    case BlockType::Par: {
+      for (auto &branch : curr->u_par().branches) {
+	prunePhis (branch, deadvars, new_pot_dead);
+      }
+      break;
+    }
+    case BlockType::Select: {
+      // check and prune phis
+      std::vector<Block::Variant_Select::PhiSplit> newsplits;
+      for (auto &phisplit : curr->u_select().splits) {
+	// remove any dead variable from the split
+	for (auto &var : phisplit.branch_ids) {
+	  if (var && deadvars.contains(*var)) {
+	    var = OptionalVarId::null_id();
+	  }
+	}
+
+	// if everything is dead, we kill the split
+	if (Algo::all_of (phisplit.branch_ids,
+			  [&](const OptionalVarId x) { return !(x); })) {
+	  new_pot_dead.insert(phisplit.pre_id);
+	  // phisplit.pre_id is potentially no longer used...
+	}
+	else {
+	  newsplits.push_back (phisplit);
+	}
+      }
+      curr->u_select().splits = newsplits;
+
+      std::vector<Block::Variant_Select::PhiMerge> newmerges;
+      for (auto &phimerge : curr->u_select().merges) {
+	if (!deadvars.contains (phimerge.post_id)) {
+	  newmerges.push_back (phimerge);
+	}
+	else {
+	  for (auto &var : phimerge.branch_ids) {
+	    new_pot_dead.insert (var);
+	  }
+	}
+      }
+      curr->u_select().merges = newmerges;
+      
+      for (auto &branch : curr->u_select().branches) {
+	prunePhis (branch.seq, deadvars, new_pot_dead);
+      }
+      break;
+    }
+    case BlockType::DoLoop: {
+      // check and prune phis
+      std::vector<Block::Variant_DoLoop::OutPhi> new_outphis;
+      for (auto &outphi : curr->u_doloop().out_phis) {
+	if (deadvars.contains (outphi.post_id)) {
+	  new_pot_dead.insert (outphi.bodyout_id);
+	}
+	else {
+	  new_outphis.push_back (outphi);
+	}
+      }
+      curr->u_doloop().out_phis = new_outphis;
+
+      for (auto &loopphi : curr->u_doloop().loop_phis) {
+	if (loopphi.post_id && deadvars.contains (*loopphi.post_id)) {
+	  loopphi.post_id = OptionalVarId::null_id();
+	}
+      }
+      
+      prunePhis (curr->u_doloop().branch, deadvars, new_pot_dead);
+      break;
+    }
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    curr = curr->child();
+  }
+}
+
+
+
 void putIntoNewStaticTokenForm(ChpGraph &g) {
     hassert(!g.is_static_token_form);
 
@@ -1064,6 +1245,43 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
         Block::connect(g.m_seq.startseq, assign);
         Block::connect(assign, start);
     }
+
+    // remove redundant copies introduced because of the
+    // on self-assignment constraint.
+    //   x := x + 1
+    // would get turned into
+    //   xnew := x + 1; x := xnew
+    // ... and so afer STF this would become
+    //   xnew := x + 1; xnew2 := xnew
+    // introducing a redundant copy.
+    eliminateCopies (g);
+    
+    // now run a backward pass to eliminate dead code + copies
+    // also implement phi-fusion, and phiinv-fusion
+    std::unordered_set<VarId> dead_vars;
+    //printf (" -- potential extra live variables:\n");
+    for (auto &[orig_id, new_id] : remaps.outputid_from_origid) {
+      //printf (" >> %d (mapped to v%d)\n", orig_id.m_id, new_id.m_id);
+      dead_vars.insert (new_id);
+    }
+
+    while (!dead_vars.empty()) {
+      checkLiveness (g.m_seq, dead_vars);
+      if (dead_vars.empty()) {
+	break;
+      }
+      //printf (" --  dead list: ");
+      //for (auto var_id : dead_vars) {
+      //printf (" %d", var_id.m_id);
+      //}
+      //printf ("\n");
+
+      std::unordered_set<VarId> newdead;
+      prunePhis (g.m_seq, dead_vars, newdead);
+
+      dead_vars = newdead;
+    }
+    
     g.is_static_token_form = true;
 }
 

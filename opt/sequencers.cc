@@ -378,7 +378,7 @@ void inlineOneWriteExprs(ChpGraph &graph) {
 }
 
 namespace {
-void uninlineBitfeildExprsHelper(ChpExprDag &dag) {
+void uninlineBitfieldExprsHelper(ChpExprDag &dag) {
     ChpExprDag::mapNodes(dag, [&](ChpExprDag::Node &n) {
         switch (n.type()) {
         case IRExprTypeKind::Var:
@@ -402,13 +402,13 @@ void uninlineBitfeildExprsHelper(ChpExprDag &dag) {
         }
     });
 }
-void uninlineBitfeildExprsHelper(ChpExprSingleRootDag &dag) {
-    uninlineBitfeildExprsHelper(dag.m_dag);
+void uninlineBitfieldExprsHelper(ChpExprSingleRootDag &dag) {
+    uninlineBitfieldExprsHelper(dag.m_dag);
 }
 } // namespace
 
 // should be run _after_ adding parallelization
-void uninlineBitfeildExprsHack(ChpGraph &graph) {
+void uninlineBitfieldExprsHack(ChpGraph &graph) {
 
     auto all_blocks_vec = graph.getLiveBlocks();
 
@@ -416,13 +416,13 @@ void uninlineBitfeildExprsHack(ChpGraph &graph) {
         if (b->type() == BlockType::Basic) {
             switch (b->u_basic().stmt.type()) {
             case StatementType::Assign: {
-                uninlineBitfeildExprsHelper(b->u_basic().stmt.u_assign().e);
+                uninlineBitfieldExprsHelper(b->u_basic().stmt.u_assign().e);
                 break;
             }
             case StatementType::Receive:
                 break;
             case StatementType::Send:
-                uninlineBitfeildExprsHelper(b->u_basic().stmt.u_send().e);
+                uninlineBitfieldExprsHelper(b->u_basic().stmt.u_send().e);
 
                 break;
             }
@@ -431,11 +431,11 @@ void uninlineBitfeildExprsHack(ChpGraph &graph) {
         if (b->type() == BlockType::Select) {
             for (SelectBranch &gb : b->u_select().branches) {
                 if (gb.g.type() == IRGuardType::Expression) {
-                    uninlineBitfeildExprsHelper(gb.g.u_e().e);
+                    uninlineBitfieldExprsHelper(gb.g.u_e().e);
                 }
             }
         } else if (b->type() == BlockType::DoLoop) {
-            uninlineBitfeildExprsHelper(b->u_doloop().guard);
+            uninlineBitfieldExprsHelper(b->u_doloop().guard);
         }
     }
 }
