@@ -1256,26 +1256,27 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
     // introducing a redundant copy.
     eliminateCopies (g);
     
-    // now run a backward pass to eliminate dead code + copies
-    // also implement phi-fusion, and phiinv-fusion
+    // the output mapping from the top-level block corresponds to
+    // variables that are potentially dead.
     std::unordered_set<VarId> dead_vars;
-    //printf (" -- potential extra live variables:\n");
     for (auto &[orig_id, new_id] : remaps.outputid_from_origid) {
-      //printf (" >> %d (mapped to v%d)\n", orig_id.m_id, new_id.m_id);
       dead_vars.insert (new_id);
     }
 
     while (!dead_vars.empty()) {
+      // remove variables that aren't actually dead
       checkLiveness (g.m_seq, dead_vars);
       if (dead_vars.empty()) {
 	break;
       }
+      
       //printf (" --  dead list: ");
       //for (auto var_id : dead_vars) {
       //printf (" %d", var_id.m_id);
       //}
       //printf ("\n");
 
+      // prune phi/phiinv blocks
       std::unordered_set<VarId> newdead;
       prunePhis (g.m_seq, dead_vars, newdead);
 
