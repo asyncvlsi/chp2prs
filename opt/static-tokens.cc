@@ -1225,6 +1225,57 @@ void prunePhis (Sequence seq, std::unordered_set<VarId> &deadvars,
   }
 }
 
+static
+void mergePhis (Sequence seq)
+{
+  Block *curr = seq.startseq->child();
+  while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+      break;
+    }
+    case BlockType::Par: {
+      for (auto &branch : curr->u_par().branches) {
+	mergePhis (branch);
+      }
+      break;
+    }
+    case BlockType::Select: {
+      for (auto &branch : curr->u_select().branches) {
+	mergePhis (branch.seq);
+      }
+      break;
+    }
+    case BlockType::DoLoop: {
+      // check for merge opportunities combining outphis and loopphis 
+      std::vector<Block::Variant_DoLoop::OutPhi> new_outphis;
+      for (auto &outphi : curr->u_doloop().out_phis) {
+	bool moved = false;
+	for (auto &loopphi : curr->u_doloop().loop_phis) {
+	  if (!loopphi.post_id && loopphi.bodyout_id == outphi.bodyout_id) {
+	    loopphi.post_id = outphi.post_id;
+	    moved = true;
+	    break;
+	  }
+	}
+	if (!moved) {
+	  new_outphis.push_back (outphi);
+	}
+      }
+      curr->u_doloop().out_phis = new_outphis;
+
+      mergePhis (curr->u_doloop().branch);
+      break;
+    }
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    curr = curr->child();
+  }
+}
+
 
 
 void putIntoNewStaticTokenForm(ChpGraph &g) {
@@ -1280,9 +1331,9 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
       // prune phi/phiinv blocks
       std::unordered_set<VarId> newdead;
       prunePhis (g.m_seq, dead_vars, newdead);
-
       dead_vars = newdead;
     }
+    mergePhis (g.m_seq);
     
     g.is_static_token_form = true;
 }
