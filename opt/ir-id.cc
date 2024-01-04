@@ -118,6 +118,13 @@ NameParsingIdPool::name_from_chan_map() const {
     return mp;
 }
 
+[[nodiscard]] std::unordered_map<VarId, std::string>
+NameParsingIdPool::name_from_var_map() const {
+    std::unordered_map<VarId, std::string> mp;
+    for (const auto &[id, act_id] : m_varid_to_actid)
+        mp[id] = act_id->getName();
+    return mp;
+}
 
 /*
  * Straightforward accessor functions for the ID pool

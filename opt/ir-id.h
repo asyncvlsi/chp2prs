@@ -319,6 +319,8 @@ class NameParsingIdPool {
 
     [[nodiscard]] std::unordered_map<ChanId, std::string>
     name_from_chan_map() const;
+    [[nodiscard]] std::unordered_map<VarId, std::string>
+    name_from_var_map() const;
 };
 
 } // namespace ChpOptimize

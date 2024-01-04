@@ -347,6 +347,7 @@ GraphWithChanNames chp_graph_from_act(act_chp_lang *lang, Scope *s) {
     graph_with_names.graph.validateGraphInvariants();
 
     graph_with_names.name_from_chan = id_pool.name_from_chan_map();
+    graph_with_names.name_from_var = id_pool.name_from_var_map();
     return graph_with_names;
 }
 
