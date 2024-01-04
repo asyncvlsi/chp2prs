@@ -20,29 +20,13 @@
  **************************************************************************
  */
 
-#ifndef REQS_H
-#define REQS_H
+#include "ring_forge.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <string>
-#include <act/act.h>
-#include <act/passes.h>
-#include <act/lang.h>
-#include <act/iter.h>
-#include <act/types.h>
-#include <act/expropt.h>
+RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
+            const char *circuit_library,
+            const char *exprfile = "expr.act" )
+    : RingEngine ( fp, p, c, circuit_library, "expr.act" )
+{
 
-#include "ring_synthesis_struct.h"
-
-#include "ring.cc"
-#include "ring_live_vars.cc"
-#include "ring_name_handling.cc"
-#include "ring_else_gen.cc"
-#include "ring_optimizer.cc"
-#include "ring_synthesis_chp.cc"
-#include "ring_synthesis_data.cc"
-// #include "ring_chopper.cc"
-
-
-#endif
+    
+}
