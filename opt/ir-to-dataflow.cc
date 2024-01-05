@@ -24,197 +24,15 @@
 
 #include "ir-to-dataflow.h"
 #include "chp-print.h"
-#include "utils/algos.h"
-#include "utils/utils.h"
+#include "algos.h"
+#include "utils.h"
 #include <functional>
 
 namespace ChpOptimize {
 namespace {
-class DVarId {
-  public:
-    uint64_t m_id;
 
-    DVarId()
-        : m_id{1} {};
-    explicit DVarId(uint64_t id)
-        : m_id{id} {
-        hassert(m_id != 0);
-    }
-
-    static DVarId first_id() { return DVarId{1}; }
-    [[nodiscard]] DVarId next_id() const {
-        hassert(m_id + 1 != 0);
-        return DVarId{m_id + 1};
-    }
-
-    auto operator<=>(const DVarId &) const = default;
-};
-
-} // namespace
-
-} // namespace ChpOptimize
-
-template <> struct ::std::hash<::ChpOptimize::DVarId> {
-    size_t operator()(const ::ChpOptimize::DVarId &obj) const {
-        return hash<int>()(obj.m_id);
-    }
-};
-
-namespace ChpOptimize {
-namespace {
-
-using DExpr = IRExpr<ChpTag, DVarId, ManageMemory::yes>;
-using DExprDag = IRExprDag<ChpTag, DVarId>;
-using DExprSingleRootDag = IRExprSingleRootDag<ChpTag, DVarId>;
-
-struct DVarIdPool {
-    std::unordered_map<VarId, DVarId> var_renames;
-    std::unordered_map<ChanId, DVarId> chan_renames;
-    std::unordered_map<DVarId, int> widths;
-    DVarId next = DVarId::first_id();
-
-    [[nodiscard]] DVarId new_id(int width) {
-        DVarId result = next;
-        next = next.next_id();
-        widths[result] = width;
-        return result;
-    }
-    [[nodiscard]] std::vector<std::pair<DVarId, int>> id_width_pairs() const {
-        std::vector<std::pair<DVarId, int>> result;
-        for (const auto &[k, v] : widths)
-            result.push_back({k, v});
-        std::sort(result.begin(), result.end());
-        return result;
-    }
-    [[nodiscard]] DVarId new_ctrl_tok() {
-        return new_id(1); // can this be 0?
-    }
-    [[nodiscard]] DVarId new_id_with_width_of(VarId id) {
-        return new_id(widths.at(var_renames.at(id)));
-    }
-    void add(VarId id, int width) {
-        if (var_renames.contains(id)) {
-            hassert(widths.at(var_renames.at(id)) == width);
-            return;
-        }
-        var_renames[id] = new_id(width);
-    }
-    [[nodiscard]] DVarId at(VarId id) const {
-        hassert(var_renames.contains(id));
-        return var_renames.at(id);
-    }
-    [[nodiscard]] DVarId at(ChanId id) const {
-        hassert(chan_renames.contains(id));
-        return chan_renames.at(id);
-    }
-};
-
-// We want to generate some additional variables, but dont want this to mutate
-// the original chp id_pool. Also, we want channels and variables to now havew
-// the same type. To achieve this, we do two passes. First, we iterate through
-// the whole graph and generate new names for each variable/channel. Then, we
-// use this table in later code.
-DVarIdPool make_id_pool(const ChpGraph &g) {
-    DVarIdPool id_pool;
-    ChpGraph::iter_blocks(g, [&](const Block *curr) {
-        switch (curr->type()) {
-        case BlockType::Basic:
-            switch (curr->u_basic().stmt.type()) {
-            case StatementType::Assign: {
-                const auto &assign = curr->u_basic().stmt.u_assign();
-                for (const auto &id : assign.ids)
-                    id_pool.add(id, g.id_pool().getBitwidth(id));
-                for (const auto &id : getIdsUsedByExpr(assign.e))
-                    id_pool.add(id, g.id_pool().getBitwidth(id));
-                break;
-            }
-            case StatementType::Send: {
-                const auto &send = curr->u_basic().stmt.u_send();
-                //                id_pool.add(send.chan,
-                //                g.id_pool().getBitwidth(send.chan));
-                for (const auto &id : getIdsUsedByExpr(send.e))
-                    id_pool.add(id, g.id_pool().getBitwidth(id));
-                break;
-            }
-            case StatementType::Receive:
-                const auto &receive = curr->u_basic().stmt.u_receive();
-                //                id_pool.add(receive.chan,
-                //                g.id_pool().getBitwidth(receive.chan));
-                if (receive.var)
-                    id_pool.add(*receive.var,
-                                g.id_pool().getBitwidth(*receive.var));
-                break;
-            }
-            break;
-        case BlockType::Par:
-            for (const auto &phi : curr->u_par().splits) {
-                id_pool.add(phi.pre_id, g.id_pool().getBitwidth(phi.pre_id));
-                for (const auto id : phi.branch_ids) {
-                    if (id)
-                        id_pool.add(*id, g.id_pool().getBitwidth(*id));
-                }
-            }
-            for (const auto &phi : curr->u_par().merges) {
-                id_pool.add(phi.post_id, g.id_pool().getBitwidth(phi.post_id));
-                for (const auto id : phi.branch_ids) {
-                    if (id)
-                        id_pool.add(*id, g.id_pool().getBitwidth(*id));
-                }
-            }
-            break;
-        case BlockType::Select:
-            for (const auto &phi : curr->u_select().splits) {
-                id_pool.add(phi.pre_id, g.id_pool().getBitwidth(phi.pre_id));
-                for (const auto id : phi.branch_ids) {
-                    if (id)
-                        id_pool.add(*id, g.id_pool().getBitwidth(*id));
-                }
-            }
-            for (const auto &phi : curr->u_select().merges) {
-                id_pool.add(phi.post_id, g.id_pool().getBitwidth(phi.post_id));
-                for (const auto id : phi.branch_ids)
-                    id_pool.add(id, g.id_pool().getBitwidth(id));
-            }
-            for (const auto &branch : curr->u_select().branches) {
-                if (branch.g.type() == IRGuardType::Expression) {
-                    for (const auto &id : getIdsUsedByExpr(branch.g.u_e().e))
-                        id_pool.add(id, g.id_pool().getBitwidth(id));
-                }
-            }
-            break;
-        case BlockType::DoLoop:
-            for (const auto &phi : curr->u_doloop().in_phis) {
-                id_pool.add(phi.pre_id, g.id_pool().getBitwidth(phi.pre_id));
-                id_pool.add(phi.bodyin_id,
-                            g.id_pool().getBitwidth(phi.bodyin_id));
-            }
-            for (const auto &phi : curr->u_doloop().out_phis) {
-                id_pool.add(phi.bodyout_id,
-                            g.id_pool().getBitwidth(phi.bodyout_id));
-                id_pool.add(phi.post_id, g.id_pool().getBitwidth(phi.post_id));
-            }
-            for (const auto &phi : curr->u_doloop().loop_phis) {
-                id_pool.add(phi.pre_id, g.id_pool().getBitwidth(phi.pre_id));
-                id_pool.add(phi.bodyin_id,
-                            g.id_pool().getBitwidth(phi.bodyin_id));
-                id_pool.add(phi.bodyout_id,
-                            g.id_pool().getBitwidth(phi.bodyout_id));
-                if (phi.post_id)
-                    id_pool.add(*phi.post_id,
-                                g.id_pool().getBitwidth(*phi.post_id));
-            }
-            for (const auto &id : getIdsUsedByExpr(curr->u_doloop().guard))
-                id_pool.add(id, g.id_pool().getBitwidth(id));
-            break;
-        case BlockType::StartSequence:
-        case BlockType::EndSequence:
-            break;
-        }
-    });
-    return id_pool;
-}
-
-DExprDag of_chp_dag(const ChpExprDag &dag, const DVarIdPool &id_pool) {
+ DExprDag of_chp_dag(const ChpExprDag &dag, IdPool &id_pool,
+		     std::unordered_map<VarId,ChanId> &remap) {
     DExprDag ddag;
     std::unordered_map<const ChpExprDag::Node *, DExprDag::Node *> mp;
     ChpExprDag::iterNodes(dag, [&](const ChpExprDag::Node &n) {
@@ -237,8 +55,11 @@ DExprDag of_chp_dag(const ChpExprDag &dag, const DVarIdPool &id_pool) {
                 DExprDag::Node::makeConstant(n.u_cons().v, n.u_cons().v_width));
             break;
         case IRExprTypeKind::Var:
-            mp[&n] = ddag.newNode(DExprDag::Node::makeVariableAccess(
-                id_pool.at(n.u_var().id), n.width));
+	    if (!remap.contains(n.u_var().id)) {
+	      remap[n.u_var().id] = id_pool.makeUniqueChan(n.width);
+	    }
+	    mp[&n] = ddag.newNode(DExprDag::Node::makeVariableAccess(
+                remap[n.u_var().id], n.width));
             break;
         case IRExprTypeKind::Bitfield:
             mp[&n] = ddag.newNode(DExprDag::Node::makeBitfield(
@@ -252,219 +73,17 @@ DExprDag of_chp_dag(const ChpExprDag &dag, const DVarIdPool &id_pool) {
     return ddag;
 }
 
-struct AliasWithControl {
-    DVarId A, B;
-};
-
-// This is the stuff drawn from the multiple_channel_accesses.pdf paper. There
-// are 3 kinds of modifications needed to handle sends and receives.
-// - First, every channel send and receive is replaced with a combination of a
-// channel alias and (potentially) a send action on a "control channel"
-// - Second, select statements need an additional send immediately before, and
-// do-loops need an additional send at the start of the loop.
-// - Third, additional parallel processes are added to handle combining the
-// control channels
 struct MultiChanAccessHandler {
-    struct ChanAliasAndControl {
-        DVarId chan_alias;
-        DVarId control;
-    };
-    std::unordered_map<const Block *, ChanAliasAndControl> renames;
-
-    // We apply the transformation `[ g=0 -> S0 [] ... ]` to `C!g; [g=0 -> S0 []
-    // ... ]`. This maps a select block to the set of `C`s listening to its
-    // guard
-    std::unordered_map<const Block *, std::vector<DVarId>> select_listeners;
-
-    // We apply the transformation `[ S0 <- g ]` to `[S0; C!g <- g ]`. This maps
-    // a doloop to the set of `C`s listening to its guard
-    std::unordered_map<const Block *, std::vector<DVarId>> doloop_listeners;
-
-    // top level connections from actual channel to alias
-    std::unordered_map<ChanId, DVarId> readable_channels;
-    std::unordered_map<ChanId, DVarId> writable_channels;
-
-    // We will use the same notation as in the paper. Say that A is a channel
-    // and WLOG say we are sending on A. We will replace A with a pair (A_1,
-    // B_1) where A_1 is a channel alias and B_1 is a control channel
-
-    // Base case: `A!x` is replaced with pair (A,B) and we add process
-    // *[B!0;B!1]
-    struct BaseCase {
-        bool A_is_send = false;
-        int A_width = 0;
-        DVarId A, B;
-    };
-
-    // If branches {i0, ..., in} use A with pairs (A_i0, B_i0), then we use
-    // those (plus a `C` channel which receive the guard) to product pair (A, B)
-    struct SelectCase {
-        bool A_is_send = false;
-        int A_width = 0;
-        std::vector<std::optional<AliasWithControl>> ctrls;
-        DVarId A, B; // outputs
-        DVarId C;    // guard listener
-        int C_width = 0;
-    };
-
-    struct DoloopCase {
-        bool A_is_send = false;
-        int A_width = 0;
-        DVarId A_1, B_1;
-        DVarId A, B; // outputs
-        DVarId C;    // guard listeners
-    };
-
-    // Given S0;S1 where S0 uses (A_1, B_1) and S2 uses (A_2, B_2), produce
-    // outputs on A, B
-    struct SeqCase {
-        bool A_is_send = false;
-        int A_width = 0;
-        DVarId A_1, B_1, A_2, B_2; // inputs
-        DVarId A, B;               // outputs
-    };
-
-    std::vector<BaseCase> base_cases;
-    std::vector<SelectCase> select_cases;
-    std::vector<DoloopCase> doloop_cases;
-    std::vector<SeqCase> seq_cases;
+  // something goes here!
 };
 
 int select_guard_width(const Block::Variant_Select &select) {
     return log_2_round_up(select.branches.size());
 }
 
-struct ChanIdWithWidthAndDir {
-    ChanId id;
-    int width = 0;
-    bool is_send = false;
-};
-std::optional<AliasWithControl>
-build_chan_ctrl_structure(MultiChanAccessHandler &handler,
-                          ChanIdWithWidthAndDir chan_id, DVarIdPool &id_pool,
-                          const Sequence &seq) {
-    auto build_chan_ctrl_structure_ =
-        [&](const Sequence &seq) -> std::optional<AliasWithControl> {
-        return build_chan_ctrl_structure(handler, chan_id, id_pool, seq);
-    };
-    auto build_block =
-        [&](const Block *curr) -> std::optional<AliasWithControl> {
-        switch (curr->type()) {
-        case BlockType::Basic:
-            switch (curr->u_basic().stmt.type()) {
-            case StatementType::Assign:
-                return std::nullopt;
-            case StatementType::Send:
-                if (curr->u_basic().stmt.u_send().chan == chan_id.id) {
-                    auto A = id_pool.new_id(chan_id.width);
-                    auto B = id_pool.new_id(1);
-                    handler.renames[curr] = {A, B};
-                    handler.base_cases.push_back(
-                        {chan_id.is_send, chan_id.width, A, B});
-                    return AliasWithControl{A, B};
-                }
-                return std::nullopt;
-            case StatementType::Receive:
-                if (curr->u_basic().stmt.u_receive().chan == chan_id.id) {
-                    auto A = id_pool.new_id(chan_id.width);
-                    auto B = id_pool.new_id(1);
-                    handler.renames[curr] = {A, B};
-                    handler.base_cases.push_back(
-                        {chan_id.is_send, chan_id.width, A, B});
-                    return AliasWithControl{A, B};
-                }
-                return std::nullopt;
-            }
-            hassert(false);
-            break;
-        case BlockType::Par: {
-            // Map all the branches. At most one branch is allowed to use the
-            // same channel
-            auto v = Algo::map1<std::optional<AliasWithControl>>(
-                curr->u_par().branches, [&](const Sequence &branch) {
-                    return build_chan_ctrl_structure_(branch);
-                });
-            hassert(Algo::count_if(v, [](const auto &o) {
-                        return static_cast<bool>(o);
-                    }) <= 1);
-            if (Algo::count_if(
-                    v, [](const auto &o) { return static_cast<bool>(o); }) == 0)
-                return std::nullopt;
-            auto res = *Algo::find_assert_if(
-                v, [](const auto &o) { return static_cast<bool>(o); });
-            assert(res);
-            return res;
-        }
-        case BlockType::Select: {
-            // Map all the branches. At most one branch is allowed to use the
-            // same channel
-            auto v = Algo::map1<std::optional<AliasWithControl>>(
-                curr->u_select().branches, [&](const SelectBranch &branch) {
-                    return build_chan_ctrl_structure_(branch.seq);
-                });
-            if (Algo::count_if(
-                    v, [](const auto &o) { return static_cast<bool>(o); }) == 0)
-                return std::nullopt;
-
-            auto guard_width = select_guard_width(curr->u_select());
-            auto A = id_pool.new_id(chan_id.width);
-            auto B = id_pool.new_id(1);
-            auto C = id_pool.new_id(guard_width);
-            handler.select_listeners[curr].push_back(C);
-            handler.select_cases.push_back(
-                {chan_id.is_send, chan_id.width, v, A, B, C, guard_width});
-            return AliasWithControl{A, B};
-        }
-        case BlockType::DoLoop: {
-            // Map all the branches. At most one branch is allowed to use the
-            // same channel
-            auto v = build_chan_ctrl_structure_(curr->u_doloop().branch);
-            if (!v)
-                return std::nullopt;
-
-            auto A = id_pool.new_id(chan_id.width);
-            auto B = id_pool.new_id(1);
-            auto C =
-                id_pool.new_id(1); // The width of the guard to a do-loop is 1
-            handler.doloop_listeners[curr].push_back(C);
-            handler.doloop_cases.push_back(
-                {chan_id.is_send, chan_id.width, v->A, v->B, A, B, C});
-            return AliasWithControl{A, B};
-        }
-        case BlockType::StartSequence:
-        case BlockType::EndSequence:
-            hassert(false);
-            break;
-        }
-        hassert(false);
-        return std::nullopt;
-    };
-
-    std::optional<AliasWithControl> v1;
-    for (const Block *curr = seq.startseq->child(); curr != seq.endseq;
-         curr = curr->child()) {
-        auto v2 = build_block(curr);
-        if (!v1 && !v2)
-            v1 = std::nullopt;
-        else if (v1 && !v2)
-            continue;
-        else if (!v1 && v2)
-            v1 = v2;
-        else { // if (v1 && v2)
-            auto A = id_pool.new_id(chan_id.width);
-            auto B = id_pool.new_id(1);
-            handler.seq_cases.push_back({chan_id.is_send, chan_id.width, v1->A,
-                                         v1->B, v2->A, v2->B, A, B});
-            v1 = {A, B};
-        }
-    }
-
-    return v1;
-}
-
+#if 0 
 MultiChanAccessHandler make_multi_chan_access_handler(const ChpGraph &g,
-                                                      DVarIdPool &id_pool) {
-
+                                                      IdPool &id_pool) {
     // Collect all the ChanIds that are used.  We use a std::set because we want
     // the order to be deterministic. If it turns out to matter for performance,
     // we could make this a flat_hash_map, and then sort it afterwords
@@ -661,6 +280,7 @@ struct DoLoopGuardVar {
     DVarId pre_assign_id;
     DVarId post_assign_id;
 };
+ 
 DoLoopGuardVar nodes_add_doloop_guard(DFlatNodes &nodes,
                                       const Block::Variant_DoLoop &do_loop,
                                       DVarIdPool &id_pool) {
@@ -1342,83 +962,17 @@ std::string string_of_dexpr(const DExpr &e) {
     print_dexpr(ss, e);
     return ss.str();
 }
+ 
+#endif
+ 
+ 
 } // namespace
 
-SdtProcOutput
-run_chp_to_dataflow_wrapper_proc(const std::string &wrapper_proc_name,
-                                 const std::vector<ChanId> &chans,
-                                 const ChpGraph &chp) {
-    std::stringstream ss;
+std::vector<Dataflow> chp_to_dataflow(const ChpGraph &chp)
+{
+  std::vector<Dataflow> d;
 
-    const auto &[nodes, id_pool] = build_flat_nodes(chp);
-
-    // then generate the more refined version wrapping the above header.
-    auto chans_str = Algo::join_str_mapped(
-        chans,
-        [&](ChanId id) {
-            return string_format("syn::sdtchan<%d> C%d",
-                                 chp.id_pool().getBitwidth(id), id);
-        },
-        "; ");
-
-    ss << string_format("defproc %s_ref (%s) {\n", wrapper_proc_name.c_str(),
-                        chans_str.c_str());
-
-    // we reserve the name `ND(\d*)`. later we can change this to be more
-    // general
-    for (const auto &[id, width] : id_pool.id_width_pairs())
-        ss << string_format("  chan(int<%d>) ND%d;\n", width, id.m_id);
-
-    ss << "  dataflow {";
-
-    for (const auto &[chan_id, dvar_id] : nodes.writable_channels)
-        ss << string_format("    ND%d -> C%d;\n", dvar_id.m_id, chan_id.m_id);
-    for (const auto &[chan_id, dvar_id] : nodes.readable_channels)
-        ss << string_format("    C%d -> ND%d;\n", chan_id.m_id, dvar_id.m_id);
-
-    for (const auto &[output_id, expr] : nodes.funcs) {
-        auto expr_str = string_of_dexpr(expr);
-        ss << string_format("    %s -> ND%d;\n", expr_str.c_str(),
-                            output_id.m_id);
-    }
-
-    for (const auto &[ctrl_id, input_id, output_ids] : nodes.splits) {
-        auto opt_str = Algo::join_str_mapped(
-            output_ids,
-            [](const auto &id) { return string_format("ND%d", id.m_id); },
-            ", ");
-        ss << string_format("    {ND%d} ND%d -> %s;\n", ctrl_id.m_id,
-                            input_id.m_id, opt_str.c_str());
-    }
-
-    for (const auto &[ctrl_id, input_ids, output_id] : nodes.merges) {
-        auto opt_str = Algo::join_str_mapped(
-            input_ids,
-            [](const auto &id) { return string_format("ND%d", id.m_id); },
-            ", ");
-        ss << string_format("    {ND%d} %s -> ND%d;\n", ctrl_id.m_id,
-                            opt_str.c_str(), output_id.m_id);
-    }
-
-    for (const auto &[orig_id, output_id] : nodes.dups)
-        ss << string_format("    ND%d -> ND%d;\n", orig_id.m_id,
-                            output_id.m_id);
-
-    for (const auto &[orig_id, output_id] : nodes.dup_inits)
-        ss << string_format("    ND%d -> [1,0] ND%d;\n", orig_id.m_id,
-                            output_id.m_id);
-
-    // add a sink for each variable, as these will be optimized away, and
-    // otherwise the program is not correct
-    for (const auto &[id, width] : id_pool.id_width_pairs())
-        ss << string_format("    ND%d -> *;\n", id.m_id);
-    ss << "    ND1 -> *\n"; // An extra one at the end without a semicolon
-
-    ss << "  }";
-
-    ss << "}\n\n";
-
-    return {ss.str(), ""};
+  return d;
 }
 
 } // namespace ChpOptimize

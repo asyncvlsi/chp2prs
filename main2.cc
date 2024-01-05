@@ -135,7 +135,7 @@ class SDTSynth : public ActSynthesize {
 	putIntoNewStaticTokenForm (g.graph);
 	ChpOptimize::print_chp (std::cout, g.graph);
 
-	// convert to normal CHP
+	// part of converting to normal CHP and dataflow
 	uninlineBitfieldExprsHack (g.graph);
 	
 	printf ("\n---------------\n");

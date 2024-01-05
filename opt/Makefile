@@ -30,7 +30,8 @@ SHOBJS=algos.os big-int.os ir-id.os \
 	constants.os \
 	copy-elimination.os \
 	sequencers.os \
-	deadcode.os
+	deadcode.os \
+	ir-to-dataflow.os
 
 CPPSTD=c++20
 
