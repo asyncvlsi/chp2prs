@@ -1314,7 +1314,7 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
     // ... and so afer STF this would become
     //   xnew := x + 1; xnew2 := xnew
     // introducing a redundant copy.
-    // eliminateCopies (g);
+    eliminateCopies (g);
     
     // the output mapping from the top-level block corresponds to
     // variables that are potentially dead.

@@ -1393,7 +1393,6 @@ void createDataflow (Sequence seq, DataflowChannelManager &dm,
 	  
 	  d.push_back (Dataflow::mkMergeMix (OptionalChanId{guard}, inp,
 					     dflow_map (merge.post_id, dm)));
-	  d[d.size()-1].Print (std::cout);
 	}
 
       }
