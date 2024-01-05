@@ -31,8 +31,61 @@
 namespace ChpOptimize {
 namespace {
 
- DExprDag of_chp_dag(const ChpExprDag &dag, IdPool &id_pool,
-		     std::unordered_map<VarId,ChanId> &remap) {
+  
+/*
+ * This holds the mapping from variables to channels, and from
+ * channels to channels for multiple channel access.
+ */
+struct DataflowChannelManager {
+  /*--- For multi-channel access management ---*/
+
+  /*
+    Original CHP channel to current dataflow element that generates the
+    latest verion of the channel. Note that we need the ChanId in the
+    map because a split has multiple outputs; otherwise the dataflow
+    element itself would suffice.
+  */
+  std::unordered_map<ChanId, std::pair<Dataflow *, ChanId> > curr_out;
+
+  /*
+    If the channel output is variable, we need the control channel
+    mapping. The argument to this map is the *current name* of the
+    channel, and the map returns the variable control token sequence
+    for the channel (the 0/1/2 sequence).
+  */
+  std::unordered_map<ChanId, ChanId> mapped_ctrl;
+
+
+  /*--- for variable to channel map ---*/
+
+  /*
+    This holds the map from the optimized variables to channels
+  */
+  std::unordered_map<VarId,ChanId> varmap;
+  IdPool *id_pool;
+
+  /*
+    Outermost block for a channel
+  */
+  std::unordered_map<ChanId, Block *> chanmap;
+};
+
+
+ChanId dflow_map(VarId v, DataflowChannelManager &maps)
+{
+  if (!maps.varmap.contains(v)) {
+    maps.varmap[v] =
+      maps.id_pool->makeUniqueChan (maps.id_pool->getBitwidth (v));
+  }
+  return maps.varmap[v];
+}
+						  
+/* 
+   Take a ChpExprDag that uses variables and convert it to a 
+   dataflow dag, remaing variables to channels.
+*/
+DExprDag of_chp_dag(const ChpExprDag &dag, DataflowChannelManager &maps)
+{
     DExprDag ddag;
     std::unordered_map<const ChpExprDag::Node *, DExprDag::Node *> mp;
     ChpExprDag::iterNodes(dag, [&](const ChpExprDag::Node &n) {
@@ -55,11 +108,9 @@ namespace {
                 DExprDag::Node::makeConstant(n.u_cons().v, n.u_cons().v_width));
             break;
         case IRExprTypeKind::Var:
-	    if (!remap.contains(n.u_var().id)) {
-	      remap[n.u_var().id] = id_pool.makeUniqueChan(n.width);
-	    }
-	    mp[&n] = ddag.newNode(DExprDag::Node::makeVariableAccess(
-                remap[n.u_var().id], n.width));
+	    mp[&n] =
+	      ddag.newNode(DExprDag::Node::makeVariableAccess(
+		      dflow_map (n.u_var().id, maps), n.width));;
             break;
         case IRExprTypeKind::Bitfield:
             mp[&n] = ddag.newNode(DExprDag::Node::makeBitfield(
@@ -73,10 +124,9 @@ namespace {
     return ddag;
 }
 
-struct MultiChanAccessHandler {
-  // something goes here!
-};
-
+/*
+  How many bits do we need for the guard?
+*/
 int select_guard_width(const Block::Variant_Select &select) {
     return log_2_round_up(select.branches.size());
 }
@@ -962,15 +1012,181 @@ std::string string_of_dexpr(const DExpr &e) {
     print_dexpr(ss, e);
     return ss.str();
 }
- 
+
 #endif
- 
+
+void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm,
+			     Block *outer = NULL)
+{
+  Block *curr = seq.startseq->child();
+  while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+      switch (curr->u_basic().stmt.type()) {
+      case StatementType::Assign: {
+	break;
+      }
+      case StatementType::Send: {
+	if (dm.chanmap.contains (curr->u_basic().stmt.u_send().chan)) {
+	  // we already have a map for this channel, so we need to
+	  // move it to the current outer scope
+	  dm.chanmap[curr->u_basic().stmt.u_send().chan] =
+	    (outer ? outer : seq.startseq);
+	}
+	else {
+	  dm.chanmap[curr->u_basic().stmt.u_send().chan] =
+	    (outer ? outer : curr);
+	}
+	break;
+      }
+      case StatementType::Receive: {
+	if (dm.chanmap.contains (curr->u_basic().stmt.u_receive().chan)) {
+	  // we already have a map for this channel, so we need to
+	  // move it to the current outer scope
+	  dm.chanmap[curr->u_basic().stmt.u_receive().chan] =
+	    (outer ? outer : seq.startseq);
+	}
+	else {
+	  dm.chanmap[curr->u_basic().stmt.u_receive().chan] =
+	    (outer ? outer : curr);
+	}
+	break;
+      }
+      }
+      break;
+    }
+    case BlockType::Par: {
+      // A well-formed program cannot have channel conflicts in
+      // parallel branches
+      for (auto &branch : curr->u_par().branches) {
+	computeOutermostBlock (branch, dm, outer);
+      }
+      break;
+    }
+    case BlockType::Select: {
+      for (auto &branch : curr->u_select().branches) {
+	computeOutermostBlock (branch.seq, dm, outer ? outer : seq.startseq);
+      }
+      break;
+    }
+    case BlockType::DoLoop: {
+      computeOutermostBlock (curr->u_doloop().branch, dm, 
+			     outer ? outer : seq.startseq);
+      break;
+    }
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    curr = curr->child();
+  }
+}
+
+void printOutermostBlock (DataflowChannelManager &dm)
+{
+  for (auto &[chan, block] : dm.chanmap) {
+    printf ("ch %d -> ", chan.m_id);
+    if (!block) {
+      printf ("null\n");
+    }
+    else {
+      switch (block->type()) {
+      case BlockType::Basic: {
+	switch (block->u_basic().stmt.type()) {
+	case StatementType::Assign:
+	  printf ("assign!\n");
+	break;
+	case StatementType::Send:
+	  printf ("send\n");
+	break;
+	case StatementType::Receive:
+	  printf ("recv!\n");
+	break;
+	}
+	break;
+      }
+      case BlockType::StartSequence:
+	printf ("seq\n");
+	break;
+	
+      default:
+	hassert(false);
+	break;
+      }
+    }
+  }
+}
+
+
+void createDataflow (Sequence seq, DataflowChannelManager &dm,
+		     std::vector<Dataflow> &d)
+{
+  Block *curr = seq.startseq->child();
+  while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+      switch (curr->u_basic().stmt.type()) {
+      case StatementType::Assign: {
+	
+	
+	break;
+      }
+      case StatementType::Send: {
+	break;
+      }
+      case StatementType::Receive: {
+	break;
+      }
+      }
+      break;
+    }
+    case BlockType::Par: {
+      // A well-formed program cannot have channel conflicts in
+      // parallel branches
+      for (auto &branch : curr->u_par().branches) {
+	createDataflow (branch, dm, d);
+      }
+      break;
+    }
+    case BlockType::Select: {
+      // deal with guards, phiinv, and phi
+      for (auto &branch : curr->u_select().branches) {
+	createDataflow (branch.seq, dm, d);
+      }
+      break;
+    }
+    case BlockType::DoLoop: {
+      // deal with loopphi, phiinv, loopphinv
+      createDataflow (curr->u_doloop().branch, dm, d);
+      break;
+    }
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    curr = curr->child();
+  }
+}
  
 } // namespace
 
-std::vector<Dataflow> chp_to_dataflow(const ChpGraph &chp)
+std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp)
 {
   std::vector<Dataflow> d;
+  DataflowChannelManager m;
+
+  hassert (chp.is_static_token_form);
+  
+  m.id_pool = &chp.id_pool();
+
+  // recursively translate, while doing multichannel stuff
+  // simultaneously
+  computeOutermostBlock (chp.m_seq, m);
+
+  // now create dataflow blocks!
+  createDataflow (chp.m_seq, m, d);
 
   return d;
 }

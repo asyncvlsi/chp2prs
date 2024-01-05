@@ -125,8 +125,19 @@ public:
   static Dataflow mkSplit(ChanId cond, ChanId inp, std::vector<OptionalChanId> out) {
     return Dataflow{Variant_t{Split{cond,inp,out}}};
   }
-  
-  
+
+  static Dataflow mkMergeMix (ChanId cond, std::vector<ChanId> inp, ChanId out) {
+    return Dataflow{Variant_t{MergeMix{cond,inp,out}}};
+  }
+
+  static Dataflow mkArbiter (std::vector<ChanId> inp, ChanId out,
+			     OptionalChanId which) {
+    return Dataflow{Variant_t{Arbiter{inp,out,which}}};
+  }
+
+  static Dataflow mkSink (ChanId ch) {
+    return Dataflow{Variant_t{Sink{ch}}};
+  }
 };
 
 
@@ -136,5 +147,5 @@ public:
 // an arbitrary number of buffers on any channel without changing the
 // computation. No probes and no shared variables is one way to guarantee that.
 // We use an improved algorithm to handle multiple channel access.
-std::vector<Dataflow> chp_to_dataflow(const ChpGraph &chp);
+std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp);
 } // namespace ChpOptimize

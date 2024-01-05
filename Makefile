@@ -28,8 +28,11 @@ CPPSTD=c++20
 
 include config.mk
 
-OBJS=main.o
+OBJS1=main.o
+OBJS2=main2.o
+OBJS3=main3.o
 
+OBJS=$(OBJS1) $(OBJS2) $(OBJS3)
 SHOBJS=chp2prs_pass.os sdt.os basicsdt.os synth.os synth_pass.os
 # SHOBJS=rsyn_pass.os sdt.os basicsdt.os synth.os synth_pass.os 
 
@@ -61,13 +64,13 @@ endif
 
 $(ACT_HOME)/lib/libactchpopt.so: opt
 
-$(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
+$(BINARY): $(LIB) $(OBJS1) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS)
 
-synth2.$(EXT): $(LIB) main2.o $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
+synth2.$(EXT): $(LIB) $(OBJS2) $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main2.o -o synth2.$(EXT) $(CHPOPT) $(TARGETLIBS) $(SHLIBACTPASS) $(ACT_HOME)/lib/libactchpopt.so
 
-synth3.$(EXT): $(LIB) main3.o $(ACTDEPEND)
+synth3.$(EXT): $(LIB) $(OBJS3) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main3.o -o synth3.$(EXT) $(CHPOPT) $(TARGETLIBS) $(SHLIBACTPASS) $(EXPRLIB)
 
 $(TARGETLIBS): $(SHOBJS)

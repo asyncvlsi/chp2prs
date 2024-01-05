@@ -32,6 +32,7 @@
 #include "opt/chp-opt.h"
 #include "opt/static-tokens.h"
 #include "opt/sequencers.h"
+#include "opt/ir-to-dataflow.h"
 
 #ifdef FOUND_expropt
 #include "externoptsdt.h"
@@ -139,6 +140,9 @@ class SDTSynth : public ActSynthesize {
 	uninlineBitfieldExprsHack (g.graph);
 	
 	printf ("\n---------------\n");
+
+	auto d = chp_to_dataflow(g.graph);
+
       }
     }
 
