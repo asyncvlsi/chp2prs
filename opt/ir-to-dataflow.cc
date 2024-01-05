@@ -27,6 +27,7 @@
 #include "algos.h"
 #include "utils.h"
 #include <functional>
+#include <iostream>
 
 namespace ChpOptimize {
 namespace {
@@ -79,6 +80,26 @@ ChanId dflow_map(VarId v, DataflowChannelManager &maps)
   }
   return maps.varmap[v];
 }
+
+void dflow_forcemap (VarId v, ChanId c, DataflowChannelManager &maps)
+{
+  maps.varmap[v] = c;
+}
+
+int select_guard_width(const Block::Variant_Select &select) {
+    return log_2_round_up(select.branches.size());
+}
+
+ChanId dflow_freshchan (DataflowChannelManager &maps,
+			const Block::Variant_Select &select) 
+{
+  return maps.id_pool->makeUniqueChan (select_guard_width (select));
+}
+
+ ChanId dflow_freshchan (DataflowChannelManager &maps, int width)
+{
+  return maps.id_pool->makeUniqueChan (width);
+}
 						  
 /* 
    Take a ChpExprDag that uses variables and convert it to a 
@@ -124,12 +145,53 @@ DExprDag of_chp_dag(const ChpExprDag &dag, DataflowChannelManager &maps)
     return ddag;
 }
 
+/* 
+   Take a ChpExprDag that uses variables and convert it to a 
+   dataflow dag, remaing variables to channels.
+*/
+DExprSingleRootDag of_chp_dag(const ChpExprSingleRootDag &dag, DataflowChannelManager &maps)
+{
+    DExprSingleRootDag ddag;
+    std::unordered_map<const ChpExprSingleRootDag::Node *,
+                              DExprSingleRootDag::Node *> mp;
+    ChpExprSingleRootDag::iterNodes(dag, [&](const ChpExprSingleRootDag::Node &n) {
+        switch (n.type()) {
+        case IRExprTypeKind::BinaryOp:
+            mp[&n] = ddag.m_dag.newNode(DExprSingleRootDag::Node::makeBinaryOp(
+                n.u_e2().op_type, mp.at(n.u_e2().l), mp.at(n.u_e2().r)));
+            break;
+        case IRExprTypeKind::UnaryOp:
+            mp[&n] = ddag.m_dag.newNode(DExprSingleRootDag::Node::makeUnaryOp(
+                n.u_e1().op_type, mp.at(n.u_e1().l)));
+            break;
+        case IRExprTypeKind::Query:
+            mp[&n] = ddag.m_dag.newNode(DExprSingleRootDag::Node::makeQuery(
+                mp.at(n.u_query().selector), mp.at(n.u_query().l),
+                mp.at(n.u_query().r)));
+            break;
+        case IRExprTypeKind::Const:
+            mp[&n] = ddag.m_dag.newNode(
+                DExprDag::Node::makeConstant(n.u_cons().v, n.u_cons().v_width));
+            break;
+        case IRExprTypeKind::Var:
+	    mp[&n] =
+	      ddag.m_dag.newNode(DExprSingleRootDag::Node::makeVariableAccess(
+		      dflow_map (n.u_var().id, maps), n.width));;
+            break;
+        case IRExprTypeKind::Bitfield:
+            mp[&n] = ddag.m_dag.newNode(DExprSingleRootDag::Node::makeBitfield(
+                mp.at(n.u_bitfield().e), n.u_bitfield().hi(),
+                n.u_bitfield().lo()));
+            break;
+        }
+    });
+    ddag.m_dag.roots.push_back(mp.at(dag.root()));
+    return ddag;
+}
+ 
 /*
   How many bits do we need for the guard?
 */
-int select_guard_width(const Block::Variant_Select &select) {
-    return log_2_round_up(select.branches.size());
-}
 
 #if 0 
 MultiChanAccessHandler make_multi_chan_access_handler(const ChpGraph &g,
@@ -905,6 +967,9 @@ std::pair<DFlatNodes, DVarIdPool> build_flat_nodes(const ChpGraph &g) {
     return {std::move(nodes), std::move(id_pool)};
 }
 
+#endif
+
+
 std::string unary_op_marker(IRUnaryOpType op) {
     switch (op) {
     case IRUnaryOpType::Not:
@@ -965,7 +1030,7 @@ void print_dexpr(std::ostream &o, const DExpr &e) {
                            e.u_cons().v_width);
         break;
     case IRExprTypeKind::Var:
-        o << string_format("ND%d", e.u_var().id.m_id);
+        o << string_format("C%d", e.u_var().id.m_id);
         break;
     case IRExprTypeKind::BinaryOp:
         if (e.u_e2().op_type == IRBinaryOpType::Concat) {
@@ -1013,7 +1078,6 @@ std::string string_of_dexpr(const DExpr &e) {
     return ss.str();
 }
 
-#endif
 
 void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm,
 			     Block *outer = NULL)
@@ -1086,7 +1150,7 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm,
 void printOutermostBlock (DataflowChannelManager &dm)
 {
   for (auto &[chan, block] : dm.chanmap) {
-    printf ("ch %d -> ", chan.m_id);
+    printf ("ch %d -> ", (int)chan.m_id);
     if (!block) {
       printf ("null\n");
     }
@@ -1119,6 +1183,114 @@ void printOutermostBlock (DataflowChannelManager &dm)
 }
 
 
+/*
+  swap is true in the special case where the guard is already a
+  one-bit variable
+*/
+ChanId nodes_add_guard(const Block::Variant_Select &select,
+		       bool &swap,
+		       std::vector<Dataflow> &d,
+		       DataflowChannelManager &dm)
+{
+  hassert(Algo::count_if(select.branches, [&](const SelectBranch &branch) {
+	return branch.g.type() == IRGuardType::Else;
+      }) <= 1);
+
+  swap = false;
+  
+  int width = select_guard_width(select);
+
+  if (width == 1) {
+    /* check if we have a special case */    
+    if (select.branches.front().g.type() == IRGuardType::Expression &&
+	select.branches.front().g.u_e().e.m_dag.roots[0]->type() ==
+	IRExprTypeKind::Var) {
+      ChanId guard =
+	dflow_map (select.branches.front().g.u_e().e.m_dag.roots[0]->u_var().id, dm);
+      swap = true;
+      return guard;
+    }
+    else if (select.branches.back().g.type() == IRGuardType::Expression &&
+	     select.branches.back().g.u_e().e.m_dag.roots[0]->type() ==
+	     IRExprTypeKind::Var) {
+      ChanId guard =
+	dflow_map (select.branches.back().g.u_e().e.m_dag.roots[0]->u_var().id, dm);
+      swap = false;
+      return guard;
+    }
+  }
+
+  // first find the else branch (if there is one). Otherwise, since there are
+  // no probes, promote the first branch to be the "else" case
+  auto else_branch =
+    Algo::find_if(select.branches, [&](const SelectBranch &branch) {
+	return branch.g.type() == IRGuardType::Else;
+      });
+  if (else_branch == select.branches.end())
+    else_branch = select.branches.begin();
+
+  int else_branch_idx =
+    (int)std::distance(select.branches.begin(), else_branch);
+
+  DExprDag guard_dag;
+  DExprDag::Node *root = NULL;
+
+  int idx = -1;
+  for (const auto &branch : select.branches) {
+    idx++;
+    if (&branch == &*else_branch)
+      continue;
+    hassert(branch.g.type() != IRGuardType::Else);
+    hassert(branch.g.type() == IRGuardType::Expression);
+    DExprDag::Node *dnode =
+      guard_dag.addSubdag (of_chp_dag (branch.g.u_e().e, dm));
+    if (root) {
+      root = guard_dag.newNode(
+	DExprDag::Node::makeQuery (
+	  dnode,
+	  guard_dag.newNode (DExprDag::Node::makeConstant (BigInt(idx), width)),
+	  root));
+    }
+    else {
+      root = guard_dag.newNode (
+	DExprDag::Node::makeQuery (
+ 	  dnode,
+	  guard_dag.newNode (DExprDag::Node::makeConstant (BigInt(idx), width)),
+	  guard_dag.newNode (DExprDag::Node::makeConstant (BigInt(else_branch_idx), width))));
+    }
+  }
+
+  guard_dag.roots.push_back (root);
+
+  // add dataflow expression!
+  ChanId guard_id = dflow_freshchan (dm, select);
+  std::vector<ChanId> ids;
+  ids.push_back (guard_id);
+  d.push_back (Dataflow::mkFunc (ids, std::move(guard_dag)));
+  return guard_id;
+}
+
+// returns two channels: the second one has the initial token on it
+std::pair<ChanId,ChanId>
+  nodes_add_loopguard(const Block::Variant_DoLoop &doloop,
+			   std::vector<Dataflow> &d,
+			   DataflowChannelManager &dm)
+{
+  DExprDag guard_dag;
+  DExprDag::Node *root = guard_dag.addSubdag(of_chp_dag (doloop.guard, dm));
+  guard_dag.roots.push_back (root);
+  ChanId guard_id = dflow_freshchan (dm, 1);
+  std::vector<ChanId> ids;
+  ids.push_back (guard_id);
+  d.push_back (Dataflow::mkFunc (ids, std::move(guard_dag)));
+
+  ChanId init_guard_id = dflow_freshchan (dm, 1);
+  d.push_back (Dataflow::mkInit (guard_id, init_guard_id,
+				 BigInt(0), 1));
+
+  return std::pair<ChanId,ChanId>{guard_id, init_guard_id};
+}
+
 void createDataflow (Sequence seq, DataflowChannelManager &dm,
 		     std::vector<Dataflow> &d)
 {
@@ -1127,17 +1299,32 @@ void createDataflow (Sequence seq, DataflowChannelManager &dm,
     switch (curr->type()) {
     case BlockType::Basic: {
       switch (curr->u_basic().stmt.type()) {
-      case StatementType::Assign: {
-	
-	
+      case StatementType::Assign:
+	d.push_back (
+	     Dataflow::mkFunc(
+   	       Algo::map1<ChanId> (curr->u_basic().stmt.u_assign().ids,
+			  [&] (const VarId v) {
+			    return dflow_map (v, dm);
+			  }),
+	       of_chp_dag (curr->u_basic().stmt.u_assign().e, dm))
+	);
 	break;
-      }
-      case StatementType::Send: {
+      case StatementType::Send:
+	{ std::vector<ChanId> ids;
+	  ids.push_back (curr->u_basic().stmt.u_send().chan);
+	  d.push_back (
+	     Dataflow::mkFunc (
+		ids,
+		of_chp_dag (curr->u_basic().stmt.u_send().e.m_dag, dm)));
+		       
+	}
 	break;
-      }
-      case StatementType::Receive: {
+      case StatementType::Receive:
+	if (curr->u_basic().stmt.u_receive().var) {
+	  dflow_forcemap (*curr->u_basic().stmt.u_receive().var,
+			  curr->u_basic().stmt.u_receive().chan, dm);
+	}
 	break;
-      }
       }
       break;
     }
@@ -1149,16 +1336,127 @@ void createDataflow (Sequence seq, DataflowChannelManager &dm,
       }
       break;
     }
-    case BlockType::Select: {
-      // deal with guards, phiinv, and phi
-      for (auto &branch : curr->u_select().branches) {
-	createDataflow (branch.seq, dm, d);
+    case BlockType::Select:
+      {
+	// deal with guards, phiinv, and phi
+	ChanId guard;
+	bool swap = false;
+	if (!curr->u_select().splits.empty()
+	    || !curr->u_select().merges.empty()) {
+	  // we need a guard!
+	  guard = nodes_add_guard (curr->u_select(), swap, d, dm);
+	}
+
+	// phiinv
+	for (auto &split : curr->u_select().splits) {
+	  std::vector<OptionalChanId> out;
+	  out = Algo::map1<OptionalChanId> (split.branch_ids,
+			    [&] (OptionalVarId v) {
+			      if (v) {
+				return OptionalChanId{dflow_map ((*v), dm)};
+			      }
+			      else {
+				return OptionalChanId::null_id();
+			      }
+			    });
+
+	  if (swap) {
+	    OptionalChanId c0 = out[0];
+	    OptionalChanId c1 = out[1];
+	    out[1] = c0;
+	    out[0] = c1;
+	  }
+	  
+	  d.push_back (
+	       Dataflow::mkSplit(guard,
+				 dflow_map (split.pre_id, dm),
+				 out));
+	}
+	
+	for (auto &branch : curr->u_select().branches) {
+	  createDataflow (branch.seq, dm, d);
+	}
+
+	for (auto &merge : curr->u_select().merges) {
+	  std::vector<ChanId> inp;
+	  inp = Algo::map1<ChanId> (merge.branch_ids,
+			    [&] (VarId v) {
+			      return dflow_map (v, dm);
+			    });
+
+	  if (swap) {
+	    ChanId c0 = inp[0];
+	    ChanId c1 = inp[1];
+	    inp[1] = c0;
+	    inp[0] = c1;
+	  }
+	  
+	  d.push_back (Dataflow::mkMergeMix (OptionalChanId{guard}, inp,
+					     dflow_map (merge.post_id, dm)));
+	  d[d.size()-1].Print (std::cout);
+	}
+
       }
       break;
-    }
     case BlockType::DoLoop: {
-      // deal with loopphi, phiinv, loopphinv
       createDataflow (curr->u_doloop().branch, dm, d);
+      // deal with loopphi, phiinv, loopphinv
+      auto guards = nodes_add_loopguard (curr->u_doloop(), d, dm);
+
+      // handle loop-phis first
+      for (auto &loopphi : curr->u_doloop().loop_phis) {
+	std::vector<OptionalChanId> outp;
+
+	ChanId feedback =
+	  dflow_freshchan (dm, dm.id_pool->getBitwidth (loopphi.bodyout_id));
+
+	if (loopphi.post_id) {
+	  outp.push_back (dflow_map (*loopphi.post_id, dm));
+	}
+	else {
+	  outp.push_back (OptionalChanId::null_id());
+	}
+	outp.push_back (feedback);
+
+	d.push_back (Dataflow::mkSplit
+		     (guards.first, dflow_map (loopphi.bodyout_id, dm),
+		      outp));
+
+
+	std::vector<ChanId> inp;
+	inp.push_back (dflow_map (loopphi.pre_id, dm));
+	inp.push_back (feedback);
+	d.push_back (Dataflow::mkMergeMix
+		     (guards.second, inp, dflow_map (loopphi.bodyin_id, dm)));
+      }
+
+      for (auto &inphi : curr->u_doloop().in_phis) {
+	std::vector<ChanId> inp;
+	ChanId feedback =
+	  dflow_freshchan (dm, dm.id_pool->getBitwidth (inphi.pre_id));
+	inp.push_back (dflow_map (inphi.pre_id, dm));
+	inp.push_back (feedback);
+	d.push_back (Dataflow::mkMergeMix
+		     (OptionalChanId{guards.second}, inp,
+		      dflow_map (inphi.bodyin_id, dm)));
+
+	std::vector<OptionalChanId> outp;
+	outp.push_back (OptionalChanId::null_id());
+	outp.push_back (feedback);
+	d.push_back (Dataflow::mkSplit
+		     (guards.first, dflow_map(inphi.bodyin_id, dm),
+		      outp));
+      }
+
+      for (auto &outphi : curr->u_doloop().out_phis) {
+	std::vector<OptionalChanId> outp;
+	outp.push_back (OptionalChanId::null_id());
+	outp.push_back (dflow_map (outphi.post_id, dm));
+	d.push_back (Dataflow::mkSplit
+		     (guards.first, dflow_map(outphi.bodyout_id, dm),
+		      outp));
+      }
+
       break;
     }
     case BlockType::StartSequence:
@@ -1171,6 +1469,12 @@ void createDataflow (Sequence seq, DataflowChannelManager &dm,
 }
  
 } // namespace
+
+void printDataflowExpr (std::ostream &os, const DExpr &d)
+{
+  print_dexpr (os, d);
+}
+
 
 std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp)
 {

@@ -142,7 +142,10 @@ class SDTSynth : public ActSynthesize {
 	printf ("\n---------------\n");
 
 	auto d = chp_to_dataflow(g.graph);
-
+	for (auto &x : d) {
+	  x.Print (std::cout);
+	}
+	printf ("\n---------------\n");
       }
     }
 

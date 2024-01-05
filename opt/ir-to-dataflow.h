@@ -25,17 +25,19 @@
  */
 
 #include "chp-graph.h"
+#include "algos.h"
 
 namespace ChpOptimize {
 
-using DExpr = IRExpr<ChpTag, ChanId, ManageMemory::yes>;
+using DExpr = IRExpr<ChpTag, ChanId, ManageMemory::no>;
 using DExprDag = IRExprDag<ChpTag, ChanId>;
 using DExprSingleRootDag = IRExprSingleRootDag<ChpTag, ChanId>;
-
 
 enum class DataflowKind { Func, Split, MergeMix, Arbiter, Sink, Init
 			 //, Cluster?
 			 };
+
+void printDataflowExpr (std::ostream &os, const DExpr &d);
 
 struct Dataflow {
 public:
@@ -126,7 +128,7 @@ public:
     return Dataflow{Variant_t{Split{cond,inp,out}}};
   }
 
-  static Dataflow mkMergeMix (ChanId cond, std::vector<ChanId> inp, ChanId out) {
+  static Dataflow mkMergeMix (OptionalChanId cond, std::vector<ChanId> inp, ChanId out) {
     return Dataflow{Variant_t{MergeMix{cond,inp,out}}};
   }
 
@@ -138,6 +140,76 @@ public:
   static Dataflow mkSink (ChanId ch) {
     return Dataflow{Variant_t{Sink{ch}}};
   }
+
+  void Print (std::ostream &os) {
+    switch (u.type()) {
+    case DataflowKind::Func:
+      {
+	if (u_func().ids.size() > 1) {
+	  os << "dataflow_cluster {" << std::endl;
+	}
+	for (int i=0; i < u_func().ids.size(); i++) {
+	  printDataflowExpr (os, *u_func().e.roots[i]);
+	  os << " -> C";
+	  os << u_func().ids[i].m_id << std::endl;
+	}
+	if (u_func().ids.size() > 1) {
+	  os << "}" << std::endl;
+	}
+      }
+      break;
+
+    case DataflowKind::Init:
+      os << "C" << u_init().lhs.m_id << " -> ["
+	 << u_init().v.to_hex_string().c_str() << "]"
+	 << "C" << u_init().rhs.m_id
+	 << std::endl;
+      break;
+
+    case DataflowKind::Split:
+      os << "{C" << u_split().cond_id.m_id << "} "
+	 << "C" << u_split().in_id.m_id << " -> "
+	 << Algo::join_str_mapped (u_split().out_ids,
+				   [&] (const OptionalChanId &x) {
+				     return (x) ?
+				       string_format ("C%d", (*x).m_id) :
+				       "*";
+				   }, ",")
+	 << std::endl;
+      break;
+
+    case DataflowKind::MergeMix:
+      os << "{" <<
+	(u_mergemix().cond_id ?
+	 string_format ("C%d", (*u_mergemix().cond_id).m_id) : "*") << "} "
+	 << Algo::join_str_mapped (u_mergemix().in_ids,
+				   [&] (const ChanId &x) {
+				     return string_format ("C%d", x.m_id);
+				   }, ",")
+	 << " -> C" << u_mergemix().out_id.m_id
+	 << std::endl;
+      break;
+
+    case DataflowKind::Arbiter:
+      os << "{|} " 
+	 << Algo::join_str_mapped (u_arbiter().in_ids,
+				   [&] (const ChanId &x) {
+				     return string_format ("C%d", x.m_id);
+				   }, ",")
+	 << " -> C" << u_arbiter().out_id.m_id;
+      if (u_arbiter().sel_id) {
+	os << ", C" << (*u_arbiter().sel_id).m_id;
+      }
+      os << std::endl;
+      break;
+
+    case DataflowKind::Sink:
+      os << "C" << u_sink().in_id.m_id << " -> *"
+	 << std::endl;
+      break;
+
+    }
+  }
 };
 
 
@@ -148,4 +220,5 @@ public:
 // computation. No probes and no shared variables is one way to guarantee that.
 // We use an improved algorithm to handle multiple channel access.
 std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp);
+  
 } // namespace ChpOptimize
