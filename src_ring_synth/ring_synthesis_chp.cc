@@ -57,7 +57,7 @@ float lookup_mux_delays (int mux_sz, int or_sz)
 
 // Prototypes ---------------------------------------------
 
-// Top-level flow functions
+// Top-level flow functions 
 void print_refine_body(FILE *, Process *, act_chp_lang_t *, Hashtable *);
 void print_headers_and_imports(Process *, FILE *);
 void circuit_forge(Process *, act_chp_lang_t *, FILE *);
@@ -69,7 +69,7 @@ int generate_one_ring(act_chp_lang_t *, FILE *, int, int, Process *);
 int generate_branched_ring(act_chp_lang_t *, FILE *, int, int, Process *, int);
 
 // Data collection / query functions
-int is_elementary_action(act_chp_lang_t *);
+int is_elementary_action (act_chp_lang_t *);
 int chp_has_branches (act_chp_lang_t *, int);
 int length_of_guard_set (act_chp_lang_t *);
 int expr_is_pure_variable(Expr *, Process *);
@@ -95,8 +95,6 @@ void instantiate_expr_block (FILE *, int, list_t *, Process *);
 // Channel generation functions
 int generate_bd_chan(int, FILE *);
 int generate_sync_chan(FILE *);
-int generate_conn_chan(FILE *);
-int generate_burner_chan(FILE *);
 
 // Pipeline block connection functions
 int connect_pipe_elements (FILE *, int, int, int);
@@ -128,17 +126,13 @@ static const char *conn_block_prefix = "conn_z_";
 
 // Datapath name prefixes
 static const char *capture_block_prefix = "latch_";
-static const char *sink_prefix = "sink_for_";
 static const char *expr_block_prefix = "blk_";
 static const char *expr_block_instance_prefix = "inst_";
 static const char *expr_block_input_prefix = "in_";
-static const char *const_block_prefix = "const_";
 
 // Channel name prefixes
 static const char *sync_chan_name_prefix = "sync_";
-static const char *burner_chan_name_prefix = "burner_";
 static const char *parallel_chan_name_prefix = "sync_";
-static const char *channel_connector_prefix = "conn_";
 static const char *init_cond_chan_prefix = "C_init_";
 
 
@@ -162,12 +156,8 @@ static unsigned int block_count = 0;
 static unsigned int itb_wrapper_count = 0;
 static unsigned int bd_chan_count = 0;
 static unsigned int sync_chan_count = 0;
-static unsigned int burner_chan_count = 0;
-static unsigned int conn_chan_count = 0;
-static unsigned int pll_block_count = 0;
 static unsigned int expr_id = 0;
 static unsigned int expr_block_id = 0;
-static unsigned int const_block_id = 0;
 static unsigned int mux_block_id = 0;
 static unsigned int branch_id = 0;
 // --------------------------------------------------------
@@ -204,21 +194,6 @@ void inc_sync_chan_count()
     sync_chan_count++;
 }
 
-void inc_conn_chan_count()
-{
-    conn_chan_count++;
-}
-
-void inc_pll_block_count()
-{
-    pll_block_count++;
-}
-
-void inc_burner_chan_count()
-{
-    burner_chan_count++;
-}
-
 int gen_bd_chan_id()
 {
     bd_chan_count++;
@@ -242,13 +217,6 @@ int gen_mux_block_id()
     mux_block_id++;
     return mux_block_id;
 }
-
-int gen_const_block_id()
-{
-    expr_block_id++;
-    return expr_block_id;
-}
-
 
 /*
     Global structures that contain information about
@@ -687,6 +655,8 @@ void circuit_forge(Process *p, act_chp_lang_t *c, FILE *fp)
     else
     {
         generate_live_var_info (c, p, 1);
+        // LiveVarAnalysis *lva = new LiveVarAnalysis (fp, p, c);
+        // lva->generate_live_var_info();
         fprintf (fp, "// Branched Ring ----------------\n");
         generate_branched_ring (c,fp,1,0,p,0);
     }
@@ -1651,21 +1621,6 @@ int generate_sync_chan(FILE *fp)
     return count;
 }
 
-int generate_burner_chan(FILE *fp)
-{
-    inc_burner_chan_count();
-    int count = burner_chan_count;
-    fprintf(fp,"a1of1 %s%d;\n",burner_chan_name_prefix,count);
-    return count;
-}
-
-int generate_conn_chan(FILE *fp)
-{
-    inc_conn_chan_count();
-    int count = conn_chan_count;
-    fprintf(fp,"a1of1 %s%d;\n",channel_connector_prefix,count);
-    return count;
-}
 
 /*
     Generate an initial condition handling ITB to
@@ -2152,16 +2107,16 @@ void instantiate_expr_block (FILE *fp, int block_id, list_t *all_leaves, Process
         else if ( e_var->type == E_INT )
         {
             fatal_error ("This shouldn't have been used (constant as input to expr block)");
-            unsigned long v = e_var->u.ival.v;
-            int v_bw = get_expr_width (e_var, p);
-            int cnst_blk_id = gen_const_block_id();
-            // fprintf (stdout, "\n// constant value: %lu, bitwidth: %d \n", v, v_bw);
-            // instantiate constant-block subckt
-            fprintf (fp, "constant_value<%lu,%d> %s%d;\n", v, v_bw, const_block_prefix, cnst_blk_id);
-            // connect constant-block output to expr block input
-            fprintf (fp, "%s%d.%s%d = %s%d.d;\n", expr_block_instance_prefix,block_id,
-                                                        expr_block_input_prefix, ib->i,
-                                                        const_block_prefix, cnst_blk_id);
+            // unsigned long v = e_var->u.ival.v;
+            // int v_bw = get_expr_width (e_var, p);
+            // int cnst_blk_id = gen_const_block_id();
+            // // fprintf (stdout, "\n// constant value: %lu, bitwidth: %d \n", v, v_bw);
+            // // instantiate constant-block subckt
+            // fprintf (fp, "constant_value<%lu,%d> %s%d;\n", v, v_bw, const_block_prefix, cnst_blk_id);
+            // // connect constant-block output to expr block input
+            // fprintf (fp, "%s%d.%s%d = %s%d.d;\n", expr_block_instance_prefix,block_id,
+            //                                             expr_block_input_prefix, ib->i,
+            //                                             const_block_prefix, cnst_blk_id);
         }
         else { fatal_error ("leaf (primary input) is neither variable nor constant int?? (instantiate_expr_block)"); }
     }

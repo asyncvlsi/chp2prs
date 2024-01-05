@@ -225,7 +225,7 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
     action->space = list_dup(req_vars);
 }
 
-void  LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
+void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
 {
     listitem_t *li;
     list_t *copy_list;
