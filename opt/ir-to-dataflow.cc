@@ -107,6 +107,20 @@ struct DataflowChannelManager {
   void setmap (const VarId &v, const ChanId &c) {
     varmap[v] = c;
   }
+
+
+  /* source that generates a 2 */
+  ChanId generateMultiBaseCase (std::vector<Dataflow> &d) {
+    ChanId fv = fresh (2);
+    DExprDag e;
+    DExprDag::Node *n =
+      e.newNode (DExprDag::Node::makeConstant (BigInt (2), 2));
+    e.roots.push_back (n);
+    std::vector<ChanId> ids;
+    ids.push_back (fv);
+    d.push_back (Dataflow::mkFunc (ids, std::move (e)));
+    return fv;
+  }  
 };
 
 
@@ -569,16 +583,6 @@ MultiChannelState reconcileMultiSel (Block *curr,
   // multi-channel access
 
   for (auto &[ch, idxvec] : chan_idx) {
-#if 0
-    printf ("ch %d : ", ch.m_id);
-    printf ("; in branches: ");
-    for (auto x : idxvec) {
-      printf (" %d", x);
-    }
-    printf ("\n");
-#endif
-
-
     std::vector<ChanId> chlist;
     ChanId fresh;
     for (int i=0; i < idxvec.size(); i++) {
@@ -590,10 +594,36 @@ MultiChannelState reconcileMultiSel (Block *curr,
     else {
       fresh = dm.fresh (ch);
     }
-    
+
+    ChanId ctrlguard;
+
     if (idxvec.size() != msv.size() || variable.contains(ch)) {
       //printf ("** sel-- ch %d is variable **\n", ch.m_id);
+      for (auto idx : idxvec) {
+	if (!msv[idx].ctrlmap.contains (ch)) {
+	  msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
+	}
+      }
       // XXX: handle here
+      // all msv[ ] that contain the channels also include
+      // the variable control token sequence
+
+
+      // generate the control guard by repeating the guard value as
+      // many times as needed.
+
+      // f(guard) -> mapguard
+      //
+      // { inner } mapguard, loopguard -> ctrlguard
+      //
+      // { innerctrl } ctrlguard -> loopguard, *
+      //
+      // {ctrlguard} B0, ..., Bn -> Bout
+      //
+      // (Bout = 0|2) ? 0 : 1 -> innerctrl
+      //
+      // innerctrl -> [0] inner 
+      
       
       ChanId cfresh = dm.fresh (2);
       
@@ -602,16 +632,19 @@ MultiChannelState reconcileMultiSel (Block *curr,
       }
     }
     else {
-      if (!dm.id_pool->isChanInput (ch)) {
-	d.push_back(Dataflow::mkMergeMix(guard, chlist, fresh));
-      }
-      else {
-	d.push_back(Dataflow::mkSplit(guard, fresh,
-	      Algo::map1<OptionalChanId> (chlist,
+      // special case, directly use the guard without having to do
+      // any merging of control tokens
+      ctrlguard = guard;
+    }
+    if (!dm.id_pool->isChanInput (ch)) {
+      d.push_back(Dataflow::mkMergeMix(ctrlguard, chlist, fresh));
+    }
+    else {
+      d.push_back(Dataflow::mkSplit(ctrlguard, fresh,
+				    Algo::map1<OptionalChanId> (chlist,
 					  [&] (const ChanId &ch) {
 					    return OptionalChanId{ch};
-					  })));
-      }
+								})));
     }
     if (ch != fresh) {
       // only propagate up if we haven't fully reconciled this
@@ -655,9 +688,31 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	ret.ctrlmap[ch] = msv[idxvec[0]].ctrlmap[ch];
       }
       else {
+	bool special_case = true;
+	for (auto idx : idxvec) {
+	  if (msv[idx].ctrlmap.contains (ch)) {
+	    special_case = false;
+	  }
+	}
+	if (!special_case) {
+	  for (auto idx : idxvec) {
+	    if (!msv[idx].ctrlmap.contains (ch)) {
+	      msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
+	    }
+	  }
+	}
+	
 	ChanId cfresh = dm.fresh (2);
 	//printf (" ** seq-variable-merge: %d **\n", ch.m_id);
 	// XXX: handle here
+
+	if (special_case) {
+	  // control channel is simply 0, 1, 2, 3 (repeat)
+	  // variable sequence is      1, 1, 1, 2 (repeat)
+	}
+	else {
+
+	}
       }
     }
     else {
@@ -681,8 +736,11 @@ MultiChannelState reconcileMultiLoop (Block *curr,
       // channel has been fully reconciled!
     }
     else {
-      // add the variable control channel for this
+      if (!msv.ctrlmap.contains (ch)) {
+	msv.ctrlmap[ch] = dm.generateMultiBaseCase (d);
+      }
       // XXX: handle here
+      
       
       ret.datamap[ch] = rhs;
     }
