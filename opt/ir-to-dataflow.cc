@@ -64,23 +64,70 @@ struct DataflowChannelManager {
     Outermost block for a channel
   */
   std::unordered_map<ChanId, Block *> chanmap;
+
+
+  bool isOutermostBlock (ChanId ch, Block *b) {
+    if (chanmap[ch] == b) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  // return a fresh channel with the specified bitwidth
+  ChanId fresh (int width) {
+    return id_pool->makeUniqueChan (width);
+  }
+
+  // return a fresh version of the channel ch, replicating its
+  // bitwidth and direction flag
+  ChanId fresh (const ChanId &ch) {
+    ChanId ret;
+    ret = id_pool->makeUniqueChan (id_pool->getBitwidth (ch));
+    id_pool->setChanDir (ret, id_pool->isChanInput (ch));
+    return ret;
+  }
+
+  // return a fresh channel with the same bitwidth as the varaible
+  ChanId fresh (const VarId &var) {
+    return id_pool->makeUniqueChan (id_pool->getBitwidth (var));
+  }
+
+  // return current channel mapping for variable v; if there isn't a
+  // mapping, create one and return it.
+  ChanId mapvar (const VarId &v) {
+    if (!varmap.contains(v)) {
+      varmap[v] = id_pool->makeUniqueChan (id_pool->getBitwidth (v));
+    }
+    return varmap[v];
+  }
+
+  // map the variable v to the channel c
+  void setmap (const VarId &v, const ChanId &c) {
+    varmap[v] = c;
+  }
+
+
+  /* source that generates a 2 */
+  ChanId generateMultiBaseCase (std::vector<Dataflow> &d) {
+    ChanId fv = fresh (2);
+    DExprDag e;
+    DExprDag::Node *n =
+      e.newNode (DExprDag::Node::makeConstant (BigInt (2), 2));
+    e.roots.push_back (n);
+    std::vector<ChanId> ids;
+    ids.push_back (fv);
+    d.push_back (Dataflow::mkFunc (ids, std::move (e)));
+    return fv;
+  }  
 };
 
 
-ChanId dflow_map(VarId v, DataflowChannelManager &maps)
-{
-  if (!maps.varmap.contains(v)) {
-    maps.varmap[v] =
-      maps.id_pool->makeUniqueChan (maps.id_pool->getBitwidth (v));
-  }
-  return maps.varmap[v];
-}
-
-void dflow_forcemap (VarId v, ChanId c, DataflowChannelManager &maps)
-{
-  maps.varmap[v] = c;
-}
-
+ int guard_width (int n) {
+   return log_2_round_up (n);
+ }
+ 
 int select_guard_width(const Block::Variant_Select &select) {
     return log_2_round_up(select.branches.size());
 }
@@ -88,14 +135,9 @@ int select_guard_width(const Block::Variant_Select &select) {
 ChanId dflow_freshchan (DataflowChannelManager &maps,
 			const Block::Variant_Select &select) 
 {
-  return maps.id_pool->makeUniqueChan (select_guard_width (select));
+  return maps.fresh (select_guard_width (select));
 }
 
- ChanId dflow_freshchan (DataflowChannelManager &maps, int width)
-{
-  return maps.id_pool->makeUniqueChan (width);
-}
-						  
 /* 
    Take a ChpExprDag that uses variables and convert it to a 
    dataflow dag, remaing variables to channels.
@@ -126,7 +168,7 @@ DExprDag of_chp_dag(const ChpExprDag &dag, DataflowChannelManager &maps)
         case IRExprTypeKind::Var:
 	    mp[&n] =
 	      ddag.newNode(DExprDag::Node::makeVariableAccess(
-		      dflow_map (n.u_var().id, maps), n.width));;
+		      maps.mapvar (n.u_var().id), n.width));;
             break;
         case IRExprTypeKind::Bitfield:
             mp[&n] = ddag.newNode(DExprDag::Node::makeBitfield(
@@ -171,7 +213,7 @@ DExprSingleRootDag of_chp_dag(const ChpExprSingleRootDag &dag, DataflowChannelMa
         case IRExprTypeKind::Var:
 	    mp[&n] =
 	      ddag.m_dag.newNode(DExprSingleRootDag::Node::makeVariableAccess(
-		      dflow_map (n.u_var().id, maps), n.width));;
+		      maps.mapvar (n.u_var().id), n.width));;
             break;
         case IRExprTypeKind::Bitfield:
             mp[&n] = ddag.m_dag.newNode(DExprSingleRootDag::Node::makeBitfield(
@@ -318,8 +360,7 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm,
 	    (outer ? outer : seq.startseq);
 	}
 	else {
-	  dm.chanmap[curr->u_basic().stmt.u_send().chan] =
-	    (outer ? outer : curr);
+	  dm.chanmap[curr->u_basic().stmt.u_send().chan] = curr;
 	}
 	break;
       }
@@ -331,8 +372,7 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm,
 	    (outer ? outer : seq.startseq);
 	}
 	else {
-	  dm.chanmap[curr->u_basic().stmt.u_receive().chan] =
-	    (outer ? outer : curr);
+	  dm.chanmap[curr->u_basic().stmt.u_receive().chan] = curr;
 	}
 	break;
       }
@@ -349,13 +389,12 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm,
     }
     case BlockType::Select: {
       for (auto &branch : curr->u_select().branches) {
-	computeOutermostBlock (branch.seq, dm, outer ? outer : seq.startseq);
+	computeOutermostBlock (branch.seq, dm, outer ? outer : curr);
       }
       break;
     }
     case BlockType::DoLoop: {
-      computeOutermostBlock (curr->u_doloop().branch, dm, 
-			     outer ? outer : seq.startseq);
+      computeOutermostBlock (curr->u_doloop().branch, dm, outer ? outer : curr);
       break;
     }
     case BlockType::StartSequence:
@@ -393,6 +432,14 @@ void printOutermostBlock (DataflowChannelManager &dm)
       case BlockType::StartSequence:
 	printf ("seq\n");
 	break;
+
+      case BlockType::Select:
+	printf ("sel\n");
+	break;
+	
+      case BlockType::DoLoop:
+	printf ("loop\n");
+	break;
 	
       default:
 	hassert(false);
@@ -426,7 +473,7 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
 	select.branches.front().g.u_e().e.m_dag.roots[0]->type() ==
 	IRExprTypeKind::Var) {
       ChanId guard =
-	dflow_map (select.branches.front().g.u_e().e.m_dag.roots[0]->u_var().id, dm);
+       dm.mapvar (select.branches.front().g.u_e().e.m_dag.roots[0]->u_var().id);
       swap = true;
       return guard;
     }
@@ -434,7 +481,7 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
 	     select.branches.back().g.u_e().e.m_dag.roots[0]->type() ==
 	     IRExprTypeKind::Var) {
       ChanId guard =
-	dflow_map (select.branches.back().g.u_e().e.m_dag.roots[0]->u_var().id, dm);
+	dm.mapvar (select.branches.back().g.u_e().e.m_dag.roots[0]->u_var().id);
       swap = false;
       return guard;
     }
@@ -499,16 +546,260 @@ std::pair<ChanId,ChanId>
   DExprDag guard_dag;
   DExprDag::Node *root = guard_dag.addSubdag(of_chp_dag (doloop.guard, dm));
   guard_dag.roots.push_back (root);
-  ChanId guard_id = dflow_freshchan (dm, 1);
+  ChanId guard_id = dm.fresh (1);
   std::vector<ChanId> ids;
   ids.push_back (guard_id);
   d.push_back (Dataflow::mkFunc (ids, std::move(guard_dag)));
 
-  ChanId init_guard_id = dflow_freshchan (dm, 1);
+  ChanId init_guard_id = dm.fresh (1);
   d.push_back (Dataflow::mkInit (guard_id, init_guard_id,
 				 BigInt(0), 1));
 
   return std::pair<ChanId,ChanId>{guard_id, init_guard_id};
+}
+
+
+MultiChannelState reconcileMultiSel (Block *curr,
+				     ChanId guard,
+				     std::vector<MultiChannelState> &msv,
+				     DataflowChannelManager &dm,
+				     std::vector<Dataflow> &d)
+{
+  // collect channel requirements
+  std::unordered_map<ChanId,std::vector<int>>  chan_idx;
+  std::unordered_set<ChanId> variable;
+  MultiChannelState ret;
+
+  for (int idx = 0; idx < msv.size(); idx++) {
+    for (auto &[ch, _] : msv[idx].datamap) {
+      chan_idx[ch].push_back(idx);
+
+      // if the channel is variable token at this point, then it is
+      // variable token for the entire block
+      if (msv[idx].ctrlmap.contains(ch)) {
+	variable.insert (ch);
+      }
+    }
+  }
+
+  // for each channel, we have the index values that correspond to
+  // multi-channel access
+
+  for (auto &[ch, idxvec] : chan_idx) {
+    std::vector<ChanId> chlist;
+    ChanId fresh;
+    for (int i=0; i < idxvec.size(); i++) {
+      chlist.push_back(msv[idxvec[i]].datamap[ch]);
+    }
+    if (dm.isOutermostBlock (ch, curr)) {
+      fresh = ch;
+    }
+    else {
+      fresh = dm.fresh (ch);
+    }
+
+    ChanId ctrlguard;
+
+    if (idxvec.size() != msv.size() || variable.contains(ch)) {
+      //printf ("** sel-- ch %d is variable **\n", ch.m_id);
+      std::vector<ChanId> ctrl_chans;
+      for (auto idx : idxvec) {
+	if (!msv[idx].ctrlmap.contains (ch)) {
+	  msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
+	}
+	ctrl_chans.push_back(msv[idx].ctrlmap[ch]);
+      }
+      // all msv[ ] that contain the channels also include
+      // the variable control token sequence
+
+      // we need to convert the guard to a new value based on the
+      // index set.
+      ChanId ch_guard;
+
+      if (idxvec.size() != msv.size()) {
+	// generate local guard
+	ch_guard = dm.fresh (guard_width (idxvec.size()+1));
+	// one more to indicate "no value" 
+      }
+      else {
+	ch_guard = guard;
+      }
+
+      // this is the guard used for the data merge/split
+      ctrlguard = dm.fresh (guard_width (idxvec.size()));
+	
+      ChanId cfresh = dm.fresh (2);
+
+      d.push_back(Dataflow::mkInstSel (ctrl_chans,
+				       cfresh,
+				       ch_guard,
+				       ctrlguard));
+      
+      if (ch != fresh) {
+	ret.ctrlmap[ch] = cfresh;
+      }
+    }
+    else {
+      // special case, directly use the guard without having to do
+      // any merging of control tokens
+      ctrlguard = guard;
+    }
+    if (!dm.id_pool->isChanInput (ch)) {
+      d.push_back(Dataflow::mkMergeMix(ctrlguard, chlist, fresh));
+    }
+    else {
+      d.push_back(Dataflow::mkSplit(ctrlguard, fresh,
+				    Algo::map1<OptionalChanId> (chlist,
+					  [&] (const ChanId &ch) {
+					    return OptionalChanId{ch};
+								})));
+    }
+    if (ch != fresh) {
+      // only propagate up if we haven't fully reconciled this
+      // channel.
+      ret.datamap[ch] = fresh;
+    }
+  }
+  return ret;
+}
+
+MultiChannelState reconcileMultiSeq (Block *curr,
+				     std::vector<MultiChannelState> &msv,
+				     DataflowChannelManager &dm,
+				     std::vector<Dataflow> &d)
+{
+  if (msv.size() == 1) {
+    return msv[0];
+  }
+  
+  std::unordered_map<ChanId,std::vector<int>>  chan_idx;
+  std::unordered_set<ChanId> variable;
+  MultiChannelState ret;
+
+  for (int idx = 0; idx < msv.size(); idx++) {
+    for (auto &[ch, _] : msv[idx].datamap) {
+      chan_idx[ch].push_back(idx);
+
+      // if the channel is variable token at this point, then it is
+      // variable token for the entire block
+      if (msv[idx].ctrlmap.contains(ch)) {
+	variable.insert (ch);
+      }
+    }
+  }
+
+  for (auto &[ch, idxvec] : chan_idx) {
+    if (variable.contains (ch) || idxvec.size() > 1) {
+      if (idxvec.size() == 1) {
+	// just propagate the single variable channel up
+	ret.datamap[ch] = msv[idxvec[0]].datamap[ch];
+	ret.ctrlmap[ch] = msv[idxvec[0]].ctrlmap[ch];
+      }
+      else {
+	ChanId selout = dm.fresh (guard_width (idxvec.size()));
+	bool special_case = true;
+	for (auto idx : idxvec) {
+	  if (msv[idx].ctrlmap.contains (ch)) {
+	    special_case = false;
+	  }
+	}
+	std::vector<ChanId> chlist;
+	if (!special_case) {
+	  for (auto idx : idxvec) {
+	    if (!msv[idx].ctrlmap.contains (ch)) {
+	      msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
+	    }
+	    chlist.push_back(msv[idx].ctrlmap[ch]);
+	  }
+	}
+	
+	OptionalChanId cfresh;
+
+	if (!dm.isOutermostBlock (ch, curr)) {
+	  cfresh = dm.fresh (2);
+	}
+	else {
+	  cfresh = OptionalChanId::null_id();
+	}
+	
+	// XXX: handle here
+
+	if (special_case) {
+	  // control channel is simply 0, 1, 2, 3 (repeat)
+	  // variable sequence is      1, 1, 1, 2 (repeat)
+	  d.push_back(Dataflow::mkInstSeqRR(idxvec.size(),
+					    cfresh,
+					    selout));
+	  //printf (" ** spec-seq-variable-merge: %d **\n", ch.m_id);
+	}
+	else {
+	  d.push_back(Dataflow::mkInstSeq (chlist, cfresh, selout));
+	  //printf (" ** spec-seq-variable-merge: %d **\n", ch.m_id);
+	}
+	chlist.clear();
+	for (auto idx : idxvec) {
+	  chlist.push_back(msv[idx].datamap[ch]);
+	}
+	ChanId fresh;
+
+	if (!dm.isOutermostBlock (ch, curr)) {
+	  fresh = dm.fresh (ch);
+	}
+	else {
+	  fresh = ch;
+	}
+	if (!dm.id_pool->isChanInput (ch)) {
+	  d.push_back(Dataflow::mkMergeMix (selout, chlist, fresh));
+	}
+	else {
+	  d.push_back(Dataflow::mkSplit (selout, fresh,
+					 Algo::map1<OptionalChanId> (chlist,
+								     [&] (const ChanId &ch) {
+								       return OptionalChanId{ch}; })));
+	}
+	if (!dm.isOutermostBlock (ch, curr)) {
+	  ret.datamap[ch] = fresh;
+	  ret.ctrlmap[ch] = (*cfresh);
+	}
+      }
+    }
+    else {
+      // nothing to do, just propagate this up!
+      if (!dm.isOutermostBlock (ch, curr)) {
+	ret.datamap[ch] = msv[idxvec[0]].datamap[ch];
+      }
+    }
+  }
+  return ret;
+}
+
+
+MultiChannelState reconcileMultiLoop (Block *curr,
+				      ChanId guard,
+				      MultiChannelState &msv,
+				      DataflowChannelManager &dm,
+				      std::vector<Dataflow> &d)
+{
+  MultiChannelState ret;
+  for (auto &[ch, rhs] : msv.datamap) {
+    if (dm.isOutermostBlock (ch, curr)) {
+      // channel has been fully reconciled!
+    }
+    else {
+      if (!msv.ctrlmap.contains (ch)) {
+	msv.ctrlmap[ch] = dm.generateMultiBaseCase (d);
+      }
+
+      ChanId cfresh =dm.fresh (msv.ctrlmap[ch]);
+      d.push_back (Dataflow::mkInstDoLoop (msv.ctrlmap[ch],
+					   cfresh,
+					   guard));
+      
+      ret.datamap[ch] = rhs;
+      ret.ctrlmap[ch] = cfresh;
+    }
+  }
+  return ret;
 }
 
 MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
@@ -529,17 +820,16 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	d.push_back (
 	     Dataflow::mkFunc(
    	       Algo::map1<ChanId> (curr->u_basic().stmt.u_assign().ids,
-			  [&] (const VarId v) {
-			    return dflow_map (v, dm);
-			  }),
+			  [&] (const VarId v) { return dm.mapvar (v); }),
 	       of_chp_dag (curr->u_basic().stmt.u_assign().e, dm))
 	);
 	seqs.push_back (empty);
 	break;
+	
       case StatementType::Send:
 	{ std::vector<ChanId> ids;
 	  ChanId sc = curr->u_basic().stmt.u_send().chan;
-
+	  dm.id_pool->setChanDir (sc, false);
 	  if (dm.chanmap[sc] == curr) {
 	    // No multi-channel access issues for this statement, so
 	    // there's a simple function translation.
@@ -554,7 +844,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	    
 	    // record multichannel information
 	    MultiChannelState ms;
-	    ChanId fresh =  dflow_freshchan (dm, dm.id_pool->getBitwidth (sc));
+	    ChanId fresh =  dm.fresh (sc);
 	    ms.datamap[sc] = fresh;
 	    seqs.push_back (ms);
 
@@ -570,14 +860,16 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 		of_chp_dag (curr->u_basic().stmt.u_send().e.m_dag, dm)));
 	}
 	break;
+	
       case StatementType::Receive:
 	{
 	  ChanId rc = curr->u_basic().stmt.u_receive().chan;
-
+	  dm.id_pool->setChanDir (rc, true);
+	  
 	  if (dm.chanmap[rc] == curr) {
 	    // this is the only place for this receive!
 	    if (curr->u_basic().stmt.u_receive().var) {
-	      dflow_forcemap (*curr->u_basic().stmt.u_receive().var, rc, dm);
+	      dm.setmap (*curr->u_basic().stmt.u_receive().var, rc);
 	    }
 	    else {
 	      d.push_back (Dataflow::mkSink (rc));
@@ -586,10 +878,9 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	  }
 	  else {
 	    // we need a fresh channel here
-	    ChanId fresh = dflow_freshchan (dm, dm.id_pool->getBitwidth (rc));
+	    ChanId fresh = dm.fresh (rc);
 	    if (curr->u_basic().stmt.u_receive().var) {
-	      dflow_forcemap (*curr->u_basic().stmt.u_receive().var,
-			      fresh, dm);
+	      dm.setmap (*curr->u_basic().stmt.u_receive().var, fresh);
 	    }
 	    else {
 	      d.push_back (Dataflow::mkSink (fresh));
@@ -604,6 +895,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
       }
       break;
     }
+      
     case BlockType::Par: {
       // A well-formed program cannot have channel conflicts in
       // parallel branches, so any multi-channel access is the union
@@ -617,6 +909,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
       seqs.push_back (acc);
       break;
     }
+      
     case BlockType::Select:
       {
 	// deal with guards, phiinv, and phi
@@ -634,7 +927,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	  out = Algo::map1<OptionalChanId> (split.branch_ids,
 			    [&] (OptionalVarId v) {
 			      if (v) {
-				return OptionalChanId{dflow_map ((*v), dm)};
+				return OptionalChanId{dm.mapvar ((*v))};
 			      }
 			      else {
 				return OptionalChanId::null_id();
@@ -648,10 +941,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	    out[0] = c1;
 	  }
 	  
-	  d.push_back (
-	       Dataflow::mkSplit(guard,
-				 dflow_map (split.pre_id, dm),
-				 out));
+	  d.push_back (Dataflow::mkSplit(guard,dm.mapvar (split.pre_id), out));
 	}
 
 	std::vector<MultiChannelState> msv;
@@ -662,9 +952,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	for (auto &merge : curr->u_select().merges) {
 	  std::vector<ChanId> inp;
 	  inp = Algo::map1<ChanId> (merge.branch_ids,
-			    [&] (VarId v) {
-			      return dflow_map (v, dm);
-			    });
+				    [&] (VarId v) { return dm.mapvar (v); });
 
 	  if (swap) {
 	    ChanId c0 = inp[0];
@@ -674,15 +962,14 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	  }
 	  
 	  d.push_back (Dataflow::mkMergeMix (OptionalChanId{guard}, inp,
-					     dflow_map (merge.post_id, dm)));
+					     dm.mapvar (merge.post_id)));
 	}
 
-	// XXX: reconcile multi-channel access
-	
-	
-
+	// reconcile multi-channel access with a guard channel
+	seqs.push_back (reconcileMultiSel (curr, guard, msv, dm, d));
       }
       break;
+      
     case BlockType::DoLoop: {
       MultiChannelState ms = createDataflow (curr->u_doloop().branch, dm, d);
 
@@ -693,11 +980,10 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
       for (auto &loopphi : curr->u_doloop().loop_phis) {
 	std::vector<OptionalChanId> outp;
 
-	ChanId feedback =
-	  dflow_freshchan (dm, dm.id_pool->getBitwidth (loopphi.bodyout_id));
+	ChanId feedback = dm.fresh (loopphi.bodyout_id);
 
 	if (loopphi.post_id) {
-	  outp.push_back (dflow_map (*loopphi.post_id, dm));
+	  outp.push_back (dm.mapvar (*loopphi.post_id));
 	}
 	else {
 	  outp.push_back (OptionalChanId::null_id());
@@ -705,48 +991,48 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	outp.push_back (feedback);
 
 	d.push_back (Dataflow::mkSplit
-		     (guards.first, dflow_map (loopphi.bodyout_id, dm),
+		     (guards.first, dm.mapvar (loopphi.bodyout_id),
 		      outp));
 
 
 	std::vector<ChanId> inp;
-	inp.push_back (dflow_map (loopphi.pre_id, dm));
+	inp.push_back (dm.mapvar (loopphi.pre_id));
 	inp.push_back (feedback);
 	d.push_back (Dataflow::mkMergeMix
-		     (guards.second, inp, dflow_map (loopphi.bodyin_id, dm)));
+		     (guards.second, inp, dm.mapvar (loopphi.bodyin_id)));
       }
 
       for (auto &inphi : curr->u_doloop().in_phis) {
 	std::vector<ChanId> inp;
-	ChanId feedback =
-	  dflow_freshchan (dm, dm.id_pool->getBitwidth (inphi.pre_id));
-	inp.push_back (dflow_map (inphi.pre_id, dm));
+	ChanId feedback = dm.fresh (inphi.pre_id);
+	inp.push_back (dm.mapvar (inphi.pre_id));
 	inp.push_back (feedback);
 	d.push_back (Dataflow::mkMergeMix
 		     (OptionalChanId{guards.second}, inp,
-		      dflow_map (inphi.bodyin_id, dm)));
+		      dm.mapvar (inphi.bodyin_id)));
 
 	std::vector<OptionalChanId> outp;
 	outp.push_back (OptionalChanId::null_id());
 	outp.push_back (feedback);
 	d.push_back (Dataflow::mkSplit
-		     (guards.first, dflow_map(inphi.bodyin_id, dm),
+		     (guards.first, dm.mapvar (inphi.bodyin_id),
 		      outp));
       }
 
       for (auto &outphi : curr->u_doloop().out_phis) {
 	std::vector<OptionalChanId> outp;
 	outp.push_back (OptionalChanId::null_id());
-	outp.push_back (dflow_map (outphi.post_id, dm));
+	outp.push_back (dm.mapvar (outphi.post_id));
 	d.push_back (Dataflow::mkSplit
-		     (guards.first, dflow_map(outphi.bodyout_id, dm),
+		     (guards.first, dm.mapvar (outphi.bodyout_id),
 		      outp));
       }
 
-      // XXX reconcile multi-channel access
-
+      // reconcile multi-channel access
+      seqs.push_back (reconcileMultiLoop (curr, guards.first, ms, dm, d));
       break;
     }
+      
     case BlockType::StartSequence:
     case BlockType::EndSequence:
       hassert(false);
@@ -755,7 +1041,8 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
     curr = curr->child();
   }
 
-  // XXX reconcile sequencing multi-channel access
+  // reconcile sequencing multi-channel access
+  ret = reconcileMultiSeq (seq.startseq, seqs, dm, d);
   
   return ret;
 }

@@ -33,7 +33,8 @@ using DExpr = IRExpr<ChpTag, ChanId, ManageMemory::no>;
 using DExprDag = IRExprDag<ChpTag, ChanId>;
 using DExprSingleRootDag = IRExprSingleRootDag<ChpTag, ChanId>;
 
-enum class DataflowKind { Func, Split, MergeMix, Arbiter, Sink, Init
+enum class DataflowKind { Func, Split, MergeMix, Arbiter, Sink, Init,
+			  Instance // not really dataflow!
 			 //, Cluster?
 			 };
 
@@ -87,15 +88,42 @@ public:
     ChanId in_id;
   };
 
+  struct Instance {
+    // seq merging
+    //   . takes N control channels (in)
+    //   . takes 1 control channel (out)
+    //   . generates one control (0, 1, ..., N-1) used for channel
+    //     split/merge
+
+    // selection merging
+    //   . takes N control channels as input
+    //   . takes guard value as input (0..,N-1)
+    //   . generates one control output
+    //   . generates guard value for split/merge of data
+
+    // loop merging
+    //   . takes 1 control channel and 1 guard channel
+    //   . generates control output
+    int type;			// 0 = seq, 1 = sel, 2 = loop, > 2 = RR
+
+    std::vector<ChanId> ctrl;	// control channels
+    OptionalChanId ctrl_out;	// output control (optional)
+    
+    OptionalChanId guard;	// guard id, if any [select and loop]
+    OptionalChanId sm_sel;	// split/merge select
+  };
+    
+
 private:
   using Variant_t =
-    TypedVariant6<DataflowKind,
+    TypedVariant7<DataflowKind,
 		  Func, DataflowKind::Func,
 		  Init, DataflowKind::Init,
 		  Split, DataflowKind::Split,
 		  MergeMix, DataflowKind::MergeMix,
 		  Arbiter, DataflowKind::Arbiter,
-		  Sink, DataflowKind::Sink>;
+		  Sink, DataflowKind::Sink,
+		  Instance, DataflowKind::Instance>;
 
   Variant_t u;
 
@@ -108,6 +136,7 @@ public:
   [[nodiscard]] MergeMix &u_mergemix() { return u.u_v3(); }
   [[nodiscard]] Arbiter &u_arbiter() { return u.u_v4(); }
   [[nodiscard]] Sink &u_sink() { return u.u_v5(); }
+  [[nodiscard]] Instance &u_inst() { return u.u_v6(); }
 
   Dataflow() = default;
   ~Dataflow() = default;
@@ -139,6 +168,47 @@ public:
 
   static Dataflow mkSink (ChanId ch) {
     return Dataflow{Variant_t{Sink{ch}}};
+  }
+
+  static Dataflow mkInstSeq (std::vector<ChanId> cin,
+			     OptionalChanId cout,
+			     ChanId sel)
+  {
+    return Dataflow{Variant_t(Instance{0, cin, cout,
+				       OptionalChanId::null_id(),
+				       sel})};
+  }
+
+  static Dataflow mkInstSeqRR (int N,
+			       OptionalChanId cout,
+			       ChanId sel)
+  {
+    std::vector<ChanId> ctmp;
+    ctmp.push_back (sel);
+    return Dataflow{Variant_t(Instance{N+2, ctmp, cout,
+				       OptionalChanId::null_id(),
+				       sel})};
+  }
+
+  static Dataflow mkInstSel (std::vector<ChanId> cin,
+			     ChanId cout,
+			     ChanId guard,
+			     ChanId sel)
+  {
+    return Dataflow{Variant_t(Instance{1, cin, cout,
+				       guard,
+				       OptionalChanId{sel}})};
+  }
+  
+  static Dataflow mkInstDoLoop (ChanId cin,
+				ChanId cout,
+				ChanId guard)
+  {
+    std::vector<ChanId> ch;
+    ch.push_back (cin);
+    return Dataflow{Variant_t(Instance{2, ch, cout,
+				       guard,
+				       OptionalChanId::null_id()})};
   }
 
   void Print (std::ostream &os) {
@@ -208,6 +278,55 @@ public:
 	 << std::endl;
       break;
 
+    case DataflowKind::Instance:
+      if (u_inst().type > 2) {
+	os << "inst_RR" << (u_inst().ctrl_out ? "" : "_noctrl")
+	   << "<" << u_inst().type - 2 << ">"
+	   << "(";
+	if (u_inst().ctrl_out) {
+	  os << "C" << (*u_inst().ctrl_out).m_id << ", ";
+	}
+	os << "C" << (*u_inst().sm_sel).m_id << ")";
+      }
+      else {
+	os << "inst_" << (u_inst().type == 0 ? "seq" :
+			  u_inst().type == 1 ? "sel" : "loop");
+	if (!(u_inst().ctrl_out)) {
+	  os << "_noctrl";
+	}
+	os << (u_inst().type == 2 ? "" :
+	       string_format("<%d>", u_inst().ctrl.size()))
+	   << "(";
+	if (u_inst().type == 2) {
+	  os << "C" << u_inst().ctrl[0].m_id << ", "
+	     << "C" << (*u_inst().guard).m_id << ", "
+	     << "C" << (*u_inst().ctrl_out).m_id << ")";
+	}
+	else {
+	  bool first = true;
+	  os << "{";
+	  for (auto ch : u_inst().ctrl) {
+	    if (!first) {
+	      os << ",";
+	    }
+	    os << "C" << ch.m_id;
+	    first = false;
+	  }
+	  os << "}";
+	  if (u_inst().ctrl_out) {
+	    os << ", C" << (*u_inst().ctrl_out).m_id;
+	  }
+	  if (u_inst().guard) {
+	    os << ", C" << (*u_inst().guard).m_id;
+	  }
+	  if (u_inst().sm_sel) {
+	    os << ", C" << (*u_inst().sm_sel).m_id;
+	  }
+	  os << ")";
+	}
+      }
+      os << std::endl;
+      break;
     }
   }
 };

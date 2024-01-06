@@ -17,7 +17,7 @@ with open("typed-variants.h", "w") as out:
         out.write("template<class T, {template_params}> class TypedVariant{N} {{\n".format(
             N=N, template_params=",".join(["class V{i}, T l{i}".format(i=i) for i in range(N)]))
         )
-        if N not in [2, 3, 6]:
+        if N not in [2, 3, 6, 7]:
             out.write("static_assert(l0 != l1, \"Rerun the generation script and include this size enumeration\");\n")
             out.write("static_assert(l0 == l1, \"Rerun the generation script and include this size enumeration\");\n")
             out.write("};\n")

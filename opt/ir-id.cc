@@ -165,4 +165,14 @@ ChanId IdPool::makeUniqueChan(int bitwidth, bool is_bool) {
     return new_id;
 }
 
+void IdPool::setChanDir (const ChanId &ch, bool is_inp) {
+  hassert (ch.m_id < m_chanid_infos.size());
+  m_chanid_infos[ch.m_id].is_inp = is_inp;
+}
+
+bool IdPool::isChanInput (const ChanId &ch) {
+  hassert (ch.m_id < m_chanid_infos.size());
+  return m_chanid_infos[ch.m_id].is_inp;
+}
+
 } // namespace ChpOptimize
