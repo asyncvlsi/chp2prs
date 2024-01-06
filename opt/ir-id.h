@@ -225,6 +225,7 @@ class IdPool {
     struct ChanIdInfo {
         int bitwidth;
         bool is_bool;
+        bool is_inp;
     };
     ChanId m_next_chanid = ChanId::first_id();
     std::vector<ChanIdInfo> m_chanid_infos = {
@@ -241,6 +242,8 @@ class IdPool {
 
     [[nodiscard]] VarId makeUniqueVar(int bitwidth, bool is_bool = false);
     [[nodiscard]] ChanId makeUniqueChan(int bitwidth, bool is_bool = false);
+    void setChanDir (const ChanId &id, bool is_inp);
+    bool isChanInput (const ChanId &id);
     [[nodiscard]] VarId cloneVar (const VarId &id) {
       hassert(id.m_id < m_varid_infos.size());
       VarIdInfo idi = m_varid_infos[id.m_id];
