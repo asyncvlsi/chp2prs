@@ -2,7 +2,7 @@
  *
  *  This file is part of the ACT library
  *
- *  Copyright (c) 2023 Karthi Srinivasan
+ *  Copyright (c) 2023-2024 Karthi Srinivasan
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -143,11 +143,12 @@ class RingSynth : public ActSynthesize {
     // Assert (bnl, "hmm BNL");
     // fprintf (stdout, "\nbrr\n\n");
     fprintf (stdout, "\n\n\n");
-    fprintf (stdout, "\n\n");
+    // fprintf (stdout, "\n\n");
     // fprintf (stdout, "\n\n\n");
 
     Hashtable *hvi = construct_var_info_hashtable (c, p, b);
-    print_var_info_hashtable (stdout, hvi);
+    // print_var_info_hashtable (stdout, hvi);
+
 
     print_refine_body(_pp->fp, p, c, hvi);
     

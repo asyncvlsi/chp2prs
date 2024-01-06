@@ -24,7 +24,7 @@
 
 void RingEngine::run_forge ()
 {
-    /* Handling the 
+    /* Handling
      * 'everything else besides the chp body'
      * needs to be added here
     */
@@ -227,7 +227,7 @@ bool RingEngine::_var_appears_in_expr (Expr *e, ActId *id)
   }
 }
 
-void RingEngine::_construct_var_infos (ActBooleanizePass *bp)
+void RingEngine::construct_var_infos (ActBooleanizePass *bp)
 {
   var_infos = hash_new(4);
   hash_bucket_t *b;
@@ -272,7 +272,7 @@ void RingEngine::_construct_var_infos (ActBooleanizePass *bp)
 }
 }
 
-void RingEngine::_print_var_infos (FILE *fp)
+void RingEngine::print_var_infos (FILE *fp)
 {
   fprintf (fp, "\nvar_info hashtable: \n");
   hash_iter_t it;
@@ -293,3 +293,78 @@ void RingEngine::_print_var_info (FILE *fp, var_info *v)
   fprintf(fp, "\nNo. of writes: %d", v->nwrite);
   fprintf(fp, "\n\n");
 }
+
+Hashtable *RingEngine::_deepcopy_var_info_hashtable (Hashtable *h_in, int only_read_id)
+{
+  Hashtable *h_out = hash_new(4);
+  hash_bucket_t *b, *b_copy;
+  var_info *v_copy;
+  hash_iter_t itr;
+  hash_iter_init (h_in, &itr);
+  while ((b = hash_iter_next (h_in, &itr))) {
+    NEW (v_copy, var_info);
+    v_copy = _deepcopy_var_info((var_info *)b->v, only_read_id);
+    b_copy = hash_add (h_out, v_copy->name);
+    b_copy->v = v_copy;
+  }
+  return h_out;
+}
+
+void RingEngine::save_var_infos ()
+{
+    var_infos_copy = hash_new (4);
+    var_infos_copy = _deepcopy_var_info_hashtable (var_infos, 0);
+}
+
+void RingEngine::_save_read_ids ()
+{
+    var_infos_read_ids = hash_new (4);
+    var_infos_read_ids = _deepcopy_var_info_hashtable (var_infos, 1);
+}
+
+void RingEngine::restore_var_infos ()
+{
+    var_infos = hash_new (4);
+    var_infos = _deepcopy_var_info_hashtable (var_infos_copy, 0);
+    hash_clear (var_infos_copy);
+}
+
+void RingEngine::_restore_read_ids ()
+{
+    hash_bucket_t *b, *b_saved;
+    var_info *vi, *vi_saved;
+    hash_iter_t itr;
+    hash_iter_init (var_infos, &itr);
+    while ((b = hash_iter_next (var_infos, &itr))) {
+      b_saved = hash_lookup(var_infos_read_ids, b->key);
+      vi_saved = (var_info *)b_saved->v;
+      vi = (var_info *)b->v;
+      vi->latest_for_read = vi_saved->latest_for_read;
+    }
+    hash_clear (var_infos_read_ids);
+}
+
+var_info *RingEngine::_deepcopy_var_info (var_info *v, int only_read_id)
+{
+  var_info *v_copy;
+  NEW (v_copy, var_info);
+  v_copy->name = v->name;
+  v_copy->latest_for_read = v->latest_for_read;
+  if (!only_read_id) {
+    v_copy->fcurexpr = v->fcurexpr;
+    v_copy->fischan = v->fischan;
+    v_copy->fisinport = v->fisinport;
+    v_copy->fisbool = v->fisbool;
+    v_copy->width = v->width;
+    v_copy->block_in = v->block_in;
+    v_copy->block_out = v->block_out;
+    v_copy->nread = v->nread;
+    v_copy->nwrite = v->nwrite;
+    v_copy->iread = v->iread;
+    v_copy->iwrite = v->iwrite;
+    v_copy->latest_latch_branches = list_dup(v->latest_latch_branches);
+  }
+  return v_copy;
+}
+
+
