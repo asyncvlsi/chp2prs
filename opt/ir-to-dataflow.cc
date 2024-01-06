@@ -124,7 +124,10 @@ struct DataflowChannelManager {
 };
 
 
-
+ int guard_width (int n) {
+   return log_2_round_up (n);
+ }
+ 
 int select_guard_width(const Block::Variant_Select &select) {
     return log_2_round_up(select.branches.size());
 }
@@ -599,33 +602,38 @@ MultiChannelState reconcileMultiSel (Block *curr,
 
     if (idxvec.size() != msv.size() || variable.contains(ch)) {
       //printf ("** sel-- ch %d is variable **\n", ch.m_id);
+      std::vector<ChanId> ctrl_chans;
       for (auto idx : idxvec) {
 	if (!msv[idx].ctrlmap.contains (ch)) {
 	  msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
 	}
+	ctrl_chans.push_back(msv[idx].ctrlmap[ch]);
       }
-      // XXX: handle here
       // all msv[ ] that contain the channels also include
       // the variable control token sequence
 
+      // we need to convert the guard to a new value based on the
+      // index set.
+      ChanId ch_guard;
 
-      // generate the control guard by repeating the guard value as
-      // many times as needed.
+      if (idxvec.size() != msv.size()) {
+	// generate local guard
+	ch_guard = dm.fresh (guard_width (idxvec.size()+1));
+	// one more to indicate "no value" 
+      }
+      else {
+	ch_guard = guard;
+      }
 
-      // f(guard) -> mapguard
-      //
-      // { inner } mapguard, loopguard -> ctrlguard
-      //
-      // { innerctrl } ctrlguard -> loopguard, *
-      //
-      // {ctrlguard} B0, ..., Bn -> Bout
-      //
-      // (Bout = 0|2) ? 0 : 1 -> innerctrl
-      //
-      // innerctrl -> [0] inner 
-      
-      
+      // this is the guard used for the data merge/split
+      ctrlguard = dm.fresh (guard_width (idxvec.size()));
+	
       ChanId cfresh = dm.fresh (2);
+
+      d.push_back(Dataflow::mkInstSel (ctrl_chans,
+				       cfresh,
+				       ch_guard,
+				       ctrlguard));
       
       if (ch != fresh) {
 	ret.ctrlmap[ch] = cfresh;
@@ -688,36 +696,78 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	ret.ctrlmap[ch] = msv[idxvec[0]].ctrlmap[ch];
       }
       else {
+	ChanId selout = dm.fresh (guard_width (idxvec.size()));
 	bool special_case = true;
 	for (auto idx : idxvec) {
 	  if (msv[idx].ctrlmap.contains (ch)) {
 	    special_case = false;
 	  }
 	}
+	std::vector<ChanId> chlist;
 	if (!special_case) {
 	  for (auto idx : idxvec) {
 	    if (!msv[idx].ctrlmap.contains (ch)) {
 	      msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
 	    }
+	    chlist.push_back(msv[idx].ctrlmap[ch]);
 	  }
 	}
 	
-	ChanId cfresh = dm.fresh (2);
-	//printf (" ** seq-variable-merge: %d **\n", ch.m_id);
+	OptionalChanId cfresh;
+
+	if (!dm.isOutermostBlock (ch, curr)) {
+	  cfresh = dm.fresh (2);
+	}
+	else {
+	  cfresh = OptionalChanId::null_id();
+	}
+	
 	// XXX: handle here
 
 	if (special_case) {
 	  // control channel is simply 0, 1, 2, 3 (repeat)
 	  // variable sequence is      1, 1, 1, 2 (repeat)
+	  d.push_back(Dataflow::mkInstSeqRR(idxvec.size(),
+					    cfresh,
+					    selout));
+	  //printf (" ** spec-seq-variable-merge: %d **\n", ch.m_id);
 	}
 	else {
+	  d.push_back(Dataflow::mkInstSeq (chlist, cfresh, selout));
+	  //printf (" ** spec-seq-variable-merge: %d **\n", ch.m_id);
+	}
+	chlist.clear();
+	for (auto idx : idxvec) {
+	  chlist.push_back(msv[idx].datamap[ch]);
+	}
+	ChanId fresh;
 
+	if (!dm.isOutermostBlock (ch, curr)) {
+	  fresh = dm.fresh (ch);
+	}
+	else {
+	  fresh = ch;
+	}
+	if (!dm.id_pool->isChanInput (ch)) {
+	  d.push_back(Dataflow::mkMergeMix (selout, chlist, fresh));
+	}
+	else {
+	  d.push_back(Dataflow::mkSplit (selout, fresh,
+					 Algo::map1<OptionalChanId> (chlist,
+								     [&] (const ChanId &ch) {
+								       return OptionalChanId{ch}; })));
+	}
+	if (!dm.isOutermostBlock (ch, curr)) {
+	  ret.datamap[ch] = fresh;
+	  ret.ctrlmap[ch] = (*cfresh);
 	}
       }
     }
     else {
       // nothing to do, just propagate this up!
-      ret.datamap[ch] = msv[idxvec[0]].datamap[ch];
+      if (!dm.isOutermostBlock (ch, curr)) {
+	ret.datamap[ch] = msv[idxvec[0]].datamap[ch];
+      }
     }
   }
   return ret;
@@ -739,10 +789,14 @@ MultiChannelState reconcileMultiLoop (Block *curr,
       if (!msv.ctrlmap.contains (ch)) {
 	msv.ctrlmap[ch] = dm.generateMultiBaseCase (d);
       }
-      // XXX: handle here
-      
+
+      ChanId cfresh =dm.fresh (msv.ctrlmap[ch]);
+      d.push_back (Dataflow::mkInstDoLoop (msv.ctrlmap[ch],
+					   cfresh,
+					   guard));
       
       ret.datamap[ch] = rhs;
+      ret.ctrlmap[ch] = cfresh;
     }
   }
   return ret;

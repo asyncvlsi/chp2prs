@@ -104,13 +104,13 @@ public:
     // loop merging
     //   . takes 1 control channel and 1 guard channel
     //   . generates control output
-    int type;			// 0 = seq, 1 = sel, 2 = loop
+    int type;			// 0 = seq, 1 = sel, 2 = loop, > 2 = RR
 
     std::vector<ChanId> ctrl;	// control channels
-    ChanId ctrl_out;		// output control
+    OptionalChanId ctrl_out;	// output control (optional)
     
     OptionalChanId guard;	// guard id, if any [select and loop]
-    ChanId sm_sel;		// split/merge select
+    OptionalChanId sm_sel;	// split/merge select
   };
     
 
@@ -171,12 +171,44 @@ public:
   }
 
   static Dataflow mkInstSeq (std::vector<ChanId> cin,
-			     ChanId cout,
+			     OptionalChanId cout,
 			     ChanId sel)
   {
     return Dataflow{Variant_t(Instance{0, cin, cout,
 				       OptionalChanId::null_id(),
 				       sel})};
+  }
+
+  static Dataflow mkInstSeqRR (int N,
+			       OptionalChanId cout,
+			       ChanId sel)
+  {
+    std::vector<ChanId> ctmp;
+    ctmp.push_back (sel);
+    return Dataflow{Variant_t(Instance{N+2, ctmp, cout,
+				       OptionalChanId::null_id(),
+				       sel})};
+  }
+
+  static Dataflow mkInstSel (std::vector<ChanId> cin,
+			     ChanId cout,
+			     ChanId guard,
+			     ChanId sel)
+  {
+    return Dataflow{Variant_t(Instance{1, cin, cout,
+				       guard,
+				       OptionalChanId{sel}})};
+  }
+  
+  static Dataflow mkInstDoLoop (ChanId cin,
+				ChanId cout,
+				ChanId guard)
+  {
+    std::vector<ChanId> ch;
+    ch.push_back (cin);
+    return Dataflow{Variant_t(Instance{2, ch, cout,
+				       guard,
+				       OptionalChanId::null_id()})};
   }
 
   void Print (std::ostream &os) {
@@ -247,30 +279,51 @@ public:
       break;
 
     case DataflowKind::Instance:
-      os << "inst_" << (u_inst().type == 0 ? "seq" :
-			u_inst().type == 1 ? "sel" : "loop")
-	 << (u_inst().type == 2 ? "" :
-	     string_format("<%d>", u_inst().ctrl.size()))
-	 << "(";
-      if (u_inst().type == 2) {
-	os << "C" << u_inst().ctrl[0].m_id << ","
-	   << "C" << u_inst().ctrl_out.m_id << ")";
+      if (u_inst().type > 2) {
+	os << "inst_RR" << (u_inst().ctrl_out ? "" : "_noctrl")
+	   << "<" << u_inst().type - 2 << ">"
+	   << "(";
+	if (u_inst().ctrl_out) {
+	  os << "C" << (*u_inst().ctrl_out).m_id << ", ";
+	}
+	os << "C" << (*u_inst().sm_sel).m_id << ")";
       }
       else {
-	bool first = true;
-	os << "{";
-	for (auto ch : u_inst().ctrl) {
-	  if (!first) {
-	    os << ",";
+	os << "inst_" << (u_inst().type == 0 ? "seq" :
+			  u_inst().type == 1 ? "sel" : "loop");
+	if (!(u_inst().ctrl_out)) {
+	  os << "_noctrl";
+	}
+	os << (u_inst().type == 2 ? "" :
+	       string_format("<%d>", u_inst().ctrl.size()))
+	   << "(";
+	if (u_inst().type == 2) {
+	  os << "C" << u_inst().ctrl[0].m_id << ", "
+	     << "C" << (*u_inst().guard).m_id << ", "
+	     << "C" << (*u_inst().ctrl_out).m_id << ")";
+	}
+	else {
+	  bool first = true;
+	  os << "{";
+	  for (auto ch : u_inst().ctrl) {
+	    if (!first) {
+	      os << ",";
+	    }
+	    os << "C" << ch.m_id;
+	    first = false;
 	  }
-	  os << "C" << ch.m_id;
-	  first = false;
+	  os << "}";
+	  if (u_inst().ctrl_out) {
+	    os << ", C" << (*u_inst().ctrl_out).m_id;
+	  }
+	  if (u_inst().guard) {
+	    os << ", C" << (*u_inst().guard).m_id;
+	  }
+	  if (u_inst().sm_sel) {
+	    os << ", C" << (*u_inst().sm_sel).m_id;
+	  }
+	  os << ")";
 	}
-	os << "}, C" << u_inst().ctrl_out.m_id;
-	if (u_inst().guard) {
-	  os << ", C" << (*u_inst().guard).m_id;
-	}
-	os << ", C" << u_inst().sm_sel.m_id;
       }
       os << std::endl;
       break;
