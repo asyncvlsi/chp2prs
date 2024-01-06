@@ -44,15 +44,29 @@ class RingEngine {
 
         virtual void _run_forge_helper ();
 
-        void _construct_var_infos (ActBooleanizePass *bp);
-        void _print_var_infos (FILE *fp);
+        // Info collection and printing 
+        void construct_var_infos (ActBooleanizePass *bp);
+        void print_var_infos (FILE *fp);
         
+        // Internal functions
         void _construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v);
         void _print_var_info (FILE *fp, var_info *v);
         bool _var_appears_in_expr (Expr *e, ActId *id);
 
+        // Save and restore state of var_infos 
+        void save_var_infos ();
+        void restore_var_infos ();
+
+        // Internal helper functions
+        void _save_read_ids ();
+        void _restore_read_ids ();
+        var_info *_deepcopy_var_info (var_info *v, int only_read_id);
+        Hashtable *_deepcopy_var_info_hashtable (Hashtable *h_in, int only_read_id);
+
         Hashtable *var_infos;
-        
+        Hashtable *var_infos_copy;
+        Hashtable *var_infos_read_ids;
+
         char *_exprfile;
         char *_circuit_library;
         
