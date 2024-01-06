@@ -33,8 +33,11 @@ namespace ChpOptimize {
 inline int log_2_round_up(unsigned long long n) {
     hassert(n > 0);
     int i = 0;
-    while (n >>= 1)
-        ++i;
+    n--;
+    while (n > 0) {
+      n >>= 1;
+      ++i;
+    }
     return i;
 }
 

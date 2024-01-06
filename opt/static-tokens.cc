@@ -910,6 +910,7 @@ void _run_seq (Sequence seq,
       hassert(curr->u_doloop().in_phis.empty());
       hassert(curr->u_doloop().out_phis.empty());
       hassert(curr->u_doloop().loop_phis.empty());
+
       VarIdRemapPair branch_remaps =
 	to_static_token_form (curr->u_doloop().branch, id_pool, true);
       
@@ -928,6 +929,25 @@ void _run_seq (Sequence seq,
       const auto loop_ids =
 	absl_intersection(all_orig_input_ids, all_orig_output_ids);
 
+      // These are variables that are non-conditional reads
+      // Before:   h := BLAH; *[ BLAH(h) <- g]; BLAH(h)
+      // After:   h0 := BLAH; *[ h1 := phi(h0, h2); (h2, h3) := phiinv(h1)
+      // <- g]; BLAH(h3)
+      for (const auto &read_id :
+	     Algo::as_sorted_vector<VarId>(absl_setminus(all_orig_input_ids, loop_ids))) {
+	
+	VarId pre_id;
+	if (curmap.count(read_id)) {
+	  pre_id = curmap[read_id];
+	}
+	else {
+	  pre_id = read_id;
+	}
+
+	curr->u_doloop().in_phis.push_back(Block::Variant_DoLoop::InPhi{
+	    pre_id, branch_remaps.inputid_from_origid.at(read_id)});
+      }
+      
       // These are variables that change each iteration of the loop. We
       // apply the following transformation
       // Before:   h := BLAH; *[ h := BLAH(h) <- g]; BLAH(h)
@@ -959,23 +979,6 @@ void _run_seq (Sequence seq,
 			 branch_remaps.outputid_from_origid.at(loop_id),
 			 post_id
 		      });
-      }
-      // These are variables that are non-conditional reads
-      // Before:   h := BLAH; *[ BLAH(h) <- g]; BLAH(h)
-      // After:   h0 := BLAH; *[ h1 := phi(h0, h2); (h2, h3) := phiinv(h1)
-      // <- g]; BLAH(h3)
-      for (const auto &read_id :
-	     Algo::as_sorted_vector<VarId>(absl_setminus(all_orig_input_ids, loop_ids))) {
-
-	VarId pre_id;
-	if (branch_remaps.inputid_from_origid.count(read_id)) {
-	  pre_id = branch_remaps.inputid_from_origid[read_id];
-	}
-	else {
-	  pre_id = read_id;
-	}
-	curr->u_doloop().in_phis.push_back(Block::Variant_DoLoop::InPhi{
-	    pre_id, branch_remaps.inputid_from_origid.at(read_id)});
       }
 
       // These are variables that are non-conditional writes. We dont need
@@ -1126,6 +1129,11 @@ void checkLiveness (Sequence seq, std::unordered_set<VarId> &potentially_dead)
 			       }
 			     }
 			   });
+      for (auto &loop_phi : curr->u_doloop().loop_phis) {
+	if (potentially_dead.count(loop_phi.bodyout_id)) {
+	  potentially_dead.erase (loop_phi.bodyout_id);
+	}
+      }
       break;
     }
     case BlockType::StartSequence:
@@ -1321,12 +1329,15 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
       if (dead_vars.empty()) {
 	break;
       }
-      
-      //printf (" --  dead list: ");
-      //for (auto var_id : dead_vars) {
-      //printf (" %d", var_id.m_id);
-      //}
-      //printf ("\n");
+#if 0
+      printf ("<>\n");
+      print_chp(std::cout, g);
+      printf ("\n--  dead list: ");
+      for (auto var_id : dead_vars) {
+	printf (" %d", var_id.m_id);
+      }
+      printf ("\n");
+#endif      
 
       // prune phi/phiinv blocks
       std::unordered_set<VarId> newdead;

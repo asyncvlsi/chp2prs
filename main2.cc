@@ -32,6 +32,7 @@
 #include "opt/chp-opt.h"
 #include "opt/static-tokens.h"
 #include "opt/sequencers.h"
+#include "opt/ir-to-dataflow.h"
 
 #ifdef FOUND_expropt
 #include "externoptsdt.h"
@@ -135,9 +136,15 @@ class SDTSynth : public ActSynthesize {
 	putIntoNewStaticTokenForm (g.graph);
 	ChpOptimize::print_chp (std::cout, g.graph);
 
-	// convert to normal CHP
+	// part of converting to normal CHP and dataflow
 	uninlineBitfieldExprsHack (g.graph);
 	
+	printf ("\n---------------\n");
+
+	auto d = chp_to_dataflow(g.graph);
+	for (auto &x : d) {
+	  x.Print (std::cout);
+	}
 	printf ("\n---------------\n");
       }
     }
