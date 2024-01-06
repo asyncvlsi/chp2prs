@@ -405,4 +405,15 @@ std::string join_str_concat_mapped(const U1 &u1, const U2 &u2, const Fn1 &fn1,
     return ss.str();
 }
 
+template <typename K, typename V>
+std::unordered_map<K, V> set_union(const std::unordered_map<K, V> &a,
+				   const std::unordered_map<K, V> &b) {
+  std::unordered_map<K,V> result = a;
+  for (const auto &[x,v] : b) {
+    result[x] = v;
+  }
+  return result;
+}
+  
+
 } // namespace ChpOptimize::Algo
