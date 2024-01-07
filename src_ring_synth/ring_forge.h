@@ -43,24 +43,26 @@ class RingForge : public RingEngine {
 
         // Pipeline block generation functions
         int _generate_itb();
-        int _generate_pipe_element(act_chp_lang_t *, FILE *, Process *, int);
+        int _generate_pipe_element(act_chp_lang_t *, int);
         int _generate_gp_connect();
         int _generate_parallel_split(int);
         int _generate_parallel_merge(int);
         int _generate_selection_split(int);
         int _generate_selection_merge(int);
-        int _generate_init_cond_itb(FILE *, int, int, int, int);
-        int _generate_pipe_element_custom(int, int, int, ActId *, FILE *, Process *);
+        int _generate_init_cond_itb(int, int, int, int);
+        int _generate_pipe_element_custom(int, int, int, ActId *);
 
-        // Expropt functions
+        // Datapath generation functions
+        int _generate_single_latch (var_info *, int);
         int _generate_expr_block(Expr *, int);
-        int _generate_expr_block_for_sel(Expr *, Process *, FILE *, int);
+        int _generate_expr_block_for_sel(Expr *, int);
+
         void _expr_collect_vars (Expr *, int);
         void _instantiate_expr_block (int, list_t *);
 
         // Channel generation functions
-        int generate_bd_chan(int, FILE *);
-        int generate_sync_chan(FILE *);
+        int _generate_bd_chan(int);
+        int _generate_sync_chan();
 
         // Pipeline block connection functions
         int _connect_pipe_elements (int, int);

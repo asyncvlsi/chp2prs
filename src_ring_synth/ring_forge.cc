@@ -43,8 +43,8 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
 
     // Bundled datapath parameters
     invx1_delay_ps = 21;
-    capture_delay = 5;
-    pulse_width = 6;
+    capture_delay = 5; // 2*n = 10 inverters in delay-line
+    pulse_width = 6; // 2*n+1 = 13 inverters in pulse generator
 
     // Instance counters
     block_count = 0;
@@ -58,6 +58,263 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
 }
 
 /*
+    Generate a data capture element for a given variable.
+    If provided with an initial value, generate a data capture
+    element that initializes to that value on reset.
+*/
+int RingForge::_generate_single_latch (var_info *v, int init_val=-1)
+{
+    list_iappend_head (v->latest_latch_branches, branch_id);
+    if (v->iwrite < v->nwrite)
+    {
+        if (init_val == -1)
+        {
+            fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", capture_delay, pulse_width, v->width, 
+                                                        capture_block_prefix, v->name,v->iwrite);
+        }
+        else
+        {
+            fprintf(_fp, "capture_init<%d,%d,%d,%d> %s%s_%d;\n", capture_delay, pulse_width, v->width,
+                                        init_val, capture_block_prefix, v->name,v->iwrite);
+        }
+        v->iwrite++;
+        v->latest_for_read = v->iwrite-1;
+        return (v->iwrite)-1;
+    }
+    fatal_error("shouldn't have reached here (generate_single_latch)");
+    return -1;
+} 
+
+/*
+    Generate a pipeline element for a given action, along
+    with the necessary datapath elements. This is the main
+    function that generates the circuit for a given action.
+*/
+int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
+{
+    ActId *chan;
+    ActId *var = NULL;
+    Expr *e = NULL;
+    int block_id;
+    int expr_inst_id;
+    char chan_name[1024];
+    int latch_id;
+    int bw;
+    InstType *it;
+    hash_bucket_t *b;
+    var_info *vi;
+
+    block_id = _gen_block_id();
+
+    switch(c->type)
+    {
+    case ACT_CHP_ASSIGN:
+        // TODO - finish
+        e = c->u.assign.e;
+        var = c->u.assign.id;
+        fprintf(_fp,"\n// Pipe block for action: ");
+        chp_print(_fp,c);
+        fprintf(_fp,"\n");
+        fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+
+        fprintf(_fp,"\n// Data for action: ");
+        chp_print(_fp,c);
+        fprintf(_fp,"\n");
+        char tname[1024];
+        get_true_name(tname, var, _p->CurScope());
+        b = hash_lookup(var_infos, tname);
+        // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
+        vi = (var_info *)b->v;
+        bw = vi->width;
+        expr_inst_id = _generate_expr_block(e,bw);
+        if (init_latch == -1)
+        {
+            latch_id = _generate_single_latch(vi);  
+        }
+        else 
+        {
+            latch_id = init_latch;
+        }
+        // connect output of math block to latch input
+        fprintf(_fp,"%s%d.out = %s%s_%d.din;\n",expr_block_instance_prefix,expr_inst_id,
+                                            capture_block_prefix,
+                                            vi->name,latch_id);
+        // connect pipe block to delay_expr input
+        fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
+        // connect delay_expr output to capture block
+        fprintf(_fp,"delay_expr_%d.p1 = %s%s_%d.go;\n",expr_inst_id,capture_block_prefix,
+                                            vi->name,latch_id);
+        break;
+
+    case ACT_CHP_SEND:
+        chan = c->u.comm.chan;
+        e = c->u.comm.e;
+        get_true_name (chan_name, chan, _p->CurScope());
+        // chan_name = chan->rootVx(p->CurScope())->getName();
+        fprintf(_fp,"\n// Pipe block for action: ");
+        chp_print(_fp,c);
+        fprintf(_fp,"\n");
+        fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        if (e) {
+            it = _p->CurScope()->Lookup(chan);
+            bw = TypeFactory::bitWidth(it);
+            fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
+                fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
+
+            fprintf(_fp,"\n// Data for action: ");
+            chp_print(_fp,c);
+            fprintf(_fp,"\n");
+            if (e->type == E_VAR) { // pure variable send
+            fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
+                var = (ActId *)e->u.e.l;
+                char tname[1024];
+                get_true_name(tname, var, _p->CurScope());
+                b = hash_lookup(var_infos, tname);
+                vi = (var_info *)b->v;
+                latch_id = vi->latest_for_read;
+                Assert ((latch_id>=0),"variable read but never written? what...");
+                fprintf(_fp, "\n%s%s_%d.dout = %s.d;\n",capture_block_prefix,
+                                            vi->name,latch_id,chan_name);
+                vi->iread++;
+            }
+            else { // function of variable(s) send
+                expr_inst_id = _generate_expr_block(e,bw);
+                // connect output of math block to channel data
+                fprintf(_fp,"%s%d.out = %s.d;\n",expr_block_instance_prefix,expr_inst_id,chan_name);
+
+                // connect to delay_line
+                fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
+                fprintf(_fp,"delay_expr_%d.p1 = %s%d.ctrl;\n",expr_inst_id,conn_block_prefix,block_id);
+
+            }
+        }
+        else { // dataless action
+            fprintf(_fp,"%s%d.zero = %s;\n",ring_block_prefix,block_id, chan_name);
+        }
+        break;
+
+    case ACT_CHP_RECV:
+        chan = c->u.comm.chan;
+        var = c->u.comm.var;
+        get_true_name (chan_name, chan, _p->CurScope());
+        // chan_name = chan->rootVx(p->CurScope())->getName();
+        fprintf(_fp,"\n// Pipe block for action: ");
+        chp_print(_fp,c);
+        fprintf(_fp,"\n");
+        fprintf(_fp,"elem_c_ppa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        if (var) {
+            it = _p->CurScope()->Lookup(chan);
+            bw = TypeFactory::bitWidth(it);
+            fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
+            fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
+            fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
+
+            fprintf(_fp,"\n// Data for action: ");
+            chp_print(_fp,c);
+            fprintf(_fp,"\n");
+            char tname[1024];
+            get_true_name(tname, var, _p->CurScope());
+            b = hash_lookup(var_infos, tname);
+            vi = (var_info *)b->v;
+            if (init_latch == -1)
+            {
+                latch_id = _generate_single_latch(vi);
+            }
+            else 
+            {
+                latch_id = init_latch;
+            }
+            fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
+                            vi->name,latch_id,ring_block_prefix,block_id);
+            fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
+                                            vi->name,latch_id,chan_name);
+        }
+        else { // dataless action
+            fprintf(_fp,"%s%d.zero = %s;\n",ring_block_prefix,block_id, chan_name);
+        }
+        break;
+
+    case ACT_CHP_SKIP:
+        fprintf(_fp,"\n// Pipe block for action: ");
+        chp_print(_fp,c);
+        fprintf(_fp,"\n");
+        fprintf(_fp,"elem_c_skip %s%d;\n",ring_block_prefix,block_id);
+        break;
+
+    default:
+        fatal_error("Shouldn't be here... (generate_pipe_element)");
+        break;
+    }
+    return block_id;
+}
+
+/*
+    Similar to the previous, but used to receive and send
+    initial conditions / loop-carried dependencies from 
+    one iteration of the ring to the next. 
+*/
+int RingForge::_generate_pipe_element_custom(int bd_chan_id, int type, int width, ActId *var_init)
+{
+    Expr *e = NULL;
+    int block_id;
+    char chan_name[1024];
+    int latch_id;
+    int bw;
+    hash_bucket_t *b;
+    var_info *vi;
+
+    block_id = _gen_block_id();
+    Assert (var_init, "no variable (_generate_pipe_element_custom)");
+
+    switch(type)
+    {
+    case ACT_CHP_SEND:
+        snprintf(chan_name, 1024, "%s%d",init_cond_chan_prefix,bd_chan_id);
+        fprintf(_fp,"\n// Pipe block for init cond. send.");
+        fprintf(_fp,"\n");
+        fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        bw = width;
+        fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
+        fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
+        fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
+        char tname[1024];
+        get_true_name(tname, var_init, _p->CurScope());
+        b = hash_lookup(var_infos, tname);
+        vi = (var_info *)b->v;
+        latch_id = vi->latest_for_read;
+        Assert ((latch_id>=0),"variable read but never written? what...");
+        fprintf(_fp, "\n%s%s_%d.dout = %s.d;\n",capture_block_prefix,
+                                    vi->name,latch_id,chan_name);
+        vi->iread++;
+        break;
+
+    case ACT_CHP_RECV:
+        snprintf(chan_name, 1024, "%s%d",init_cond_chan_prefix,bd_chan_id);
+        fprintf(_fp,"\n// Pipe block for init cond. recv.\n");
+        fprintf(_fp,"elem_c_ppa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        bw = width;
+        fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
+        fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
+        fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
+        char tname[1024];
+        get_true_name(tname, var_init, _p->CurScope());
+        b = hash_lookup(var_infos, tname);
+        vi = (var_info *)b->v;
+        latch_id = _generate_single_latch(vi);
+        fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
+                        vi->name,latch_id,ring_block_prefix,block_id);
+        fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
+                                        vi->name,latch_id,chan_name);
+        break;
+
+    default:
+        fatal_error("Shouldn't be here... (generate_pipe_element_custom)");
+        break;
+    }
+    return block_id;
+}
+
+/*
     Generate dataless ITB that initializes the ring.
 */
 int RingForge::_generate_itb()
@@ -65,6 +322,19 @@ int RingForge::_generate_itb()
     fprintf(_fp,"\n// Initial token buffer to initialize ring\n");
     int id = _gen_block_id();
     fprintf(_fp,"elem_c_itb %s%d;\n",ring_block_prefix,id);
+    return id;
+}
+
+/*
+    Generate an initial condition handling ITB to
+    wrap around the main ring.
+*/
+int RingForge::_generate_init_cond_itb(int value, int width, int chan_id_out, int chan_id_in)
+{
+    fprintf(_fp,"\n// Initial token buffer for initial condition transmission\n");
+    int id = _gen_itb_wrapper_id();
+    fprintf(_fp,"itb_wrapper<%d,%d,%d,%d> itb_w_%d(%s%d,%s%d);\n",capture_delay,pulse_width,width,value,
+            id, init_cond_chan_prefix,chan_id_out,init_cond_chan_prefix,chan_id_in);
     return id;
 }
 
@@ -205,6 +475,59 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 }
 
 /*
+    Function to call an external logic synthesis tool to
+    generate combinational logic to implement guard
+    evaluators. Currently supports only abc. 
+*/
+int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
+{
+    // create mapper object
+    ExternalExprOpt *eeo = new ExternalExprOpt(abc, bd, false, expr_file, 
+                                                expr_block_input_prefix,
+                                                expr_block_prefix);
+    Assert ((eeo), "Could not create mapper");
+
+    // collect input vars info
+    _inexprmap = ihash_new (0);
+    _inwidthmap = ihash_new (0);
+    _expr_collect_vars (e, 1);
+
+    // collect input vars in list
+    list_t *all_leaves = list_new();
+    {
+        ihash_iter_t iter;
+        ihash_bucket_t *ib;
+        ihash_iter_init (_inexprmap, &iter);
+        while ((ib = ihash_iter_next (_inexprmap, &iter))) {
+        Expr *e1 = (Expr *)ib->key;
+        list_append (all_leaves, e1);
+        }
+    }
+    // no dots
+    config_set_int("expropt.verbose", 0);
+
+    int out_expr_width = 1;
+
+    fprintf(stdout, "\n");
+
+    // run abc, then v2act to create the combinational-logic-for-math process
+    ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+    
+    Assert ((ebi->delay_typ != -1), "Delay not extracted by abc!");
+    double typ_delay_ps = (ebi->delay_typ)*1e12;
+    int delay_line_n = int((typ_delay_ps/(2*invx1_delay_ps)) + 1); 
+    if (delay_line_n == 0) { delay_line_n = 1; }
+
+    fprintf(_fp, "\n// typical delay: %gps\n",typ_delay_ps);
+    _instantiate_expr_block (xid, all_leaves);
+
+    eeo->~ExternalExprOpt();
+    ebi->~ExprBlockInfo();
+
+    return delay_line_n;
+}
+
+/*
     Instantiate a combinational logic block. (TODO) Currently 
     assumes only one instance of each generated expr block will 
     be used, so using block_id for naming the instance also. 
@@ -255,7 +578,6 @@ void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves)
         else { fatal_error ("leaf (primary input) is neither variable nor constant int?? (instantiate_expr_block)"); }
     }
 }
-
 
 /*
     Collect all the variables in a given expression and put them 
@@ -406,7 +728,6 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
 #undef UNARY_OP
 }
 
-
 /*
     Given two pipeline block elements, connect them via
     their plus-1 (p1) and minus-1 (m1) ports. 
@@ -482,6 +803,28 @@ int RingForge::_connect_pipe_to_sel_merge_inputs (int sel_merge_block_id, int pi
                     sel_merge_block_id,sel_merge_block_port,pipe_block_id);
     return 0;
 }
+
+/*
+    Generate a bundled data channel of a given width.
+*/
+int RingForge::_generate_bd_chan(int width)
+{
+    int id = _gen_bd_chan_id();
+    fprintf (_fp, "bd<%d> %s%d;\n",width,init_cond_chan_prefix,id);
+    return id;
+}
+
+/*
+    Generate a dataless synchronization channel. 
+*/
+int RingForge::_generate_sync_chan()
+{
+    int id = _gen_sync_chan_id();
+    fprintf(_fp,"a1of1 %s%d;\n",sync_chan_name_prefix,id);
+    return id;
+}
+
+
 
 
 
