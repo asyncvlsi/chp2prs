@@ -51,10 +51,6 @@ class RingEngine {
         bool chp_has_branches (act_chp_lang_t *c, int root);
         int get_expr_width(Expr *ex);
 
-        // NOTE: Not defining this, should use type == E_VAR instead.
-        //       Might have to do another case for bitfield (?)
-        bool _expr_is_pure_variable(Expr *e);
-
         // Internal functions
         void _construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v);
         void _print_var_info (FILE *fp, var_info *v);

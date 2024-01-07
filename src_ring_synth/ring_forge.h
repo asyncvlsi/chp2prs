@@ -37,30 +37,34 @@ class RingForge : public RingEngine {
         void _run_forge_helper ();
 
         // Main synthesis functions
-        void generate_pipe(act_chp_lang_t *, FILE *, int, Process *);
-        int generate_one_ring(act_chp_lang_t *, FILE *, int, int, Process *);
-        int generate_branched_ring(act_chp_lang_t *, FILE *, int, int, Process *, int);
+        void generate_pipe(act_chp_lang_t *, int);
+        int generate_one_ring(act_chp_lang_t *, int, int);
+        int generate_branched_ring(act_chp_lang_t *, int, int, int);
 
         // Pipeline block generation functions
         int _generate_itb();
-        int _generate_pipe_element(act_chp_lang_t *, FILE *, Process *, int);
+        int _generate_pipe_element(act_chp_lang_t *, int);
         int _generate_gp_connect();
         int _generate_parallel_split(int);
         int _generate_parallel_merge(int);
         int _generate_selection_split(int);
         int _generate_selection_merge(int);
-        int _generate_init_cond_itb(FILE *, int, int, int, int);
-        int _generate_pipe_element_custom(int, int, int, ActId *, FILE *, Process *);
+        int _generate_init_cond_itb(int, int, int, int);
+        int _generate_pipe_element_custom(int, int, int, ActId *);
 
-        // Expropt functions
+        // Datapath generation functions
+        int _generate_single_latch (var_info *, int);
         int _generate_expr_block(Expr *, int);
-        int _generate_expr_block_for_sel(Expr *, Process *, FILE *, int);
+        int _generate_expr_block_for_sel(Expr *, int);
+        int _compute_merge_mux_info(list_t *, int, int);
+        float _lookup_mux_delays (int, int);
+
         void _expr_collect_vars (Expr *, int);
         void _instantiate_expr_block (int, list_t *);
 
         // Channel generation functions
-        int generate_bd_chan(int, FILE *);
-        int generate_sync_chan(FILE *);
+        int _generate_bd_chan(int);
+        int _generate_sync_chan();
 
         // Pipeline block connection functions
         int _connect_pipe_elements (int, int);
@@ -92,5 +96,15 @@ class RingForge : public RingEngine {
 
         // Pulse-width for the pulse-generator for the latch as fn. (2n+1)*d of invx1_delay_ps
         static unsigned int pulse_width;
+
+        // Temp: Lookup table for mux delays
+        static const int max_mux_size = 4;
+        static const int max_or_size = 4;
+        float mux_delays[max_mux_size][max_or_size] = {
+                        {0     , 0     , 0     , 0     }, // 1-input muxes => no mux 
+                        {96.43 , 96.43 , 102.36, 106.81}, // 2-input muxes
+                        {102.36, 102.36, 106.81, 124.33}, // 3-input muxes
+                        {106.81, 106.81, 124.33, 135.41}  // 4-input muxes
+        };             // 0-OR    1-OR    2-OR    3-OR 
 
 };
