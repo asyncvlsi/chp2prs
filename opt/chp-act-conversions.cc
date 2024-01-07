@@ -319,6 +319,10 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
                             var_width))));
         return blockAllocator.newSequence({receive, assign});
     }
+    case ACT_CHP_FUNC: {
+      return blockAllocator.newSequence({});
+      break;
+    }
     default:
         fatal_error("CHP optimize: Unknown type");
         break;

@@ -458,7 +458,8 @@ bool eliminateCompletelyDeadPass(const std::vector<Block *> &blocks,
 
                 if (phi.post_id && phi.bodyout_id == phi.bodyin_id) {
                     // replace with a "in_phi" function and a copy
-                    hassert(false); // TODO
+		    //hassert(false); // TODO
+		    ++it;
                 } else if (!phi.post_id && phi.bodyout_id == phi.bodyin_id) {
                     // replace with a "in_phi" function
                     b->u_doloop().in_phis.push_back(
