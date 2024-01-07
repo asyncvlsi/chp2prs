@@ -32,7 +32,7 @@ class RingEngine {
             const char *circuit_library,
             const char *exprfile = "expr.act");
     
-        void run_forge ();
+        // void run_forge ();
 
     protected:
         
@@ -44,7 +44,7 @@ class RingEngine {
 
         ActBooleanizePass *_bp; 
 
-        virtual void _run_forge_helper ();
+        // virtual void _run_forge_helper ();
 
         // Info collection
         void construct_var_infos ();

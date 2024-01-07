@@ -25,7 +25,7 @@
 RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp,      
             const char *circuit_library,
-            const char *exprfile = "expr.act" )
+            const char *exprfile )
     : RingEngine ( fp, p, c, bp, circuit_library, exprfile )
 {
     ring_block_prefix = "block_";
@@ -43,9 +43,9 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     init_cond_chan_prefix = "C_init_";
 
     // Bundled datapath parameters
-    invx1_delay_ps = 21;
-    capture_delay = 5; // 2*n = 10 inverters in delay-line
-    pulse_width = 6; // 2*n+1 = 13 inverters in pulse generator
+    // invx1_delay_ps = 21;
+    // capture_delay = 5; // 2*n = 10 inverters in delay-line
+    // pulse_width = 6; // 2*n+1 = 13 inverters in pulse generator
 
     // Instance counters
     _block_id = 0;
@@ -56,6 +56,18 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     _expr_block_id = 0;
     _mux_block_id = 0;
     _branch_id = 0;
+}
+
+void RingForge::run_forge ()
+{
+    /* Handling
+     * 'everything else besides the chp body'
+     * needs to be added here
+    */
+
+   construct_var_infos ();
+   _run_forge_helper ();
+
 }
 
 void RingForge::_run_forge_helper ()
@@ -290,6 +302,7 @@ int RingForge::_generate_pipe_element_custom(int bd_chan_id, int type, int width
     int bw;
     hash_bucket_t *b;
     var_info *vi;
+    char tname[1024];
 
     block_id = _gen_block_id();
     Assert (var_init, "no variable (_generate_pipe_element_custom)");
@@ -305,7 +318,6 @@ int RingForge::_generate_pipe_element_custom(int bd_chan_id, int type, int width
         fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
         fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
         fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
-        char tname[1024];
         get_true_name(tname, var_init, _p->CurScope());
         b = hash_lookup(var_infos, tname);
         vi = (var_info *)b->v;
@@ -324,7 +336,6 @@ int RingForge::_generate_pipe_element_custom(int bd_chan_id, int type, int width
         fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
         fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
         fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
-        char tname[1024];
         get_true_name(tname, var_init, _p->CurScope());
         b = hash_lookup(var_infos, tname);
         vi = (var_info *)b->v;

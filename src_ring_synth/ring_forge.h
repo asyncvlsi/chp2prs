@@ -34,6 +34,8 @@ class RingForge : public RingEngine {
             const char *circuit_library,
             const char *exprfile = "expr.act" );
 
+        void run_forge ();
+
     protected:
 
         void _run_forge_helper ();
@@ -91,13 +93,13 @@ class RingForge : public RingEngine {
         const char *parallel_chan_name_prefix;
         const char *init_cond_chan_prefix;
 
-        static unsigned int invx1_delay_ps;
+        static const unsigned int invx1_delay_ps = 21;
 
         // Capture delay of a latch in multiples of 2*(INVX1 delay)
-        static unsigned int capture_delay;
+        static const unsigned int capture_delay = 5;
 
         // Pulse-width for the pulse-generator for the latch as fn. (2n+1)*d of invx1_delay_ps
-        static unsigned int pulse_width;
+        static const unsigned int pulse_width = 6;
 
         // Temp: Lookup table for mux delays
         static const int max_mux_size = 4;

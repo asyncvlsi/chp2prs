@@ -25,7 +25,7 @@
 RingEngine::RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp, 
             const char *circuit_library,
-            const char *exprfile = "expr.act")
+            const char *exprfile )
             {
                 _fp = fp;
                 _p = p;
@@ -51,17 +51,17 @@ RingEngine::RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
                 _branch_id = 0;
             }; 
 
-void RingEngine::run_forge ()
-{
-    /* Handling
-     * 'everything else besides the chp body'
-     * needs to be added here
-    */
+// void RingEngine::run_forge ()
+// {
+//     /* Handling
+//      * 'everything else besides the chp body'
+//      * needs to be added here
+//     */
 
-   construct_var_infos ();
-   _run_forge_helper ();
+//    construct_var_infos ();
+//    _run_forge_helper ();
 
-}
+// }
 
 void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
 {
