@@ -65,7 +65,7 @@ endif
 $(ACT_HOME)/lib/libactchpopt.so: opt
 
 $(BINARY): $(LIB) $(OBJS1) $(ACTDEPEND)
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS)
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS)
 
 synth2.$(EXT): $(LIB) $(OBJS2) $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main2.o -o synth2.$(EXT) $(CHPOPT) $(TARGETLIBS) $(SHLIBACTPASS) $(ACT_HOME)/lib/libactchpopt.so
