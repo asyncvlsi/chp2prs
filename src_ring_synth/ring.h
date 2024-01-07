@@ -29,25 +29,32 @@ class RingEngine {
     public:
         RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
             const char *circuit_library,
-            const char *exprfile = "expr.act")
-            {
-                _fp = fp;
-                _p = p;
-                _c = c;
-                _circuit_library = Strdup(circuit_library);
-                _exprfile = Strdup(exprfile);
-            }; 
+            const char *exprfile = "expr.act");
     
         void run_forge ();
 
     protected:
+        
+        FILE *_fp;
+
+        Process *_p;
+
+        act_chp_lang_t *_c;
 
         virtual void _run_forge_helper ();
 
-        // Info collection and printing 
+        // Info collection
         void construct_var_infos (ActBooleanizePass *bp);
         void print_var_infos (FILE *fp);
-        
+        int length_of_guard_set (act_chp_lang_t *c);
+        bool is_elementary_action(act_chp_lang_t *c);
+        bool chp_has_branches (act_chp_lang_t *c, int root);
+        int get_expr_width(Expr *ex);
+
+        // NOTE: Not defining this, should use type == E_VAR instead.
+        //       Might have to do another case for bitfield (?)
+        bool _expr_is_pure_variable(Expr *e);
+
         // Internal functions
         void _construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v);
         void _print_var_info (FILE *fp, var_info *v);
@@ -67,11 +74,29 @@ class RingEngine {
         Hashtable *var_infos_copy;
         Hashtable *var_infos_read_ids;
 
+        // Expression handling for Expropt
+        iHashtable *_inexprmap;
+        iHashtable *_inwidthmap;
+
         char *_exprfile;
         char *_circuit_library;
-        
-        FILE *_fp;
 
-        Process *_p;
-        act_chp_lang_t *_c;
+        // Integer counters for instance IDs 
+        unsigned int _block_id;
+        unsigned int _itb_wrapper_id;
+        unsigned int _bd_chan_id;
+        unsigned int _sync_chan_id;
+        unsigned int _expr_id;
+        unsigned int _expr_block_id;
+        unsigned int _mux_block_id;
+        unsigned int _branch_id;
+
+        int _gen_block_id ();
+        int _gen_itb_wrapper_id ();
+        int _gen_bd_chan_id ();
+        int _gen_sync_chan_id ();
+        int _gen_expr_id ();
+        int _gen_expr_block_id ();
+        int _gen_mux_block_id ();
+
 };

@@ -1413,8 +1413,7 @@ int generate_parallel_merge(int n, FILE *fp)
 }
 
 /*
-    Generate a selection split block for comma-separated
-    statements. 
+    Generate a selection split block for branches
 */
 int generate_selection_split(int n, FILE *fp)
 {
@@ -1427,8 +1426,7 @@ int generate_selection_split(int n, FILE *fp)
 }
 
 /*
-    Generate a selection merge block for comma-separated
-    statements. 
+    Generate a selection merge block for branches
 */
 int generate_selection_merge(int n, FILE *fp)
 {
@@ -1620,7 +1618,6 @@ int generate_sync_chan(FILE *fp)
     fprintf(fp,"a1of1 %s%d;\n",sync_chan_name_prefix,count);
     return count;
 }
-
 
 /*
     Generate an initial condition handling ITB to
@@ -2424,9 +2421,6 @@ int get_expr_width(Expr *ex, Process *p) {
   }
   return 0;
 }
-
-
-
 
 /*
     Check if a given expression is actually just a single 

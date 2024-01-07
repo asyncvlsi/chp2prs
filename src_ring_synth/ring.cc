@@ -22,6 +22,33 @@
 
 #include "ring.h"
 
+RingEngine::RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
+            const char *circuit_library,
+            const char *exprfile = "expr.act")
+            {
+                _fp = fp;
+                _p = p;
+                _c = c;
+                _circuit_library = Strdup(circuit_library);
+                _exprfile = Strdup(exprfile);
+
+                var_infos = hash_new (4);
+                var_infos_copy = hash_new (4);
+                var_infos_read_ids = hash_new (4);
+
+                _inexprmap = ihash_new (0);
+                _inwidthmap = ihash_new (0);
+
+                _block_id = 0;
+                _itb_wrapper_id = 0;
+                _bd_chan_id = 0;
+                _sync_chan_id = 0;
+                _expr_id = 0;
+                _expr_block_id = 0;
+                _mux_block_id = 0;
+                _branch_id = 0;
+            }; 
+
 void RingEngine::run_forge ()
 {
     /* Handling
@@ -367,4 +394,338 @@ var_info *RingEngine::_deepcopy_var_info (var_info *v, int only_read_id)
   return v_copy;
 }
 
+int RingEngine::_gen_block_id()
+{
+    _block_id++;
+    return _block_id;
+}
 
+int RingEngine::_gen_itb_wrapper_id()
+{
+    _itb_wrapper_id++;
+    return _itb_wrapper_id;
+}
+
+int RingEngine::_gen_bd_chan_id()
+{
+    _bd_chan_id++;
+    return _bd_chan_id;
+}
+
+int RingEngine::_gen_sync_chan_id()
+{
+    _sync_chan_id++;
+    return _sync_chan_id;
+}
+
+int RingEngine::_gen_expr_id()
+{
+    _expr_id++;
+    return _expr_id;
+}
+
+int RingEngine::_gen_expr_block_id()
+{
+    _expr_block_id++;
+    return _expr_block_id;
+}
+
+int RingEngine::_gen_mux_block_id()
+{
+    _mux_block_id++;
+    return _mux_block_id;
+}
+
+int RingEngine::length_of_guard_set (act_chp_lang_t *c)
+{
+  act_chp_gc_t *gc_itr;
+  int counter = 0;
+  Assert (((c->type == ACT_CHP_SELECT)||(c->type == ACT_CHP_LOOP)), 
+            "Called length_of_guard_set on a non-selection/loop");
+
+  for (gc_itr = c->u.gc; gc_itr; gc_itr = gc_itr->next)
+  { counter++; }
+  return counter;
+}
+
+bool RingEngine::is_elementary_action(act_chp_lang_t *c)
+{
+    Assert (c, "wth");
+
+    switch (c->type) {
+    case ACT_CHP_COMMALOOP:
+    case ACT_CHP_SEMILOOP:
+        fatal_error ("Replication loops should've been removed..");
+    case ACT_CHP_COMMA:
+    case ACT_CHP_SEMI:
+    case ACT_CHP_LOOP:
+    case ACT_CHP_DOLOOP:
+    case ACT_CHP_SELECT:
+        return false;
+        break;
+
+    case ACT_CHP_SELECT_NONDET:
+        fatal_error ("Can't handle NDS");
+        return false;
+        
+    case ACT_CHP_SKIP:
+    case ACT_CHP_ASSIGN:
+    case ACT_CHP_ASSIGNSELF:
+    case ACT_CHP_SEND:
+    case ACT_CHP_RECV:
+        return true;
+        break;
+
+    case ACT_CHP_FUNC:
+    case ACT_CHP_HOLE: /* to support verification */
+    case ACT_CHP_MACRO:
+    case ACT_HSE_FRAGMENTS:
+        return false;
+        break;
+
+    default:
+        fatal_error ("Unknown type");
+        return false;
+        break;
+    }
+
+}
+
+bool RingEngine::chp_has_branches (act_chp_lang_t *c, int root)
+{
+    bool has_branches = false;
+    listitem_t *li, *li_prev;
+    act_chp_gc_t *gc;
+    act_chp_lang_t *stmt, *stmt_prev;
+
+    if (!c) return false;
+
+    switch (c->type) {
+    case ACT_CHP_COMMALOOP:
+    case ACT_CHP_SEMILOOP:
+        fatal_error ("Replication loops should've been removed..");
+        break;
+        
+    case ACT_CHP_COMMA:
+        has_branches = true;
+        break;
+
+    case ACT_CHP_SEMI:
+        if (root == 1)
+        {   
+            for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+            {   
+                stmt = (act_chp_lang_t *)list_value(li);
+                if (stmt->type == ACT_CHP_LOOP)
+                    has_branches = chp_has_branches (stmt, 1);
+            }
+        }
+        else{
+            for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+            {
+                stmt = (act_chp_lang_t *)(list_value(li));
+                has_branches = chp_has_branches (stmt, 0);
+                if (has_branches) break;
+            }
+        }
+        break;
+
+    case ACT_CHP_LOOP:
+    case ACT_CHP_DOLOOP:
+        if (root == 1)
+        {
+            gc = c->u.gc;
+            has_branches = chp_has_branches (gc->s, 0);
+            break;
+        }
+        else
+        {
+            fatal_error ("should've excised internal loops... (chp_has_branches)");
+        }
+        break;
+        
+    case ACT_CHP_SELECT:
+        if( length_of_guard_set (c) > 1)
+        {
+            has_branches = true;
+        }
+        else
+        {
+            gc = c->u.gc;
+            has_branches = chp_has_branches (gc->s, 0);
+        }
+        break;
+
+    case ACT_CHP_SELECT_NONDET:
+        fatal_error ("Can't handle NDS");
+        
+    case ACT_CHP_SKIP:
+    case ACT_CHP_ASSIGN:
+    case ACT_CHP_ASSIGNSELF:
+    case ACT_CHP_SEND:
+    case ACT_CHP_RECV:
+        break;
+
+    case ACT_CHP_FUNC:
+    case ACT_CHP_HOLE: /* to support verification */
+    case ACT_CHP_MACRO:
+    case ACT_HSE_FRAGMENTS:
+        break;
+
+    default:
+        fatal_error ("Unknown type");
+        break;
+    }
+
+    return has_branches;
+}
+
+int RingEngine::get_expr_width(Expr *ex)
+{
+  // recursively run through the expression and collect its width
+  switch ((ex)->type)
+  {
+  // for a var read the bitwidth of that var
+  case E_VAR:
+  {
+    ActId *var = (ActId *)ex->u.e.l;  
+    hash_bucket_t *b;
+    char tname[1024];
+    get_true_name(tname, var, _p->CurScope());
+    b = hash_lookup(var_infos, tname);
+    // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
+    var_info *vi = (var_info *)b->v;
+    return vi->width;
+  }
+  // for true and false the bit width is one
+  case E_TRUE:
+  case E_FALSE:
+    return 1;
+  // for int look up the corresponding bitwidth
+  case E_INT:
+  {
+    return ihash_lookup(_inwidthmap, (long) ex)->i;
+  }
+  // step through
+  case E_QUERY:
+    ex = ex->u.e.r;
+  // get the max out of the right and the left expr part
+  case E_AND:
+  case E_OR:
+  case E_XOR:
+  {
+    int lw = get_expr_width(ex->u.e.l);
+    int rw = get_expr_width(ex->u.e.r);
+    return std::max(lw,rw);
+  }
+  // get the max out of the right and the left expr part and one for the overflow bit
+  case E_PLUS:
+  case E_MINUS:
+  {
+    int lw = get_expr_width(ex->u.e.l);
+    int rw = get_expr_width(ex->u.e.r);
+    return std::max(lw,rw);
+    // @TODO genus trys to tie the top bit and i dont know why
+    // return std::max(lw,rw)+1;
+  }
+  // comparisons result in a bool so 1, do not walk further
+  case E_LT:
+  case E_GT:
+  case E_LE:
+  case E_GE:
+  case E_EQ:
+  case E_NE:
+    // should be fine in ignoring the rest of the expr
+    return 1;
+  // for multiplication add both operand bitwidth
+  case E_MULT:
+  {
+    int lw = get_expr_width(ex->u.e.l);
+    int rw = get_expr_width(ex->u.e.r);
+    return lw+rw;
+  } 
+  // step through
+  case E_MOD:
+  {
+    int rw = get_expr_width(ex->u.e.r);
+    return rw;
+  } 
+  // use left bitwidth and add number of shifted right
+  case E_LSL:
+  {
+    int lw = get_expr_width(ex->u.e.l);
+    int rw = get_expr_width(ex->u.e.r);
+    return lw + (1 << rw);
+  }
+  // pass through
+  case E_DIV:
+  case E_LSR:
+  case E_ASR:
+  case E_UMINUS:
+  case E_NOT:
+  case E_COMPLEMENT:
+  {
+    int lw = get_expr_width(ex->u.e.l);
+    return lw;
+  }  
+
+  //get the value out of the datastructure
+  case E_BUILTIN_INT:
+    if (ex->u.e.r) {
+      Assert (ex->u.e.r->type == E_INT, "What?");
+      return ex->u.e.r->u.ival.v;
+    }
+    else {
+      return 1;
+    }
+
+  case E_BUILTIN_BOOL:
+    return 1;
+  // the following ones should give you errors because not handled
+  case E_COLON:
+  case E_COMMA:
+    fatal_error ("Should have been handled elsewhere");
+    break;
+
+    /* XXX: here */
+  case E_CONCAT:
+    {
+      int w = 0;
+      Expr *tmp = ex;
+      while (tmp) {
+	w += get_expr_width (tmp->u.e.l);
+	tmp = tmp->u.e.r;
+      }
+      return w;
+    }
+    break;
+
+  case E_BITFIELD:
+    // _var_getinfo ((ActId *)ex->u.e.l);
+    // if (ex->u.e.r->u.e.l) {
+    //   return (ex->u.e.r->u.e.r->u.ival.v - ex->u.e.r->u.e.l->u.ival.v + 1);
+    // }
+    // else {
+    //   return 1;
+    // }
+    fatal_error ("Not handling bitfields right now.");
+    break;
+
+  case E_REAL:
+    fatal_error ("No real expressions please.");
+    break;
+
+  case E_PROBE:
+    fatal_error ("fix probes please");
+    break;
+    
+  case E_FUNCTION:
+    fatal_error ("function!");
+    
+  case E_SELF:
+  default:
+    fatal_error ("Unknown expression type %d\n", ex->type);
+    break;
+  }
+  return 0;
+}
