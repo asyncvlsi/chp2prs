@@ -20,21 +20,21 @@
  **************************************************************************
  */
 
-#ifndef REQS_H
-#define REQS_H
+#include "reqs.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <string>
-#include <act/act.h>
-#include <act/passes.h>
-#include <act/lang.h>
-#include <act/iter.h>
-#include <act/types.h>
-#include <act/expropt.h>
+/*
+ * Initialize the Act object that is used for 
+ * string mangling functionality.
+ * Needs to be called only once in the entire
+ * program.
+*/
+void mangle_init ();
 
-#include "ring_name_handling.h"
-#include "ring_else_gen.h"
-#include "ring_synthesis_struct.h"
+/*
+ * Get the true name of a variable. This is 
+ * a consistent way to get a unique string
+ * name for every identifier. Indices in 
+ * arrayed identifiers are mangled as required.
+*/
+void get_true_name (char *buf, ActId *id, Scope *s);
 
-#endif

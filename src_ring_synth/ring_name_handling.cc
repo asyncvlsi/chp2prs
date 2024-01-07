@@ -20,8 +20,7 @@
  **************************************************************************
  */
 
-#include "reqs.h"
-#include "ring_synthesis_struct.h"
+#include "ring_name_handling.h"
 
 Act *a_mangle;
 
@@ -42,7 +41,7 @@ void get_true_name (char *buf, ActId *id, Scope *s)
   a_mangle->mangle_string(str,buf,1024);
 }
 
-void generate_array_suffix(char *buf, Array *a)
+void generate_array_suffix (char *buf, Array *a)
 {
   char s[1024];
   a->sPrint(s,1024,style_global);

@@ -23,12 +23,14 @@
 #include "ring.h"
 
 RingEngine::RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
+            ActBooleanizePass *bp, 
             const char *circuit_library,
-            const char *exprfile = "expr.act")
+            const char *exprfile )
             {
                 _fp = fp;
                 _p = p;
                 _c = c;
+                _bp = bp;
                 _circuit_library = Strdup(circuit_library);
                 _exprfile = Strdup(exprfile);
 
@@ -49,15 +51,17 @@ RingEngine::RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
                 _branch_id = 0;
             }; 
 
-void RingEngine::run_forge ()
-{
-    /* Handling
-     * 'everything else besides the chp body'
-     * needs to be added here
-    */
+// void RingEngine::run_forge ()
+// {
+//     /* Handling
+//      * 'everything else besides the chp body'
+//      * needs to be added here
+//     */
 
-   _run_forge_helper ();
-}
+//    construct_var_infos ();
+//    _run_forge_helper ();
+
+// }
 
 void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
 {
@@ -254,7 +258,7 @@ bool RingEngine::_var_appears_in_expr (Expr *e, ActId *id)
   }
 }
 
-void RingEngine::construct_var_infos (ActBooleanizePass *bp)
+void RingEngine::construct_var_infos ()
 {
   var_infos = hash_new(4);
   hash_bucket_t *b;
@@ -262,7 +266,7 @@ void RingEngine::construct_var_infos (ActBooleanizePass *bp)
   ActId *id;
   char str[1024];
 
-  act_boolean_netlist_t *bnl = bp->getBNL(_p);
+  act_boolean_netlist_t *bnl = _bp->getBNL(_p);
   Assert (bnl, "hmm BNL");
   pHashtable *pht = bnl->cH;
 
@@ -307,7 +311,7 @@ void RingEngine::print_var_infos (FILE *fp)
   hash_iter_init (var_infos, &it);
     while ((b = hash_iter_next (var_infos, &it))) 
     {
-      print_var_info (fp, (var_info *)b->v);
+      _print_var_info (fp, (var_info *)b->v);
     }	     
 }
 
