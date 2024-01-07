@@ -459,7 +459,11 @@ bool eliminateCompletelyDeadPass(const std::vector<Block *> &blocks,
                 if (phi.post_id && phi.bodyout_id == phi.bodyin_id) {
                     // replace with a "in_phi" function and a copy
 		    //hassert(false); // TODO
-		    ++it;
+		  warning ("Missing optimization opportunity in dead-code elim");
+		  fprintf (stderr, ">> loop_phi: post=%d, bodyout=bodyin=%d\n",
+			   (int)(*phi.post_id).m_id,
+			   (int)phi.bodyout_id.m_id);
+		  ++it;
                 } else if (!phi.post_id && phi.bodyout_id == phi.bodyin_id) {
                     // replace with a "in_phi" function
                     b->u_doloop().in_phis.push_back(
