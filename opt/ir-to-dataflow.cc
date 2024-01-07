@@ -3,6 +3,7 @@
  *  This file is part of the ACT library
  *
  *  Copyright (c) 2021-2022 Henry Heffan
+ *  Copyright (c) 2024 Rajit Manohar
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -66,7 +67,7 @@ struct DataflowChannelManager {
   std::unordered_map<ChanId, Block *> chanmap;
 
 
-  bool isOutermostBlock (ChanId ch, Block *b) {
+  bool isOutermostBlock (ChanId ch, const Block *b) {
     if (chanmap[ch] == b) {
       return true;
     }
@@ -394,7 +395,7 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm,
       break;
     }
     case BlockType::DoLoop: {
-      computeOutermostBlock (curr->u_doloop().branch, dm, outer ? outer : curr);
+      computeOutermostBlock (curr->u_doloop().branch, dm, outer);
       break;
     }
     case BlockType::StartSequence:
@@ -774,6 +775,18 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 }
 
 
+bool useGuardMultiLoop (Block *curr,
+			const MultiChannelState &msv,
+			DataflowChannelManager &dm)
+{
+  for (auto &[ch, _] : msv.datamap) {
+    if (!dm.isOutermostBlock (ch, curr)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 MultiChannelState reconcileMultiLoop (Block *curr,
 				      ChanId guard,
 				      MultiChannelState &msv,
@@ -974,7 +987,14 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
       MultiChannelState ms = createDataflow (curr->u_doloop().branch, dm, d);
 
       // deal with loopphi, phiinv, loopphinv
-      auto guards = nodes_add_loopguard (curr->u_doloop(), d, dm);
+      std::pair<ChanId, ChanId> guards;
+
+      if (curr->u_doloop().loop_phis.size() > 0
+	  || curr->u_doloop().in_phis.size() > 0
+	  || curr->u_doloop().out_phis.size() > 0
+	  || useGuardMultiLoop (curr, ms, dm)) {
+	guards = nodes_add_loopguard (curr->u_doloop(), d, dm);
+      }
 
       // handle loop-phis first
       for (auto &loopphi : curr->u_doloop().loop_phis) {
