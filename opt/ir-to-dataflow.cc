@@ -52,6 +52,7 @@ struct MultiChannelState {
     for the channel (the 0/1/2 sequence).
   */
   std::unordered_map<ChanId, ChanId> ctrlmap;
+
 };
     
 struct DataflowChannelManager {
@@ -66,6 +67,14 @@ struct DataflowChannelManager {
   */
   std::unordered_map<ChanId, Block *> chanmap;
 
+  /*
+    If we generate round robin sequeners, this saves them for re-use
+    if needed
+  */
+  std::unordered_map<int, ChanId> rr_noctrl;
+
+  // pair: first one is the select output, second one is the control channel
+  std::unordered_map<int, std::pair <ChanId, ChanId> > rr_ctrl;
 
   bool isOutermostBlock (ChanId ch, const Block *b) {
     if (chanmap[ch] == b) {
@@ -121,7 +130,18 @@ struct DataflowChannelManager {
     ids.push_back (fv);
     d.push_back (Dataflow::mkFunc (ids, std::move (e)));
     return fv;
-  }  
+  }
+
+  void generateCopy (ChanId from, ChanId to, std::vector<Dataflow> &d) {
+    DExprDag e;
+    DExprDag::Node *n =
+      e.newNode (DExprDag::Node::makeVariableAccess (from,
+						     id_pool->getBitwidth (from)));
+    e.roots.push_back (n);
+    std::vector<ChanId> ids;
+    ids.push_back (to);
+    d.push_back (Dataflow::mkFunc (ids, std::move (e)));
+  }
 };
 
 
@@ -821,14 +841,33 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  cfresh = OptionalChanId::null_id();
 	}
 	
-	// XXX: handle here
-
 	if (special_case) {
 	  // control channel is simply 0, 1, 2, 3 (repeat)
 	  // variable sequence is      1, 1, 1, 2 (repeat)
-	  d.push_back(Dataflow::mkInstSeqRR(idxvec.size(),
-					    cfresh,
-					    selout));
+
+	  if (dm.rr_ctrl.contains(idxvec.size())) {
+	    auto &res = dm.rr_ctrl[idxvec.size()];
+	    dm.generateCopy (res.first, selout, d);
+	    if (cfresh) {
+	      dm.generateCopy (res.second, *cfresh, d);
+	    }
+	  }
+	  else if (cfresh) {
+	    d.push_back(Dataflow::mkInstSeqRR(idxvec.size(),
+					      cfresh,
+					      selout));
+	    dm.rr_ctrl[idxvec.size()] = std::pair<ChanId,ChanId>(selout,*cfresh);
+	  }
+	  else if (dm.rr_noctrl.contains (idxvec.size())) {
+	    ChanId res = dm.rr_noctrl[idxvec.size()];
+	    dm.generateCopy (res, selout, d);
+	  }
+	  else {
+	    d.push_back(Dataflow::mkInstSeqRR(idxvec.size(),
+					      cfresh,
+					      selout));
+	    dm.rr_noctrl[idxvec.size()] = selout;
+	  }
 	  //printf (" ** spec-seq-variable-merge: %d **\n", ch.m_id);
 	}
 	else {
