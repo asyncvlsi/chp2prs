@@ -193,11 +193,11 @@ public:
   static Dataflow mkInstSel (std::vector<ChanId> cin,
 			     ChanId cout,
 			     ChanId guard,
-			     ChanId sel)
+			     OptionalChanId sel)
   {
     return Dataflow{Variant_t(Instance{1, cin, cout,
 				       guard,
-				       OptionalChanId{sel}})};
+				       sel})};
   }
   
   static Dataflow mkInstDoLoop (ChanId cin,
@@ -293,6 +293,9 @@ public:
 			  u_inst().type == 1 ? "sel" : "loop");
 	if (!(u_inst().ctrl_out)) {
 	  os << "_noctrl";
+	}
+	if (!(u_inst().sm_sel)) {
+	  os << "_nosel";
 	}
 	os << (u_inst().type == 2 ? "" :
 	       string_format("<%d>", u_inst().ctrl.size()))
