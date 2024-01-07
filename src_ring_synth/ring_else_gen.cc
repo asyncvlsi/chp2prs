@@ -20,29 +20,8 @@
  **************************************************************************
  */
 
-#include "reqs.h"
+#include "ring_else_gen.h"
 
-/* 
-    For every selection that has an else guard,
-    replace the else guard with the correct explicit version,
-    so that synthesis can happen correctly.
-    For example,
-
-     [G1->S1
-    []G2->S2
-    []G3->S3
-    []else->S4
-    ]
-
-    gets converted to:
-
-     [G1->S1
-    []G2->S2
-    []G3->S3
-    []~(G1|G2|G3)->S4
-    ]
-
-*/
 void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
 {
     listitem_t *li;
@@ -93,45 +72,42 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
         break;
         
     case ACT_CHP_SELECT:
-            // _chp_print (stdout, c);
-            // fprintf (stdout, "\n\n");
+        NEW (disj_gs, Expr);
+        disj_gs->type = E_OR;
 
-            NEW (disj_gs, Expr);
-            disj_gs->type = E_OR;
+        NEW (expr_false, Expr);
+        expr_false->type = E_FALSE;
 
-            NEW (expr_false, Expr);
-            expr_false->type = E_FALSE;
+        gc = c->u.gc;
+        disj_gs->u.e.r = expr_expand(gc->g, ActNamespace::Global(), p->CurScope());
+        itr = disj_gs;
 
-            gc = c->u.gc;
-            disj_gs->u.e.r = expr_expand(gc->g, ActNamespace::Global(), p->CurScope());
-            itr = disj_gs;
-
-            for (gc = gc->next ; gc ; gc = gc->next)
+        for (gc = gc->next ; gc ; gc = gc->next)
+        {
+            if (gc->g)
             {
-                if (gc->g)
-                {
-                    itr->u.e.l = gc->g;
-                    NEW (tmp, Expr);
-                    tmp->type = E_OR;
-                    tmp->u.e.r = expr_expand(itr, ActNamespace::Global(), p->CurScope());
-                    NEW (itr, Expr);
-                    itr = tmp;
-                }
-                else
-                {
-                    // else exists => complement and insert
-                    itr = itr->u.e.r;
-                    NEW (inv_disj_gs, Expr);
-                    inv_disj_gs->type = E_NOT;
-                    inv_disj_gs->u.e.l = itr;
-                    gc->g = expr_expand(inv_disj_gs, ActNamespace::Global(), p->CurScope());
-                }
+                itr->u.e.l = gc->g;
+                NEW (tmp, Expr);
+                tmp->type = E_OR;
+                tmp->u.e.r = expr_expand(itr, ActNamespace::Global(), p->CurScope());
+                NEW (itr, Expr);
+                itr = tmp;
             }
-
-            for (gc = c->u.gc ; gc ; gc = gc->next)
+            else
             {
-                fill_in_else_explicit (gc->s, p, 0);
+                // else exists => complement and insert
+                itr = itr->u.e.r;
+                NEW (inv_disj_gs, Expr);
+                inv_disj_gs->type = E_NOT;
+                inv_disj_gs->u.e.l = itr;
+                gc->g = expr_expand(inv_disj_gs, ActNamespace::Global(), p->CurScope());
             }
+        }
+
+        for (gc = c->u.gc ; gc ; gc = gc->next)
+        {
+            fill_in_else_explicit (gc->s, p, 0);
+        }
 
         break;
 

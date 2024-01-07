@@ -23,9 +23,10 @@
 #include "ring_forge.h"
 
 RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
+            ActBooleanizePass *bp,      
             const char *circuit_library,
             const char *exprfile = "expr.act" )
-    : RingEngine ( fp, p, c, circuit_library, exprfile )
+    : RingEngine ( fp, p, c, bp, circuit_library, exprfile )
 {
     ring_block_prefix = "block_";
     conn_block_prefix = "conn_z_";
@@ -47,14 +48,14 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     pulse_width = 6; // 2*n+1 = 13 inverters in pulse generator
 
     // Instance counters
-    block_count = 0;
-    itb_wrapper_count = 0;
-    bd_chan_count = 0;
-    sync_chan_count = 0;
-    expr_id = 0;
-    expr_block_id = 0;
-    mux_block_id = 0;
-    branch_id = 0;
+    _block_id = 0;
+    _itb_wrapper_id = 0;
+    _bd_chan_id = 0;
+    _sync_chan_id = 0;
+    _expr_id = 0;
+    _expr_block_id = 0;
+    _mux_block_id = 0;
+    _branch_id = 0;
 }
 
 void RingForge::_run_forge_helper ()
@@ -91,7 +92,7 @@ void RingForge::_run_forge_helper ()
 */
 int RingForge::_generate_single_latch (var_info *v, int init_val=-1)
 {
-    list_iappend_head (v->latest_latch_branches, branch_id);
+    list_iappend_head (v->latest_latch_branches, _branch_id);
     if (v->iwrite < v->nwrite)
     {
         if (init_val == -1)
@@ -428,7 +429,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 {
     // fprintf (fp, "// hello from expropt\n");
     // create mapper object
-    ExternalExprOpt *eeo = new ExternalExprOpt(abc, bd, false, expr_file, 
+    ExternalExprOpt *eeo = new ExternalExprOpt(abc, bd, false, _exprfile, 
                                                 expr_block_input_prefix,
                                                 expr_block_prefix);
     Assert ((eeo), "Could not create mapper");
@@ -509,7 +510,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
 {
     // create mapper object
-    ExternalExprOpt *eeo = new ExternalExprOpt(abc, bd, false, expr_file, 
+    ExternalExprOpt *eeo = new ExternalExprOpt(abc, bd, false, _exprfile, 
                                                 expr_block_input_prefix,
                                                 expr_block_prefix);
     Assert ((eeo), "Could not create mapper");
@@ -707,7 +708,7 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
           w = 1;
         }
         ihash_bucket_t *ib = ihash_add (_inexprmap, (long) e);
-        ib->i = gen_expr_id ();
+        ib->i = _gen_expr_id ();
         ihash_bucket_t *b_width;
         b_width = ihash_add (_inwidthmap, (long) e);
         b_width->i = w;
@@ -727,7 +728,7 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
         // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
         vi = (var_info *)b->v;
         ihash_bucket_t *ib = ihash_add (_inexprmap, (long)e);
-        ib->i = gen_expr_id();
+        ib->i = _gen_expr_id();
         ihash_bucket_t *b_width;
         b_width = ihash_add (_inwidthmap, (long) e);
         b_width->i = vi->width;
@@ -1260,14 +1261,14 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         gc = c->u.gc;
         for (int i = 0; gc; gc = gc->next)
         {   
-            branch_id++;
-            save_read_ids();
+            _branch_id++;
+            _save_read_ids();
             block_id = generate_branched_ring (gc->s, 0, list_ivalue(lj), 1);
             _connect_pipe_to_sel_merge_inputs (sel_merge_block_id, block_id, i);
-            restore_read_ids();
+            _restore_read_ids();
             i++; lj = list_next(lj);
         }
-        branch_id = branch_id - gc_len;
+        _branch_id = _branch_id - gc_len;
 
         // muxing variables live-out of merge so downstream can access correctly
         delay_n_merge = _compute_merge_mux_info(live_vars, gc_len, sel_merge_block_id);
@@ -1370,7 +1371,7 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
             if (latest_branch_id != latest_branch_id_prev) 
             {
                 list_iappend_head (branch_map, iwrite-i);
-                list_iappend_head (branch_map, latest_branch_id-branch_id-1);
+                list_iappend_head (branch_map, latest_branch_id-_branch_id-1);
                 branch_ctr++;
                 // fprintf (fp, "// latch branch id %d, merge port id %d, latch id %d\n", 
                 //                     latest_branch_id, latest_branch_id-branch_id-1, iwrite-i);
@@ -1413,7 +1414,7 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
                 int flag=0;
                 for ( lj = list_first(branch_map) ; lj ; lj = list_next(list_next(lj)) )
                 {
-                    int mux_port = list_ivalue(lj)+branch_id;
+                    int mux_port = list_ivalue(lj)+_branch_id;
                     if (mux_port == i)
                     { flag=1; break; }
                 }

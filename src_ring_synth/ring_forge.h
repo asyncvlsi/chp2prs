@@ -20,7 +20,8 @@
  **************************************************************************
  */
 
-#include "reqs.h"
+#include "ring_live_vars.h"
+#include "ring.h"
 
 /*
  * Ring synthesizer class
@@ -29,6 +30,7 @@ class RingForge : public RingEngine {
     public: 
 
     RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
+            ActBooleanizePass *bp, 
             const char *circuit_library,
             const char *exprfile = "expr.act" );
 

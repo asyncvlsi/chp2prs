@@ -28,6 +28,7 @@
 class RingEngine {
     public:
         RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
+            ActBooleanizePass *bp, 
             const char *circuit_library,
             const char *exprfile = "expr.act");
     
@@ -41,10 +42,12 @@ class RingEngine {
 
         act_chp_lang_t *_c;
 
+        ActBooleanizePass *_bp; 
+
         virtual void _run_forge_helper ();
 
         // Info collection
-        void construct_var_infos (ActBooleanizePass *bp);
+        void construct_var_infos ();
         void print_var_infos (FILE *fp);
         int length_of_guard_set (act_chp_lang_t *c);
         bool is_elementary_action(act_chp_lang_t *c);
@@ -85,7 +88,6 @@ class RingEngine {
         unsigned int _expr_id;
         unsigned int _expr_block_id;
         unsigned int _mux_block_id;
-        unsigned int _branch_id;
 
         int _gen_block_id ();
         int _gen_itb_wrapper_id ();
@@ -95,4 +97,5 @@ class RingEngine {
         int _gen_expr_block_id ();
         int _gen_mux_block_id ();
 
+        unsigned int _branch_id;
 };

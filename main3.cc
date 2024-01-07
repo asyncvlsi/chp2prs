@@ -30,6 +30,9 @@
 #include "config_pkg.h"
 
 #include "src_ring_synth/reqs.h"
+#include "src_ring_synth/ring_else_gen.h"
+#include "src_ring_synth/ring_forge.h"
+
 #include "synth.h"
 
 
@@ -139,18 +142,14 @@ class RingSynth : public ActSynthesize {
     ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
     Assert (b, "hmm b");
 
-    // act_boolean_netlist_t *bnl = b->getBNL(p);
-    // Assert (bnl, "hmm BNL");
+    RingForge *rf = new RingForge (_pp->fp, p, c, b, "");
+
+    rf->run_forge();
+
     // fprintf (stdout, "\nbrr\n\n");
     fprintf (stdout, "\n\n\n");
-    // fprintf (stdout, "\n\n");
+    fprintf (stdout, "\n\n");
     // fprintf (stdout, "\n\n\n");
-
-    Hashtable *hvi = construct_var_info_hashtable (c, p, b);
-    // print_var_info_hashtable (stdout, hvi);
-
-
-    print_refine_body(_pp->fp, p, c, hvi);
     
     fprintf (_pp->fp, "/* end rsyn */\n");
     pp_forced (_pp, 0);
