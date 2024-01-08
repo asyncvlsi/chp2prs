@@ -801,6 +801,7 @@ class ChpGraph {
     std::vector<Block *> makeReversePostorder(FlowDirection dir);
 };
 
+
 struct GraphWithChanNames {
     ChpGraph graph;
     std::unordered_map<ChanId, std::string> name_from_chan;

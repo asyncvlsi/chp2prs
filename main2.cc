@@ -143,12 +143,13 @@ class SDTSynth : public ActSynthesize {
 	uninlineBitfieldExprsHack (g.graph);
 	
 	printf ("\n---------------\n");
-
 	auto d = chp_to_dataflow(g.graph);
 	for (auto &x : d) {
 	  x.Print (std::cout);
 	}
 	printf ("\n---------------\n");
+	act_dataflow *newd = dataflow_to_act (d, g, p->CurScope());
+	dflow_print (stdout, newd);
       }
     }
 

@@ -26,6 +26,8 @@
 #include "ir-to-dataflow.h"
 #include "chp-print.h"
 #include "algos.h"
+#include "act-names.h"
+#include "ir-expr-act-conversion.h"
 #include "utils.h"
 #include <functional>
 #include <iostream>
@@ -1229,6 +1231,189 @@ std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp)
   hassert (ret.datamap.empty() && ret.ctrlmap.empty());
 
   return d;
+}
+
+namespace {
+
+void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
+{
+  act_dataflow_element *e;
+  ActExprIntType t;
+  Assert (l, "What?");
+
+  auto varToId = [&] (const ChanId &v) { return map.chanMap (v); };
+  
+  switch (d.u.type()) {
+  case DataflowKind::Func:
+    for (int i=0; i < d.u_func().ids.size(); i++) {
+      NEW (e, act_dataflow_element);
+      e->t = ACT_DFLOW_FUNC;
+      e->u.func.nbufs = NULL;
+      e->u.func.init = NULL;
+      e->u.func.istransparent = 0;
+      e->u.func.rhs = map.chanMap (d.u_func().ids[i]);
+      if (map.isBool (d.u_func().ids[i])) {
+	t = ActExprIntType::Bool;
+      }
+      else {
+	t = ActExprIntType::Int;
+      }
+      e->u.func.lhs =
+	template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId);
+      list_append (l, e);
+    }
+    break;
+
+  case DataflowKind::Init:
+    NEW (e, act_dataflow_element);
+    e->t = ACT_DFLOW_FUNC;
+    e->u.func.nbufs = NULL;
+    e->u.func.rhs = map.chanMap (d.u_init().rhs);
+    NEW (e->u.func.lhs, Expr);
+    e->u.func.lhs->type = E_VAR;
+    e->u.func.lhs->u.e.l = (Expr *) map.chanMap (d.u_init().lhs);
+    e->u.func.lhs->u.e.r = NULL;
+    if (map.isBool (d.u_init().lhs)) {
+      e->u.func.init = const_expr_bool (d.u_init().v.getVal (0));
+    }
+    else {
+      e->u.func.init = const_expr (d.u_init().v.getVal (0));
+    }
+    list_append (l, e);
+    break;
+
+  case DataflowKind::Split:
+    NEW (e, act_dataflow_element);
+    e->t = ACT_DFLOW_SPLIT;
+    e->u.splitmerge.guard = map.chanMap (d.u_split().cond_id);
+    MALLOC (e->u.splitmerge.multi, ActId *, d.u_split().out_ids.size());
+    for (size_t i=0; i < d.u_split().out_ids.size(); i++) {
+      if (d.u_split().out_ids[i]) {
+	e->u.splitmerge.multi[i] = map.chanMap (*d.u_split().out_ids[i]);
+      }
+      else {
+	e->u.splitmerge.multi[i] = NULL;
+      }
+    }
+    e->u.splitmerge.single = map.chanMap (d.u_split().in_id);
+    e->u.splitmerge.nondetctrl = NULL;
+    list_append (l, e);
+    break;
+
+  case DataflowKind::MergeMix:
+    NEW (e, act_dataflow_element);
+    if (d.u_mergemix().cond_id) {
+      e->t = ACT_DFLOW_MERGE;
+      e->u.splitmerge.guard = map.chanMap (*d.u_mergemix().cond_id);
+    }
+    else {
+      e->t = ACT_DFLOW_MIXER;
+      e->u.splitmerge.guard = NULL;
+    }
+    MALLOC (e->u.splitmerge.multi, ActId *, d.u_mergemix().in_ids.size());
+    for (size_t i=0; i < d.u_mergemix().in_ids.size(); i++) {
+      e->u.splitmerge.multi[i] = map.chanMap (d.u_mergemix().in_ids[i]);
+    }
+    e->u.splitmerge.single = map.chanMap (d.u_mergemix().out_id);
+    e->u.splitmerge.nondetctrl = NULL;
+    list_append (l, e);
+    break;
+
+  case DataflowKind::Arbiter:
+    // no arbiters!
+    hassert (false);
+    break;
+
+  case DataflowKind::Sink:
+    NEW (e, act_dataflow_element);
+    e->t = ACT_DFLOW_SINK;
+    e->u.sink.chan = map.chanMap (d.u_sink().in_id);
+    break;
+
+  case DataflowKind::Instance:
+#if 0    
+    if (u_inst().type > 2) {
+	os << "inst_RR" << (u_inst().ctrl_out ? "" : "_noctrl")
+	   << "<" << u_inst().type - 2 << ">"
+	   << "(";
+	if (u_inst().ctrl_out) {
+	  os << "C" << (*u_inst().ctrl_out).m_id << ", ";
+	}
+	os << "C" << (*u_inst().sm_sel).m_id << ")";
+      }
+      else {
+	os << "inst_" << (u_inst().type == 0 ? "seq" :
+			  u_inst().type == 1 ? "sel" : "loop");
+	if (!(u_inst().ctrl_out)) {
+	  os << "_noctrl";
+	}
+	if (!(u_inst().sm_sel)) {
+	  os << "_nosel";
+	}
+	os << (u_inst().type == 2 ? "" :
+	       string_format("<%d>", u_inst().ctrl.size()))
+	   << "(";
+	if (u_inst().type == 2) {
+	  os << "C" << u_inst().ctrl[0].m_id << ", "
+	     << "C" << (*u_inst().guard).m_id << ", "
+	     << "C" << (*u_inst().ctrl_out).m_id << ")";
+	}
+	else {
+	  bool first = true;
+	  os << "{";
+	  for (auto ch : u_inst().ctrl) {
+	    if (!first) {
+	      os << ",";
+	    }
+	    os << "C" << ch.m_id;
+	    first = false;
+	  }
+	  os << "}";
+	  if (u_inst().ctrl_out) {
+	    os << ", C" << (*u_inst().ctrl_out).m_id;
+	  }
+	  if (u_inst().guard) {
+	    os << ", C" << (*u_inst().guard).m_id;
+	  }
+	  if (u_inst().sm_sel) {
+	    os << ", C" << (*u_inst().sm_sel).m_id;
+	  }
+	  os << ")";
+	}
+      }
+      os << std::endl;
+#endif      
+      break;
+  }
+}
+
+}
+
+act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
+			       GraphWithChanNames &gr,
+			       Scope *s) 
+{
+  var_to_actvar table(s, &gr.graph.id_pool());
+  act_dataflow *ret;
+
+  for (auto &[x, v] : gr.name_from_chan) {
+    table.name_from_chan[x] = new ActId (v.c_str());
+  }
+  for (auto &[x, v] : gr.name_from_var) {
+    table.name_from_var[x] = new ActId (v.c_str());
+  }
+
+  NEW (ret, act_dataflow);
+
+  ret->dflow = list_new ();
+  ret->isexpanded = 1;
+
+  for (auto &x : d) {
+    toAct (ret->dflow, x, table);
+  }
+  ret->order = NULL;
+
+  return ret;
 }
 
 } // namespace ChpOptimize

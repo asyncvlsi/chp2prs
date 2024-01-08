@@ -26,6 +26,7 @@
 
 #include "chp-graph.h"
 #include "algos.h"
+#include <act/lang.h>
 
 namespace ChpOptimize {
 
@@ -125,11 +126,11 @@ private:
 		  Sink, DataflowKind::Sink,
 		  Instance, DataflowKind::Instance>;
 
-  Variant_t u;
-
   explicit Dataflow (Variant_t u_) : u{std::move(u_)} {}
 
 public:
+  Variant_t u;
+
   [[nodiscard]] Func &u_func() { return u.u_v0(); }
   [[nodiscard]] Init &u_init() { return u.u_v1(); }
   [[nodiscard]] Split &u_split() { return u.u_v2(); }
@@ -342,5 +343,7 @@ public:
 // computation. No probes and no shared variables is one way to guarantee that.
 // We use an improved algorithm to handle multiple channel access.
 std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp);
+act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
+			       GraphWithChanNames &gr, Scope *s);
   
 } // namespace ChpOptimize
