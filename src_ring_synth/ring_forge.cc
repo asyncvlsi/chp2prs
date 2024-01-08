@@ -75,7 +75,7 @@ void RingForge::_run_forge_helper ()
     int has_branches = chp_has_branches(_c, 1);
     
     // TODO: fix one pipe synthesis
-    // int is_pipeable = check_if_pipeable(c, p, 1);
+    // int is_pipeable = check_if_pipeable(_c, _p, 1);
     // if (is_pipeable == 1)
 
     if (false)
@@ -1507,11 +1507,6 @@ float RingForge::_lookup_mux_delays (int mux_sz, int or_sz)
     }
     return -1;
 }
-
-
-
-/*
-*/
 
 
 
