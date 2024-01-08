@@ -131,7 +131,10 @@ class SDTSynth : public ActSynthesize {
 	putIntoStaticTokenForm (g.graph);
 	ChpOptimize::print_chp (std::cout, g.graph);
 	takeOutOfStaticTokenForm (g.graph);
-#endif	
+#endif
+	printf ("\n\n---- convert to ACT CHP ----\n");
+	act_chp_lang_t *l = chp_graph_to_act (g, p->CurScope());
+	chp_print (stdout, l);
 	printf ("\n\n------ STF ---------\n");
 	putIntoNewStaticTokenForm (g.graph);
 	ChpOptimize::print_chp (std::cout, g.graph);

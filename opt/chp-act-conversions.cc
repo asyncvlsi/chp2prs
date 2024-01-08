@@ -355,10 +355,261 @@ GraphWithChanNames chp_graph_from_act(act_chp_lang *lang, Scope *s) {
     return graph_with_names;
 }
 
+
+namespace {
+
+struct var_to_actvar {
+  IdPool *id;
+  std::unordered_map<ChanId, ActId *> name_from_chan;
+  std::unordered_map<VarId, ActId *> name_from_var;
+  Scope *sc;
+  int sc_chan, sc_var;
+
+  var_to_actvar(Scope *s, IdPool *id_) : sc{s}, sc_var{0}, id{id_} {}
+
+  bool isBool (const VarId &v) {
+    return id->getIsBool (v);
+  }
+  
+  bool isBool (const ChanId &ch) {
+    return id->getIsBool (ch);
+  }
+
+  ActId *chanMap (const ChanId &ch) {
+    const char *chan_prefix = "_ch";
+    static char buf[100];
+    if (name_from_chan.contains(ch)) {
+      return name_from_chan[ch]->Clone();
+    }
+    do {
+      snprintf (buf, 100, "%s%d", chan_prefix, sc_chan++);
+    } while (sc->Lookup (buf));
+
+    InstType *it;
+
+    if (isBool (ch)) {
+      it = TypeFactory::Factory()->NewBool (Type::NONE);
+    }
+    else {
+      it = TypeFactory::Factory()->NewInt (sc, Type::NONE, 0,
+					   const_expr (id->getBitwidth(ch)));
+    }
+    it = TypeFactory::Factory()->NewChan (sc, Type::NONE, it, NULL);
+    it = it->Expand (NULL, sc);
+    sc->Add (buf, it);
+    name_from_chan[ch] = new ActId (buf);
+    
+    return name_from_chan[ch];
+  }
+
+  ActId *varMap (const VarId &v) {
+    const char *var_prefix = "_va";
+    static char buf[100];
+    if (name_from_var.contains(v)) {
+      return name_from_var[v]->Clone();
+    }
+    do {
+      snprintf (buf, 100, "%s%d", var_prefix, sc_var++);
+    } while (sc->Lookup (buf));
+
+    InstType *it;
+    if (isBool (v)) {
+      it = TypeFactory::Factory()->NewBool (Type::NONE);
+    }
+    else {
+      it = TypeFactory::Factory()->NewInt (sc, Type::NONE, 0,
+					   const_expr (id->getBitwidth(v)));
+    }
+    it = it->Expand (NULL, sc);
+    sc->Add (buf, it);
+    name_from_var[v] = new ActId (buf);
+    
+    return name_from_var[v];
+  }
+  
+};
+
+act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
+{
+  act_chp_lang_t *ret;
+
+  NEW (ret, act_chp_lang_t);
+  ret->type = ACT_CHP_SEMI;
+  ret->u.semi_comma.cmd = list_new ();
+  ret->label = NULL;
+  ret->space = NULL;
+
+  auto varToId = [&] (const VarId &v) { return map.varMap (v); };
+  
+  Block *curr = seq.startseq->child();
+  while (curr->type() != BlockType::EndSequence) {
+    act_chp_lang_t *item;
+    int idx;
+    ActExprIntType t;
+    act_chp_gc_t *gc;
+    
+    switch (curr->type()) {
+    case BlockType::Basic:
+      switch (curr->u_basic().stmt.type()) {
+      case StatementType::Assign:
+	idx = 0;
+	for (auto &id : curr->u_basic().stmt.u_assign().ids) {
+	  NEW (item, act_chp_lang_t);
+	  item->label = NULL;
+	  item->space = NULL;
+	  item->type = ACT_CHP_ASSIGN;
+	  item->u.assign.id = map.varMap (id);
+	  if (map.isBool (id)) {
+	    t = ActExprIntType::Bool;
+	  }
+	  else {
+	    t = ActExprIntType::Int;
+	  }
+	  item->u.assign.e =
+	    template_func_new_expr_from_irexpr
+	    (*curr->u_basic().stmt.u_assign().e.roots[idx], t, varToId);
+	  list_append (ret->u.semi_comma.cmd, item);
+	  idx++;
+	}
+	break;
+
+      case StatementType::Send:
+	NEW (item, act_chp_lang_t);
+	item->label = NULL;
+	item->space = NULL;
+	item->type = ACT_CHP_SEND;
+	item->u.comm.chan = map.chanMap (curr->u_basic().stmt.u_send().chan);
+	if (map.isBool (curr->u_basic().stmt.u_send().chan)) {
+	  t = ActExprIntType::Bool;
+	}
+	else {
+	  t = ActExprIntType::Int;
+	}
+	item->u.comm.flavor = 0;
+	item->u.comm.convert = 0;
+	item->u.comm.e =
+	  template_func_new_expr_from_irexpr
+	  (*curr->u_basic().stmt.u_send().e.m_dag.roots[0], t, varToId);
+	list_append (ret->u.semi_comma.cmd, item);
+	item->u.comm.var = NULL;
+	break;
+
+      case StatementType::Receive:
+	NEW (item, act_chp_lang_t);
+	item->label = NULL;
+	item->space = NULL;
+	item->type = ACT_CHP_RECV;
+	item->u.comm.chan = map.chanMap (curr->u_basic().stmt.u_receive().chan);
+	item->u.comm.flavor = 0;
+	item->u.comm.convert = 0;
+	item->u.comm.e = NULL;
+	if (curr->u_basic().stmt.u_receive().var) {
+	  item->u.comm.var = map.varMap (*curr->u_basic().stmt.u_receive().var);
+	}
+	else {
+	  item->u.comm.var = NULL;
+	}
+	list_append (ret->u.semi_comma.cmd, item);
+	break;
+      }
+      break;
+      
+    case BlockType::Par:
+      NEW (item, act_chp_lang_t);
+      item->label = NULL;
+      item->space = NULL;
+      item->type = ACT_CHP_COMMA;
+      item->u.semi_comma.cmd = list_new ();
+      list_append (ret->u.semi_comma.cmd, item);
+      for (auto &x : curr->u_par().branches) {
+	list_append (item->u.semi_comma.cmd, seq_to_act (x, map));
+      }
+      break;
+	  
+    case BlockType::Select:
+      hassert(curr->u_select().splits.empty());
+      hassert(curr->u_select().merges.empty());
+      NEW (item, act_chp_lang_t);
+      item->label = NULL;
+      item->space = NULL;
+      item->type = ACT_CHP_SELECT;
+      item->u.gc = NULL;
+      gc = NULL;
+      list_append (ret->u.semi_comma.cmd, item);
+      for (auto &branch : curr->u_select().branches) {
+	if (gc) {
+	  NEW (gc->next, act_chp_gc_t);
+	  gc = gc->next;
+	}
+	else {
+	  NEW (gc, act_chp_gc_t);
+	  item->u.gc = gc;
+	}
+	gc->id = NULL;
+	gc->lo = NULL;
+	gc->hi = NULL;
+	gc->next = NULL;
+	switch (branch.g.type()) {
+	case IRGuardType::Expression:
+	  gc->g =
+	    template_func_new_expr_from_irexpr (*branch.g.u_e().e.m_dag.roots[0],
+						ActExprIntType::Bool,
+						varToId);
+	  break;
+
+	case IRGuardType::Else:
+	  gc->g = NULL;
+	  break;
+	}
+	gc->s = seq_to_act (branch.seq, map);
+      }
+      break;
+      
+    case BlockType::DoLoop:
+      hassert(curr->u_doloop().in_phis.empty());
+      hassert(curr->u_doloop().out_phis.empty());
+      hassert(curr->u_doloop().loop_phis.empty());
+      NEW (item, act_chp_lang_t);
+      item->type = ACT_CHP_DOLOOP;
+      item->label = NULL;
+      item->space = NULL;
+      NEW (item->u.gc, act_chp_gc_t);
+      item->u.gc->next = NULL;
+      item->u.gc->id = NULL;
+      item->u.gc->lo = NULL;
+      item->u.gc->hi = NULL;
+      item->u.gc->g = 
+	template_func_new_expr_from_irexpr (*curr->u_doloop().guard.m_dag.roots[0],
+					    ActExprIntType::Bool,
+					    varToId);
+      item->u.gc->s = seq_to_act (curr->u_doloop().branch, map);
+      list_append (ret->u.semi_comma.cmd, item);
+      break;
+
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    curr = curr->child();
+  }
+  return ret;
+}
+
+
+}
+
 act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr, Scope *s) {
-  // ok, what the hell do we do now?
-  fatal_error ("Hello!");
-  return NULL;
+  var_to_actvar table(s, &gr.graph.id_pool());
+
+  for (auto &[x, v] : gr.name_from_chan) {
+    table.name_from_chan[x] = new ActId (v.c_str());
+  }
+  for (auto &[x, v] : gr.name_from_var) {
+    table.name_from_var[x] = new ActId (v.c_str());
+  }
+  
+  return seq_to_act (gr.graph.m_seq, table);
 }
 
 } // namespace ChpOptimize
