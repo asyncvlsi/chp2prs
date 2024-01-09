@@ -71,10 +71,10 @@ $(BINARY): $(LIB) $(OBJS1) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS)
 
 synth2.$(EXT): $(LIB) $(OBJS2) $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main2.o -o synth2.$(EXT) $(CHPOPT) $(TARGETLIBS) $(SHLIBACTPASS) $(ACT_HOME)/lib/libactchpopt.so
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main2.o -o synth2.$(EXT) $(CHPOPT) $(SHLIBACTPASS) -lactchpopt -lactchp2prspass
 
 synth3.$(EXT): $(LIB) $(OBJS3) $(ACTDEPEND)
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main3.o -o synth3.$(EXT) $(CHPOPT) $(TARGETLIBS) $(SHLIBACTPASS) $(EXPRLIB)
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main3.o -o synth3.$(EXT) $(CHPOPT) -lactchp2prspass $(SHLIBACTPASS) $(EXPRLIB)
 
 $(TARGETLIBS): $(SHOBJS)
 	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB)
