@@ -97,6 +97,11 @@ class ActSynthesize {
    */
   virtual bool overrideTypes() { return true; }
 
+  /*
+   * Use this to selectively omit overrides
+   */
+  virtual bool skipOverride (ValueIdx *vx) { return false; }
+
   /**
    * Print the name of the type that implements an n-bit integer to
    * the provided buffer.
@@ -140,6 +145,18 @@ class ActSynthesize {
    * @param p is the expanded process to be synthesized.
    */
   virtual void runSynth (ActPass *ap, Process *p) { }
+
+  /**
+   * Run anything ou'd like before the heart of logic synthesis. This
+   * should delete variables from the scope if needed so that they are
+   * omitted from the override header.
+   *
+   * @param ap is the ActPass pointer, which will always be a dynamic
+   * pass. This can be used to extract run-time parameters that
+   * influence logic synthesis.
+   * @param p is the expanded process to be synthesized.
+   */
+  virtual void runPreSynth (ActPass *ap, Process *p) { }
   
 protected:
   FILE *_out;			///< output stream

@@ -97,6 +97,28 @@ class SDTSynth : public ActSynthesize {
     snprintf (buf, sz, "syn::sdtboolchan");
   }
 
+  bool chpopt_option;
+
+  void runPreSynth (ActPass *ap, Process *p) {
+    ActDynamicPass *dp = dynamic_cast <ActDynamicPass *> (ap);
+    Assert (dp, "What?");
+    chpopt_option = dp->getIntParam ("chp_optimize");
+  }
+
+
+  bool skipOverride (ValueIdx *vx) {
+    if (!chpopt_option) {
+      return false;
+    }
+    
+    if (TypeFactory::isIntType (vx->t) ||
+	TypeFactory::isBoolType (vx->t) ||
+	TypeFactory::isStructure (vx->t)) {
+      return true;
+    }
+    return false;
+  }
+
   void runSynth (ActPass *ap, Process *p) {
     pp_printf (_pp, "/* synthesis output */");
     pp_forced (_pp, 0);
@@ -183,9 +205,7 @@ class DFSynth : public ActSynthesize {
     : ActSynthesize (prefix, infile, outfile, exprfile) { }
   
   void emitTopImports(ActPass *ap) {
-    pp_printf_raw (_pp, "import dflow::multi;\n\n");
-    fclose (_expr);
-    _expr = NULL;
+    //pp_printf_raw (_pp, "import dflow::multi;\n\n");
   }
 
   void emitFinal () { }

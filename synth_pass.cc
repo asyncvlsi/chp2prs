@@ -189,6 +189,10 @@ static int emit_refinement_header (ActSynthesize *syn,
 	continue;
       }
     }
+
+    if (syn->skipOverride (vx)) {
+      continue;
+    }
     
     /* chan variable found */
     if (TypeFactory::isChanType (vx->t)) {
@@ -379,7 +383,7 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
 	}
       }
     
-
+      syn->runPreSynth (ap, p);
       int v = emit_refinement_header (syn, p);
       syn->runSynth (ap, p);
       
