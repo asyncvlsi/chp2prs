@@ -959,9 +959,21 @@ void removeElseOnlySelect_helper(Sequence &seq) {
             for (SelectBranch &branch : c->u_select().branches)
                 removeElseOnlySelect_helper(branch.seq);
             if (c->u_select().branches.size() == 1 &&
-                c->u_select().branches.front().g.type() == IRGuardType::Else)
+                c->u_select().branches.front().g.type() == IRGuardType::Else) {
+	      if (c->u_select().splits.size() == 0 &&
+		  c->u_select().merges.size() == 0) {
+		Block *d = c->child();
+		ChpGraph::spliceInSequenceBetween (c->parent(), c,
+						   c->u_select().branches.front().seq);
+		// new parent 
+		ChpGraph::spliceOutBasicBlock (c, MarkDead::yes);
+		c = d->parent();
+	      }
+	      else {
                 c->u_select().branches.front().g = IRGuard::makeExpression(
                     ChpExprSingleRootDag::makeConstant(BigInt{1}, 1));
+	      }
+	    }
             break;
         case BlockType::DoLoop:
             removeElseOnlySelect_helper(c->u_doloop().branch);

@@ -172,14 +172,6 @@ public:
     return Dataflow{Variant_t{Sink{ch}}};
   }
 
-  static Dataflow mkInstSeq (std::vector<ChanId> cin,
-			     OptionalChanId cout,
-			     ChanId sel)
-  {
-    return Dataflow{Variant_t(Instance{0, cin, cout,
-				       OptionalChanId::null_id(),
-				       sel})};
-  }
 
   static std::list<Dataflow> mkInstSeqRR (int N,
 					  OptionalChanId cout,
@@ -214,12 +206,19 @@ public:
 	 DExprDag::Node::makeQuery (
 	   dg.newNode (
 	     DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
-					   dg.newNode (DExprDag::Node::makeVariableAccess (sel, bw)),
-					   dg.newNode (DExprDag::Node::makeConstant (BigInt(N-1), bw)))),
+		dg.newNode (DExprDag::Node::makeVariableAccess (sel, bw)),
+		dg.newNode (DExprDag::Node::makeConstant (BigInt(N-1), bw)))
+		       ),
 	   dg.newNode (DExprDag::Node::makeConstant (BigInt(0), bw)),
-	   dg.newNode (DExprDag::Node::makeResize (
-	   dg.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::Plus, dg.newNode (DExprDag::Node::makeVariableAccess (sel,bw)),
-	  			                     dg.newNode (DExprDag::Node::makeConstant (BigInt(1), bw)))), bw))));
+	   dg.newNode (
+	     DExprDag::Node::makeResize (
+	       dg.newNode (
+	         DExprDag::Node::makeBinaryOp (IRBinaryOpType::Plus,
+                   dg.newNode (DExprDag::Node::makeVariableAccess (sel,bw)),
+                   dg.newNode (DExprDag::Node::makeConstant (BigInt(1), bw)))
+			   ),
+	       bw)))
+	    );
       dg.roots.push_back (n);
       
       std::vector<ChanId> ids;
@@ -234,8 +233,8 @@ public:
 	 DExprDag::Node::makeQuery (
 	   dg.newNode (
 	     DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
-					   dg.newNode (DExprDag::Node::makeVariableAccess (sel, bw)),
-					   dg.newNode (DExprDag::Node::makeConstant (BigInt(N-1), bw)))),
+	       dg.newNode (DExprDag::Node::makeVariableAccess (sel, bw)),
+   	       dg.newNode (DExprDag::Node::makeConstant (BigInt(N-1), bw)))),
 	   dg.newNode (DExprDag::Node::makeConstant (BigInt(2), 2)),
 	   dg.newNode (DExprDag::Node::makeConstant (BigInt(2), 0))));
       dg.roots.push_back (n);
@@ -246,6 +245,15 @@ public:
     }
     
     return ret;
+  }
+
+  static Dataflow mkInstSeq (std::vector<ChanId> cin,
+			     OptionalChanId cout,
+			     ChanId sel)
+  {
+    return Dataflow{Variant_t(Instance{0, cin, cout,
+				       OptionalChanId::null_id(),
+				       sel})};
   }
 
   static Dataflow mkInstSel (std::vector<ChanId> cin,

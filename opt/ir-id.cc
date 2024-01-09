@@ -110,20 +110,14 @@ const char *NameParsingIdPool::getName(const ChanId &id) {
     return m_chanid_to_actid.at(id)->getName();
 }
 
-[[nodiscard]] std::unordered_map<ChanId, std::string>
+[[nodiscard]] std::unordered_map<ChanId, ActId *>
 NameParsingIdPool::name_from_chan_map() const {
-    std::unordered_map<ChanId, std::string> mp;
-    for (const auto &[id, act_id] : m_chanid_to_actid)
-        mp[id] = act_id->getName();
-    return mp;
+  return m_chanid_to_actid;
 }
 
-[[nodiscard]] std::unordered_map<VarId, std::string>
+[[nodiscard]] std::unordered_map<VarId, ActId *>
 NameParsingIdPool::name_from_var_map() const {
-    std::unordered_map<VarId, std::string> mp;
-    for (const auto &[id, act_id] : m_varid_to_actid)
-        mp[id] = act_id->getName();
-    return mp;
+  return m_varid_to_actid;
 }
 
 /*

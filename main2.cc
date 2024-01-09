@@ -137,30 +137,34 @@ class SDTSynth : public ActSynthesize {
     bundled = dp->getIntParam ("bundled_dpath");
     use_yosys = dp->getIntParam ("use_yosys");
 
-    if (chpopt) {
-      // convert this to chpgraph format
-      // run optimizations
-      // convert back to ACT data structures
-      if (p->getlang() && p->getlang()->getchp()) {
-	auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
-						  p->CurScope ());
+    // convert this to chpgraph format
+    // run optimizations
+    // convert back to ACT data structures
+    if (p->getlang() && p->getlang()->getchp()) {
+      auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
+						p->CurScope ());
+      if (chpopt) {
        	ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
-	uninlineBitfieldExprsHack (g.graph);
+      }
+      else {
+	ChpOptimize::optimize_chp_O0 (g.graph, p->getName(), false);
+	ChpOptimize::eliminateDeadCode (g.graph);
+      }
+      uninlineBitfieldExprsHack (g.graph);
 	
-	std::vector<ActId *> newnames;
-	act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
-	p->getlang()->getchp()->c = l;
-	for (auto id : newnames) {
-	  InstType *it = p->CurScope()->Lookup (id->getName());
-	  if (TypeFactory::isBoolType (it)) {
-	    pp_printf (_pp, "syn::sdtboolvar %s;", id->getName());
-	    pp_forced (_pp, 0);
-	  }
-	  else {
-	    pp_printf (_pp, "syn::sdtvar<%d> %s;",
-		       TypeFactory::bitWidth (it), id->getName());
-	    pp_forced (_pp, 0);
-	  }
+      std::vector<ActId *> newnames;
+      act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
+      p->getlang()->getchp()->c = l;
+      for (auto id : newnames) {
+	InstType *it = p->CurScope()->Lookup (id->getName());
+	if (TypeFactory::isBoolType (it)) {
+	  pp_printf (_pp, "syn::sdtboolvar %s;", id->getName());
+	  pp_forced (_pp, 0);
+	}
+	else {
+	  pp_printf (_pp, "syn::sdtvar<%d> %s;",
+		     TypeFactory::bitWidth (it), id->getName());
+	  pp_forced (_pp, 0);
 	}
       }
     }
@@ -235,8 +239,12 @@ class DFSynth : public ActSynthesize {
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
+
       if (chpopt) {
        	ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
+      }
+      else {
+       	ChpOptimize::optimize_chp_O0 (g.graph, p->getName(), false);
       }
       
       putIntoNewStaticTokenForm (g.graph);

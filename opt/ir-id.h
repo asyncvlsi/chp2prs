@@ -320,9 +320,9 @@ class NameParsingIdPool {
         return m_id_pool.makeUniqueVar(bitwidth, is_bool);
     }
 
-    [[nodiscard]] std::unordered_map<ChanId, std::string>
+    [[nodiscard]] std::unordered_map<ChanId, ActId *>
     name_from_chan_map() const;
-    [[nodiscard]] std::unordered_map<VarId, std::string>
+    [[nodiscard]] std::unordered_map<VarId, ActId *>
     name_from_var_map() const;
 };
 

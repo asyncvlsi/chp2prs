@@ -352,7 +352,6 @@ GraphWithChanNames chp_graph_from_act(act_chp_lang *lang, Scope *s) {
     graph_with_names.graph.validateGraphInvariants();
 
     graph_with_names.name_from_chan = id_pool.name_from_chan_map();
-    graph_with_names.name_from_var = id_pool.name_from_var_map();
     return graph_with_names;
 }
 
@@ -536,11 +535,13 @@ act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr,
   var_to_actvar table(s, &gr.graph.id_pool());
 
   for (auto &[x, v] : gr.name_from_chan) {
-    table.name_from_chan[x] = new ActId (v.c_str());
+    table.name_from_chan[x] = v;
   }
+#if 0  
   for (auto &[x, v] : gr.name_from_var) {
-    table.name_from_var[x] = new ActId (v.c_str());
+    table.name_from_var[x] = v.
   }
+#endif  
 
   act_chp_lang *l = seq_to_act (gr.graph.m_seq, table);
 

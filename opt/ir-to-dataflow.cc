@@ -1644,11 +1644,13 @@ act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
   act_dataflow *ret;
 
   for (auto &[x, v] : gr.name_from_chan) {
-    table.name_from_chan[x] = new ActId (v.c_str());
+    table.name_from_chan[x] = v;
   }
+#if 0  
   for (auto &[x, v] : gr.name_from_var) {
-    table.name_from_var[x] = new ActId (v.c_str());
+    table.name_from_var[x] = v;
   }
+#endif  
 
   NEW (ret, act_dataflow);
 
