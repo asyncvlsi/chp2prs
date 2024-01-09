@@ -344,6 +344,8 @@ public:
 // We use an improved algorithm to handle multiple channel access.
 std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp);
 act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
-			       GraphWithChanNames &gr, Scope *s);
+			       GraphWithChanNames &gr,
+			       std::vector<ActId *> &newnames,
+			       Scope *s);
   
 } // namespace ChpOptimize

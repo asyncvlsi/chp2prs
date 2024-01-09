@@ -530,7 +530,9 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 
 }
 
-act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr, Scope *s) {
+act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr,
+			       std::vector<ActId *> &newnames,
+			       Scope *s) {
   var_to_actvar table(s, &gr.graph.id_pool());
 
   for (auto &[x, v] : gr.name_from_chan) {
@@ -539,8 +541,12 @@ act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr, Scope *s) {
   for (auto &[x, v] : gr.name_from_var) {
     table.name_from_var[x] = new ActId (v.c_str());
   }
+
+  act_chp_lang *l = seq_to_act (gr.graph.m_seq, table);
+
+  newnames = std::move (table.newvars);
   
-  return seq_to_act (gr.graph.m_seq, table);
+  return l;
 }
 
 } // namespace ChpOptimize

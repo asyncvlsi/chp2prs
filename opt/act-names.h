@@ -37,6 +37,8 @@ struct var_to_actvar {
   Scope *sc;
   int sc_chan, sc_var;
 
+  std::vector<ActId *> newvars;
+
   var_to_actvar(Scope *s, IdPool *id_)
     : sc{s}, sc_var{0}, id{id_}, sc_chan{0} 
   {}
@@ -72,6 +74,8 @@ struct var_to_actvar {
     it = it->Expand (NULL, sc);
     sc->Add (buf, it);
     name_from_chan[ch] = new ActId (buf);
+
+    newvars.push_back (name_from_chan[ch]);
     
     return name_from_chan[ch];
   }
@@ -97,6 +101,8 @@ struct var_to_actvar {
     it = it->Expand (NULL, sc);
     sc->Add (buf, it);
     name_from_var[v] = new ActId (buf);
+
+    newvars.push_back (name_from_var[v]);
     
     return name_from_var[v];
   }

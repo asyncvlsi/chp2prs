@@ -54,8 +54,12 @@ class SDTSynth : public ActSynthesize {
   SDTSynth (const char *prefix,
 	    char *infile,
 	    char *outfile,
-	    char *exprfile = NULL)
-    : ActSynthesize (prefix, infile, outfile, exprfile) { }
+	    char *exprfile)
+    : ActSynthesize (prefix, infile, outfile, exprfile) {
+    if (!exprfile) {
+      fatal_error ("SDT synthesis: requires an expression file!");
+    }
+  }
   
   void emitTopImports(ActPass *ap) {
     ActDynamicPass *dp = dynamic_cast <ActDynamicPass *> (ap);
@@ -97,9 +101,6 @@ class SDTSynth : public ActSynthesize {
     pp_printf (_pp, "/* synthesis output */");
     pp_forced (_pp, 0);
 
-    pp_flush (_pp);
-    fprintf (_pp->fp, "/* start sdt */\n");
-    fflush (_pp->fp);
 
     int chpopt, externopt, bundled;
     BasicSDT *sdt;
@@ -114,8 +115,7 @@ class SDTSynth : public ActSynthesize {
     bundled = dp->getIntParam ("bundled_dpath");
     use_yosys = dp->getIntParam ("use_yosys");
 
-    if (chpopt)
-    {
+    if (chpopt) {
       // convert this to chpgraph format
       // run optimizations
       // convert back to ACT data structures
@@ -123,35 +123,28 @@ class SDTSynth : public ActSynthesize {
 	auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						  p->CurScope ());
        	ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
-	printf ("\n---- s t a r t --------\n");
-	//eliminateCopies (g.graph);
-	ChpOptimize::print_chp (std::cout, g.graph);
-#if 0
-	printf ("\n\n------- H-STF --------\n");
-	putIntoStaticTokenForm (g.graph);
-	ChpOptimize::print_chp (std::cout, g.graph);
-	takeOutOfStaticTokenForm (g.graph);
-#endif
-	printf ("\n\n---- convert to ACT CHP ----\n");
-	act_chp_lang_t *l = chp_graph_to_act (g, p->CurScope());
-	chp_print (stdout, l);
-	printf ("\n\n------ STF ---------\n");
-	putIntoNewStaticTokenForm (g.graph);
-	ChpOptimize::print_chp (std::cout, g.graph);
-
-	// part of converting to normal CHP and dataflow
 	uninlineBitfieldExprsHack (g.graph);
 	
-	printf ("\n---------------\n");
-	auto d = chp_to_dataflow(g.graph);
-	for (auto &x : d) {
-	  x.Print (std::cout);
+	std::vector<ActId *> newnames;
+	act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
+	p->getlang()->getchp()->c = l;
+	for (auto id : newnames) {
+	  InstType *it = p->CurScope()->Lookup (id->getName());
+	  if (TypeFactory::isBoolType (it)) {
+	    pp_printf (_pp, "syn::sdtboolvar %s;", id->getName());
+	    pp_forced (_pp, 0);
+	  }
+	  else {
+	    pp_printf (_pp, "syn::sdtvar<%d> %s;",
+		       TypeFactory::bitWidth (it), id->getName());
+	    pp_forced (_pp, 0);
+	  }
 	}
-	printf ("\n---------------\n");
-	act_dataflow *newd = dataflow_to_act (d, g, p->CurScope());
-	dflow_print (stdout, newd);
       }
     }
+    pp_flush (_pp);
+    fprintf (_pp->fp, "/* start sdt */\n");
+    fflush (_pp->fp);
 
     if (externopt) {
 #if defined(FOUND_expropt) && defined (FOUND_abc)
@@ -181,6 +174,74 @@ class SDTSynth : public ActSynthesize {
   }
 };
 
+class DFSynth : public ActSynthesize {
+ public:
+  DFSynth (const char *prefix,
+	   char *infile,
+	   char *outfile,
+	   char *exprfile)
+    : ActSynthesize (prefix, infile, outfile, exprfile) { }
+  
+  void emitTopImports(ActPass *ap) {
+    pp_printf_raw (_pp, "import dflow::multi;\n\n");
+    fclose (_expr);
+    _expr = NULL;
+  }
+
+  void emitFinal () { }
+    
+
+  bool overrideTypes() { return false; }
+  void processStruct(Data *d) {
+    pp_printf_raw (_pp, "/* process %s */\n", d->getName());
+  }
+
+  void runSynth (ActPass *ap, Process *p) {
+    pp_printf (_pp, "/* synthesis output */");
+    pp_forced (_pp, 0);
+
+    pp_flush (_pp);
+    fprintf (_pp->fp, "/* start dflow */\n");
+    fflush (_pp->fp);
+
+    int chpopt;
+    ActDynamicPass *dp;
+
+    dp = dynamic_cast <ActDynamicPass *> (ap);
+    Assert (dp, "What?");
+
+    chpopt = dp->getIntParam ("chp_optimize");
+
+    if (p->getlang() && p->getlang()->getchp()) {
+      auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
+						p->CurScope ());
+      if (chpopt) {
+       	ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
+      }
+      
+      putIntoNewStaticTokenForm (g.graph);
+      uninlineBitfieldExprsHack (g.graph);
+      auto d = chp_to_dataflow(g.graph);
+      std::vector<ActId *> res;
+      act_dataflow *newd = dataflow_to_act (d, g, res, p->CurScope());
+
+      for (auto id : res) {
+	InstType *it = p->CurScope()->Lookup (id->getName());
+	Assert (it, "What?");
+	it->Print (_pp->fp);
+	fprintf (_pp->fp, " %s;\n", id->getName());
+      }
+      dflow_print (_pp->fp, newd);
+    }
+    else {
+      pp_printf_raw (_pp, "bool ___dummy;\n");
+    }
+    fprintf (_pp->fp, "/* end dflow */\n");
+    pp_forced (_pp, 0);
+  }
+};
+
+
 ActSynthesize *_gen_engine (const char *prefix,
 			    char *infile,
 			    char *outfile,
@@ -190,15 +251,30 @@ ActSynthesize *_gen_engine (const char *prefix,
   return new SDTSynth (prefix, infile, outfile, exprfile);
 }
 
-static void usage(char *name)
+ActSynthesize *_gen_engine_dflow (const char *prefix,
+				  char *infile,
+				  char *outfile,
+				  char *exprfile)
+
 {
-  fprintf(stderr, "Usage BasicSDT: %s [-Ob] [-e <exprfile>] <actfile> <process> <out>\n", name);
-  fprintf(stderr, "Usage ExrpOptSDT: %s [-Ob] -o [<abc,yosys,genus>] [-e <exprfile>] <actfile> <process> <out>\n", name);
-  exit(1);
+  return new DFSynth (prefix, infile, outfile, NULL);
 }
 
 
-
+static void usage(char *name)
+{
+  fprintf (stderr, "Usage: %s [-Obdh] [-e <file>] [-o <file>] [-E abc|yosys|genus] -p <proc> <actfile>\n", name);
+  fprintf (stderr, "Options:\n");
+  fprintf (stderr, " -d : generate dataflow output\n");
+  fprintf (stderr, " -O : optimize CHP\n");
+  fprintf (stderr, " -b : bundled-data datapath\n");
+  fprintf (stderr, " -h : display this usage message\n");
+  fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
+  fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
+  fprintf (stderr, "-E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
+  fprintf (stderr, "\n");
+  exit(1);
+}
 
 int main(int argc, char **argv)
 {
@@ -209,38 +285,81 @@ int main(int argc, char **argv)
   char *exprfile = NULL;
   char *syntesistool = NULL;
   int external_opt = 0;
+  bool dflow = false;
 
   /* initialize ACT library */
   Act::Init(&argc, &argv);
 
+  char *outfile = NULL;
+  char *procname = NULL;
+
   int ch;
-  while ((ch = getopt (argc, argv, "Obe:o:")) != -1) {
+  while ((ch = getopt (argc, argv, "hdObe:E:o:p:")) != -1) {
     switch (ch) {
+    case 'h':
+      usage (argv[0]);
+      break;
+
+    case 'p':
+      if (procname) {
+	FREE (procname);
+      }
+      procname = Strdup (optarg);
+      break;
+      
+    case 'd':
+      dflow = true;
+      break;
+      
+    case 'o':
+      if (outfile) {
+	FREE (outfile);
+      }
+      outfile = Strdup (optarg);
+      break;
+
     case 'O':
       chpopt = true;
       break;
+      
     case 'b':
       bundled = true;
       break;
+      
     case 'e':
       if (exprfile) {
         FREE (exprfile);
       }
       exprfile = Strdup (optarg);
       break;
-    case 'o':
+      
+    case 'E':
       external_opt = 1;
       syntesistool = Strdup (optarg);
       break;
+      
     default:
       usage (argv[0]);
       break;
     }
   }
 
-  if ( optind != argc - 3 ) {
+  if (optind != argc - 1) {
     usage (argv[0]);
   }
+
+  if (!procname) {
+    fprintf (stderr, "Missing process name: use -p to specify it.\n");
+    usage (argv[0]);
+  }
+
+  if (dflow) {
+    if (external_opt || exprfile || bundled) {
+      fprintf (stderr, "Cannot specify dataflow generation + expression optimizations\n");
+      usage (argv[0]);
+    }
+  }
+  
       
   /* read in the ACT file */
   a = new Act(argv[optind]);
@@ -249,16 +368,14 @@ int main(int argc, char **argv)
   a->Expand();
 
   /* find the process specified on the command line */
-  Process *p = a->findProcess(argv[optind+1], true);
+  Process *p = a->findProcess(procname, true);
 
-  if (!p)
-  {
-    fatal_error("Could not find process `%s' in file `%s'", argv[optind+1], argv[optind]);
+  if (!p) {
+    fatal_error("Could not find process `%s' in file `%s'", procname,
+		argv[optind]);
   }
 
-  if (!p->isExpanded())
-  {
-    //fatal_error("Process `%s' is not expanded.", argv[optind+1]);
+  if (!p->isExpanded()) {
     p = p->Expand (ActNamespace::Global(), p->CurScope(), 0, NULL);
   }
   Assert (p, "What?");
@@ -269,20 +386,28 @@ int main(int argc, char **argv)
     fatal_error ("Could not load dynamic pass!");
   }
 
-  if (!exprfile) {
+  if (!exprfile && !dflow) {
     exprfile = Strdup ("expr.act");
   }
 
-  c2p->setParam ("prefix", (void *)Strdup ("sdt"));
-  c2p->setParam ("expr", (void *) exprfile);
-  c2p->setParam ("out", (void *) argv[optind+2]);
-  c2p->setParam ("in", (void *) argv[optind]);
-  c2p->setParam ("engine", (void *) _gen_engine);
+  if (dflow) {
+    c2p->setParam ("engine", (void *) _gen_engine_dflow);
+    c2p->setParam ("prefix", (void *)Strdup ("df"));
+  }
+  else {
+    c2p->setParam ("prefix", (void *)Strdup ("sdt"));
+    c2p->setParam ("engine", (void *) _gen_engine);
 
-  /* specific parameters for SDT */
+    /* sdt only */
+    c2p->setParam ("expr", (void *) exprfile);
+    c2p->setParam ("externopt", external_opt);
+    c2p->setParam ("bundled_dpath", bundled);
+  }
+  c2p->setParam ("in", (void *) argv[optind]);
+  c2p->setParam ("out", (void *) outfile);
+
   c2p->setParam ("chp_optimize", chpopt);
-  c2p->setParam ("externopt", external_opt);
-  c2p->setParam ("bundled_dpath", bundled);
+  
   if (external_opt) {
     int param = 0;
     if (strcmp (syntesistool, "genus") == 0) {

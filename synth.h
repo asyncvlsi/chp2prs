@@ -92,6 +92,12 @@ class ActSynthesize {
   void finalSynthesis (Process *p);
 
   /**
+   * Should we override types? If so, the four functions typeInt(),
+   * typeBool(), typeIntChan(), and typeBoolChan() must be defined.
+   */
+  virtual bool overrideTypes() { return true; }
+
+  /**
    * Print the name of the type that implements an n-bit integer to
    * the provided buffer.
    */
@@ -100,6 +106,14 @@ class ActSynthesize {
   virtual void typeIntChan (char *buf, int sz, int bitwidth) { buf[0] = '\0'; }
   virtual void typeBoolChan (char *buf, int sz) { buf[0] = '\0'; }
 
+  /**
+   * If you need to do something special for structures, implement it
+   * here.
+   * @param d will be a structure
+   */
+  virtual void processStruct (Data *d) { }
+
+  
   const char *getLibNamespace () { return "syn"; }
 
   /**

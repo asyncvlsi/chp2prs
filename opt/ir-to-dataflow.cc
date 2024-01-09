@@ -1295,6 +1295,7 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
 	e->u.splitmerge.multi[i] = NULL;
       }
     }
+    e->u.splitmerge.nmulti = d.u_split().out_ids.size();
     e->u.splitmerge.single = map.chanMap (d.u_split().in_id);
     e->u.splitmerge.nondetctrl = NULL;
     list_append (l, e);
@@ -1314,6 +1315,7 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
     for (size_t i=0; i < d.u_mergemix().in_ids.size(); i++) {
       e->u.splitmerge.multi[i] = map.chanMap (d.u_mergemix().in_ids[i]);
     }
+    e->u.splitmerge.nmulti = d.u_mergemix().in_ids.size();
     e->u.splitmerge.single = map.chanMap (d.u_mergemix().out_id);
     e->u.splitmerge.nondetctrl = NULL;
     list_append (l, e);
@@ -1391,6 +1393,7 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
 
 act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
 			       GraphWithChanNames &gr,
+			       std::vector<ActId *> &newnames,
 			       Scope *s) 
 {
   var_to_actvar table(s, &gr.graph.id_pool());
@@ -1413,6 +1416,8 @@ act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
   }
   ret->order = NULL;
 
+  newnames = std::move(table.newvars);
+  
   return ret;
 }
 

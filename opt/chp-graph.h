@@ -808,7 +808,9 @@ struct GraphWithChanNames {
     std::unordered_map<VarId, std::string> name_from_var;
 };
 GraphWithChanNames chp_graph_from_act(act_chp_lang *lang, Scope *s);
-act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr, Scope *s);
+act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr,
+			       std::vector<ActId *> &newnames,
+			       Scope *s);
 
 
 } // namespace ChpOptimize
