@@ -847,6 +847,8 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  // control channel is simply 0, 1, 2, 3 (repeat)
 	  // variable sequence is      1, 1, 1, 2 (repeat)
 
+	  auto freshalloc = [&] (ChanId &ch) -> ChanId { return dm.fresh (ch); };
+
 	  if (dm.rr_ctrl.contains(idxvec.size())) {
 	    auto &res = dm.rr_ctrl[idxvec.size()];
 	    dm.generateCopy (res.first, selout, d);
@@ -855,9 +857,12 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    }
 	  }
 	  else if (cfresh) {
-	    d.push_back(Dataflow::mkInstSeqRR(idxvec.size(),
-					      cfresh,
-					      selout));
+	    std::list<Dataflow> tmp =
+	      Dataflow::mkInstSeqRR(idxvec.size(), cfresh, selout, freshalloc);
+	    for (auto &xd : tmp) {
+	      d.push_back (std::move(xd));
+	    }
+	    
 	    dm.rr_ctrl[idxvec.size()] = std::pair<ChanId,ChanId>(selout,*cfresh);
 	  }
 	  else if (dm.rr_noctrl.contains (idxvec.size())) {
@@ -865,9 +870,12 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    dm.generateCopy (res, selout, d);
 	  }
 	  else {
-	    d.push_back(Dataflow::mkInstSeqRR(idxvec.size(),
-					      cfresh,
-					      selout));
+	    std::list<Dataflow> tmp =
+	      Dataflow::mkInstSeqRR(idxvec.size(), cfresh, selout, freshalloc);
+	    for (auto &xd : tmp) {
+	      d.push_back (std::move(xd));
+	    }
+	    
 	    dm.rr_noctrl[idxvec.size()] = selout;
 	  }
 	  //printf (" ** spec-seq-variable-merge: %d **\n", ch.m_id);
@@ -1204,7 +1212,180 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
   
   return ret;
 }
- 
+
+
+//
+// single use: it has a single use, plus the use is only on the LHS of
+// a function. In that case, replace the DEF with the RHS of the function.
+// 
+void computeUses (int idx, Dataflow &d,
+		  std::unordered_map<ChanId, std::list<int>> &uses,
+		  std::unordered_map<ChanId, int> &defs)
+{
+  auto update = [&] (const ChanId &ch)
+    {
+     std::list<int> l;
+     l.push_back (idx);
+     uses[ch] = std::move(l);
+    };
+
+  auto updatedefs = [&] (const ChanId &ch)
+    {
+     hassert (!defs.contains(ch));
+     defs[ch] = idx;
+    };
+  
+  switch (d.u.type()) {
+  case DataflowKind::Func:
+    DExprDag::iterNodes (d.u_func().e, [&] (const DExprDag::Node &n) {
+	switch (n.type()) {
+	case IRExprTypeKind::Var:
+	  update(n.u_var().id);
+	  break;
+	default:
+	  break;
+	}
+      });
+    for (auto &id : d.u_func().ids) {
+      updatedefs (id);
+    }
+    break;
+
+  case DataflowKind::Init:
+    update(d.u_init().lhs);
+    updatedefs(d.u_init().rhs);
+    break;
+
+  case DataflowKind::Split:
+    update(d.u_split().cond_id);
+    update(d.u_split().in_id);
+    for (auto &id : d.u_split().out_ids) {
+      if (id) {
+	updatedefs (*id);
+      }
+    }
+    break;
+
+  case DataflowKind::MergeMix:
+    if (d.u_mergemix().cond_id) {
+      update (*d.u_mergemix().cond_id);
+    }
+    for (auto x : d.u_mergemix().in_ids) {
+      update (x);
+    }
+    updatedefs (d.u_mergemix().out_id);
+    break;
+
+  case DataflowKind::Arbiter:
+    // no arbiters!
+    hassert (false);
+    break;
+
+  case DataflowKind::Sink:
+    break;
+
+  case DataflowKind::Instance:
+    // XXX: NEEFD THIS!
+#if 0    
+    if (u_inst().type > 2) {
+	os << "inst_RR" << (u_inst().ctrl_out ? "" : "_noctrl")
+	   << "<" << u_inst().type - 2 << ">"
+	   << "(";
+	if (u_inst().ctrl_out) {
+	  os << "C" << (*u_inst().ctrl_out).m_id << ", ";
+	}
+	os << "C" << (*u_inst().sm_sel).m_id << ")";
+      }
+      else {
+	os << "inst_" << (u_inst().type == 0 ? "seq" :
+			  u_inst().type == 1 ? "sel" : "loop");
+	if (!(u_inst().ctrl_out)) {
+	  os << "_noctrl";
+	}
+	if (!(u_inst().sm_sel)) {
+	  os << "_nosel";
+	}
+	os << (u_inst().type == 2 ? "" :
+	       string_format("<%d>", u_inst().ctrl.size()))
+	   << "(";
+	if (u_inst().type == 2) {
+	  os << "C" << u_inst().ctrl[0].m_id << ", "
+	     << "C" << (*u_inst().guard).m_id << ", "
+	     << "C" << (*u_inst().ctrl_out).m_id << ")";
+	}
+	else {
+	  bool first = true;
+	  os << "{";
+	  for (auto ch : u_inst().ctrl) {
+	    if (!first) {
+	      os << ",";
+	    }
+	    os << "C" << ch.m_id;
+	    first = false;
+	  }
+	  os << "}";
+	  if (u_inst().ctrl_out) {
+	    os << ", C" << (*u_inst().ctrl_out).m_id;
+	  }
+	  if (u_inst().guard) {
+	    os << ", C" << (*u_inst().guard).m_id;
+	  }
+	  if (u_inst().sm_sel) {
+	    os << ", C" << (*u_inst().sm_sel).m_id;
+	  }
+	  os << ")";
+	}
+      }
+      os << std::endl;
+#endif      
+      break;
+  }
+}
+
+
+void replaceChan (Dataflow &d, ChanId src, ChanId dst)
+{
+  switch (d.u.type()) {
+  case DataflowKind::Func:
+    for (auto &id : d.u_func().ids) {
+      if (id == src) {
+	id = dst;
+      }
+    }
+    break;
+
+  case DataflowKind::Init:
+    hassert (src == d.u_init().rhs);
+    d.u_init().rhs = dst;
+    break;
+
+  case DataflowKind::Split:
+    for (auto &id : d.u_split().out_ids) {
+      if (id && (*id == src)) {
+	id = OptionalChanId{dst};
+      }
+    }
+    break;
+
+  case DataflowKind::MergeMix:
+    hassert (d.u_mergemix().out_id == src);
+    d.u_mergemix().out_id = dst;
+    break;
+
+  case DataflowKind::Arbiter:
+    // no arbiters!
+    hassert (false);
+    break;
+
+  case DataflowKind::Sink:
+    break;
+
+  case DataflowKind::Instance:
+    // XXX: NEEFD THIS!
+    break;
+  }
+}
+
 } // namespace
 
 void printDataflowExpr (std::ostream &os, const DExpr &d)
@@ -1230,7 +1411,68 @@ std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp)
   MultiChannelState ret = createDataflow (chp.m_seq, m, d);
   hassert (ret.datamap.empty() && ret.ctrlmap.empty());
 
-  return d;
+  // strip out single fanout buffers
+  std::unordered_map<ChanId, std::list<int>> dfuses;
+  std::unordered_map<ChanId, int> dfdefs;
+  int idx = 0;
+  for (auto &x : d) {
+    computeUses (idx, x, dfuses, dfdefs);
+    idx++;
+  }
+
+  // mark any of the guard uses of a channel as required
+  for (auto &[ch, l] : dfuses) {
+    if (l.front() == l.back()) {
+      // uses can be channels, split, merge, guard.
+      // guard uses are required.
+      switch (d[l.front()].u.type()) {
+      case DataflowKind::Split:
+	if (ch == d[l.front()].u_split().cond_id) {
+	  l.push_back(idx); // no longer single
+	}
+	break;
+
+      case DataflowKind::MergeMix:
+	if (d[l.front()].u_mergemix().cond_id &&
+	    (*d[l.front()].u_mergemix().cond_id) == ch) {
+	  l.push_back (idx);
+	}
+	break;
+
+      default:
+	break;
+      }
+    }
+  }
+
+  idx = 0;
+  std::unordered_set<int> delidx;
+  for (auto &[ch, l] : dfuses) {
+    if (l.front() == l.back()) {
+      if (d[l.front()].u.type() == DataflowKind::Func &&
+	  d[l.front()].u_func().ids.size() == 1) {
+	int count = 0;
+	DExprDag::iterNodes (d[l.front()].u_func().e,
+			     [&] (const DExprDag::Node &n) { count++; });
+	if (count == 1 && dfdefs.contains (ch)) {
+	  replaceChan (d[dfdefs[ch]], ch, d[l.front()].u_func().ids[0]);
+	  delidx.insert (l.front());
+	}
+      }
+    }
+    idx++;
+  }
+
+  std::vector<Dataflow> dfinal;
+  idx = 0;
+  for (auto &elem : d) {
+    if (!delidx.contains (idx)) {
+      dfinal.push_back (std::move (elem));
+    }
+    idx++;
+  }
+
+  return dfinal;
 }
 
 namespace {
@@ -1279,6 +1521,7 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
     else {
       e->u.func.init = const_expr (d.u_init().v.getVal (0));
     }
+    e->u.func.nbufs = const_expr (1);
     list_append (l, e);
     break;
 
@@ -1333,6 +1576,7 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
     break;
 
   case DataflowKind::Instance:
+    // XXX: FIXME
 #if 0    
     if (u_inst().type > 2) {
 	os << "inst_RR" << (u_inst().ctrl_out ? "" : "_noctrl")

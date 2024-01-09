@@ -26,6 +26,7 @@
 
 #include "chp-graph.h"
 #include "algos.h"
+#include "utils.h"
 #include <act/lang.h>
 
 namespace ChpOptimize {
@@ -180,15 +181,71 @@ public:
 				       sel})};
   }
 
-  static Dataflow mkInstSeqRR (int N,
-			       OptionalChanId cout,
-			       ChanId sel)
+  static std::list<Dataflow> mkInstSeqRR (int N,
+					  OptionalChanId cout,
+					  ChanId sel,
+					  std::function<ChanId (ChanId &)> fresh)
   {
     std::vector<ChanId> ctmp;
-    ctmp.push_back (sel);
-    return Dataflow{Variant_t(Instance{N+2, ctmp, cout,
-				       OptionalChanId::null_id(),
-				       sel})};
+    
+    ChanId f = fresh(sel);
+
+    std::list<Dataflow> ret;
+
+    /*
+       f -> [0] sel
+       sel = N-1 ? 0 : sel + 1 -> f
+
+       if there is a cout:
+
+       sel = N - 1 ? 2 : 1 -> cout
+    */
+
+    int bw = log_2_round_up (N);
+
+    // f -> [0] sel
+    ret.push_back (Dataflow::mkInit(f, sel, BigInt(0), bw));
+
+    // sel = N-1 ? 0 : sel + 1 -> f
+    {
+      DExprDag dg;
+      DExprDag::Node *n =
+	dg.newNode (
+	 DExprDag::Node::makeQuery (
+	   dg.newNode (
+	     DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
+					   dg.newNode (DExprDag::Node::makeVariableAccess (sel, bw)),
+					   dg.newNode (DExprDag::Node::makeConstant (BigInt(N-1), bw)))),
+	   dg.newNode (DExprDag::Node::makeConstant (BigInt(0), bw)),
+	   dg.newNode (DExprDag::Node::makeResize (
+	   dg.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::Plus, dg.newNode (DExprDag::Node::makeVariableAccess (sel,bw)),
+	  			                     dg.newNode (DExprDag::Node::makeConstant (BigInt(1), bw)))), bw))));
+      dg.roots.push_back (n);
+      
+      std::vector<ChanId> ids;
+      ids.push_back(f);
+      ret.push_back (Dataflow::mkFunc (ids, std::move (dg)));
+    }
+
+    if (cout) {
+      DExprDag dg;
+      DExprDag::Node *n =
+      dg.newNode (
+	 DExprDag::Node::makeQuery (
+	   dg.newNode (
+	     DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
+					   dg.newNode (DExprDag::Node::makeVariableAccess (sel, bw)),
+					   dg.newNode (DExprDag::Node::makeConstant (BigInt(N-1), bw)))),
+	   dg.newNode (DExprDag::Node::makeConstant (BigInt(2), 2)),
+	   dg.newNode (DExprDag::Node::makeConstant (BigInt(2), 0))));
+      dg.roots.push_back (n);
+				     
+      std::vector<ChanId> ids;
+      ids.push_back(*cout);
+      ret.push_back (Dataflow::mkFunc (ids, std::move (dg)));
+    }
+    
+    return ret;
   }
 
   static Dataflow mkInstSel (std::vector<ChanId> cin,
