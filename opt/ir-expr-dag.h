@@ -88,7 +88,7 @@ template <typename Tag, typename VarIdType> struct CanonicalFlatNode {
  * Hashing support
  */
 template <typename Tag, typename VarIdType>
-struct ::std::hash<::ChpOptimize::detail::CanonicalFlatNode<Tag, VarIdType>> {
+struct std::hash<ChpOptimize::detail::CanonicalFlatNode<Tag, VarIdType>> {
     using Node =
         ::ChpOptimize::IRExpr<Tag, VarIdType, ChpOptimize::ManageMemory::no>;
     size_t

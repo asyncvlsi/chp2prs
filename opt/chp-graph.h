@@ -43,8 +43,8 @@ struct ChpTag {};
 
 } // namespace ChpOptimize
 
-template <> struct ::std::hash<::ChpOptimize::ChpTag> {
-    size_t operator()(const ::ChpOptimize::ChpTag & /*obj*/) const { return 0; }
+template <> struct std::hash<ChpOptimize::ChpTag> {
+    size_t operator()(const ChpOptimize::ChpTag & /*obj*/) const { return 0; }
 };
 
 

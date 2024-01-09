@@ -25,6 +25,7 @@
 
 #include "hassert.h"
 #include <compare>
+#include <cstdint>
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
@@ -172,26 +173,26 @@ class OptionalChanId {
  * OptionalChanId, VarId, and OptionalVarId classes. This enables them
  * to be used in maps, etc. from the C++ standard library.
  */
-template <> struct ::std::hash<::ChpOptimize::ChanId> {
-    size_t operator()(const ::ChpOptimize::ChanId &obj) const {
+template <> struct std::hash<ChpOptimize::ChanId> {
+    size_t operator()(const ChpOptimize::ChanId &obj) const {
         return hash<int>()(obj.m_id);
     }
 };
 
-template <> struct ::std::hash<::ChpOptimize::OptionalChanId> {
-    size_t operator()(const ::ChpOptimize::OptionalChanId &obj) const {
+template <> struct std::hash<ChpOptimize::OptionalChanId> {
+    size_t operator()(const ChpOptimize::OptionalChanId &obj) const {
         return hash<int>()(obj._getId());
     }
 };
 
-template <> struct ::std::hash<::ChpOptimize::VarId> {
-    size_t operator()(const ::ChpOptimize::VarId &obj) const {
+template <> struct std::hash<ChpOptimize::VarId> {
+    size_t operator()(const ChpOptimize::VarId &obj) const {
         return hash<int>()(obj.m_id);
     }
 };
 
-template <> struct ::std::hash<::ChpOptimize::OptionalVarId> {
-    size_t operator()(const ::ChpOptimize::OptionalVarId &obj) const {
+template <> struct std::hash<ChpOptimize::OptionalVarId> {
+    size_t operator()(const ChpOptimize::OptionalVarId &obj) const {
         return hash<int>()(obj._getId());
     }
 };

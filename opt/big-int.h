@@ -887,7 +887,7 @@ template <typename W> class BigInt_t {
 
 } // namespace ChpOptimize
 
-template <typename W> struct ::std::hash<::ChpOptimize::BigInt_t<W>> {
+template <typename W> struct std::hash <ChpOptimize::BigInt_t<W>> {
     size_t operator()(const ::ChpOptimize::BigInt_t<W> &obj) const {
         size_t seed = 0;
         hash_combine(seed, obj.getWdCt());
