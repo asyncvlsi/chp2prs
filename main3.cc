@@ -98,58 +98,69 @@ class RingSynth : public ActSynthesize {
     fprintf (_pp->fp, "/* start rsyn */\n");
     fflush (_pp->fp);
 
-    int chpopt, externopt, bundled;
-    int use_yosys;
+    int chpopt, bundled;
     ActDynamicPass *dp;
 
     dp = dynamic_cast <ActDynamicPass *> (ap);
     Assert (dp, "What?");
 
     chpopt = dp->getIntParam ("chp_optimize");
-    externopt = dp->getIntParam ("externopt");
     bundled = dp->getIntParam ("bundled_dpath");
-    use_yosys = dp->getIntParam ("use_yosys");
 
-    if (chpopt)
-    {
-#ifdef FOUND_chp_opt
-  //     ActPass *opt_p = dp->getAct()->pass_find ("chpopt");
-  //     if (opt_p && p->getlang()->getchp()) {
-	// opt_p->run (p);
-	// printf("> Optimized CHP:\n");
-	// chp_print(stdout, p->getlang()->getchp()->c);
-	// printf("\n");
-  //     }
-#else
-    //   fatal_error ("Optimize flag is not currently enabled in the build.");
-#endif
-    }
+    if (1) { //opt
+    if (p->getlang() && p->getlang()->getchp()) {
+      auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
+						p->CurScope ());
 
-    if (externopt) {
-#if defined(FOUND_expropt) && defined (FOUND_abc)
-    //   sdt = new ExternOptSDT (bundled, chpopt, _pp->fp, _ename,
-    //                           use_yosys == 1 ? yosys :
-	// 		      (use_yosys == 0 ? genus : abc ));
-    //   _pending = sdt;
-#else
-      fatal_error ("External optimization package not installed.");
-#endif
-    }
-    else {
-      if (bundled) {
-	// fatal_error ("Bundled-data not supported is Basic mode");
+      if (chpopt) {
+        ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
       }
-    //   sdt = new BasicSDT (bundled, chpopt, _pp->fp, _ename);
-    //   _pending = sdt;
+      else {
+        ChpOptimize::optimize_chp_O0 (g.graph, p->getName(), false);
+        ChpOptimize::eliminateDeadCode (g.graph);
+      }
+      uninlineBitfieldExprsHack (g.graph);
+
+      std::vector<ActId *> newnames;
+      act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
+      p->getlang()->getchp()->c = l;
+    
+      for (auto id : newnames) {
+        InstType *it = p->CurScope()->Lookup (id->getName());
+        if (TypeFactory::isBoolType (it)) {
+          // pp_printf (_pp, "syn::sdtboolvar %s;", id->getName());
+          // pp_forced (_pp, 0);
+          fatal_error ("no bools");
+        }
+        else {
+          pp_printf (_pp, "bd_int<%d> %s;",
+              TypeFactory::bitWidth (it), id->getName());
+          pp_forced (_pp, 0);
+          p->CurScope()->Add (id->getName(), it);
+        }
+      }
     }
+    }
+
+#if defined(FOUND_expropt) && defined (FOUND_abc)
+
+#else
+    fatal_error ("External optimization package not installed.");
+#endif
 
     act_chp_lang_t *c = p->getlang()->getchp()->c;  
+    chp_print (stdout, c);
     // core synthesis functions here
     Assert (c, "hmm c");
     mangle_init();
     fill_in_else_explicit (c, p, 1);
 
     ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
+    b->run(p);
+
+    fprintf (stdout, "\n");
+    p->CurScope()->Print(stdout);
+    fprintf (stdout, "\n");
     Assert (b, "hmm b");
 
     RingForge *rf = new RingForge (_pp->fp, p, c, b, "");
@@ -157,10 +168,7 @@ class RingSynth : public ActSynthesize {
     rf->run_forge();
     
     /*
-    auto cg = ChpOptimize::chp_graph_from_act (c, p->CurScope());
-    ChpOptimize::optimize_chp_O2 (cg.graph, p->getName(), false);
     ChpOptimize::putIntoNewStaticTokenForm (cg.graph);
-    ChpOptimize::uninlineBitfieldExprsHack (cg.graph);
     auto d = ChpOptimize::chp_to_dataflow(cg.graph);
 
     std::vector<ActId *> res;
@@ -171,10 +179,9 @@ class RingSynth : public ActSynthesize {
     fprintf (stdout, "\n\n");
     dflow_print (stdout, newd);
     */
-    
     fprintf (_pp->fp, "/* end rsyn */\n");
+    
     pp_forced (_pp, 0);
-    pp_flush (_pp);
   }
 };
 
@@ -190,7 +197,12 @@ ActSynthesize *_gen_engine (const char *prefix,
 
 static void usage(char *name)
 {
-  fprintf(stderr, "Usage: %s [-d] <actfile> <process> <output file>", name);
+  fprintf(stderr, "Usage: %s [-hdO] [-e <file>] [-o <file>] -p <proc> <actfile>\n", name);
+  fprintf (stderr, "Options:\n");
+  fprintf (stderr, " -O : optimize CHP\n");
+  fprintf (stderr, " -h : display this usage message\n");
+  fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
+  fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   exit(1);
 }
 
@@ -198,43 +210,72 @@ int main (int argc, char **argv)
 {
     Act *a;
     Process *p;
-    FILE *fp_out;
-    int debug = 0;
+    char *proc = NULL;
+    char *outfile = NULL;
+    char *exprfile = NULL;
+    bool chpopt = false;
+    bool debug = false;
     act_languages *lang;
     act_chp *chp;
     act_chp_lang_t *chp_lang;
 
     Act::Init (&argc, &argv);
 
-    const char *a_name;
-
     int ch;
-
-    while ((ch = getopt (argc, argv, "d")) != -1) {
-    switch (ch) {
-    case 'd':
-        debug = 1;
-        break;
-    default:
+    while ((ch = getopt (argc, argv, "hdOe:o:p:")) != -1) {
+      switch (ch) {
+      case 'h':
         usage (argv[0]);
         break;
+
+      case 'p':
+        if (proc) {
+        FREE (proc);
         }
+        proc = Strdup (optarg);
+        break;
+        
+      case 'o':
+        if (outfile) {
+        FREE (outfile);
+        }
+        outfile = Strdup (optarg);
+        break;
+
+      case 'O':
+        chpopt = true;
+        break;
+        
+      case 'e':
+        if (exprfile) {
+        FREE (exprfile);
+        }
+        exprfile = Strdup (optarg);
+        break;
+
+      case 'd':
+        debug = true;
+        break;
+        
+      default:
+        usage (argv[0]);
+        break;
+      }
     }
 
-    if ( optind != argc - 3 ) {
+    if ( optind != argc - 1 ) {
         usage (argv[0]);
+    }
+
+    if (!proc) {
+      fprintf (stderr, "Missing process name: use -p to specify it.\n");
+      usage (argv[0]);
     }
 
     a = new Act (argv[optind]);
-    a_name = argv[optind];
     a->Expand();
 
-    p = a->findProcess (argv[optind+1]);
-    fp_out = fopen (argv[optind+2], "w");
-
-    if (!fp_out) {
-        fatal_error ("Could not open %s for writing", argv[optind+2]);
-    }
+    p = a->findProcess (proc, true);
 
     if (!p) {
         fatal_error ("Process not found");
@@ -243,7 +284,7 @@ int main (int argc, char **argv)
     p = p->Expand(ActNamespace::Global(), p->CurScope(),0,NULL);
     Assert (p, "Process expand failed - what?");
 
-    if (debug == 1) 
+    if (debug) 
     {
         fprintf(stdout,"\n\n------------------------------------------------------------");
         fprintf(stdout,"\n\nBegin debugging print..");
@@ -265,15 +306,19 @@ int main (int argc, char **argv)
     if (!rsyn || (rsyn->loaded() == false)) {
     fatal_error ("Could not load dynamic pass!");
     }
-    char *exprfile = Strdup ("expr.act");
+    
+    if (!exprfile) {
+      exprfile = Strdup ("expr.act");
+    }
 
     rsyn->setParam ("prefix", (void *)Strdup ("ring"));
     rsyn->setParam ("expr", (void *) exprfile);
-    rsyn->setParam ("out", (void *) argv[optind+2]);
+    rsyn->setParam ("out", (void *) outfile);
     rsyn->setParam ("in", (void *) argv[optind]);
     rsyn->setParam ("engine", (void *) _gen_engine);
 
-    rsyn->setParam ("bundled_dpath", 1);
+    rsyn->setParam ("chp_optimize", chpopt);
+    rsyn->setParam ("bundled_dpath", true);
 
     rsyn->run (p);
 

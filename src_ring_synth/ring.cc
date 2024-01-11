@@ -444,7 +444,7 @@ int RingEngine::length_of_guard_set (act_chp_lang_t *c)
 {
   act_chp_gc_t *gc_itr;
   int counter = 0;
-  Assert (((c->type == ACT_CHP_SELECT)||(c->type == ACT_CHP_LOOP)), 
+  Assert (((c->type == ACT_CHP_SELECT)||(c->type == ACT_CHP_LOOP)||(c->type == ACT_CHP_DOLOOP)), 
             "Called length_of_guard_set on a non-selection/loop");
 
   for (gc_itr = c->u.gc; gc_itr; gc_itr = gc_itr->next)
@@ -520,7 +520,7 @@ bool RingEngine::chp_has_branches (act_chp_lang_t *c, int root)
             for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
             {   
                 stmt = (act_chp_lang_t *)list_value(li);
-                if (stmt->type == ACT_CHP_LOOP)
+                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP)
                     has_branches = chp_has_branches (stmt, 1);
             }
         }
