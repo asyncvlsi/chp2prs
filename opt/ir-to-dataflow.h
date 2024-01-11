@@ -173,6 +173,78 @@ public:
   }
 
 
+  static DExprDag::Node *helper_or (DExprDag &d,
+				    DExprDag::Node *n1,
+				    DExprDag::Node *n2)
+  {
+    return
+      d.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::Or, n1, n2));
+  }
+					       
+  static DExprDag::Node *helper_and (DExprDag &d,
+				    DExprDag::Node *n1,
+				    DExprDag::Node *n2)
+  {
+    return
+      d.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::And, n1, n2));
+  }
+  
+  /* return ch = val */
+  static DExprDag::Node *helper_eq (DExprDag &d,
+			     ChanId ch,
+			     int bw,
+			     int val)
+  {
+    DExprDag::Node *n =
+      d.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
+					       d.newNode (DExprDag::Node::makeVariableAccess (ch, bw)),
+					       d.newNode (DExprDag::Node::makeConstant (BigInt (val), bw))));
+    return n;
+  }
+
+  /* return ch != val */
+  static DExprDag::Node *helper_ne (DExprDag &d,
+			     ChanId ch,
+			     int bw,
+			     int val)
+  {
+    DExprDag::Node *n =
+      d.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::NE,
+					       d.newNode (DExprDag::Node::makeVariableAccess (ch, bw)),
+					       d.newNode (DExprDag::Node::makeConstant (BigInt (val), bw))));
+    return n;
+  }
+
+  static DExprDag::Node *helper_const (DExprDag &d,
+				       int val,
+				       int bw)
+  {
+    return d.newNode (DExprDag::Node::makeConstant (BigInt (val), bw));
+  }
+    
+
+  /* return x + 1 mod N */
+  static DExprDag::Node *helper_inc (DExprDag &d,
+			      ChanId ch,
+			      int bw,
+			      int N)
+  {
+    DExprDag::Node *n =
+      d.newNode (DExprDag::Node::makeQuery
+		 (d.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
+							   d.newNode (DExprDag::Node::makeVariableAccess (ch, bw)),
+							   d.newNode (DExprDag::Node::makeConstant (BigInt (N-1), bw)))),
+		  d.newNode (DExprDag::Node::makeConstant (BigInt (0), bw)),
+		  d.newNode (DExprDag::Node::makeResize (
+		  d.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::Plus,
+							   d.newNode (DExprDag::Node::makeVariableAccess (ch, bw)),
+							   d.newNode (DExprDag::Node::makeConstant (BigInt (1), bw)))),
+		  bw))));
+    return n;
+  }
+    
+
+
   static std::list<Dataflow> mkInstSeqRR (int N,
 					  OptionalChanId cout,
 					  ChanId sel,
@@ -201,24 +273,7 @@ public:
     // sel = N-1 ? 0 : sel + 1 -> f
     {
       DExprDag dg;
-      DExprDag::Node *n =
-	dg.newNode (
-	 DExprDag::Node::makeQuery (
-	   dg.newNode (
-	     DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
-		dg.newNode (DExprDag::Node::makeVariableAccess (sel, bw)),
-		dg.newNode (DExprDag::Node::makeConstant (BigInt(N-1), bw)))
-		       ),
-	   dg.newNode (DExprDag::Node::makeConstant (BigInt(0), bw)),
-	   dg.newNode (
-	     DExprDag::Node::makeResize (
-	       dg.newNode (
-	         DExprDag::Node::makeBinaryOp (IRBinaryOpType::Plus,
-                   dg.newNode (DExprDag::Node::makeVariableAccess (sel,bw)),
-                   dg.newNode (DExprDag::Node::makeConstant (BigInt(1), bw)))
-			   ),
-	       bw)))
-	    );
+      DExprDag::Node *n = helper_inc (dg, sel, bw, N);
       dg.roots.push_back (n);
       
       std::vector<ChanId> ids;
@@ -231,12 +286,9 @@ public:
       DExprDag::Node *n =
       dg.newNode (
 	 DExprDag::Node::makeQuery (
-	   dg.newNode (
-	     DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
-	       dg.newNode (DExprDag::Node::makeVariableAccess (sel, bw)),
-   	       dg.newNode (DExprDag::Node::makeConstant (BigInt(N-1), bw)))),
-	   dg.newNode (DExprDag::Node::makeConstant (BigInt(2), 2)),
-	   dg.newNode (DExprDag::Node::makeConstant (BigInt(2), 0))));
+	    helper_eq (dg, sel, bw, N-1),
+	    helper_const (dg, 2, 2),
+	    helper_const (dg, 1, 2)));
       dg.roots.push_back (n);
 				     
       std::vector<ChanId> ids;
@@ -247,29 +299,266 @@ public:
     return ret;
   }
 
-  static Dataflow mkInstSeq (std::vector<ChanId> cin,
-			     OptionalChanId cout,
-			     ChanId sel)
+  static std::list<Dataflow>
+  mkInstSeq (std::vector<ChanId> cin,
+	     OptionalChanId cout,
+	     ChanId sel,
+	     std::function<ChanId (const OptionalChanId &)> fresh)
   {
+    /*
+      1. {s_top} B0, ..., BN -> b
+
+      2. {b!=0} s_top -> *, sel
+
+      3. (b != 1 ? s_top + 1 : s_top) -> s
+
+      4. s -> [0] s_top
+
+      5. (b = 1 | s = 0 | b = 2 & pending) -> bcond
+
+      6. (b = 1 | s != 0 & b = 2 & pending) ? 1 : (pending ? 2 : 0)  -> bval
+
+      7. {bcond} bval -> *, cout
+
+      8. (b = 1 ? pending : (s = 0 ? 0 : (s != 0 & b = 2 ? 1 : pending))) -> newpend
+      9. newpend -> [0] pending
+    */
+    std::list<Dataflow> ret;
+
+    int bw = log_2_round_up (cin.size());
+
+    /* 1. */
+    ChanId b;
+    if (cout) {
+      b = *cout;
+    }
+    else {
+      b = fresh (cin[0]);
+    }
+    ChanId s_top;
+    s_top = fresh (sel);
+    ret.push_back (mkMergeMix (s_top, cin, b));
+
+    /* 2. */
+    ChanId bzero = fresh (OptionalChanId::null_id());
+    {
+      DExprDag dg;
+      DExprDag::Node *n = helper_ne (dg, b, 2, 0);
+      dg.roots.push_back(n);
+      std::vector<ChanId> id;
+      id.push_back (bzero);
+      ret.push_back (mkFunc (id, std::move (dg)));
+
+      std::vector<OptionalChanId> out;
+      out.push_back (OptionalChanId::null_id());
+      out.push_back (sel);
+
+      ret.push_back (mkSplit (bzero, s_top, out));
+    }
+
+    /* 3 */
+    ChanId s = fresh (sel);
+    {
+      DExprDag dg;
+      DExprDag::Node *n =
+	dg.newNode (DExprDag::Node::makeQuery (
+           helper_ne (dg, b, 2, 1), // b != 1
+	   helper_inc (dg, s_top, bw, cin.size()),
+	   dg.newNode (DExprDag::Node::makeVariableAccess (s_top, bw))));
+      dg.roots.push_back (n);
+      std::vector<ChanId> ids;
+      ids.push_back (s);
+      ret.push_back (mkFunc (ids, std::move(dg)));
+    }
+											 
+    /* 4 */
+    ret.push_back (mkInit (s, s_top, BigInt (0), bw));
+
+    if (cout) {
+      /* 5 */
+      ChanId pending = fresh (OptionalChanId::null_id());
+      ChanId bcond = fresh (OptionalChanId::null_id());
+
+      DExprDag dg;
+      DExprDag::Node *n =
+	helper_or (dg, helper_eq (dg, b, 2, 1),
+		   helper_or (dg, helper_eq (dg, s, bw, 0),
+			      helper_and (dg, helper_eq (dg, b, 2, 2),
+					  helper_eq (dg, pending, 1, 1))));
+      dg.roots.push_back (n);
+
+      std::vector<ChanId> id;
+      id.push_back (bcond);
+      ret.push_back (mkFunc (id, std::move (dg)));
+
+      /* 6. (b = 1 | s != 0 & b = 2 & pending) ? 1 : (pending ? 2 : 0) -> bval */
+      ChanId bval = fresh (*cout);
+      DExprDag dg2;
+      DExprDag::Node *n2 =
+	dg2.newNode (DExprDag::Node::makeQuery (
+		helper_or (dg2, helper_eq (dg2, b, 2, 1),
+			   helper_and (dg2, helper_ne (dg2, s, bw, 0),
+				       helper_and (dg2,
+						   helper_eq (dg2, b, 2, 2),
+						   helper_eq (dg2, pending, 1, 1)))),
+		helper_const (dg2, 1, 2),
+	  dg2.newNode
+	(DExprDag::Node::makeQuery (helper_eq (dg2, pending, 1, 1),
+				    helper_const (dg2, 2, 2),
+				    helper_const (dg2, 0, 2)))));
+      dg2.roots.push_back (n2);
+      id.clear();
+      id.push_back (bval);
+      ret.push_back (mkFunc (id, std::move (dg2)));
+
+      /* 7. {bcond} bval -> *, cout */
+      std::vector<OptionalChanId> outid;
+
+      outid.push_back (OptionalChanId::null_id());
+      outid.push_back (*cout);
+      
+      ret.push_back (mkSplit (bcond, bval, outid));
+
+      /*  8. (b = 1 ? pending : (s = 0 ? 0 : (s != 0 & b = 2 ? 1 : pending))) -> newpend */
+      ChanId newpend = fresh (OptionalChanId::null_id());
+      {
+	DExprDag dg;
+      DExprDag::Node *n =
+	dg.newNode (DExprDag::Node::makeQuery (
+	       helper_eq (dg, b, 2, 1),
+	       dg.newNode (DExprDag::Node::makeVariableAccess (pending, 1)),
+	       dg.newNode
+	       (DExprDag::Node::makeQuery
+		(helper_eq (dg, s, bw, 0),
+		 helper_const (dg, 0, 1),
+		 dg.newNode (DExprDag::Node::makeQuery
+			     (helper_eq (dg, b, 2, 2),
+			      helper_const (dg, 1, 1),
+			      dg.newNode (DExprDag::Node::makeVariableAccess (pending, 1))))))));
+      dg.roots.push_back (n);
+      std::vector<ChanId> id;
+      id.push_back (newpend);
+      
+      ret.push_back (mkFunc (id, std::move (dg)));
+      }
+
+      /* 9. newpend -> [0] pending */
+      ret.push_back (mkInit (newpend, pending, BigInt(0), 1));
+    }
+
+    return ret;
+#if 0    
     return Dataflow{Variant_t(Instance{0, cin, cout,
 				       OptionalChanId::null_id(),
 				       sel})};
+#endif    
   }
 
-  static Dataflow mkInstSel (std::vector<ChanId> cin,
+
+
+	 
+  static std::list<Dataflow> mkInstSel (std::vector<ChanId> cin,
 			     ChanId cout,
 			     ChanId guard,
-			     OptionalChanId sel)
+			     OptionalChanId sel,
+			     std::function<ChanId (const OptionalChanId &)> fresh)
   {
+    /*
+    1.  bintVal -> [0] i_bint
+
+    2. {i_bint} guard, LoopGuard -> gval
+
+    3. {gval} B1, ..., BN -> bint
+
+    4. bint -> cout
+
+    5.  bint != 0 -> g2
+
+    6.  bint = 1 -> bintVal
+
+    7. {g2} gval -> *, sel
+
+    8.  {bintVal} gval -> *, LoopGuard
+    */
+    std::list<Dataflow> ret;
+    
+    ChanId bintV = fresh (OptionalChanId::null_id());
+    ChanId i_bint = fresh (OptionalChanId{bintV});
+
+    /* 1. */
+    ret.push_back (Dataflow::mkInit (bintV, i_bint, BigInt(0), 2));
+
+    /* 2. */
+    ChanId loopguard = fresh (guard);
+    ChanId gval = fresh (guard);
+    std::vector<ChanId> inlist;
+    inlist.push_back (guard);
+    inlist.push_back (loopguard);
+    ret.push_back (Dataflow::mkMergeMix (i_bint, inlist, gval));
+
+    /* 3. */
+    ChanId bint = fresh (cin[0]);
+    ret.push_back (Dataflow::mkMergeMix (gval, cin, bint));
+
+    /* 4. */
+    DExprDag dg;
+    DExprDag::Node *n =
+      dg.newNode (DExprDag::Node::makeVariableAccess (bint, 2));
+    dg.roots.push_back (n);
+    inlist.clear();
+    inlist.push_back (cout);
+    ret.push_back (Dataflow::mkFunc (inlist, std::move (dg)));
+
+    /* 5. */
+    // use NULL to indicate 1 bit
+    ChanId g2 = fresh (OptionalChanId::null_id());
+
+    DExprDag dg2;
+    n = dg2.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::NE,
+	   dg2.newNode (DExprDag::Node::makeVariableAccess (bint, 2)),
+           dg2.newNode (DExprDag::Node::makeConstant (BigInt(0), 2))));
+    dg2.roots.push_back(n);
+    inlist.clear();
+    inlist.push_back (g2);
+    ret.push_back (Dataflow::mkFunc (inlist, std::move (dg2)));
+
+    /* 6. */
+    DExprDag dg3;
+    n = dg3.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
+	   dg3.newNode (DExprDag::Node::makeVariableAccess (bint, 2)),
+           dg3.newNode (DExprDag::Node::makeConstant (BigInt(1), 2))));
+    dg3.roots.push_back(n);
+    inlist.clear();
+    inlist.push_back (bintV);
+    ret.push_back (Dataflow::mkFunc (inlist, std::move (dg3)));
+
+    /* 7. {g2} gval -> *, sel */
+    std::vector<OptionalChanId> outlist;
+    outlist.push_back (OptionalChanId::null_id());
+    outlist.push_back (sel);
+    ret.push_back (Dataflow::mkSplit (g2, gval, outlist));
+
+    /* 8.  {bintVal} gval -> *, LoopGuard */
+    outlist.clear();
+    outlist.push_back (OptionalChanId::null_id());
+    outlist.push_back (loopguard);
+    ret.push_back (Dataflow::mkSplit (bintV, gval, outlist));
+
+    return ret;
+#if 0    
     return Dataflow{Variant_t(Instance{1, cin, cout,
 				       guard,
 				       sel})};
+#endif    
   }
   
   static Dataflow mkInstDoLoop (ChanId cin,
 				ChanId cout,
 				ChanId guard)
   {
+    warning ("Using do loop multi-channel resolution; not implemented yet!");
+
+    
     std::vector<ChanId> ch;
     ch.push_back (cin);
     return Dataflow{Variant_t(Instance{2, ch, cout,
