@@ -163,6 +163,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         char tname[1024];
         get_true_name(tname, var, _p->CurScope());
         b = hash_lookup(var_infos, tname);
+        Assert (b, "variable not found");
         // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
         vi = (var_info *)b->v;
         bw = vi->width;
@@ -476,7 +477,10 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 
     fprintf(_fp, "// output bitwidth: %d bits\n",out_expr_width);
     fprintf(stdout, "\n\n");
+    fprintf(stdout, "\n%d\n", e->type);
+    print_uexpr (stdout, e);
 
+    
     if (e->type == E_INT)
     {
         config_set_int("expropt.abc_use_constraints", 0);
@@ -905,7 +909,7 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
             for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
             {   
                 stmt = (act_chp_lang_t *)list_value(li);
-                if (stmt->type == ACT_CHP_LOOP)
+                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP)
                     main_loop = (act_chp_lang_t *)list_value(li);
             }
             first_block_id = _generate_itb();
@@ -945,7 +949,7 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
             {   
                 act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP)
+                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
                 {
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;
@@ -980,7 +984,7 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
             {   
                 act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP)
+                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
                 {
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;
@@ -1138,7 +1142,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
             {   
                 stmt = (act_chp_lang_t *)list_value(li);
-                if (stmt->type == ACT_CHP_LOOP)
+                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP)
                     main_loop = (act_chp_lang_t *)list_value(li);
             }
 
@@ -1150,7 +1154,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
             {   
                 act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP)
+                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
                 {
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;
@@ -1182,7 +1186,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
             {   
                 act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP)
+                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
                 {
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;

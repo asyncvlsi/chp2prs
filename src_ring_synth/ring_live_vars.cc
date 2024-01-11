@@ -252,7 +252,7 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
             for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
             {
                 stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_LOOP) _generate_live_var_info (stmt, 1);
+                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) _generate_live_var_info (stmt, 1);
             }
             break;
         }
@@ -349,7 +349,7 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
             for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
             {
                 stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_LOOP) _print_live_var_info (stmt, 1);
+                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) _print_live_var_info (stmt, 1);
             }
             break;
         }
