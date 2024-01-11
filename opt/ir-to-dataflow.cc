@@ -1534,21 +1534,21 @@ void printDataflowExpr (std::ostream &os, const DExpr &d)
 }
 
 
-std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp)
+std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 {
   std::vector<Dataflow> d;
   DataflowChannelManager m;
 
-  hassert (chp.is_static_token_form);
+  hassert (gr.graph.is_static_token_form);
   
-  m.id_pool = &chp.id_pool();
+  m.id_pool = &gr.graph.id_pool();
 
   // recursively translate, while doing multichannel stuff
   // simultaneously
-  computeOutermostBlock (chp.m_seq, m);
+  computeOutermostBlock (gr.graph.m_seq, m);
 
   // now create dataflow blocks!
-  MultiChannelState ret = createDataflow (chp.m_seq, m, d);
+  MultiChannelState ret = createDataflow (gr.graph.m_seq, m, d);
   hassert (ret.datamap.empty() && ret.ctrlmap.empty());
 
   // strip out single fanout buffers
@@ -1562,6 +1562,16 @@ std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp)
   }
 
   std::unordered_set<int> delidx;
+
+  // delete dead code.
+  // code is dead if:
+  //   the def has no uses
+  //   the channel defined is not in the original chp
+  for (auto &[ch, idx] : dfdefs) {
+    if (!dfuses.contains (ch) && !gr.name_from_chan.contains (ch)) {
+      delidx.insert (idx);
+    }
+  }
 
   idx = 0;
   for (auto &x : d) {

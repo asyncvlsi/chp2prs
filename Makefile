@@ -21,9 +21,7 @@
 BINARY=chp2prs_dev.$(EXT) 
 
 TARGETS=$(BINARY) synth2.$(EXT) synth3.$(EXT)
-# TARGETS=$(BINARY) synth3.$(EXT)
 TARGETLIBS=libactchp2prspass_$(EXT).so
-# TARGETLIBS=libactrsynpass_$(EXT).so
 
 CPPSTD=c++20
 
@@ -34,9 +32,8 @@ OBJS2=main2.o
 OBJS3=main3.o
 
 OBJS=$(OBJS1) $(OBJS2) $(OBJS3)
-# OBJS=$(OBJS1) $(OBJS3)
+
 SHOBJS=chp2prs_pass.os sdt.os basicsdt.os synth.os synth_pass.os src_ring_synth/ring.os src_ring_synth/ring_forge.os src_ring_synth/ring_else_gen.os src_ring_synth/ring_name_handling.os src_ring_synth/ring_live_vars.os
-# SHOBJS=rsyn_pass.os sdt.os basicsdt.os synth.os synth_pass.os 
 
 ifdef expropt_INCLUDE 
 ifdef abc_LIBDIR

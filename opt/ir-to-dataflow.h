@@ -696,7 +696,8 @@ public:
 // an arbitrary number of buffers on any channel without changing the
 // computation. No probes and no shared variables is one way to guarantee that.
 // We use an improved algorithm to handle multiple channel access.
-std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp);
+std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr);
+  
 act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
 			       GraphWithChanNames &gr,
 			       std::vector<ActId *> &newnames,
