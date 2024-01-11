@@ -98,13 +98,17 @@ void ActSynthesize::Close ()
   if (_pp) {
     pp_close (_pp);
     _pp = NULL;
+    /* this closes the output too */
   }
+  _out = NULL;
+#if 0  
   if (_out) {
     if (_out != stdout) {
       fclose (_out);
       _out = NULL;
     }
   }
+#endif  
   if (_expr) {
     fclose (_expr);
     _expr = NULL;
