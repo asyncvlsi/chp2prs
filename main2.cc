@@ -249,7 +249,7 @@ class DFSynth : public ActSynthesize {
       
       putIntoNewStaticTokenForm (g.graph);
       uninlineBitfieldExprsHack (g.graph);
-      auto d = chp_to_dataflow(g.graph);
+      auto d = chp_to_dataflow(g);
       std::vector<ActId *> res;
       act_dataflow *newd = dataflow_to_act (d, g, res, p->CurScope());
 

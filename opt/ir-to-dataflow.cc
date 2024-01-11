@@ -538,7 +538,7 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
   int width = select_guard_width(select);
 
   if (width == 1) {
-    /* check if we have a special case */    
+    /* check if we have a special case of a single Boolean variable */
     if (select.branches.front().g.type() == IRGuardType::Expression &&
 	select.branches.front().g.u_e().e.m_dag.roots[0]->type() ==
 	IRExprTypeKind::Var) {
@@ -556,6 +556,78 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
       return guard;
     }
   }
+  else if (width > 1) {
+    /* Check if we have a special case of a single variable, and where
+       the guard for the ith branch is (v = i) for the same variable
+       v, and where v has the correct bit-width.
+
+       It is too late for this check, because by this time the CHP
+       optimization engine has converted this into [ v1 -> .. [] v2
+       ... ]
+
+       We need to track which Boolean variables correspond to "g = i"
+       comparisons!
+    */
+    VarId guardvar;
+    bool noguard = true;
+    int gval = 0;
+    bool found_special_case = true;
+    bool mustbe_last = false;
+
+    for (auto &branch : select.branches) {
+      if (branch.g.type() == IRGuardType::Expression) {
+	if (mustbe_last) {
+	  found_special_case = false;
+	  break;
+	}
+	auto n = branch.g.u_e().e.m_dag.roots[0];
+	if (n->type() != IRExprTypeKind::BinaryOp) {
+	  found_special_case = false;
+	  break;
+	}
+	if (n->u_e2().op_type != IRBinaryOpType::EQ) {
+	  found_special_case = false;
+	  break;
+	}
+	if (n->u_e2().l->type() != IRExprTypeKind::Var) {
+	  found_special_case = false;
+	  break;
+	}
+	if (noguard) {
+	  noguard = false;
+	  guardvar = n->u_e2().l->u_var().id;
+	  if (dm.id_pool->getBitwidth (guardvar) != width) {
+	    found_special_case = false;
+	    break;
+	  }
+	}
+	else if (guardvar != n->u_e2().l->u_var().id) {
+	  found_special_case = false;
+	  break;
+	}
+	if (n->u_e2().r->type() != IRExprTypeKind::Const) {
+	  found_special_case = false;
+	  break;
+	}
+	if (n->u_e2().r->u_cons().v.getVal(0) != gval) {
+	  found_special_case = false;
+	  break;
+	}
+      }
+      else {
+	mustbe_last = true;
+      }
+      gval++;
+    }
+
+    if (found_special_case) {
+      swap = false;
+      return dm.mapvar (guardvar);
+    }
+  }
+
+  
+  
 
   // first find the else branch (if there is one). Otherwise, since there are
   // no probes, promote the first branch to be the "else" case
@@ -747,10 +819,16 @@ MultiChannelState reconcileMultiSel (Block *curr,
       
       ChanId cfresh = dm.fresh (2);
 
-      d.push_back(Dataflow::mkInstSel (ctrl_chans,
-				       cfresh,
-				       ch_guard,
-				       ctrlguard));
+      auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId {
+								  if (ch) {
+									   return dm.fresh (*ch); } else { return dm.fresh (1); } };
+      
+
+      std::list<Dataflow> tmp = Dataflow::mkInstSel (ctrl_chans,
+						     cfresh,
+						     ch_guard,
+						     ctrlguard, freshalloc);
+
 
       if (ch != fresh) {
 	ret.ctrlmap[ch] = cfresh;
@@ -842,12 +920,13 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	else {
 	  cfresh = OptionalChanId::null_id();
 	}
-	
+
 	if (special_case) {
 	  // control channel is simply 0, 1, 2, 3 (repeat)
 	  // variable sequence is      1, 1, 1, 2 (repeat)
 
 	  auto freshalloc = [&] (ChanId &ch) -> ChanId { return dm.fresh (ch); };
+	  
 
 	  if (dm.rr_ctrl.contains(idxvec.size())) {
 	    auto &res = dm.rr_ctrl[idxvec.size()];
@@ -881,7 +960,12 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  //printf (" ** spec-seq-variable-merge: %d **\n", ch.m_id);
 	}
 	else {
-	  d.push_back(Dataflow::mkInstSeq (chlist, cfresh, selout));
+	  auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId { if (ch) return dm.fresh (*ch); else return dm.fresh(1); };
+	  
+	  std::list<Dataflow> tmp = Dataflow::mkInstSeq (chlist, cfresh, selout, freshalloc);
+	  for (auto &xd : tmp) {
+	    d.push_back (std::move (xd));
+	  }
 	}
 	
 	chlist.clear();
@@ -941,6 +1025,16 @@ MultiChannelState reconcileMultiLoop (Block *curr,
 				      std::vector<Dataflow> &d)
 {
   MultiChannelState ret;
+
+  auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId
+    {
+     if (ch) {
+	      return dm.fresh (*ch);
+     } else {
+	     return dm.fresh (1);
+     }
+    };      
+  
   for (auto &[ch, rhs] : msv.datamap) {
     if (dm.isOutermostBlock (ch, curr)) {
       // channel has been fully reconciled!
@@ -950,10 +1044,14 @@ MultiChannelState reconcileMultiLoop (Block *curr,
 	msv.ctrlmap[ch] = dm.generateMultiBaseCase (d);
       }
 
+
       ChanId cfresh =dm.fresh (msv.ctrlmap[ch]);
-      d.push_back (Dataflow::mkInstDoLoop (msv.ctrlmap[ch],
-					   cfresh,
-					   guard));
+      std::list<Dataflow> tmp = Dataflow::mkInstDoLoop (msv.ctrlmap[ch],
+							cfresh,
+							guard, freshalloc);
+      for (auto &x : tmp) {
+	d.push_back (std::move (x));
+      }
       
       ret.datamap[ch] = rhs;
       ret.ctrlmap[ch] = cfresh;
@@ -1224,9 +1322,7 @@ void computeUses (int idx, Dataflow &d,
 {
   auto update = [&] (const ChanId &ch)
     {
-     std::list<int> l;
-     l.push_back (idx);
-     uses[ch] = std::move(l);
+     uses[ch].push_back (idx);
     };
 
   auto updatedefs = [&] (const ChanId &ch)
@@ -1386,6 +1482,64 @@ void replaceChan (Dataflow &d, ChanId src, ChanId dst)
   }
 }
 
+void replaceChanUses (Dataflow &d, ChanId src, ChanId dst)
+{
+  switch (d.u.type()) {
+  case DataflowKind::Func:
+    DExprDag::mapNodes (d.u_func().e, [&] (DExprDag::Node &n) {
+	switch (n.type()) {
+	case IRExprTypeKind::Var:
+	  if (n.u_var().id == src) {
+	    n.u_var().id = dst;
+	  }
+	  break;
+	default:
+	  break;
+	}
+      });
+    break;
+
+  case DataflowKind::Init:
+    hassert (src == d.u_init().lhs);
+    d.u_init().lhs = dst;
+    break;
+
+  case DataflowKind::Split:
+    if (d.u_split().cond_id == src) {
+      d.u_split().cond_id = dst;
+    }
+    if (d.u_split().in_id == src) {
+      d.u_split().in_id = dst;
+    }
+    break;
+
+  case DataflowKind::MergeMix:
+    if (d.u_mergemix().cond_id &&
+	*d.u_mergemix().cond_id == src) {
+      d.u_mergemix().cond_id = OptionalChanId{dst};
+    }
+    for (auto &x : d.u_mergemix().in_ids) {
+      if (x == src) {
+	x = dst;
+      }
+    }
+    break;
+
+  case DataflowKind::Arbiter:
+    // no arbiters!
+    hassert (false);
+    break;
+
+  case DataflowKind::Sink:
+    break;
+
+  case DataflowKind::Instance:
+    // XXX: NEEFD THIS!
+    break;
+  }
+}
+ 
+
 } // namespace
 
 void printDataflowExpr (std::ostream &os, const DExpr &d)
@@ -1394,75 +1548,80 @@ void printDataflowExpr (std::ostream &os, const DExpr &d)
 }
 
 
-std::vector<Dataflow> chp_to_dataflow(ChpGraph &chp)
+std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 {
   std::vector<Dataflow> d;
   DataflowChannelManager m;
 
-  hassert (chp.is_static_token_form);
+  hassert (gr.graph.is_static_token_form);
   
-  m.id_pool = &chp.id_pool();
+  m.id_pool = &gr.graph.id_pool();
 
   // recursively translate, while doing multichannel stuff
   // simultaneously
-  computeOutermostBlock (chp.m_seq, m);
+  computeOutermostBlock (gr.graph.m_seq, m);
 
   // now create dataflow blocks!
-  MultiChannelState ret = createDataflow (chp.m_seq, m, d);
+  MultiChannelState ret = createDataflow (gr.graph.m_seq, m, d);
   hassert (ret.datamap.empty() && ret.ctrlmap.empty());
 
   // strip out single fanout buffers
   std::unordered_map<ChanId, std::list<int>> dfuses;
   std::unordered_map<ChanId, int> dfdefs;
+  
   int idx = 0;
   for (auto &x : d) {
     computeUses (idx, x, dfuses, dfdefs);
     idx++;
   }
 
-  // mark any of the guard uses of a channel as required
-  for (auto &[ch, l] : dfuses) {
-    if (l.front() == l.back()) {
-      // uses can be channels, split, merge, guard.
-      // guard uses are required.
-      switch (d[l.front()].u.type()) {
-      case DataflowKind::Split:
-	if (ch == d[l.front()].u_split().cond_id) {
-	  l.push_back(idx); // no longer single
-	}
-	break;
+  std::unordered_set<int> delidx;
 
-      case DataflowKind::MergeMix:
-	if (d[l.front()].u_mergemix().cond_id &&
-	    (*d[l.front()].u_mergemix().cond_id) == ch) {
-	  l.push_back (idx);
-	}
-	break;
-
-      default:
-	break;
-      }
+  // delete dead code.
+  // code is dead if:
+  //   the def has no uses
+  //   the channel defined is not in the original chp
+  for (auto &[ch, idx] : dfdefs) {
+    if (!dfuses.contains (ch) && !gr.name_from_chan.contains (ch)) {
+      delidx.insert (idx);
     }
   }
 
   idx = 0;
-  std::unordered_set<int> delidx;
-  for (auto &[ch, l] : dfuses) {
-    if (l.front() == l.back()) {
-      if (d[l.front()].u.type() == DataflowKind::Func &&
-	  d[l.front()].u_func().ids.size() == 1) {
-	int count = 0;
-	DExprDag::iterNodes (d[l.front()].u_func().e,
-			     [&] (const DExprDag::Node &n) { count++; });
-	if (count == 1 && dfdefs.contains (ch)) {
-	  replaceChan (d[dfdefs[ch]], ch, d[l.front()].u_func().ids[0]);
-	  delidx.insert (l.front());
+  for (auto &x : d) {
+    // look for x -> y
+    if (x.u.type() == DataflowKind::Func && x.u_func().ids.size() == 1) {
+      // single RHS
+      int count = 0;
+      OptionalChanId lhs = OptionalChanId::null_id();
+      DExprDag::iterNodes(x.u_func().e,[&](const DExprDag::Node &n){
+	  count++;
+	  if (n.type() == IRExprTypeKind::Var) {
+	    lhs = OptionalChanId{n.u_var().id};
+	  }
+	});
+      if (count == 1 && lhs) {
+	// single LHS, variable
+	if (dfuses.contains(x.u_func().ids[0])) {
+	  // there are uses for the rhs, so use simple forward
+	  // substitution, and mark this index deleted
+	  for (auto uses : dfuses[x.u_func().ids[0]]) {
+	    replaceChanUses (d[uses], x.u_func().ids[0], *lhs);
+	  }
+	  delidx.insert (idx);
+	}
+	else {
+	  // no uses, replace the def
+	  if (dfdefs.contains (*lhs)) {
+	    replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
+	  }
+	  delidx.insert (idx);
 	}
       }
     }
     idx++;
   }
-
+  
   std::vector<Dataflow> dfinal;
   idx = 0;
   for (auto &elem : d) {
