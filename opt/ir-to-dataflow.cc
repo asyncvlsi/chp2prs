@@ -1025,6 +1025,16 @@ MultiChannelState reconcileMultiLoop (Block *curr,
 				      std::vector<Dataflow> &d)
 {
   MultiChannelState ret;
+
+  auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId
+    {
+     if (ch) {
+	      return dm.fresh (*ch);
+     } else {
+	     return dm.fresh (1);
+     }
+    };      
+  
   for (auto &[ch, rhs] : msv.datamap) {
     if (dm.isOutermostBlock (ch, curr)) {
       // channel has been fully reconciled!
@@ -1034,10 +1044,14 @@ MultiChannelState reconcileMultiLoop (Block *curr,
 	msv.ctrlmap[ch] = dm.generateMultiBaseCase (d);
       }
 
+
       ChanId cfresh =dm.fresh (msv.ctrlmap[ch]);
-      d.push_back (Dataflow::mkInstDoLoop (msv.ctrlmap[ch],
-					   cfresh,
-					   guard));
+      std::list<Dataflow> tmp = Dataflow::mkInstDoLoop (msv.ctrlmap[ch],
+							cfresh,
+							guard, freshalloc);
+      for (auto &x : tmp) {
+	d.push_back (std::move (x));
+      }
       
       ret.datamap[ch] = rhs;
       ret.ctrlmap[ch] = cfresh;
