@@ -33,9 +33,7 @@ class DFSynth : public ActSynthesize {
 	   char *exprfile)
     : ActSynthesize (prefix, infile, outfile, exprfile) { }
   
-  void emitTopImports(ActPass *ap) {
-    //pp_printf_raw (_pp, "import dflow::multi;\n\n");
-  }
+  void emitTopImports(ActPass *ap) { }
 
   void emitFinal () { }
     

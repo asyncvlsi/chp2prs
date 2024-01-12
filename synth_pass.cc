@@ -225,12 +225,14 @@ static int emit_refinement_header (ActSynthesize *syn,
       }
     }
     else if (TypeFactory::isProcessType (vx->t) || TypeFactory::isStructure (vx->t)) {
-      OVERRIDE_OPEN;
-      pp_printf (pp, "%s_", prefix);
-      UserDef *ud = dynamic_cast <UserDef *> (vx->t->BaseType());
-      Assert (ud, "Why am I here?");
-      ActNamespace::Act()->msnprintfproc (buf, 10240, ud);
-      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+      if (overrideTypes) {
+         OVERRIDE_OPEN;
+         pp_printf (pp, "%s_", prefix);
+         UserDef *ud = dynamic_cast <UserDef *> (vx->t->BaseType());
+         Assert (ud, "Why am I here?");
+         ActNamespace::Act()->msnprintfproc (buf, 10240, ud);
+         pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+      }
     }
   }
   

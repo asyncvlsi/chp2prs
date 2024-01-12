@@ -37,7 +37,8 @@ namespace syn {
   // specify bd datapath channels
   export defchan sdtchan <: std::channel::bd () {}
   export defchan sdtexprchan <: rx1of1 () {}
-  export defchan sdtboolchan <: chan(bool) (sdtchan<1> x) {}
+  export defchan sdtboolchan <: std::channel::bdbool (sdtchan<1> x) 
+  { x.d[0] = d; x.r = r; x.a = a; }
 
   export defchan r1of2 <: sdtexprchan<1> (bool t, f) {}
 
