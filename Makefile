@@ -20,7 +20,7 @@
 #-------------------------------------------------------------------------
 BINARY=chp2prs_dev.$(EXT) 
 
-TARGETS=$(BINARY) synth2.$(EXT) synth3.$(EXT)
+TARGETS=$(BINARY) synth2.$(EXT)
 TARGETLIBS=libactchp2prspass_$(EXT).so
 
 CPPSTD=c++20
@@ -31,9 +31,7 @@ OBJS1=main.o
 
 OBJS2=main2.o sdt_engine.o df_engine.o ring_engine.o
 
-OBJS3=main3.o ring_engine.o
-
-OBJS=$(OBJS1) $(OBJS2) $(OBJS3)
+OBJS=$(OBJS1) $(OBJS2)
 
 SHOBJS=chp2prs_pass.os synth.os synth_pass.os
 
@@ -45,6 +43,8 @@ include $(ACT_HOME)/scripts/Makefile.std
 
 EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
 
+SYNTHLIB=-lactchpopt -lactchpsdt -lactchpring
+
 ifdef exproptcommercial_INCLUDE
 EXPRLIB+=-lexproptcommercial_sh
 endif
@@ -53,10 +53,7 @@ $(BINARY): $(LIB) $(OBJS1) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(SHLIBACTPASS)
 
 synth2.$(EXT): $(LIB) $(OBJS2) $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS2) -o synth2.$(EXT) $(SHLIBACTPASS) -lactchpopt -lactchp2prspass -lactchpsdt -lactchpring $(EXPRLIB)
-
-synth3.$(EXT): $(LIB) $(OBJS3) $(ACTDEPEND)
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS3) -o synth3.$(EXT) -lactchpopt -lactchp2prspass $(SHLIBACTPASS) $(EXPRLIB) -lactchpring
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS2) -o synth2.$(EXT) $(SHLIBACTPASS) $(SYNTHLIB) -lactchp2prspass $(EXPRLIB)
 
 $(TARGETLIBS): $(SHOBJS)
 	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB) -lactchpsdt
