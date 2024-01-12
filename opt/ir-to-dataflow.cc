@@ -519,6 +519,30 @@ void printOutermostBlock (DataflowChannelManager &dm)
   }
 }
 
+// this checks if the guard is in fact
+//   v = expect
+// if it is, it returns v
+// otherwise it returns a null variable
+template<typename T, typename U, typename V>
+V check_guard_eq (const typename IRExprDag<T,U>::Node *n, int expect)
+{
+  if (n->type() != IRExprTypeKind::BinaryOp) {
+    return V::null_id();					
+  }
+  if (n->u_e2().op_type != IRBinaryOpType::EQ) {
+    return V::null_id();					
+  }
+  if (n->u_e2().l->type() != IRExprTypeKind::Var) {
+    return V::null_id();					
+  }
+  if (n->u_e2().r->type() != IRExprTypeKind::Const) {
+    return V::null_id();					
+  }
+  if (n->u_e2().r->u_cons().v.getVal(0) != expect) {
+    return V::null_id();					
+  }
+  return n->u_e2().l->u_var().id;
+};
 
 /*
   swap is true in the special case where the guard is already a
@@ -536,6 +560,7 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
   swap = false;
   
   int width = select_guard_width(select);
+
 
   if (width == 1) {
     /* check if we have a special case of a single Boolean variable */
@@ -573,6 +598,7 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
     int gval = 0;
     bool found_special_case = true;
     bool mustbe_last = false;
+    OptionalVarId gret;
 
     for (auto &branch : select.branches) {
       if (branch.g.type() == IRGuardType::Expression) {
@@ -580,36 +606,20 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
 	  found_special_case = false;
 	  break;
 	}
-	auto n = branch.g.u_e().e.m_dag.roots[0];
-	if (n->type() != IRExprTypeKind::BinaryOp) {
-	  found_special_case = false;
-	  break;
-	}
-	if (n->u_e2().op_type != IRBinaryOpType::EQ) {
-	  found_special_case = false;
-	  break;
-	}
-	if (n->u_e2().l->type() != IRExprTypeKind::Var) {
-	  found_special_case = false;
-	  break;
-	}
-	if (noguard) {
-	  noguard = false;
-	  guardvar = n->u_e2().l->u_var().id;
-	  if (dm.id_pool->getBitwidth (guardvar) != width) {
-	    found_special_case = false;
-	    break;
+	gret = check_guard_eq<ChpTag,VarId,OptionalVarId> (branch.g.u_e().e.m_dag.roots[0], gval);
+	if (gret) {
+	  if (noguard) {
+	    noguard = false;
+	    guardvar = *gret;
+	  }
+	  else {
+	    if (guardvar != *gret) {
+	      found_special_case = false;
+	      break;
+	    }
 	  }
 	}
-	else if (guardvar != n->u_e2().l->u_var().id) {
-	  found_special_case = false;
-	  break;
-	}
-	if (n->u_e2().r->type() != IRExprTypeKind::Const) {
-	  found_special_case = false;
-	  break;
-	}
-	if (n->u_e2().r->u_cons().v.getVal(0) != gval) {
+	else {
 	  found_special_case = false;
 	  break;
 	}
@@ -621,13 +631,74 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
     }
 
     if (found_special_case) {
-      swap = false;
-      return dm.mapvar (guardvar);
+      if (dm.id_pool->getBitwidth (guardvar) == width) {
+	swap = false;
+	return dm.mapvar (guardvar);
+      }
+    }
+
+    // each guard could be a single Boolean
+    // if the Boolenans are the same as (v = i) for the same variable
+    // v, then we can return "v" as the guard
+    std::vector<ChanId> bool_glist;
+    bool found_else = false;
+    for (auto &branch : select.branches) {
+      if (branch.g.type() == IRGuardType::Expression) {
+	auto n = branch.g.u_e().e.m_dag.roots[0];
+	if (n->type() == IRExprTypeKind::Var) {
+	  bool_glist.push_back (dm.mapvar (n->u_var().id));
+	}
+      }
+      else {
+	found_else = true;
+      }
+    }
+    if (bool_glist.size() + (found_else ? 1 : 0) == select.branches.size()) {
+      // this could be possible!
+      bool noguard = true;
+      ChanId guardvar;
+      OptionalChanId gret;
+      bool found_special_case = true;
+      for (auto &xd : d) {
+	if (xd.u.type() == DataflowKind::Func) {
+	  int pos = 0;
+	  for (auto &id : xd.u_func().ids) {
+	    size_t lpos;
+	    for (lpos = 0; lpos < bool_glist.size(); lpos++) {
+	      if (bool_glist[lpos].m_id == id.m_id) {
+		break;
+	      }
+	    }
+	    if (lpos < bool_glist.size()) {
+	      // check that the expression is guard = lpos
+	      gret = check_guard_eq<ChpTag,ChanId,OptionalChanId> (xd.u_func().e.roots[pos], (int)lpos);
+	      if (gret) {
+		if (noguard) {
+		  noguard = false;
+		  guardvar = *gret;
+		}
+		else if (guardvar != *gret) {
+		  found_special_case = false;
+		  break;
+		}
+	      }
+	      else {
+		found_special_case = false;
+		break;
+	      }
+	    }
+	    pos++;
+	  }
+
+	  if (found_special_case) {
+	    if (dm.id_pool->getBitwidth (guardvar) == width) {
+	      return guardvar;
+	    }
+	  }
+	}
+      }
     }
   }
-
-  
-  
 
   // first find the else branch (if there is one). Otherwise, since there are
   // no probes, promote the first branch to be the "else" case
@@ -1627,6 +1698,37 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   for (auto &elem : d) {
     if (!delidx.contains (idx)) {
       dfinal.push_back (std::move (elem));
+    }
+    else {
+      // should potentially delete this!
+      if (elem.u.type() == DataflowKind::Func) {
+	// may need to delete some of these, not all!
+	std::vector<DExprDag::Node *> newroots;
+	std::vector<ChanId> newids;
+	int ii = 0;
+	for (auto &cid : elem.u_func().ids) {
+	  if (!dfuses.contains (cid)) {
+	    // two cases:
+	    //    either this is not an output channel, in which case we
+	    //    can delete this
+	    // OR
+	    //    it is an output chanel, and we've substituted it back
+	    // delete this one!
+	    //
+	    // XXX: CONFIRM THIS!
+	  }
+	  else {
+	    newids.push_back (cid);
+	    newroots.push_back (elem.u_func().e.roots[ii]);
+	  }
+	  ii++;
+	}
+	if (newroots.size() != 0) {
+	  elem.u_func().e.roots = newroots;
+	  elem.u_func().ids = newids;
+	  dfinal.push_back (std::move (elem));
+	}
+      }
     }
     idx++;
   }
