@@ -29,13 +29,17 @@
 
 static void usage(char *name)
 {
-  fprintf (stderr, "Usage: %s [-Obdh] [-e <file>] [-o <file>] [-E abc|yosys|genus] -p <proc> <actfile>\n", name);
+  fprintf (stderr, "Usage: %s [-OdRbh] [-e <file>] [-o <file>] [-E abc|yosys|genus] -p <proc> <actfile>\n", name);
   fprintf (stderr, "Options:\n");
-  fprintf (stderr, " -d : generate dataflow output\n");
+  fprintf (stderr, " -h : help; display this message\n");
   fprintf (stderr, " -O : optimize CHP\n");
-  fprintf (stderr, " -R : synthesize with ring approach; implies -b\n");
-  fprintf (stderr, " -b : bundled-data datapath\n");
-  fprintf (stderr, " -h : display this usage message\n");
+  fprintf (stderr, " -F dataflow|sdt|ring : synthesis output format\n");
+  fprintf (stderr, "        * dataflow : dataflow output\n");
+  fprintf (stderr, "        * sdt : syntax-directed translation prs output\n");
+  fprintf (stderr, "        * ring : ring-based synthesis prs output [implies bundled data]\n");
+  fprintf (stderr, " -d : generate dataflow output [deprecated, use -F dataflow]\n");
+  fprintf (stderr, " -R : synthesize with ring approach [deprecated, use -F ring]\n");
+  fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI)\n");
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   fprintf (stderr, "-E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
@@ -63,8 +67,25 @@ int main(int argc, char **argv)
   bool use_ring = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "RhdObe:E:o:p:")) != -1) {
+  while ((ch = getopt (argc, argv, "RhdObe:E:o:p:F:")) != -1) {
     switch (ch) {
+    case 'F':
+      if (strcmp (optarg, "dataflow")) {
+	dflow = true;
+      }
+      else if (strcmp (optarg, "ring")) {
+	use_ring = true;
+      }
+      else if (strcmp (optarg, "sdt")) {
+	use_ring = false;
+	dflow = false;
+      }
+      else {
+	fprintf (stderr, "Unknown synthesis output format: %s\n", optarg);
+	usage (argv[0]);
+      }
+      break;
+      
     case 'R':
       use_ring = true;
       bundled = true;
