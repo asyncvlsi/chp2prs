@@ -29,7 +29,13 @@ ActSynthesize *gen_sdt_engine (const char *prefix,  char *infile,
 			       char *outfile, char *exprfile);
 
 /**
- * Dataflow engine handler
+ * Ring synthesis engine generator
+ */
+ActSynthesize *gen_ring_engine (const char *prefix,  char *infile,
+				char *outfile, char *exprfile);
+
+/**
+ * Dataflow synthesis engine generator
  */
 ActSynthesize *gen_df_engine (const char *prefix,  char *infile,
 			      char *outfile, char *exprfile);

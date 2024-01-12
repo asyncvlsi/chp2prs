@@ -60,30 +60,15 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
   exprfile = (const char *) dp->getPtrParam ("expr_file");
   fp = (FILE *) dp->getPtrParam ("output_fp");
 
-  if (chpopt)
-  {
-#ifdef FOUND_chp_opt
-    ActPass *opt_p = dp->getAct()->pass_find ("chpopt");
-    if (opt_p && p->getlang()->getchp()) {
-      opt_p->run (p);
-      printf("> Optimized CHP:\n");
-      chp_print(stdout, p->getlang()->getchp()->c);
-      printf("\n");
-    }
-#else
-    fatal_error ("Optimize flag is not currently enabled in the build.");
-#endif
+  if (chpopt) {
+    warning ("-O flag is ignored");
   }
 
   if (externopt) {
-#if defined(FOUND_expropt) && defined (FOUND_abc)
     sdt = new ExternOptSDT (bundled, chpopt, fp, exprfile,
 			      use_yosys == 1 ? yosys :  
                              (use_yosys == 0 ? genus : abc ));
     _pending = sdt;
-#else
-    fatal_error ("External optimization package not installed.");
-#endif    
   }
   else {
     if (bundled) {
@@ -99,4 +84,3 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
 
   return NULL;
 }
-
