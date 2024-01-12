@@ -18,28 +18,17 @@
 #  Boston, MA  02110-1301, USA.
 #
 #-------------------------------------------------------------------------
-TARGETLIBS=libactchpopt_$(EXT).so
-
-SHOBJS=algos.os big-int.os ir-id.os \
-	chp-act-conversions.os \
-	chp-graph.os chp-print.os \
-	static-tokens.os \
-	chp-cost-model.os \
-	chp-opt.os \
-	int-math.os \
-	constants.os \
-	copy-elimination.os \
-	sequencers.os \
-	deadcode.os \
-	ir-to-dataflow.os
+TARGETLIBS=libactchpsdt_$(EXT).so
 
 CPPSTD=c++20
 
+SHOBJS=sdt.os basicsdt.os externoptsdt.os
+
 SRCS=$(SHOBJS:.os=.cc)
 
-include $(ACT_HOME)/scripts/Makefile.std
-
 EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
+
+include $(ACT_HOME)/scripts/Makefile.std
 
 $(TARGETLIBS): $(SHOBJS)
 	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB)

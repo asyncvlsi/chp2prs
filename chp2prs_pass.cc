@@ -20,16 +20,9 @@
  **************************************************************************
  */
 #include <act/act.h>
-#include "config_pkg.h"
-#include "basicsdt.h"
-
-#ifdef FOUND_expropt
-#include "externoptsdt.h"
-#endif
-
+#include "sdt/basicsdt.h"
+#include "sdt/externoptsdt.h"
 #include "chp2prs_pass.h"
-
-
 
 
 void chp2prs_init (ActPass *dp)

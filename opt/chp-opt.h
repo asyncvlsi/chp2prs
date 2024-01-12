@@ -38,6 +38,7 @@ bool propagateConstants(ChpGraph &graph);
 bool eliminateCopies(ChpGraph &graph);
 bool eliminateDeadCode(ChpGraph &graph);
 
+void uninlineBitfieldExprsHack(ChpGraph &graph);
 
 struct UsesAndDefs {
     bool can_hang = false;

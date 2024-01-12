@@ -28,53 +28,43 @@ CPPSTD=c++20
 include config.mk
 
 OBJS1=main.o
-OBJS2=main2.o
+
+OBJS2=main2.o sdt_engine.o df_engine.o
+
 OBJS3=main3.o
 
 OBJS=$(OBJS1) $(OBJS2) $(OBJS3)
 
-SHOBJS=chp2prs_pass.os sdt.os basicsdt.os synth.os synth_pass.os src_ring_synth/ring.os src_ring_synth/ring_forge.os src_ring_synth/ring_else_gen.os src_ring_synth/ring_name_handling.os src_ring_synth/ring_live_vars.os
-
-ifdef expropt_INCLUDE 
-ifdef abc_LIBDIR
-SHOBJS+=externoptsdt.os
-endif
-endif
+SHOBJS=chp2prs_pass.os synth.os synth_pass.os \
+	src_ring_synth/ring.os \
+	src_ring_synth/ring_forge.os \
+	src_ring_synth/ring_else_gen.os \
+	src_ring_synth/ring_name_handling.os \
+	src_ring_synth/ring_live_vars.os
 
 SRCS=$(OBJS:.o=.cc) $(SHOBJS:.os=.cc)
 
-ifdef chp_opt_INCLUDE
-CHPOPT=-lchpopt
-else
-CHPOPT=
-endif
-
-SUBDIRS=lib opt
-# SUBDIRS=lib
+SUBDIRS=lib opt sdt
 
 include $(ACT_HOME)/scripts/Makefile.std
 
-ifdef expropt_INCLUDE
-ifdef abc_LIBDIR
 EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
-else
-EXPRLIB=
-endif
-endif
 
-$(ACT_HOME)/lib/libactchpopt.so: opt
+ifdef exproptcommercial_INCLUDE
+EXPRLIB+=-lexproptcommercial
+endif
 
 $(BINARY): $(LIB) $(OBJS1) $(ACTDEPEND)
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS)
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(SHLIBACTPASS)
 
 synth2.$(EXT): $(LIB) $(OBJS2) $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main2.o -o synth2.$(EXT) $(CHPOPT) $(SHLIBACTPASS) -lactchpopt -lactchp2prspass
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS2) -o synth2.$(EXT) $(SHLIBACTPASS) -lactchpopt -lactchp2prspass -lactchpsdt
 
 synth3.$(EXT): $(LIB) $(OBJS3) $(ACTDEPEND)
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main3.o -o synth3.$(EXT) $(CHPOPT) -lactchpopt -lactchp2prspass $(SHLIBACTPASS) $(EXPRLIB)
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) main3.o -o synth3.$(EXT) -lactchpopt -lactchp2prspass $(SHLIBACTPASS) $(EXPRLIB)
 
 $(TARGETLIBS): $(SHOBJS)
-	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB)
+	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB) -lactchpsdt
 
 testreps:
 	@if [ -d test -a -x test/repeat_unit.sh ]; \
