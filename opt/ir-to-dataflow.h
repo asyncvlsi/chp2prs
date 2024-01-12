@@ -36,7 +36,6 @@ using DExprDag = IRExprDag<ChpTag, ChanId>;
 using DExprSingleRootDag = IRExprSingleRootDag<ChpTag, ChanId>;
 
 enum class DataflowKind { Func, Split, MergeMix, Arbiter, Sink, Init,
-			  Instance // not really dataflow!
 			 //, Cluster?
 			 };
 
@@ -90,42 +89,15 @@ public:
     ChanId in_id;
   };
 
-  struct Instance {
-    // seq merging
-    //   . takes N control channels (in)
-    //   . takes 1 control channel (out)
-    //   . generates one control (0, 1, ..., N-1) used for channel
-    //     split/merge
-
-    // selection merging
-    //   . takes N control channels as input
-    //   . takes guard value as input (0..,N-1)
-    //   . generates one control output
-    //   . generates guard value for split/merge of data
-
-    // loop merging
-    //   . takes 1 control channel and 1 guard channel
-    //   . generates control output
-    int type;			// 0 = seq, 1 = sel, 2 = loop, > 2 = RR
-
-    std::vector<ChanId> ctrl;	// control channels
-    OptionalChanId ctrl_out;	// output control (optional)
-    
-    OptionalChanId guard;	// guard id, if any [select and loop]
-    OptionalChanId sm_sel;	// split/merge select
-  };
-    
-
 private:
   using Variant_t =
-    TypedVariant7<DataflowKind,
+    TypedVariant6<DataflowKind,
 		  Func, DataflowKind::Func,
 		  Init, DataflowKind::Init,
 		  Split, DataflowKind::Split,
 		  MergeMix, DataflowKind::MergeMix,
 		  Arbiter, DataflowKind::Arbiter,
-		  Sink, DataflowKind::Sink,
-		  Instance, DataflowKind::Instance>;
+		  Sink, DataflowKind::Sink>;
 
   explicit Dataflow (Variant_t u_) : u{std::move(u_)} {}
 
@@ -138,7 +110,6 @@ public:
   [[nodiscard]] MergeMix &u_mergemix() { return u.u_v3(); }
   [[nodiscard]] Arbiter &u_arbiter() { return u.u_v4(); }
   [[nodiscard]] Sink &u_sink() { return u.u_v5(); }
-  [[nodiscard]] Instance &u_inst() { return u.u_v6(); }
 
   Dataflow() = default;
   ~Dataflow() = default;
@@ -448,11 +419,6 @@ public:
     }
 
     return ret;
-#if 0    
-    return Dataflow{Variant_t(Instance{0, cin, cout,
-				       OptionalChanId::null_id(),
-				       sel})};
-#endif    
   }
 
 
@@ -545,11 +511,6 @@ public:
     ret.push_back (Dataflow::mkSplit (bintV, gval, outlist));
 
     return ret;
-#if 0    
-    return Dataflow{Variant_t(Instance{1, cin, cout,
-				       guard,
-				       sel})};
-#endif    
   }
   
   static std::list<Dataflow> mkInstDoLoop (ChanId cin,
@@ -692,14 +653,6 @@ public:
     ret.push_back (mkSplit (bcond, bval, slist));
     
     return ret;
-#if 0    
-    warning ("Using do loop multi-channel resolution; not implemented yet!");
-    std::vector<ChanId> ch;
-    ch.push_back (cin);
-    return Dataflow{Variant_t(Instance{2, ch, cout,
-				       guard,
-				       OptionalChanId::null_id()})};
-#endif    
   }
 
   void Print (std::ostream &os) {
@@ -767,59 +720,6 @@ public:
     case DataflowKind::Sink:
       os << "C" << u_sink().in_id.m_id << " -> *"
 	 << std::endl;
-      break;
-
-    case DataflowKind::Instance:
-      if (u_inst().type > 2) {
-	os << "inst_RR" << (u_inst().ctrl_out ? "" : "_noctrl")
-	   << "<" << u_inst().type - 2 << ">"
-	   << "(";
-	if (u_inst().ctrl_out) {
-	  os << "C" << (*u_inst().ctrl_out).m_id << ", ";
-	}
-	os << "C" << (*u_inst().sm_sel).m_id << ")";
-      }
-      else {
-	os << "inst_" << (u_inst().type == 0 ? "seq" :
-			  u_inst().type == 1 ? "sel" : "loop");
-	if (!(u_inst().ctrl_out)) {
-	  os << "_noctrl";
-	}
-	if (!(u_inst().sm_sel)) {
-	  os << "_nosel";
-	}
-	os << (u_inst().type == 2 ? "" :
-	       string_format("<%d>", u_inst().ctrl.size()))
-	   << "(";
-	if (u_inst().type == 2) {
-	  os << "C" << u_inst().ctrl[0].m_id << ", "
-	     << "C" << (*u_inst().guard).m_id << ", "
-	     << "C" << (*u_inst().ctrl_out).m_id << ")";
-	}
-	else {
-	  bool first = true;
-	  os << "{";
-	  for (auto ch : u_inst().ctrl) {
-	    if (!first) {
-	      os << ",";
-	    }
-	    os << "C" << ch.m_id;
-	    first = false;
-	  }
-	  os << "}";
-	  if (u_inst().ctrl_out) {
-	    os << ", C" << (*u_inst().ctrl_out).m_id;
-	  }
-	  if (u_inst().guard) {
-	    os << ", C" << (*u_inst().guard).m_id;
-	  }
-	  if (u_inst().sm_sel) {
-	    os << ", C" << (*u_inst().sm_sel).m_id;
-	  }
-	  os << ")";
-	}
-      }
-      os << std::endl;
       break;
     }
   }

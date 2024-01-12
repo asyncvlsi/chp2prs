@@ -32,6 +32,16 @@
 #include <functional>
 #include <iostream>
 
+template<> struct std::hash<std::pair<int,int>> {
+  size_t
+    operator () (const std::pair<int,int> c) const {
+    size_t seed = 0;
+    hash_combine (seed, c.first);
+    hash_combine (seed, c.second);
+    return seed;
+  }
+};
+
 namespace ChpOptimize {
 namespace {
 
@@ -1450,62 +1460,6 @@ void computeUses (int idx, Dataflow &d,
 
   case DataflowKind::Sink:
     break;
-
-  case DataflowKind::Instance:
-    // XXX: NEEFD THIS!
-#if 0    
-    if (u_inst().type > 2) {
-	os << "inst_RR" << (u_inst().ctrl_out ? "" : "_noctrl")
-	   << "<" << u_inst().type - 2 << ">"
-	   << "(";
-	if (u_inst().ctrl_out) {
-	  os << "C" << (*u_inst().ctrl_out).m_id << ", ";
-	}
-	os << "C" << (*u_inst().sm_sel).m_id << ")";
-      }
-      else {
-	os << "inst_" << (u_inst().type == 0 ? "seq" :
-			  u_inst().type == 1 ? "sel" : "loop");
-	if (!(u_inst().ctrl_out)) {
-	  os << "_noctrl";
-	}
-	if (!(u_inst().sm_sel)) {
-	  os << "_nosel";
-	}
-	os << (u_inst().type == 2 ? "" :
-	       string_format("<%d>", u_inst().ctrl.size()))
-	   << "(";
-	if (u_inst().type == 2) {
-	  os << "C" << u_inst().ctrl[0].m_id << ", "
-	     << "C" << (*u_inst().guard).m_id << ", "
-	     << "C" << (*u_inst().ctrl_out).m_id << ")";
-	}
-	else {
-	  bool first = true;
-	  os << "{";
-	  for (auto ch : u_inst().ctrl) {
-	    if (!first) {
-	      os << ",";
-	    }
-	    os << "C" << ch.m_id;
-	    first = false;
-	  }
-	  os << "}";
-	  if (u_inst().ctrl_out) {
-	    os << ", C" << (*u_inst().ctrl_out).m_id;
-	  }
-	  if (u_inst().guard) {
-	    os << ", C" << (*u_inst().guard).m_id;
-	  }
-	  if (u_inst().sm_sel) {
-	    os << ", C" << (*u_inst().sm_sel).m_id;
-	  }
-	  os << ")";
-	}
-      }
-      os << std::endl;
-#endif      
-      break;
   }
 }
 
@@ -1545,10 +1499,6 @@ void replaceChan (Dataflow &d, ChanId src, ChanId dst)
     break;
 
   case DataflowKind::Sink:
-    break;
-
-  case DataflowKind::Instance:
-    // XXX: NEEFD THIS!
     break;
   }
 }
@@ -1603,10 +1553,6 @@ void replaceChanUses (Dataflow &d, ChanId src, ChanId dst)
 
   case DataflowKind::Sink:
     break;
-
-  case DataflowKind::Instance:
-    // XXX: NEEFD THIS!
-    break;
   }
 }
  
@@ -1617,7 +1563,6 @@ void printDataflowExpr (std::ostream &os, const DExpr &d)
 {
   print_dexpr (os, d);
 }
-
 
 std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 {
@@ -1646,7 +1591,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     idx++;
   }
 
-  std::unordered_set<int> delidx;
+  std::unordered_set<std::pair<int,int>> delidx;
 
   // delete dead code.
   // code is dead if:
@@ -1654,7 +1599,16 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   //   the channel defined is not in the original chp
   for (auto &[ch, idx] : dfdefs) {
     if (!dfuses.contains (ch) && !gr.name_from_chan.contains (ch)) {
-      delidx.insert (idx);
+      // check this
+      if (d[idx].u.type() == DataflowKind::Func) {
+	int subidx = 0;
+	for (auto &xid : d[idx].u_func().ids) {
+	  if (xid == ch) {
+	    delidx.insert (std::pair(idx,subidx));
+	  }
+	  subidx++;
+	}
+      }
     }
   }
 
@@ -1679,14 +1633,14 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	  for (auto uses : dfuses[x.u_func().ids[0]]) {
 	    replaceChanUses (d[uses], x.u_func().ids[0], *lhs);
 	  }
-	  delidx.insert (idx);
+	  delidx.insert (std::pair(idx,-1));
 	}
 	else {
 	  // no uses, replace the def
 	  if (dfdefs.contains (*lhs)) {
 	    replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
 	  }
-	  delidx.insert (idx);
+	  delidx.insert (std::pair(idx,-1));
 	}
       }
     }
@@ -1696,38 +1650,26 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   std::vector<Dataflow> dfinal;
   idx = 0;
   for (auto &elem : d) {
-    if (!delidx.contains (idx)) {
-      dfinal.push_back (std::move (elem));
-    }
-    else {
-      // should potentially delete this!
+    if (!delidx.contains (std::pair(idx,-1))) {
+      // check if there are sub-indices to be deleted
       if (elem.u.type() == DataflowKind::Func) {
-	// may need to delete some of these, not all!
 	std::vector<DExprDag::Node *> newroots;
 	std::vector<ChanId> newids;
-	int ii = 0;
-	for (auto &cid : elem.u_func().ids) {
-	  if (!dfuses.contains (cid)) {
-	    // two cases:
-	    //    either this is not an output channel, in which case we
-	    //    can delete this
-	    // OR
-	    //    it is an output chanel, and we've substituted it back
-	    // delete this one!
-	    //
-	    // XXX: CONFIRM THIS!
-	  }
-	  else {
-	    newids.push_back (cid);
+	for (int ii = 0; ii < elem.u_func().ids.size(); ii++) {
+	  if (!delidx.contains(std::pair(idx,ii))) {
+	    newids.push_back (elem.u_func().ids[ii]);
 	    newroots.push_back (elem.u_func().e.roots[ii]);
 	  }
-	  ii++;
 	}
 	if (newroots.size() != 0) {
 	  elem.u_func().e.roots = newroots;
 	  elem.u_func().ids = newids;
 	  dfinal.push_back (std::move (elem));
 	}
+      }
+      else {
+	// keep it!
+	dfinal.push_back (std::move (elem));
       }
     }
     idx++;
@@ -1835,62 +1777,6 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
     e->t = ACT_DFLOW_SINK;
     e->u.sink.chan = map.chanMap (d.u_sink().in_id);
     break;
-
-  case DataflowKind::Instance:
-    // XXX: FIXME
-#if 0    
-    if (u_inst().type > 2) {
-	os << "inst_RR" << (u_inst().ctrl_out ? "" : "_noctrl")
-	   << "<" << u_inst().type - 2 << ">"
-	   << "(";
-	if (u_inst().ctrl_out) {
-	  os << "C" << (*u_inst().ctrl_out).m_id << ", ";
-	}
-	os << "C" << (*u_inst().sm_sel).m_id << ")";
-      }
-      else {
-	os << "inst_" << (u_inst().type == 0 ? "seq" :
-			  u_inst().type == 1 ? "sel" : "loop");
-	if (!(u_inst().ctrl_out)) {
-	  os << "_noctrl";
-	}
-	if (!(u_inst().sm_sel)) {
-	  os << "_nosel";
-	}
-	os << (u_inst().type == 2 ? "" :
-	       string_format("<%d>", u_inst().ctrl.size()))
-	   << "(";
-	if (u_inst().type == 2) {
-	  os << "C" << u_inst().ctrl[0].m_id << ", "
-	     << "C" << (*u_inst().guard).m_id << ", "
-	     << "C" << (*u_inst().ctrl_out).m_id << ")";
-	}
-	else {
-	  bool first = true;
-	  os << "{";
-	  for (auto ch : u_inst().ctrl) {
-	    if (!first) {
-	      os << ",";
-	    }
-	    os << "C" << ch.m_id;
-	    first = false;
-	  }
-	  os << "}";
-	  if (u_inst().ctrl_out) {
-	    os << ", C" << (*u_inst().ctrl_out).m_id;
-	  }
-	  if (u_inst().guard) {
-	    os << ", C" << (*u_inst().guard).m_id;
-	  }
-	  if (u_inst().sm_sel) {
-	    os << ", C" << (*u_inst().sm_sel).m_id;
-	  }
-	  os << ")";
-	}
-      }
-      os << std::endl;
-#endif      
-      break;
   }
 }
 
