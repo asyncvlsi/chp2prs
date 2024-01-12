@@ -29,7 +29,7 @@ include config.mk
 
 OBJS1=main.o
 
-OBJS2=main2.o sdt_engine.o df_engine.o
+OBJS2=main2.o sdt_engine.o df_engine.o ring_engine.o
 
 OBJS3=main3.o ring_engine.o
 
@@ -53,7 +53,7 @@ $(BINARY): $(LIB) $(OBJS1) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(SHLIBACTPASS)
 
 synth2.$(EXT): $(LIB) $(OBJS2) $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS2) -o synth2.$(EXT) $(SHLIBACTPASS) -lactchpopt -lactchp2prspass -lactchpsdt
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS2) -o synth2.$(EXT) $(SHLIBACTPASS) -lactchpopt -lactchp2prspass -lactchpsdt -lactchpring
 
 synth3.$(EXT): $(LIB) $(OBJS3) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS3) -o synth3.$(EXT) -lactchpopt -lactchp2prspass $(SHLIBACTPASS) $(EXPRLIB) -lactchpring

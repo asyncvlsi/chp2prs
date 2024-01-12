@@ -33,6 +33,7 @@ static void usage(char *name)
   fprintf (stderr, "Options:\n");
   fprintf (stderr, " -d : generate dataflow output\n");
   fprintf (stderr, " -O : optimize CHP\n");
+  fprintf (stderr, " -R : synthesize with ring approach; implies -b\n");
   fprintf (stderr, " -b : bundled-data datapath\n");
   fprintf (stderr, " -h : display this usage message\n");
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
@@ -59,9 +60,16 @@ int main(int argc, char **argv)
   char *outfile = NULL;
   char *procname = NULL;
 
+  bool use_ring = false;
+
   int ch;
-  while ((ch = getopt (argc, argv, "hdObe:E:o:p:")) != -1) {
+  while ((ch = getopt (argc, argv, "RhdObe:E:o:p:")) != -1) {
     switch (ch) {
+    case 'R':
+      use_ring = true;
+      bundled = true;
+      break;
+      
     case 'h':
       usage (argv[0]);
       break;
@@ -119,14 +127,18 @@ int main(int argc, char **argv)
     usage (argv[0]);
   }
 
+  if (dflow && use_ring) {
+    fprintf (stderr, "Please select either dataflow or ring output, not both!");
+    usage (argv[0]);
+  }
+
   if (dflow) {
     if (external_opt || exprfile || bundled) {
       fprintf (stderr, "Cannot specify dataflow generation + expression optimizations\n");
       usage (argv[0]);
     }
   }
-  
-      
+
   /* read in the ACT file */
   a = new Act(argv[optind]);
 
@@ -161,17 +173,25 @@ int main(int argc, char **argv)
     c2p->setParam ("prefix", (void *)Strdup ("df"));
   }
   else {
-    c2p->setParam ("prefix", (void *)Strdup ("sdt"));
-    c2p->setParam ("engine", (void *) gen_sdt_engine);
+    if (use_ring) {
+      c2p->setParam ("engine", (void *) gen_ring_engine);
+      c2p->setParam ("prefix", (void *)Strdup ("ring"));
+    }
+    else {
+      c2p->setParam ("engine", (void *) gen_sdt_engine);
+      c2p->setParam ("prefix", (void *)Strdup ("sdt"));
+    }
 
-    /* sdt only */
     c2p->setParam ("expr", (void *) exprfile);
     c2p->setParam ("externopt", external_opt);
     c2p->setParam ("bundled_dpath", bundled);
   }
+
+  /* input/output options */
   c2p->setParam ("in", (void *) argv[optind]);
   c2p->setParam ("out", (void *) outfile);
 
+  /* optimization options */
   c2p->setParam ("chp_optimize", chpopt);
   
   if (external_opt) {
