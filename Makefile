@@ -46,14 +46,14 @@ include $(ACT_HOME)/scripts/Makefile.std
 EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
 
 ifdef exproptcommercial_INCLUDE
-EXPRLIB+=-lexproptcommercial
+EXPRLIB+=-lexproptcommercial_sh
 endif
 
 $(BINARY): $(LIB) $(OBJS1) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(SHLIBACTPASS)
 
 synth2.$(EXT): $(LIB) $(OBJS2) $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS2) -o synth2.$(EXT) $(SHLIBACTPASS) -lactchpopt -lactchp2prspass -lactchpsdt -lactchpring
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS2) -o synth2.$(EXT) $(SHLIBACTPASS) -lactchpopt -lactchp2prspass -lactchpsdt -lactchpring $(EXPRLIB)
 
 synth3.$(EXT): $(LIB) $(OBJS3) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS3) -o synth3.$(EXT) -lactchpopt -lactchp2prspass $(SHLIBACTPASS) $(EXPRLIB) -lactchpring
