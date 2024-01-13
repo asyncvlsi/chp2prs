@@ -70,13 +70,13 @@ int main(int argc, char **argv)
   while ((ch = getopt (argc, argv, "RhdObe:E:o:p:F:")) != -1) {
     switch (ch) {
     case 'F':
-      if (strcmp (optarg, "dataflow")) {
+      if (!strcmp (optarg, "dataflow")) {
 	dflow = true;
       }
-      else if (strcmp (optarg, "ring")) {
+      else if (!strcmp (optarg, "ring")) {
 	use_ring = true;
       }
-      else if (strcmp (optarg, "sdt")) {
+      else if (!strcmp (optarg, "sdt")) {
 	use_ring = false;
 	dflow = false;
       }

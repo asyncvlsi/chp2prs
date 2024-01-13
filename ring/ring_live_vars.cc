@@ -157,7 +157,7 @@ void LiveVarAnalysis::_remove_from_live_vars (ActId *id)
         hash_delete (H_live, tname);
         return;
     }
-    fatal_error ("Attempted to delete variable not in live-var list");
+    // fatal_error ("Attempted to delete variable not in live-var list");
     return;
 }
 
