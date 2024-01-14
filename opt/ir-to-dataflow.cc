@@ -603,12 +603,14 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
        We need to track which Boolean variables correspond to "g = i"
        comparisons!
     */
+
     VarId guardvar;
     bool noguard = true;
     int gval = 0;
     bool found_special_case = true;
     bool mustbe_last = false;
     OptionalVarId gret;
+    bool found_else = false;
 
     for (auto &branch : select.branches) {
       if (branch.g.type() == IRGuardType::Expression) {
@@ -636,14 +638,16 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
       }
       else {
 	mustbe_last = true;
+	found_else = true;
       }
       gval++;
     }
 
     if (found_special_case) {
       if (dm.id_pool->getBitwidth (guardvar) == width) {
-	swap = false;
-	return dm.mapvar (guardvar);
+	if (!found_else || ((1UL << width) == select.branches.size())) {
+	  return dm.mapvar (guardvar);
+	}
       }
     }
 
@@ -651,16 +655,12 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
     // if the Boolenans are the same as (v = i) for the same variable
     // v, then we can return "v" as the guard
     std::vector<ChanId> bool_glist;
-    bool found_else = false;
     for (auto &branch : select.branches) {
       if (branch.g.type() == IRGuardType::Expression) {
 	auto n = branch.g.u_e().e.m_dag.roots[0];
 	if (n->type() == IRExprTypeKind::Var) {
 	  bool_glist.push_back (dm.mapvar (n->u_var().id));
 	}
-      }
-      else {
-	found_else = true;
       }
     }
     if (bool_glist.size() + (found_else ? 1 : 0) == select.branches.size()) {
@@ -702,7 +702,9 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
 
 	  if (found_special_case) {
 	    if (dm.id_pool->getBitwidth (guardvar) == width) {
-	      return guardvar;
+	      if (!found_else || ((1UL << width) == select.branches.size())) {
+		return guardvar;
+	      }
 	    }
 	  }
 	}
