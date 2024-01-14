@@ -477,9 +477,8 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 
     fprintf(_fp, "// output bitwidth: %d bits\n",out_expr_width);
     fprintf(stdout, "\n\n");
-    fprintf(stdout, "\n%d\n", e->type);
-    print_uexpr (stdout, e);
-
+    // fprintf(stdout, "\n%d\n", e->type);
+    // print_uexpr (stdout, e);
     
     if (e->type == E_INT)
     {

@@ -44,7 +44,7 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
             for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
             {
                 stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_LOOP) 
+                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) 
                     fill_in_else_explicit (stmt, p, 1);
             }
         }

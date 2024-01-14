@@ -123,20 +123,16 @@ class RingSynth : public ActSynthesize {
           pp_printf (_pp, "bd_int<%d> %s;",
               TypeFactory::bitWidth (it), id->getName());
           pp_forced (_pp, 0);
-          p->CurScope()->Add (id->getName(), it);
+          // p->CurScope()->Add (id->getName(), it);
         }
       }
     }
     }
 
-#if defined(FOUND_expropt) && defined (FOUND_abc)
-
-#else
-    fatal_error ("External optimization package not installed.");
-#endif
-
     act_chp_lang_t *c = p->getlang()->getchp()->c;  
-    chp_print (stdout, c);
+    // fprintf (stdout, "\n\n");
+    // chp_print (stdout, c);
+    // fprintf (stdout, "\n\n");
     // core synthesis functions here
     Assert (c, "hmm c");
     mangle_init();
@@ -145,9 +141,9 @@ class RingSynth : public ActSynthesize {
     ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
     b->run(p);
 
-    fprintf (stdout, "\n");
-    p->CurScope()->Print(stdout);
-    fprintf (stdout, "\n");
+    // fprintf (stdout, "\n");
+    // p->CurScope()->Print(stdout);
+    // fprintf (stdout, "\n");
     Assert (b, "hmm b");
 
     RingForge *rf = new RingForge (_pp->fp, p, c, b, "");
