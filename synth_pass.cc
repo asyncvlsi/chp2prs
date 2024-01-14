@@ -248,7 +248,12 @@ static int emit_refinement_header (ActSynthesize *syn,
   pp_setb (pp);
 
   if (u->getlang() && u->getlang()->getchp()) {
-    pp_printf (pp, "refine {");
+    if (config_get_int ("act.refine_steps")  > 0) {
+      pp_printf (pp, "refine <%d> {", config_get_int("act.refine_steps") + 1);
+    }
+    else {
+      pp_printf (pp, "refine {");
+    }
     pp_forced (pp, 2);
     pp_setb (pp);
   }
