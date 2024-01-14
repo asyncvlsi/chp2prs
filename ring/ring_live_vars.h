@@ -20,6 +20,9 @@
  **************************************************************************
  */
 
+#ifndef __ACT_RING_LIVE_VARS_H__
+#define __ACT_RING_LIVE_VARS_H__
+
 #include "reqs.h"
 
 /*
@@ -64,7 +67,7 @@ class LiveVarAnalysis {
         */
         void print_live_var_info ();
 
-    private:
+    protected:
 
         // Output file 
         FILE *fp;
@@ -89,7 +92,7 @@ class LiveVarAnalysis {
         void _add_to_live_vars (Expr *e);
         void _remove_from_live_vars (ActId *id);
 
-        void _tag_action_with_reqd_vars (act_chp_lang_t *action);
+        virtual void _tag_action_with_reqd_vars (act_chp_lang_t *action);
         
         void _add_to_live_vars_lcd (ActId *id);
         void _tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *action);
@@ -102,3 +105,4 @@ class LiveVarAnalysis {
         
 };
 
+#endif
