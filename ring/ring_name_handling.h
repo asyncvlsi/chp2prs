@@ -20,6 +20,11 @@
  **************************************************************************
  */
 
+
+#ifndef __ACT_RING_NAME_HANDLING_H__
+#define __ACT_RING_NAME_HANDLING_H__
+
+
 #include "reqs.h"
 
 /*
@@ -36,5 +41,6 @@ void mangle_init ();
  * name for every identifier. Indices in 
  * arrayed identifiers are mangled as required.
 */
-void get_true_name (char *buf, ActId *id, Scope *s);
+void get_true_name (char *buf, ActId *id, Scope *s, bool mangle = true);
 
+#endif

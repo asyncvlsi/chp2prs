@@ -23,10 +23,10 @@
 #include "ring_live_vars.h"
 
 
-void LiveVarAnalysis::_add_to_live_vars (ActId *id)
+void LiveVarAnalysis::_add_to_live_vars (ActId *id, bool mangle = true)
 {
     char tname[1024];
-    get_true_name(tname, id, p->CurScope());
+    get_true_name(tname, id, p->CurScope(), mangle);
     hash_bucket_t *b;
     b = hash_lookup(H_live, tname);
     if (!b)

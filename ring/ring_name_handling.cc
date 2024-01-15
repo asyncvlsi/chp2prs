@@ -34,11 +34,14 @@ void mangle_init ()
   a_mangle->mangle(u);
 }
 
-void get_true_name (char *buf, ActId *id, Scope *s)
+void get_true_name (char *buf, ActId *id, Scope *s, bool mangle)
 {
   char str[1024];
   id->sPrint(str,1024,NULL,style_global);
-  a_mangle->mangle_string(str,buf,1024);
+  if (mangle)
+    a_mangle->mangle_string(str,buf,1024);
+  else  
+    snprintf (buf, 1024, "%s", str);
 }
 
 void generate_array_suffix (char *buf, Array *a)
