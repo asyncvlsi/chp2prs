@@ -35,7 +35,7 @@ void LiveVarAnalysis::_add_to_live_vars (ActId *id, bool mangle = true)
     } 
 }
 
-void LiveVarAnalysis::_add_to_live_vars (Expr *e)
+void LiveVarAnalysis::_add_to_live_vars (Expr *e, bool mangle = true)
 {
   int id;
   ActId *var;
@@ -46,13 +46,13 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e)
 
 #define BINARY_OP					\
   do {							\
-    _add_to_live_vars (e->u.e.l);	\
-    _add_to_live_vars (e->u.e.r);	\
+    _add_to_live_vars (e->u.e.l, mangle);	\
+    _add_to_live_vars (e->u.e.r, mangle);	\
   } while (0)
 
 #define UNARY_OP					\
   do {							\
-    _add_to_live_vars (e->u.e.l);	\
+    _add_to_live_vars (e->u.e.l, mangle);	\
   } while (0)
   
   switch (e->type) {
@@ -86,9 +86,9 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e)
     break;
 
   case E_QUERY:
-    _add_to_live_vars (e->u.e.l);
-    _add_to_live_vars (e->u.e.r->u.e.l);
-    _add_to_live_vars (e->u.e.r->u.e.r);
+    _add_to_live_vars (e->u.e.l, mangle);
+    _add_to_live_vars (e->u.e.r->u.e.l, mangle);
+    _add_to_live_vars (e->u.e.r->u.e.r, mangle);
     break;
 
   case E_COLON:
@@ -101,7 +101,7 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e)
     {
       Expr *tmp = e;
       while (tmp) {
-        _add_to_live_vars (tmp->u.e.l);
+        _add_to_live_vars (tmp->u.e.l, mangle);
         tmp = tmp->u.e.r;
       }
     }
@@ -123,7 +123,7 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e)
   case E_BITFIELD:
   case E_VAR:
         var = (ActId *)e->u.e.l;
-        get_true_name(tname, var, p->CurScope());
+        get_true_name(tname, var, p->CurScope(), mangle);
         b = hash_lookup(H_live, tname);
         if (!b)
         {

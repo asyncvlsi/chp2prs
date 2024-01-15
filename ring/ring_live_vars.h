@@ -89,7 +89,7 @@ class LiveVarAnalysis {
         void _print_var_list (list_t *var_list);
 
         void _add_to_live_vars (ActId *id, bool);
-        void _add_to_live_vars (Expr *e);
+        void _add_to_live_vars (Expr *e, bool);
         void _remove_from_live_vars (ActId *id);
 
         virtual void _tag_action_with_reqd_vars (act_chp_lang_t *action);
