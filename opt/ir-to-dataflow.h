@@ -122,6 +122,15 @@ public:
     return Dataflow{Variant_t{Func{id_, std::move(e_)}}};
   }
 
+  static Dataflow mkSrc (ChanId id, BigInt val, int width) {
+    std::vector<ChanId> ids;
+    ids.push_back (id);
+    DExprDag dg;
+    DExprDag::Node *n = dg.newNode (DExprDag::Node::makeConstant (val, width));
+    dg.roots.push_back (n);
+    return Dataflow{Variant_t{Func{ids, std::move(dg)}}};
+  }
+
   static Dataflow mkInit (ChanId inp, ChanId outp, BigInt val, int width) {
     return Dataflow{Variant_t{Init{val, width, inp,outp}}};
   }
@@ -448,7 +457,7 @@ public:
     8.  {bintVal} gval -> *, LoopGuard
     */
     std::list<Dataflow> ret;
-    
+
     ChanId bintV = fresh (OptionalChanId::null_id());
     ChanId i_bint = fresh (OptionalChanId{bintV});
 
@@ -477,16 +486,20 @@ public:
     ret.push_back (Dataflow::mkFunc (inlist, std::move (dg)));
 
     /* 5.  bint != 0 -> g2 */
-    ChanId g2 = fresh (OptionalChanId::null_id());
 
-    DExprDag dg2;
-    n = dg2.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::NE,
+    ChanId g2;
+    if (sel) {
+      g2 = fresh (OptionalChanId::null_id());
+
+      DExprDag dg2;
+      n = dg2.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::NE,
 	   dg2.newNode (DExprDag::Node::makeVariableAccess (bint, 2)),
            dg2.newNode (DExprDag::Node::makeConstant (BigInt(0), 2))));
-    dg2.roots.push_back(n);
-    inlist.clear();
-    inlist.push_back (g2);
-    ret.push_back (Dataflow::mkFunc (inlist, std::move (dg2)));
+      dg2.roots.push_back(n);
+      inlist.clear();
+      inlist.push_back (g2);
+      ret.push_back (Dataflow::mkFunc (inlist, std::move (dg2)));
+    }
 
     /* 6. bint = 1 -> bintVal */
     DExprDag dg3;
@@ -500,9 +513,11 @@ public:
 
     /* 7. {g2} gval -> *, sel */
     std::vector<OptionalChanId> outlist;
-    outlist.push_back (OptionalChanId::null_id());
-    outlist.push_back (sel);
-    ret.push_back (Dataflow::mkSplit (g2, gval, outlist));
+    if (sel) {
+      outlist.push_back (OptionalChanId::null_id());
+      outlist.push_back (sel);
+      ret.push_back (Dataflow::mkSplit (g2, gval, outlist));
+    }
 
     /* 8.  {bintVal} gval -> *, LoopGuard */
     outlist.clear();
