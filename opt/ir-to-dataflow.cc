@@ -911,7 +911,9 @@ MultiChannelState reconcileMultiSel (Block *curr,
 						     cfresh,
 						     ch_guard,
 						     ctrlguard, freshalloc);
-
+      for (auto &xd : tmp) {
+	d.push_back (std::move(xd));
+      }
 
       if (ch != fresh) {
 	ret.ctrlmap[ch] = cfresh;
@@ -1583,6 +1585,19 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   MultiChannelState ret = createDataflow (gr.graph.m_seq, m, d);
   hassert (ret.datamap.empty() && ret.ctrlmap.empty());
 
+#if 0
+  printf ("---\n");
+  int pos = 0;
+  for (auto &elem : d) {
+    printf ("F%3d :: ", pos);
+    elem.Print (std::cout);
+    pos++;
+  }
+  printf ("---\n");
+
+  return d;
+#endif  
+
   // strip out single fanout buffers
   std::unordered_map<ChanId, std::list<int>> dfuses;
   std::unordered_map<ChanId, int> dfdefs;
@@ -1613,6 +1628,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
       }
     }
   }
+
 
   idx = 0;
   for (auto &x : d) {
@@ -1676,7 +1692,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     }
     idx++;
   }
-
+  
   return dfinal;
 }
 
