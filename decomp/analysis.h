@@ -100,6 +100,9 @@ class DecompAnalysis {
         
         // compute union of top element of stack and current H_live
         void _h_live_union_h_parent ();
+        std::unordered_set<VarId> _set_union (std::unordered_set<VarId>, std::unordered_set<VarId>);
+        
+        std::unordered_set<VarId> _prune_T (std::unordered_set<VarId>, std::vector<std::unordered_set<VarId>>);
 
         // add the vars from top element of stack to H_live
         void _restore_live_vars_from_parent (); //_restore_live_vars_from_parent

@@ -83,13 +83,15 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
     // Block *curr = seq.startseq->child();
     Block *curr = seq.endseq->parent();
     decomp_info *di;
+    std::unordered_set<VarId> T, T_out;
+    std::vector<std::unordered_set<VarId>> Si_s;
 
     while (curr->type() != BlockType::StartSequence) {
     switch (curr->type()) {
     case BlockType::Basic: {
         switch (curr->u_basic().stmt.type()) {
         case StatementType::Assign:
-            // fprintf (stdout, "reached assign\n");
+            fprintf (stdout, "reached assign\n");
             for (auto it = curr->u_basic().stmt.u_assign().ids.begin(); 
                         it != curr->u_basic().stmt.u_assign().ids.end(); it++)
             {
@@ -97,24 +99,24 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
             }
             _add_to_live_vars (getIdsUsedByExpr(curr->u_basic().stmt.u_assign().e));
             di = _generate_decomp_info ();
-            // _print_decomp_info (di);
+            _print_decomp_info (di);
             _map_block_to_live_vars (curr, di);
             break;
 
         case StatementType::Send:
-            // fprintf (stdout, "reached send\n");
+            fprintf (stdout, "reached send\n");
             _add_to_live_vars (getIdsUsedByExpr (curr->u_basic().stmt.u_send().e) );
             di = _generate_decomp_info ();
-            // _print_decomp_info (di);
+            _print_decomp_info (di);
             _map_block_to_live_vars (curr, di);
             break;
 
         case StatementType::Receive:
-            // fprintf (stdout, "reached recv\n");
+            fprintf (stdout, "reached recv\n");
             if (curr->u_basic().stmt.u_receive().var != OptionalVarId::null_id())
                 _remove_from_live_vars (*curr->u_basic().stmt.u_receive().var);
             di = _generate_decomp_info ();
-            // _print_decomp_info (di);
+            _print_decomp_info (di);
             _map_block_to_live_vars (curr, di);
             break;
       }
@@ -133,27 +135,41 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
     break;
       
     case BlockType::Select:
+
+        fprintf (stdout, "reached select 1\n");
         _init_union();
+        T = H_live;
+        Si_s.clear();
+        H_live.clear();
+
         for (auto &branch : curr->u_select().branches) {
 
             _save_state_live_vars ();
 
             _generate_decomp_info (branch.seq, 1);
 
+            Si_s.push_back(H_live);
+
             _h_live_union_h_parent ();
 
             _restore_state_live_vars ();
         }
 
-        _restore_live_vars_from_parent ();
-
         for (auto &branch : curr->u_select().branches) {
             _add_to_live_vars (getIdsUsedByExpr(branch.g.u_e().e));
         }
+        _h_live_union_h_parent ();
+
+        _restore_live_vars_from_parent ();
+
+        // for all vs in T, if v is in none of the Si_s, remove it from T
+        T_out = _prune_T (T, Si_s);
+
+        H_live = _set_union (H_live, T_out);
 
         di = _generate_decomp_info ();
-        // fprintf (stdout, "reached select\n");
-        // _print_decomp_info (di);
+        fprintf (stdout, "reached select\n");
+        _print_decomp_info (di);
         _map_block_to_live_vars (curr, di);
 
         _free_union();
@@ -290,7 +306,8 @@ void DecompAnalysis::_restore_state_live_vars ()
 void DecompAnalysis::_init_union ()
 {
     std::unordered_set<VarId> h_p;
-    h_p = H_live;
+    // h_p = H_live;
+    h_p.clear();
     H_parents.push_back(h_p);
 }
 
@@ -325,6 +342,47 @@ void DecompAnalysis::_h_live_union_h_parent ()
     // H_parents.back() = h_p;
     H_parents.pop_back();
     H_parents.push_back(h_p);
+}
+
+std::unordered_set<VarId> DecompAnalysis::_set_union (std::unordered_set<VarId> input1, std::unordered_set<VarId> input2)
+{
+    std::unordered_set<VarId> output;
+    output.clear();
+    std::unordered_set<VarId>::iterator itr;
+    for (itr = input1.begin(); itr != input1.end(); itr++)
+    {
+        output.insert(*itr);
+    }
+    std::unordered_set<VarId>::iterator itr2;
+    for (itr2 = input2.begin(); itr2 != input2.end(); itr2++)
+    {
+        if (!output.contains(*itr2))
+            output.insert(*itr2);
+    }
+    return output;
+}
+
+std::unordered_set<VarId> DecompAnalysis::_prune_T (std::unordered_set<VarId> T_in, std::vector<std::unordered_set<VarId>> Si_s_in)
+{
+    std::unordered_set<VarId> out;
+    out.clear();
+    bool keep;
+    std::unordered_set<VarId>::iterator itr;
+    for (itr = T_in.begin(); itr != T_in.end(); itr++)
+    {
+        keep = false;
+        for (auto Si = Si_s_in.begin() ; Si != Si_s_in.end() ; ++Si )
+        {
+            if (Si->contains(*itr))
+            {    
+                keep = true;
+                break;
+            }
+        }
+        if (keep)
+            out.insert(*itr);
+    }
+    return out;
 }
 
 void DecompAnalysis::_restore_live_vars_from_parent ()
