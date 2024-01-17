@@ -24,9 +24,10 @@
 #include "../opt/chp-opt.h"
 
 // ChpOptimize::ChpGraph *g;
+using namespace ChpOptimize;
 
 typedef struct decomp_info {
-    std::unordered_set<ChpOptimize::VarId *> tx_vars;
+    std::unordered_set<VarId> tx_vars;
     int total_bitwidth;
     bool is_breakpoint;
 } decomp_info_t;
@@ -34,10 +35,10 @@ typedef struct decomp_info {
 class DecompAnalysis {
     public:
 
-        DecompAnalysis ( FILE *fp_out, ChpOptimize::GraphWithChanNames g_in )
+        DecompAnalysis ( FILE *fp_out, GraphWithChanNames &g_in )
             {   
                 fp = fp_out;
-                g = g_in;
+                g = &g_in;
             }
 
         void analyze ();
@@ -47,30 +48,37 @@ class DecompAnalysis {
     private: 
 
         FILE *fp;
-        ChpOptimize::GraphWithChanNames g;
+        GraphWithChanNames *g;
 
         // map from a block to variables that are live-in to that block
-        std::unordered_map<ChpOptimize::Block *, decomp_info_t *> live_in_vars_map;
+        std::unordered_map<Block *, decomp_info_t *> live_in_vars_map;
 
         // running state of live variables
-        std::unordered_set<ChpOptimize::VarId *> H_live;
+        std::unordered_set<VarId> H_live;
 
         // copy of running state
-        std::unordered_set<ChpOptimize::VarId *> H_saved;
-        
+        std::unordered_set<VarId> H_saved;
+
         // stack of parent states - used when descending down into selections
-        list_t *H_parents;
+        std::vector<std::unordered_set<VarId>> H_parents;
 
         unsigned int total_bits;
 
         // traverse the graph and generate the live-in var map
-        void _generate_decomp_info ( int root);
+        void _generate_decomp_info (Sequence seq, int root);
+
+        void _map_block_to_live_vars (Block *, decomp_info_t *);
+
+        void _add_to_live_vars (VarId vid);
+        void _add_to_live_vars (std::unordered_set<VarId> vids);
+        void _remove_from_live_vars (VarId vid);
 
         // compute total bitwidth of set of vars
-        int _compute_total_bits (std::unordered_set<ChpOptimize::VarId> vars);
+        int _compute_total_bits (std::unordered_set<VarId> vars);
 
         // return a decomp_info_t based on the current state of H_live
         decomp_info_t *_generate_decomp_info ();
+        decomp_info_t *_generate_decomp_info (std::unordered_set<VarId>);
 
         // print decomp_info_t's for the whole graph
         void _print_decomp_info ( int root);
@@ -94,6 +102,6 @@ class DecompAnalysis {
         void _h_live_union_h_parent ();
 
         // add the vars from top element of stack to H_live
-        void _update_live_vars_from_parent (); //_restore_live_vars_from_parent
+        void _restore_live_vars_from_parent (); //_restore_live_vars_from_parent
       
 };
