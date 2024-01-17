@@ -50,7 +50,7 @@ void DecompAnalysis::analyze ()
     H_saved.clear();
     H_parents.clear();
     live_in_vars_map.clear();
-    fprintf (stdout, "\nanalyzing... \n");
+    // fprintf (stdout, "\nanalyzing... \n");
     _generate_decomp_info (g->graph.m_seq, 1);
 }
 
@@ -89,69 +89,33 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
     case BlockType::Basic: {
         switch (curr->u_basic().stmt.type()) {
         case StatementType::Assign:
-        // This is straightforward: each variable is mapped to its
-        // current channel mapping, and this is turned into a function
-        // block.
-        // d.push_back (
-        //      Dataflow::mkFunc(
-        //        Algo::map1<ChanId> (curr->u_basic().stmt.u_assign().ids,
-        // 		  [&] (const VarId v) { return dm.mapvar (v); }),
-        //        of_chp_dag (curr->u_basic().stmt.u_assign().e, dm))
-        // );
-            fprintf (stdout, "reached assign\n");
-            for (auto it = curr->u_basic().stmt.u_assign().ids.begin(); it != curr->u_basic().stmt.u_assign().ids.end(); it++)
+            // fprintf (stdout, "reached assign\n");
+            for (auto it = curr->u_basic().stmt.u_assign().ids.begin(); 
+                        it != curr->u_basic().stmt.u_assign().ids.end(); it++)
             {
                 _remove_from_live_vars (*it);
             }
             _add_to_live_vars (getIdsUsedByExpr(curr->u_basic().stmt.u_assign().e));
             di = _generate_decomp_info ();
-            _print_decomp_info (di);
+            // _print_decomp_info (di);
             _map_block_to_live_vars (curr, di);
             break;
 
         case StatementType::Send:
-        // std::vector<ChanId> ids;
-        // ChanId sc = curr->u_basic().stmt.u_send().chan;
-            fprintf (stdout, "reached send\n");
+            // fprintf (stdout, "reached send\n");
             _add_to_live_vars (getIdsUsedByExpr (curr->u_basic().stmt.u_send().e) );
             di = _generate_decomp_info ();
-            _print_decomp_info (di);
+            // _print_decomp_info (di);
             _map_block_to_live_vars (curr, di);
-        //   dm.id_pool->setChanDir (sc, false);
-        //   if (dm.chanmap[sc] == curr) {
-        // No multi-channel access issues for this statement, so
-        // there's a simple function translation.
-        //   }
-        //   else {
-        // Multi-channel access for this send. We need a fresh
-        // channel to replace the send, and record this mapping in
-        // the multi-channel state.
-        
-        // record multichannel information
-        //     ChanId fresh =  dm.fresh (sc);
-        //     // ms.datamap[sc] = fresh;
-        //     // replace send channel with the fresh name.
-        //     sc = fresh;
-        //   }
-        // create the send operation
-        //   ids.push_back (sc);
-        //   d.push_back (
-        //     //  Dataflow::mkFunc (
-        // 	ids,
-        // 	of_chp_dag (curr->u_basic().stmt.u_send().e.m_dag, dm)));
             break;
 
         case StatementType::Receive:
-        // ChanId rc = curr->u_basic().stmt.u_receive().chan;
-            fprintf (stdout, "reached recv\n");
+            // fprintf (stdout, "reached recv\n");
             if (curr->u_basic().stmt.u_receive().var != OptionalVarId::null_id())
                 _remove_from_live_vars (*curr->u_basic().stmt.u_receive().var);
             di = _generate_decomp_info ();
-            _print_decomp_info (di);
+            // _print_decomp_info (di);
             _map_block_to_live_vars (curr, di);
-            //   dm.id_pool->setChanDir (rc, true);
-            //   if (dm.chanmap[rc] == curr) {
-            // this is the only place for this receive!
             break;
       }
     }
@@ -159,9 +123,6 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
       
     case BlockType::Par: {
         fatal_error ("working on par...");
-        // A well-formed program cannot have channel conflicts in
-        // parallel branches, so any multi-channel access is the union
-        // across all parallel branches.
         for (auto &branch : curr->u_par().branches) {
         // ms = createDataflow (branch, dm, d);
         // acc.datamap = Algo::set_union (acc.datamap, ms.datamap);
@@ -172,12 +133,31 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
     break;
       
     case BlockType::Select:
-        // fatal_error ("working on select...");
-
-        fprintf (stdout, "reached select\n");
+        _init_union();
         for (auto &branch : curr->u_select().branches) {
+
+            _save_state_live_vars ();
+
             _generate_decomp_info (branch.seq, 1);
+
+            _h_live_union_h_parent ();
+
+            _restore_state_live_vars ();
         }
+
+        _restore_live_vars_from_parent ();
+
+        for (auto &branch : curr->u_select().branches) {
+            _add_to_live_vars (getIdsUsedByExpr(branch.g.u_e().e));
+        }
+
+        di = _generate_decomp_info ();
+        // fprintf (stdout, "reached select\n");
+        // _print_decomp_info (di);
+        _map_block_to_live_vars (curr, di);
+
+        _free_union();
+
         // deal with guards, phiinv, and phi
         // ChanId guard;
         // bool swap = false;
@@ -297,19 +277,18 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
 
 void DecompAnalysis::_save_state_live_vars ()
 {
-    H_saved.clear();
+    // H_saved.clear();
     H_saved = H_live;
 }
 
 void DecompAnalysis::_restore_state_live_vars ()
 {
-    H_live.clear();
+    // H_live.clear();
     H_live = H_saved;
 }
 
 void DecompAnalysis::_init_union ()
 {
-    // Hashtable *h_p = hash_new(4);
     std::unordered_set<VarId> h_p;
     h_p = H_live;
     H_parents.push_back(h_p);
@@ -343,7 +322,9 @@ void DecompAnalysis::_h_live_union_h_parent ()
             h_p.insert(*itr);
         }
     }
-    H_parents.back() = h_p;
+    // H_parents.back() = h_p;
+    H_parents.pop_back();
+    H_parents.push_back(h_p);
 }
 
 void DecompAnalysis::_restore_live_vars_from_parent ()
@@ -361,7 +342,7 @@ void DecompAnalysis::_restore_live_vars_from_parent ()
     std::unordered_set<VarId> h_p = H_parents.back();
     H_live.clear();
     std::unordered_set<VarId>::iterator itr;
-    for (itr = H_live.begin(); itr != H_live.end(); itr++)
+    for (itr = h_p.begin(); itr != h_p.end(); itr++)
     {
         H_live.insert(*itr);
     }
@@ -373,6 +354,16 @@ decomp_info_t *DecompAnalysis::_generate_decomp_info()
     NEW (di, decomp_info_t);
     di->tx_vars = H_live;
     di->total_bitwidth = _compute_total_bits (H_live);
+    di->is_breakpoint = (di->total_bitwidth == 0);
+    return di;
+}
+
+decomp_info_t *DecompAnalysis::_generate_decomp_info(std::unordered_set<VarId> H)
+{
+    decomp_info_t *di;
+    NEW (di, decomp_info_t);
+    di->tx_vars = H;
+    di->total_bitwidth = _compute_total_bits (H);
     di->is_breakpoint = (di->total_bitwidth == 0);
     return di;
 }
@@ -396,6 +387,7 @@ void DecompAnalysis::_print_decomp_info (decomp_info_t *di)
     fprintf(fp, "\n-----------");
     fprintf(fp, "\n\n");
 }
+
 #if 0
 
 void DecompAnalysis::print_decomp_info ()
@@ -496,139 +488,6 @@ void DecompAnalysis::_print_decomp_info (act_chp_lang_t *c_t, int root)
         break;
     }
 
-}
-
-void DecompAnalysis::_generate_decomp_info (act_chp_lang_t *c_t, int root)
-{
-    listitem_t *li;
-    list_t *copy_list;
-    act_chp_lang_t *stmt;
-    act_chp_gc_t *gc;
-    decomp_info_t *di;
-    
-    if (!c_t) return;
-
-    switch (c_t->type) {
-    case ACT_CHP_COMMALOOP:
-    case ACT_CHP_SEMILOOP:
-        fatal_error ("Replication loops should've been removed..");
-        break;
-        
-    case ACT_CHP_COMMA:
-    case ACT_CHP_SEMI:
-        if (root == 1)
-        {
-            for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
-            {
-                stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_ASSIGN) _add_to_live_vars_lcd (stmt->u.assign.id);
-            }
-            for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
-            {
-                stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) 
-                    _generate_decomp_info (stmt, 1);
-            }
-            break;
-        }
-        else {
-            copy_list = list_dup (c_t->u.semi_comma.cmd);
-            list_reverse (copy_list);
-            for (li = list_first (copy_list); li; li = list_next (li)) 
-            {
-                stmt = (act_chp_lang_t *)(list_value(li));
-                _generate_decomp_info (stmt, 0);
-            }
-        }
-        break;
-
-    case ACT_CHP_LOOP:
-    case ACT_CHP_DOLOOP:
-        if (root == 1)
-        {
-            gc = c_t->u.gc;
-            _generate_decomp_info (gc->s, 0);
-            break;
-        }
-        else
-        {
-            fatal_error ("should've excised internal loops...");
-        }
-        break;
-        
-    case ACT_CHP_SELECT:
-        // save pre-selection state in parent  
-        // fprintf (stdout, "reached a selection\n");
-        _init_union ();
-        for (gc = c_t->u.gc ; gc ; gc = gc->next)
-        {
-            // make copy of pre-selection state
-            _save_state_live_vars ();
-
-            _generate_decomp_info (gc->s, 0);
-
-            // update parent with info from within branch
-            _h_live_union_h_parent ();
-            
-            // restore pre-selection state
-            _restore_state_live_vars ();
-        }
-
-        // set the across-branch union to the current table
-        _restore_live_vars_from_parent ();
-
-        // variables that appear in guard
-        for (gc = c_t->u.gc ; gc ; gc = gc->next)
-        {
-            _add_to_live_vars (gc->g, true);
-        }
-
-        // tag the selection itself
-        di = _tag_action_with_decomp_info_union_lcd();
-        c_t->space = di;
-
-        // delete parent 
-        _free_union ();
-        break;
-
-    case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS");
-        
-    case ACT_CHP_SKIP:
-        di = _tag_action_with_decomp_info();
-        c_t->space = di;
-        break;
-    case ACT_CHP_ASSIGN:
-    case ACT_CHP_ASSIGNSELF:
-        // order important (!!)
-        _remove_from_live_vars (c_t->u.assign.id);
-        _add_to_live_vars (c_t->u.assign.e, true);
-        di = _tag_action_with_decomp_info();
-        c_t->space = di;
-        break;
-        
-    case ACT_CHP_RECV:
-        _remove_from_live_vars (c_t->u.comm.var);
-        di = _tag_action_with_decomp_info();
-        c_t->space = di;
-        break;
-
-    case ACT_CHP_SEND:
-        _add_to_live_vars (c_t->u.comm.e, true);
-        di = _tag_action_with_decomp_info();
-        c_t->space = di;
-        break;
-
-    case ACT_CHP_FUNC:
-    case ACT_CHP_HOLE: /* to support verification */
-    case ACT_CHP_MACRO:
-    case ACT_HSE_FRAGMENTS:
-        break;
-
-    default:
-        fatal_error ("Unknown type");
-        break;
-    }
 }
 
 decomp_info_t *DecompAnalysis::_tag_action_with_decomp_info_union_lcd ()

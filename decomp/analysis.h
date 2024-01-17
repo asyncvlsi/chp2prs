@@ -78,6 +78,7 @@ class DecompAnalysis {
 
         // return a decomp_info_t based on the current state of H_live
         decomp_info_t *_generate_decomp_info ();
+        decomp_info_t *_generate_decomp_info (std::unordered_set<VarId>);
 
         // print decomp_info_t's for the whole graph
         void _print_decomp_info ( int root);
