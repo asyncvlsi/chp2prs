@@ -437,7 +437,7 @@ public:
 			     ChanId cout,
 			     ChanId guard,
 			     OptionalChanId sel,
-			     std::function<ChanId (const OptionalChanId &)> fresh)
+					std::function<ChanId (const OptionalChanId &)> fresh, bool swap)
   {
     /*
     1.  bintVal -> [0] i_bint
@@ -460,6 +460,13 @@ public:
 
     ChanId bintV = fresh (OptionalChanId::null_id());
     ChanId i_bint = fresh (OptionalChanId{bintV});
+
+    if (swap) {
+      ChanId c0 = cin[0];
+      ChanId c1 = cin[1];
+      cin[0] = c1;
+      cin[1] = c0;
+    }
 
     /* 1.  bintVal -> [0] i_bint */
     ret.push_back (Dataflow::mkInit (bintV, i_bint, BigInt(0), 2));

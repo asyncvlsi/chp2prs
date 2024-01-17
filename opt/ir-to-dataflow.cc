@@ -787,35 +787,47 @@ void genOrigToNewGuard (std::vector<int> &idx,
 			ChanId inguard,
 			ChanId out_guard,
 			DataflowChannelManager &dm,
-			std::vector<Dataflow> &d)
+			std::vector<Dataflow> &d,
+			bool swap)
 {
   // compute guard as follows:
   //  g = (idx[0] ? 0 : idx[1] ? 1 : .. idx[N] ? n : n + 1)
   if (idx.size() == 0) return;
+
+  if (swap) {
+    for (auto &x : idx) {
+      if (x == 0) {
+	x = 1;
+      }
+      else if (x == 1) {
+	x = 0;
+      }
+    }
+  }
   
   DExprDag newguard;
   DExprDag::Node *root = NULL;
   size_t pos = idx.size()-1;
-  root = newguard.newNode (
-     DExprDag::Node::makeQuery (
-      newguard.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
-						     newguard.newNode (DExprDag::Node::makeVariableAccess (inguard,dm.id_pool->getBitwidth (inguard))),
-						      newguard.newNode (DExprDag::Node::makeConstant (BigInt (idx[pos]), dm.id_pool->getBitwidth (inguard))))),
-      newguard.newNode (DExprDag::Node::makeConstant (BigInt(pos),dm.id_pool->getBitwidth (out_guard))),
-      newguard.newNode (DExprDag::Node::makeConstant (BigInt(pos+1),dm.id_pool->getBitwidth (out_guard)))
-				)
-			   );
+
+  int ibw, obw;
+
+  ibw = dm.id_pool->getBitwidth (inguard);
+  obw = dm.id_pool->getBitwidth (out_guard);
+  
+  root = Dataflow::helper_query
+    (newguard,
+     Dataflow::helper_eq (newguard, inguard, ibw, idx[pos]),
+     Dataflow::helper_const (newguard, pos, obw),
+     Dataflow::helper_const (newguard, pos+1, obw)
+     );
+  
   while (pos > 0) {
     pos--;
-    root = newguard.newNode (
-     DExprDag::Node::makeQuery (
-      newguard.newNode (DExprDag::Node::makeBinaryOp (IRBinaryOpType::EQ,
-						     newguard.newNode (DExprDag::Node::makeVariableAccess (inguard,dm.id_pool->getBitwidth (inguard))),
-						      newguard.newNode (DExprDag::Node::makeConstant (BigInt (idx[pos]), dm.id_pool->getBitwidth (inguard))))),
-      newguard.newNode (DExprDag::Node::makeConstant (BigInt(pos),dm.id_pool->getBitwidth (out_guard))),
-      root
-				)
-			     );
+    root = Dataflow::helper_query
+      (newguard,
+       Dataflow::helper_eq (newguard, inguard, ibw, idx[pos]),
+       Dataflow::helper_const (newguard, pos, obw),
+       root);
   }
   newguard.roots.push_back (root);
 
@@ -886,8 +898,7 @@ MultiChannelState reconcileMultiSel (Block *curr,
 	ch_guard = dm.fresh (guard_width (idxvec.size()+1));
 	// one more to indicate "no value"
 
-	// XXX: THIS NEEDS TO CHECK swap
-	genOrigToNewGuard (idxvec, guard, ch_guard, dm, d);
+	genOrigToNewGuard (idxvec, guard, ch_guard, dm, d, swap);
 
 	// we also need to generate a dummy extra ctrl channel for the
 	// "no value"; this is always "B!0"
@@ -918,7 +929,8 @@ MultiChannelState reconcileMultiSel (Block *curr,
       std::list<Dataflow> tmp = Dataflow::mkInstSel (ctrl_chans,
 						     cfresh,
 						     ch_guard,
-						     ctrlguard, freshalloc);
+						     ctrlguard, freshalloc,
+						     swap);
 
       for (auto &xd : tmp) {
 	d.push_back (std::move (xd));
