@@ -545,10 +545,12 @@ public:
 
     /*
 	0 -> Bloop
-	{in_loop} Bi, Bloop -> b
+	{in_loop} Bloop, Bi -> b
 
 	in_loop & (b != 1) ? 0 : 1 -> [1] in_loop
-	in_loop ? ((b = 2 & pending = 0) ? 1 : pending) : 0 -> [0] pending
+
+	in_loop ? ((b = 2 & pending = 0) ? 1 : pending) : (gval = 0 ?
+	0 : pending)  -> [0] pending
 
 	in_loop ? 1 : (pending ? 2 : 0) -> bval
 	in_loop & (b = 1 | b = 2 & pending) | ~in_loop & g = 0 -> bcond
@@ -567,12 +569,12 @@ public:
       ret.push_back (mkFunc (id, std::move (dg)));
     }
 
-    /* {in_loop} Bi, Bloop -> b */
+    /* {in_loop} Bloop, Bi -> b */
     ChanId b = fresh (cin);
     ChanId in_loop = fresh (OptionalChanId::null_id());
     std::vector<ChanId> idlist;
-    idlist.push_back (cin);
     idlist.push_back (Bloop);
+    idlist.push_back (cin);
     ret.push_back (mkMergeMix (in_loop, idlist, b));
     idlist.clear();
 
@@ -580,6 +582,7 @@ public:
        in_loop & (b != 1) ? 0 : 1 -> newl 
        newl -> [1] in_loop 
     */
+    ChanId newl;
     {
       DExprDag dg;
       DExprDag::Node *n =
@@ -590,7 +593,7 @@ public:
 		      helper_const (dg, 1, 1)
 		      );
       dg.roots.push_back (n);
-      ChanId newl = fresh (in_loop);
+      newl = fresh (in_loop);
       idlist.push_back (newl);
       ret.push_back (mkFunc (idlist, std::move (dg)));
       idlist.clear ();
@@ -598,8 +601,23 @@ public:
       ret.push_back (mkInit (newl, in_loop, BigInt(1), 1));
     }
 
+    /*
+      {in_loop} Bloop, C -> gval
+    */
+    ChanId Gloop = fresh (guard);
+    ChanId gval = fresh (guard);
 
-    /* in_loop ? ((b = 2 & pending = 0) ? 1 : pending) : 0 -> [0] pending */
+    ret.push_back(mkSrc (Gloop, BigInt (0), 1));
+
+    idlist.push_back (Gloop);
+    idlist.push_back (guard);
+    ret.push_back(mkMergeMix (in_loop, idlist, gval));
+    idlist.clear ();
+    
+    std::vector<OptionalChanId> slist;
+    
+    /* in_loop ? ((b = 2 & pending = 0) ? 1 : pending) : (gval = 0 ?
+       0 : pending)  -> [0] pending */
     ChanId pending = fresh (OptionalChanId::null_id());
     {
       DExprDag dg;
@@ -614,7 +632,12 @@ public:
 				    helper_const (dg, 1, 1),
 				    dg.newNode (DExprDag::Node::makeVariableAccess (pending, 1))
 				    ),
-		      helper_const (dg, 0, 1));
+		      helper_query (dg,
+				    helper_eq (dg, gval, 1, 0),
+				    helper_const (dg, 0, 1),
+				    dg.newNode (DExprDag::Node::makeVariableAccess (pending, 1))    
+				    )
+		      );
       dg.roots.push_back (n);
       ChanId newpend = fresh (pending);
       idlist.push_back (newpend);
@@ -658,7 +681,7 @@ public:
 					  )
 			       ),
 		   helper_and (dg,
-			       helper_eq (dg, guard, 1, 0),
+			       helper_eq (dg, gval, 1, 0),
 			       dg.newNode (DExprDag::Node::makeUnaryOp (IRUnaryOpType::Not,
 									dg.newNode (DExprDag::Node::makeVariableAccess (in_loop, 1)))))
 		   );
@@ -669,7 +692,7 @@ public:
     }
 					  
     /* {bcond} bval -> *, cout */
-    std::vector<OptionalChanId> slist;
+    slist.clear();
     slist.push_back (OptionalChanId::null_id());
     slist.push_back (cout);
     ret.push_back (mkSplit (bcond, bval, slist));

@@ -81,9 +81,16 @@ do
         fi
 	if [ $ok -eq 1 ]
 	then
-		if ! ./run_test.sh $orig
+		./run_test.sh $orig
+		code=$?
+		if [ $code -ne 0 ]
 		then
-			myecho "** FAILED SIMULATION, $opt TEST $i"
+			if [ $code -eq 2 ]
+			then
+				myecho "** FAILED DFLOWMAP, TEST $i"
+			else
+				myecho "** FAILED SIMULATION, $opt TEST $i"
+			fi
 			fail=`expr $fail + 1`
 			ok=0
 		fi	

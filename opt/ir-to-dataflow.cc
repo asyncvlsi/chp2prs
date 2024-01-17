@@ -1065,9 +1065,15 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId { if (ch) return dm.fresh (*ch); else return dm.fresh(1); };
 	  
 	  std::list<Dataflow> tmp = Dataflow::mkInstSeq (chlist, cfresh, selout, freshalloc);
+
+	  //printf (">> seq-ctrl-start: %d\n", (int) d.size());
+	  
 	  for (auto &xd : tmp) {
 	    d.push_back (std::move (xd));
 	  }
+	  
+	  //printf (">> seq-ctrl-end: %d\n", (int) d.size());
+	  
 	}
 	
 	chlist.clear();
@@ -1147,13 +1153,19 @@ MultiChannelState reconcileMultiLoop (Block *curr,
       }
 
 
-      ChanId cfresh =dm.fresh (msv.ctrlmap[ch]);
+      ChanId cfresh = dm.fresh (msv.ctrlmap[ch]);
       std::list<Dataflow> tmp = Dataflow::mkInstDoLoop (msv.ctrlmap[ch],
 							cfresh,
 							guard, freshalloc);
+
+      
+      //printf (">> do-ctrl-start: %d\n", (int) d.size());
+      
       for (auto &x : tmp) {
 	d.push_back (std::move (x));
       }
+      
+      //printf (">> do-ctrl-end: %d\n", (int) d.size());
       
       ret.datamap[ch] = rhs;
       ret.ctrlmap[ch] = cfresh;
@@ -1613,8 +1625,6 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     pos++;
   }
   printf ("---\n");
-
-  return d;
 #endif  
 
   // strip out single fanout buffers
@@ -1648,7 +1658,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     }
   }
 
-#if 0  
+#if 0
   idx = 0;
   for (auto &x : d) {
     printf ("F %3d :: ", idx);

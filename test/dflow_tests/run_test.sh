@@ -1,6 +1,7 @@
 #!/bin/sh
 
 REF="-ref=1"
+REF=
 
 file=$1
 
@@ -11,9 +12,9 @@ fail=0
 #
 dflowmap -ref=1 -q -p df_testproc -o ${file}_out runs/${file}_df.act > runs/${file}_df.out 2>&1  || fail=1
 
-if [ $fail -eq 1 ]
+if [ $fail -eq 1 -o -s runs/${file}_df.out ]
 then
-	exit 1
+	exit 2
 fi
 
 export ACT_PATH=runs/${file}_out
