@@ -35,6 +35,15 @@ extern "C" {
   void synthesis_free (ActPass *ap, void *v);
   void synthesis_done (ActPass *ap);
 
+  void optimize_init (ActPass *ap);
+  void optimize_run (ActPass *ap, Process *p);
+  void optimize_recursive (ActPass *ap, UserDef *u, int mode);
+  void *optimize_proc (ActPass *ap, Process *p, int mode);
+  void *optimize_data (ActPass *ap, Data *d, int mode);
+  void *optimize_chan (ActPass *ap, Channel *c, int mode);
+  void optimize_free (ActPass *ap, void *v);
+  void optimize_done (ActPass *ap);
+
 }
 
 #endif /* __ACT_SYNTH_PASS_H__ */

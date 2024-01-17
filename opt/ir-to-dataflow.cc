@@ -866,7 +866,6 @@ MultiChannelState reconcileMultiSel (Block *curr,
     OptionalChanId ctrlguard;
 
     if (idxvec.size() != msv.size() || variable.contains(ch)) {
-      //printf ("** sel-- ch %d is variable **\n", ch.m_id);
       std::vector<ChanId> ctrl_chans;
       for (auto idx : idxvec) {
 	if (!msv[idx].ctrlmap.contains (ch)) {
@@ -886,6 +885,12 @@ MultiChannelState reconcileMultiSel (Block *curr,
 	ch_guard = dm.fresh (guard_width (idxvec.size()+1));
 	// one more to indicate "no value"
 	genOrigToNewGuard (idxvec, guard, ch_guard, dm, d);
+
+	// we also need to generate a dummy extra ctrl channel for the
+	// "no value"; this is always "B!0"
+	ChanId xtractrl = dm.fresh (2);
+	d.push_back(Dataflow::mkSrc (xtractrl, BigInt(0), 2));
+	ctrl_chans.push_back (xtractrl);
       }
       else {
 	ch_guard = guard;
@@ -906,12 +911,14 @@ MultiChannelState reconcileMultiSel (Block *curr,
 								  if (ch) {
 									   return dm.fresh (*ch); } else { return dm.fresh (1); } };
       
-
       std::list<Dataflow> tmp = Dataflow::mkInstSel (ctrl_chans,
 						     cfresh,
 						     ch_guard,
 						     ctrlguard, freshalloc);
 
+      for (auto &xd : tmp) {
+	d.push_back (std::move (xd));
+      }
 
       if (ch != fresh) {
 	ret.ctrlmap[ch] = cfresh;
@@ -1583,6 +1590,19 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   MultiChannelState ret = createDataflow (gr.graph.m_seq, m, d);
   hassert (ret.datamap.empty() && ret.ctrlmap.empty());
 
+#if 0
+  printf ("---\n");
+  int pos = 0;
+  for (auto &elem : d) {
+    printf ("F%3d :: ", pos);
+    elem.Print (std::cout);
+    pos++;
+  }
+  printf ("---\n");
+
+  return d;
+#endif  
+
   // strip out single fanout buffers
   std::unordered_map<ChanId, std::list<int>> dfuses;
   std::unordered_map<ChanId, int> dfdefs;
@@ -1676,7 +1696,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     }
     idx++;
   }
-
+  
   return dfinal;
 }
 
