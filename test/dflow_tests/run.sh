@@ -9,12 +9,12 @@ echo
 ARCH=`$ACT_HOME/scripts/getarch`
 OS=`$ACT_HOME/scripts/getos`
 EXT=${ARCH}_${OS}
-if [ ! x$ACT_TEST_INSTALL = x ] || [ ! -f ../synth2.$EXT ]; then
+if [ ! x$ACT_TEST_INSTALL = x ] || [ ! -f ../../synth2.$EXT ]; then
   ACTTOOL=$ACT_HOME/bin/synth2
   echo "testing installation"
   echo
 else
-  ACTTOOL=../synth2.$EXT
+  ACTTOOL=../../synth2.$EXT
 fi
 
 check_echo=0
@@ -63,12 +63,16 @@ do
         else
            myecho ".[$bname]"
         fi
-	$ACTTOOL -d -p testproc -o runs/${orig}_df.act $i >runs/$i.t.stderr 2>&1
         ok=1
+        for opt in "-d" "-dO"
+	do
+        if [ $ok -eq 1 ]
+        then
+	$ACTTOOL $opt -p testproc -o runs/${orig}_df.act $i >runs/$i.t.stderr 2>&1
         if test -s runs/$i.t.stderr 
         then
                 echo 
-                myecho "** FAILED SYNTHESIS, TEST $i: stderr"
+                myecho "** FAILED SYNTHESIS, $opt TEST $i: stderr"
                 fail=`expr $fail + 1`
                 ok=0
                 if [ ! x$ACT_TEST_VERBOSE = x ]; then
@@ -79,11 +83,13 @@ do
 	then
 		if ! ./run_test.sh $orig
 		then
-			myecho "** FAILED SIMULATION, TEST $i"
+			myecho "** FAILED SIMULATION, $opt TEST $i"
 			fail=`expr $fail + 1`
 			ok=0
 		fi	
 	fi
+        fi
+        done
         if [ $ok -eq 1 ]
         then
                 if [ $num -eq $lim ]
