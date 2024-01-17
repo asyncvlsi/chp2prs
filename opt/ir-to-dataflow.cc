@@ -1634,6 +1634,16 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     }
   }
 
+#if 0  
+  idx = 0;
+  for (auto &x : d) {
+    printf ("F %3d :: ", idx);
+    x.Print (std::cout);
+    idx++;
+  }
+  printf ("----\n");
+#endif  
+
   idx = 0;
   for (auto &x : d) {
     // look for x -> y
@@ -1658,17 +1668,28 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	  delidx.insert (std::pair(idx,-1));
 	}
 	else {
-	  // no uses, replace the def
-	  if (dfdefs.contains (*lhs)) {
-	    replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
+	  // no uses for the RHS, now we see if the LHS has additional
+	  // uses.
+	  if (dfuses[*lhs].front() == dfuses[*lhs].back()) {
+	    // no other uses of the lhs, replace the def
+	    if (dfdefs.contains (*lhs)) {
+	      replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
+	    }
+	    delidx.insert (std::pair(idx,-1));
 	  }
-	  delidx.insert (std::pair(idx,-1));
 	}
       }
     }
     idx++;
   }
+#if 0  
+  for (auto &[x,y] : delidx) {
+    printf ("  --> (%d,%d)\n", x, y);
+  }
+  printf ("----\n");
+#endif  
   
+
   std::vector<Dataflow> dfinal;
   idx = 0;
   for (auto &elem : d) {

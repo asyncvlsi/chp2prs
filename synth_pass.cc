@@ -225,7 +225,7 @@ static int emit_refinement_header (ActSynthesize *syn,
       }
     }
     else if (TypeFactory::isProcessType (vx->t) || TypeFactory::isStructure (vx->t)) {
-      if (overrideTypes) {
+      if (overrideTypes || TypeFactory::isProcessType (vx->t)) {
          OVERRIDE_OPEN;
          pp_printf (pp, "%s_", prefix);
          UserDef *ud = dynamic_cast <UserDef *> (vx->t->BaseType());
