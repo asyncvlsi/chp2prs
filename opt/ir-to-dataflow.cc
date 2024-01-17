@@ -828,7 +828,8 @@ MultiChannelState reconcileMultiSel (Block *curr,
 				     ChanId guard,
 				     std::vector<MultiChannelState> &msv,
 				     DataflowChannelManager &dm,
-				     std::vector<Dataflow> &d)
+				     std::vector<Dataflow> &d,
+				     bool swap)
 {
   // collect channel requirements
   std::unordered_map<ChanId,std::vector<int>>  chan_idx;
@@ -884,6 +885,8 @@ MultiChannelState reconcileMultiSel (Block *curr,
 	// generate local guard
 	ch_guard = dm.fresh (guard_width (idxvec.size()+1));
 	// one more to indicate "no value"
+
+	// XXX: THIS NEEDS TO CHECK swap
 	genOrigToNewGuard (idxvec, guard, ch_guard, dm, d);
 
 	// we also need to generate a dummy extra ctrl channel for the
@@ -910,7 +913,8 @@ MultiChannelState reconcileMultiSel (Block *curr,
       auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId {
 								  if (ch) {
 									   return dm.fresh (*ch); } else { return dm.fresh (1); } };
-      
+
+      // XXX: DOES THIS NEED "swap"? I think so, because the guard is backward
       std::list<Dataflow> tmp = Dataflow::mkInstSel (ctrl_chans,
 						     cfresh,
 						     ch_guard,
@@ -930,6 +934,12 @@ MultiChannelState reconcileMultiSel (Block *curr,
       ctrlguard = guard;
     }
     if (ctrlguard) {
+      if (swap) {
+	ChanId c0 = chlist[0];
+	ChanId c1 = chlist[1];
+	chlist[1] = c0;
+	chlist[0] = c1;
+      }
       if (!dm.id_pool->isChanInput (ch)) {
 	d.push_back(Dataflow::mkMergeMix(*ctrlguard, chlist, fresh));
       }
@@ -1295,7 +1305,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	for (auto &branch : curr->u_select().branches) {
 	  msv.push_back (createDataflow (branch.seq, dm, d));
 	}
-	
+
 	for (auto &merge : curr->u_select().merges) {
 	  std::vector<ChanId> inp;
 	  inp = Algo::map1<ChanId> (merge.branch_ids,
@@ -1313,7 +1323,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	}
 
 	// reconcile multi-channel access with a guard channel
-	seqs.push_back (reconcileMultiSel (curr, guard, msv, dm, d));
+	seqs.push_back (reconcileMultiSel (curr, guard, msv, dm, d, swap));
       }
       break;
       
@@ -1670,10 +1680,17 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	else {
 	  // no uses for the RHS, now we see if the LHS has additional
 	  // uses.
-	  if (dfuses[*lhs].front() == dfuses[*lhs].back()) {
+	  if (dfuses[*lhs].front() == dfuses[*lhs].back() ||
+	      !gr.name_from_chan.contains(x.u_func().ids[0])) {
 	    // no other uses of the lhs, replace the def
 	    if (dfdefs.contains (*lhs)) {
 	      replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
+	    }
+	    // and now replace all uses of RHS with *lhs
+	    if (dfuses.contains (x.u_func().ids[0])) {
+	      for (auto uses : dfuses[x.u_func().ids[0]]) {
+		replaceChanUses (d[uses], x.u_func().ids[0], *lhs);
+	      }
 	    }
 	    delidx.insert (std::pair(idx,-1));
 	  }
