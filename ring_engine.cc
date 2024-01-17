@@ -25,6 +25,7 @@
 #include "ring/reqs.h"
 #include "ring/ring_else_gen.h"
 #include "ring/ring_forge.h"
+#include "decomp/analysis.h"
 
 #include "opt/chp-opt.h"
 
@@ -126,13 +127,19 @@ class RingSynth : public ActSynthesize {
           // p->CurScope()->Add (id->getName(), it);
         }
       }
+
+    // fprintf (stdout, "\ngetting here...\n");
+    DecompAnalysis *da = new DecompAnalysis (_pp->fp, g);
+    da->analyze();
+    ChpOptimize::print_chp (std::cout, g.graph);
+
     }
     }
 
     act_chp_lang_t *c = p->getlang()->getchp()->c;  
-    // fprintf (stdout, "\n\n");
-    // chp_print (stdout, c);
-    // fprintf (stdout, "\n\n");
+    fprintf (stdout, "\n\n");
+    chp_print (stdout, c);
+    fprintf (stdout, "\n\n");
     // core synthesis functions here
     Assert (c, "hmm c");
     mangle_init();
@@ -141,14 +148,14 @@ class RingSynth : public ActSynthesize {
     ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
     b->run(p);
 
-    // fprintf (stdout, "\n");
     // p->CurScope()->Print(stdout);
-    // fprintf (stdout, "\n");
     Assert (b, "hmm b");
 
     RingForge *rf = new RingForge (_pp->fp, p, c, b, "");
 
-    rf->run_forge();
+    // da->print_decomp_info();
+
+    // rf->run_forge();
     
     /*
     ChpOptimize::putIntoNewStaticTokenForm (cg.graph);
@@ -157,9 +164,6 @@ class RingSynth : public ActSynthesize {
     std::vector<ActId *> res;
     act_dataflow *newd = dataflow_to_act (d, cg, res, p->CurScope());
 
-    fprintf (stdout, "\n");
-    fprintf (stdout, "%lu", size(d));
-    fprintf (stdout, "\n\n");
     dflow_print (stdout, newd);
     */
     fprintf (_pp->fp, "/* end rsyn */\n");

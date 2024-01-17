@@ -28,11 +28,11 @@ SRCS=$(SHOBJS:.os=.cc)
 
 OPTLIB=-lactchpopt
 
-EXPRLIB=-lexpropt_sh $(ACT_HOME_SANDBOX)/lib/libabc.so
+EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
 
-include $(ACT_HOME_SANDBOX)/scripts/Makefile.std
+include $(ACT_HOME)/scripts/Makefile.std
 
 $(TARGETLIBS): $(SHOBJS)
-	$(ACT_HOME_SANDBOX)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB) $(OPTLIB)
+	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB) $(OPTLIB)
 
 -include Makefile.deps
