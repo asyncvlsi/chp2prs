@@ -7,7 +7,7 @@ fail=0
 # 
 # Run dataflow mapper
 #
-dflowmap -ref=1 -p df_testproc -o ${file}_out runs/${file}_df.act  || fail=1
+dflowmap -ref=1 -p df_testproc -o ${file}_out runs/${file}_df.act > runs/${file}_df.out 2>&1  || fail=1
 
 if [ $fail -eq 1 ]
 then

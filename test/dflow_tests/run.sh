@@ -99,3 +99,23 @@ do
         fi
 done
 
+if [ $num -ne 0 ]
+then
+        echo
+fi
+
+
+if [ $fail -ne 0 ]
+then
+        if [ $fail -eq 1 ]
+        then
+                echo "--- Summary: 1 test failed ---"
+        else
+                echo "--- Summary: $fail tests failed ---"
+        fi
+        exit 1
+else
+        echo
+        echo "SUCCESS! All tests passed."
+fi
+echo
