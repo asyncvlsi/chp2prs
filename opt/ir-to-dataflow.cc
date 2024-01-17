@@ -787,23 +787,11 @@ void genOrigToNewGuard (std::vector<int> &idx,
 			ChanId inguard,
 			ChanId out_guard,
 			DataflowChannelManager &dm,
-			std::vector<Dataflow> &d,
-			bool swap)
+			std::vector<Dataflow> &d)
 {
   // compute guard as follows:
   //  g = (idx[0] ? 0 : idx[1] ? 1 : .. idx[N] ? n : n + 1)
   if (idx.size() == 0) return;
-
-  if (swap) {
-    for (auto &x : idx) {
-      if (x == 0) {
-	x = 1;
-      }
-      else if (x == 1) {
-	x = 0;
-      }
-    }
-  }
   
   DExprDag newguard;
   DExprDag::Node *root = NULL;
@@ -898,7 +886,9 @@ MultiChannelState reconcileMultiSel (Block *curr,
 	ch_guard = dm.fresh (guard_width (idxvec.size()+1));
 	// one more to indicate "no value"
 
-	genOrigToNewGuard (idxvec, guard, ch_guard, dm, d, swap);
+	genOrigToNewGuard (idxvec, guard, ch_guard, dm, d);
+
+	// note that if swap is true, the guard is backward
 
 	// we also need to generate a dummy extra ctrl channel for the
 	// "no value"; this is always "B!0"
@@ -1601,6 +1591,8 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   DataflowChannelManager m;
 
   hassert (gr.graph.is_static_token_form);
+
+  //print_chp(std::cout, gr.graph);
   
   m.id_pool = &gr.graph.id_pool();
 
