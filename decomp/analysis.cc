@@ -140,7 +140,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
         _init_union();
         T = H_live;
         Si_s.clear();
-        H_live.clear();
+        // H_live.clear();
 
         for (auto &branch : curr->u_select().branches) {
 
@@ -154,6 +154,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
 
             _restore_state_live_vars ();
         }
+        H_live.clear();
 
         for (auto &branch : curr->u_select().branches) {
             _add_to_live_vars (getIdsUsedByExpr(branch.g.u_e().e));
