@@ -1,7 +1,7 @@
 #!/bin/sh
 
 REF="-ref=1"
-REF=
+#REF=
 
 file=$1
 

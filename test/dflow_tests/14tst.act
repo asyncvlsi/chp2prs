@@ -1,0 +1,18 @@
+import "14.act";
+import "14_df_chp.act";
+
+defproc test()
+{
+  chan(int) X, Y;
+  
+  df_testproc d(X,Y);
+
+  int a0, a1;
+
+  chp {
+    X!8;
+    Y?a0;
+    Y?a1;
+    [ a0 = 8 & a1 = 8 -> log ("SUCCESS") [] else -> log ("FAILURE") ]
+  }
+}
