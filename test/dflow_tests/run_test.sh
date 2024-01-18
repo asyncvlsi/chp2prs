@@ -12,7 +12,12 @@ fail=0
 #
 dflowmap -ref=1 -q -p df_testproc -o ${file}_out runs/${file}_df.act > runs/${file}_df.out 2>&1  || fail=1
 
-if [ $fail -eq 1 -o -s runs/${file}_df.out ]
+if [ $fail -eq 1 ]
+then
+	exit 2
+fi
+
+if grep -i error runs/${file}_df.out > /dev/null 2>&1
 then
 	exit 2
 fi
