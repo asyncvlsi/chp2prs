@@ -563,8 +563,11 @@ public:
 
 	in_loop & (b != 1) ? 0 : 1 -> [1] in_loop
 
-	in_loop ? ((b = 2 & pending = 0) ? 1 : pending) : (gval = 0 ?
-	0 : pending)  -> [0] pending
+	0 -> Gloop
+	{in_loop} guard, Gloop -> gval
+
+
+	in_loop ? ((b = 2 & pending = 0) ? 1 : pending) : (gval = 0 ? 0 : pending)  -> [0] pending
 
 	in_loop ? 1 : (pending ? 2 : 0) -> bval
 	in_loop & (b = 1 | b = 2 & pending) | ~in_loop & g = 0 -> bcond
@@ -616,15 +619,15 @@ public:
     }
 
     /*
-      {in_loop} Bloop, C -> gval
+      {in_loop} guard, Gloop -> gval
     */
     ChanId Gloop = fresh (guard);
     ChanId gval = fresh (guard);
 
     ret.push_back(mkSrc (Gloop, BigInt (0), 1));
 
-    idlist.push_back (Gloop);
     idlist.push_back (guard);
+    idlist.push_back (Gloop);
     ret.push_back(mkMergeMix (in_loop, idlist, gval));
     idlist.clear ();
     
