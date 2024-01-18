@@ -439,7 +439,8 @@ public:
 			     ChanId cout,
 			     ChanId guard,
 			     OptionalChanId sel,
-					std::function<ChanId (const OptionalChanId &)> fresh, bool swap)
+			     int selw,
+			     std::function<ChanId (const OptionalChanId &)> fresh, bool swap)
   {
     /*
     1.  bintVal -> [0] i_bint
@@ -531,13 +532,37 @@ public:
     inlist.clear();
     inlist.push_back (bintV);
     ret.push_back (Dataflow::mkFunc (inlist, std::move (dg3)));
-
+    
+    
     /* 7. {g2} gval -> *, sel */
     std::vector<OptionalChanId> outlist;
     if (sel) {
-      outlist.push_back (OptionalChanId::null_id());
-      outlist.push_back (sel);
-      ret.push_back (Dataflow::mkSplit (g2, gval, outlist));
+      if (selw != log_2_round_up (cin.size())) {
+	// there's an extra channel for the "no B" case, and adding it
+	// bumps up the bit-width; we need to convert the gval to the
+	// smaller bitwidth
+	Assert (selw + 1 == log_2_round_up (cin.size()), "What?");
+
+	// add int(gval,selw) -> gval2
+	DExprDag dg4;
+	n = dg4.newNode (DExprDag::Node::makeResize (
+						     dg4.newNode (DExprDag::Node::makeVariableAccess (gval, selw+1)), selw));
+	dg4.roots.push_back (n);
+	inlist.clear ();
+	ChanId gvaltrunc = fresh (sel);
+	inlist.push_back (gvaltrunc);
+	ret.push_back (Dataflow::mkFunc (inlist, std::move (dg4)));
+	inlist.clear ();
+
+	outlist.push_back (OptionalChanId::null_id());
+	outlist.push_back (sel);
+	ret.push_back (Dataflow::mkSplit (g2, gvaltrunc, outlist));
+      }
+      else {
+	outlist.push_back (OptionalChanId::null_id());
+	outlist.push_back (sel);
+	ret.push_back (Dataflow::mkSplit (g2, gval, outlist));
+      }
     }
 
     /* 8.  {bintVal} gval -> *, LoopGuard */

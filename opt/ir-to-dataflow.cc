@@ -901,8 +901,10 @@ MultiChannelState reconcileMultiSel (Block *curr,
       }
 
       // this is the guard used for the data merge/split
+      int selw = 0;
       if (idxvec.size() > 1) {
 	ctrlguard = dm.fresh (guard_width (idxvec.size()));
+	selw = guard_width (idxvec.size());
       }
       else {
 	// no sel out needed for channel
@@ -919,13 +921,17 @@ MultiChannelState reconcileMultiSel (Block *curr,
       std::list<Dataflow> tmp = Dataflow::mkInstSel (ctrl_chans,
 						     cfresh,
 						     ch_guard,
-						     ctrlguard, freshalloc,
+						     ctrlguard,
+						     selw,
+						     freshalloc,
 						     swap);
 
+      //printf (">> sel-ctrl-start: %d\n", (int) d.size());
       for (auto &xd : tmp) {
 	d.push_back (std::move (xd));
       }
-
+      //printf (">> sel-ctrl-end: %d\n", (int) d.size());
+      
       if (ch != fresh) {
 	ret.ctrlmap[ch] = cfresh;
       }
@@ -1070,11 +1076,9 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 							 freshalloc);
 
 	  //printf (">> seq-ctrl-start: %d\n", (int) d.size());
-	  
 	  for (auto &xd : tmp) {
 	    d.push_back (std::move (xd));
 	  }
-	  
 	  //printf (">> seq-ctrl-end: %d\n", (int) d.size());
 	  
 	}
@@ -1163,11 +1167,9 @@ MultiChannelState reconcileMultiLoop (Block *curr,
 
       
       //printf (">> do-ctrl-start: %d\n", (int) d.size());
-      
       for (auto &x : tmp) {
 	d.push_back (std::move (x));
       }
-      
       //printf (">> do-ctrl-end: %d\n", (int) d.size());
       
       ret.datamap[ch] = rhs;
