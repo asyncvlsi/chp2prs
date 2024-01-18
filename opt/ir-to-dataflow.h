@@ -89,6 +89,8 @@ public:
     ChanId in_id;
   };
 
+  bool keep;
+
 private:
   using Variant_t =
     TypedVariant6<DataflowKind,
@@ -99,7 +101,7 @@ private:
 		  Arbiter, DataflowKind::Arbiter,
 		  Sink, DataflowKind::Sink>;
 
-  explicit Dataflow (Variant_t u_) : u{std::move(u_)} {}
+  explicit Dataflow (Variant_t u_) : u{std::move(u_)} { keep = false; }
 
 public:
   Variant_t u;
@@ -473,11 +475,24 @@ public:
 
     /* 2. {i_bint} guard, LoopGuard -> gval */
     ChanId loopguard = fresh (guard);
+    ChanId buf_loopg = fresh (guard);
     ChanId gval = fresh (guard);
     std::vector<ChanId> inlist;
     inlist.push_back (guard);
-    inlist.push_back (loopguard);
+    inlist.push_back (buf_loopg);
     ret.push_back (Dataflow::mkMergeMix (i_bint, inlist, gval));
+
+    DExprDag cp;
+    DExprDag::Node *n =
+      cp.newNode (DExprDag::Node::makeVariableAccess (loopguard,
+						      log_2_round_up (cin.size())));
+    cp.roots.push_back (n);
+    inlist.clear ();
+    inlist.push_back (buf_loopg);
+    Dataflow dtmp = Dataflow::mkFunc (inlist, std::move (cp));
+    dtmp.keep = true;
+    inlist.clear ();
+    ret.push_back (std::move (dtmp));
 
     /* 3. {gval} B1, ..., BN -> bint */
     ChanId bint = fresh (cin[0]);
@@ -485,8 +500,7 @@ public:
 
     /* 4. bint -> cout */
     DExprDag dg;
-    DExprDag::Node *n =
-      dg.newNode (DExprDag::Node::makeVariableAccess (bint, 2));
+    n = dg.newNode (DExprDag::Node::makeVariableAccess (bint, 2));
     dg.roots.push_back (n);
     inlist.clear();
     inlist.push_back (cout);
@@ -549,8 +563,11 @@ public:
 
 	in_loop & (b != 1) ? 0 : 1 -> [1] in_loop
 
-	in_loop ? ((b = 2 & pending = 0) ? 1 : pending) : (gval = 0 ?
-	0 : pending)  -> [0] pending
+	0 -> Gloop
+	{in_loop} guard, Gloop -> gval
+
+
+	in_loop ? ((b = 2 & pending = 0) ? 1 : pending) : (gval = 0 ? 0 : pending)  -> [0] pending
 
 	in_loop ? 1 : (pending ? 2 : 0) -> bval
 	in_loop & (b = 1 | b = 2 & pending) | ~in_loop & g = 0 -> bcond
@@ -602,15 +619,15 @@ public:
     }
 
     /*
-      {in_loop} Bloop, C -> gval
+      {in_loop} guard, Gloop -> gval
     */
     ChanId Gloop = fresh (guard);
     ChanId gval = fresh (guard);
 
     ret.push_back(mkSrc (Gloop, BigInt (0), 1));
 
-    idlist.push_back (Gloop);
     idlist.push_back (guard);
+    idlist.push_back (Gloop);
     ret.push_back(mkMergeMix (in_loop, idlist, gval));
     idlist.clear ();
     
