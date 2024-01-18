@@ -1064,7 +1064,10 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	else {
 	  auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId { if (ch) return dm.fresh (*ch); else return dm.fresh(1); };
 	  
-	  std::list<Dataflow> tmp = Dataflow::mkInstSeq (chlist, cfresh, selout, freshalloc);
+	  std::list<Dataflow> tmp = Dataflow::mkInstSeq (chlist,
+							 cfresh,
+							 selout,
+							 freshalloc);
 
 	  //printf (">> seq-ctrl-start: %d\n", (int) d.size());
 	  
@@ -1671,6 +1674,10 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   idx = 0;
   for (auto &x : d) {
     // look for x -> y
+    if (x.keep) {
+      idx++;
+      continue;
+    }
     if (x.u.type() == DataflowKind::Func && x.u_func().ids.size() == 1) {
       // single RHS
       int count = 0;
