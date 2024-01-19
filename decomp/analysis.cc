@@ -131,18 +131,14 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
     break;
       
     case BlockType::Par: {
-        fatal_error ("working on par...");
+        // fatal_error ("working on par...");
         for (auto &branch : curr->u_par().branches) {
-        // ms = createDataflow (branch, dm, d);
-        // acc.datamap = Algo::set_union (acc.datamap, ms.datamap);
-        // acc.ctrlmap = Algo::set_union (acc.ctrlmap, ms.ctrlmap);
+            _generate_decomp_info (branch, 1);
         }
-        //   seqs.push_back (acc);
     }
     break;
       
-    case BlockType::Select:
-
+    case BlockType::Select: {
         // fprintf (stdout, "reached select 1\n");
         _init_union();
         T = H_live;
@@ -182,58 +178,27 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
 
         _free_union();
 
+        // TODO: can use this for sth?
         // deal with guards, phiinv, and phi
-        // ChanId guard;
-        // bool swap = false;
         if (!curr->u_select().splits.empty()
             || !curr->u_select().merges.empty()) {
-        // we need a guard!
-        //   guard = nodes_add_guard (curr->u_select(), swap, d, dm);
         }
         // phiinv
         for (auto &split : curr->u_select().splits) {
         std::vector<OptionalChanId> out;
-        //   out = Algo::map1<OptionalChanId> (split.branch_ids,
-        // 		    [&] (OptionalVarId v) {
-        // 		      if (v) {
-        // 			// return OptionalChanId{dm.mapvar ((*v))};
-        // 		      }
-        // 		      else {
-        // 			return OptionalChanId::null_id();
-        // 		      }
-        // 		    });
-        // if (swap) {
-        //     OptionalChanId c0 = out[0];
-        //     OptionalChanId c1 = out[1];
-        //     out[1] = c0;
-        //     out[0] = c1;
-        // }
-        //   d.push_back (Dataflow::mkSplit(guard,dm.mapvar (split.pre_id), out));
         }
         for (auto &branch : curr->u_select().branches) {
         }
         for (auto &merge : curr->u_select().merges) {
             std::vector<ChanId> inp;
-            //   inp = Algo::map1<ChanId> (merge.branch_ids,
-            // 			    [&] (VarId v) { return dm.mapvar (v); });
-            // if (swap) {
-            //     ChanId c0 = inp[0];
-            //     ChanId c1 = inp[1];
-            //     inp[1] = c0;
-            //     inp[0] = c1;
-            // } 
-            //   d.push_back (Dataflow::mkMergeMix (OptionalChanId{guard}, inp,
-            // 				     dm.mapvar (merge.post_id)));
         }
+    }
     break;
       
     case BlockType::DoLoop:
         // fprintf (stdout, "reached do-loop\n");
         _generate_decomp_info (curr->u_doloop().branch, 1);
-        //   MultiChannelState ms = createDataflow (curr->u_doloop().branch, dm, d);
-        // deal with loopphi, phiinv, loopphinv
-        // std::pair<ChanId, ChanId> guards;
-
+#if 0
         if (curr->u_doloop().loop_phis.size() > 0
         || curr->u_doloop().in_phis.size() > 0
         || curr->u_doloop().out_phis.size() > 0 ) {
@@ -244,7 +209,6 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
         std::vector<OptionalChanId> outp;
 
         // ChanId feedback = dm.fresh (loopphi.bodyout_id);
-
         if (loopphi.post_id) {
         //   outp.push_back (dm.mapvar (*loopphi.post_id));
         }
@@ -287,7 +251,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
         // 	     (guards.first, dm.mapvar (outphi.bodyout_id),
         // 	      outp));
         }
-
+#endif
         break;
     
     case BlockType::StartSequence:

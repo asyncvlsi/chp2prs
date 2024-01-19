@@ -134,8 +134,8 @@ class RingSynth : public ActSynthesize {
 
       // DecompAnalysis *da = new DecompAnalysis (_pp->fp, g, p->CurScope());
       // da->analyze();
-      fprintf (stdout, "\n\n generated info: \n");
       // da->print_decomp_info();
+      fprintf (stdout, "\n\n generated info: \n");
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
       bkp->print_decomp_info();
