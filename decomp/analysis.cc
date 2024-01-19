@@ -28,8 +28,15 @@ using namespace ChpOptimize;
 std::string str_of_id(OptionalVarId id) {
     return id ? "_va" + std::to_string(((*id).m_id)-1) : "vNULL";
 }
-std::string str_of_id(ChanId id) { return "C" + std::to_string(id.m_id); }
 
+std::string str_of_id(ChanId id) { 
+    return "C" + std::to_string(id.m_id); 
+}
+
+std::unordered_map<Block *, decomp_info_t *> DecompAnalysis::get_live_vars_map()
+{
+    return live_in_vars_map;
+}
 
 int DecompAnalysis::_compute_total_bits (std::unordered_set<VarId> vars)
 {
@@ -423,7 +430,7 @@ decomp_info_t *DecompAnalysis::_generate_decomp_info(std::unordered_set<VarId> H
     NEW (di, decomp_info_t);
     di->tx_vars = H;
     di->total_bitwidth = _compute_total_bits (H);
-    di->is_breakpoint = (di->total_bitwidth == 0);
+    di->is_breakpoint = false;
     return di;
 }
 

@@ -128,10 +128,11 @@ class RingSynth : public ActSynthesize {
         }
       }
 
-    // fprintf (stdout, "\ngetting here...\n");
-    DecompAnalysis *da = new DecompAnalysis (_pp->fp, g);
-    da->analyze();
-    ChpOptimize::print_chp (std::cout, g.graph);
+      DecompAnalysis *da = new DecompAnalysis (_pp->fp, g, p->CurScope());
+      chp_print(stdout, l);
+      da->analyze();
+      fprintf (stdout, "\n\n generated info: \n");
+      da->print_decomp_info();
 
     }
     }
@@ -153,6 +154,9 @@ class RingSynth : public ActSynthesize {
 
     RingForge *rf = new RingForge (_pp->fp, p, c, b, "");
 
+    // for verification, need to remove
+    // DecompAnalysis_old *da = new DecompAnalysis_old (_pp->fp, p, c);
+    // da->analyze();
     // da->print_decomp_info();
 
     // rf->run_forge();

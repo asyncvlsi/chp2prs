@@ -46,8 +46,10 @@ class DecompAnalysis {
         void analyze ();
 
         void print_decomp_info ();
+
+        std::unordered_map<Block *, decomp_info_t *> get_live_vars_map ();
     
-    private: 
+    protected: 
 
         FILE *fp;
         GraphWithChanNames *g;
