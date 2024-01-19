@@ -447,8 +447,9 @@ void DecompAnalysis::_print_decomp_info (Sequence seq, int root)
     break;
       
     case BlockType::Par: {
-        fatal_error ("working on par...");
+        // fatal_error ("working on par...");
         for (auto &branch : curr->u_par().branches) {
+            _print_decomp_info (branch, 0);
         }
     }
     break;

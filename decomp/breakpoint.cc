@@ -58,8 +58,9 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
     break;
       
     case BlockType::Par: {
-        fatal_error ("working on par...");
+        // fatal_error ("working on par...");
         for (auto &branch : curr->u_par().branches) {
+            _mark_breakpoints_v0 (branch, 0);
         }
     }
     break;
