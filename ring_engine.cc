@@ -25,7 +25,8 @@
 #include "ring/reqs.h"
 #include "ring/ring_else_gen.h"
 #include "ring/ring_forge.h"
-#include "decomp/analysis.h"
+// #include "decomp/analysis.h"
+#include "decomp/breakpoint.h"
 
 #include "opt/chp-opt.h"
 
@@ -128,11 +129,16 @@ class RingSynth : public ActSynthesize {
         }
       }
 
-      DecompAnalysis *da = new DecompAnalysis (_pp->fp, g, p->CurScope());
+      fprintf (stdout, "\n\n");
       chp_print(stdout, l);
-      da->analyze();
+
+      // DecompAnalysis *da = new DecompAnalysis (_pp->fp, g, p->CurScope());
+      // da->analyze();
       fprintf (stdout, "\n\n generated info: \n");
-      da->print_decomp_info();
+      // da->print_decomp_info();
+      BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
+      bkp->mark_breakpoints();
+      bkp->print_decomp_info();
 
     }
     }

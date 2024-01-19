@@ -420,7 +420,7 @@ decomp_info_t *DecompAnalysis::_generate_decomp_info()
     NEW (di, decomp_info_t);
     di->tx_vars = H_live;
     di->total_bitwidth = _compute_total_bits (H_live);
-    di->is_breakpoint = (di->total_bitwidth == 0);
+    di->is_breakpoint = false;
     return di;
 }
 
