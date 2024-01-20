@@ -22,6 +22,7 @@
 
 #include <act/act.h>
 #include "../opt/chp-opt.h"
+#include "../opt/act-names.h"
 
 // ChpOptimize::ChpGraph *g;
 using namespace ChpOptimize;
@@ -35,20 +36,24 @@ typedef struct decomp_info {
 class DecompAnalysis {
     public:
 
-        DecompAnalysis ( FILE *fp_out, GraphWithChanNames &g_in )
+        DecompAnalysis ( FILE *fp_out, GraphWithChanNames &g_in, Scope *s_in)
             {   
                 fp = fp_out;
                 g = &g_in;
-            }
+                s = s_in;
+            } 
 
         void analyze ();
 
         void print_decomp_info ();
+
+        std::unordered_map<Block *, decomp_info_t *> get_live_vars_map ();
     
-    private: 
+    protected: 
 
         FILE *fp;
         GraphWithChanNames *g;
+        Scope *s;
 
         // map from a block to variables that are live-in to that block
         std::unordered_map<Block *, decomp_info_t *> live_in_vars_map;
@@ -78,10 +83,10 @@ class DecompAnalysis {
 
         // return a decomp_info_t based on the current state of H_live
         decomp_info_t *_generate_decomp_info ();
-        decomp_info_t *_generate_decomp_info (std::unordered_set<VarId>);
+        decomp_info_t *_generate_decomp_info (std::unordered_set<VarId> H);
 
         // print decomp_info_t's for the whole graph
-        void _print_decomp_info ( int root);
+        void _print_decomp_info (Sequence seq,  int root);
 
         // print a decomp_info_t object
         void _print_decomp_info (decomp_info *di);
@@ -101,7 +106,7 @@ class DecompAnalysis {
         // compute union of top element of stack and current H_live
         void _h_live_union_h_parent ();
         std::unordered_set<VarId> _set_union (std::unordered_set<VarId>, std::unordered_set<VarId>);
-        
+
         std::unordered_set<VarId> _prune_T (std::unordered_set<VarId>, std::vector<std::unordered_set<VarId>>);
 
         // add the vars from top element of stack to H_live
