@@ -759,6 +759,7 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
   std::vector<ChanId> ids;
   ids.push_back (guard_id);
   d.push_back (Dataflow::mkFunc (ids, std::move(guard_dag)));
+  
   return guard_id;
 }
 
@@ -1625,7 +1626,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   printf ("---\n");
   int pos = 0;
   for (auto &elem : d) {
-    printf ("F%3d :: ", pos);
+    printf ("I %3d :: ", pos);
     elem.Print (std::cout);
     pos++;
   }
@@ -1642,7 +1643,159 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     idx++;
   }
 
+#if 0
+  // check that any used variable is defined or an input
+  // and any defined variable is used or an output
+  for (auto &[x,l] : dfuses) {
+    if (!(dfdefs.contains(x) || gr.name_from_chan.contains (x))) {
+      warning ("I-Internal channel C%d is used but not defined?",
+	       (int)x.m_id);
+    }
+  }
+
+  for (auto &[x,l] : dfdefs) {
+    if (!(dfuses.contains(x) || gr.name_from_chan.contains (x))) {
+      warning ("I-Internal channel C%d is defined, but not used?",
+	       (int)x.m_id);
+    }
+  }
+#endif  
+
   std::unordered_set<std::pair<int,int>> delidx;
+  
+  // This can happen because a guard for a split/merge is unused!
+  std::unordered_set<ChanId> dead_chans;
+
+  std::unordered_set<ChanId> used_dead;
+
+  std::unordered_set<ChanId> processed;
+  
+  while (1) {
+    dead_chans.clear();
+
+    for (auto &[x,l] : dfdefs) {
+      if (processed.contains (x)) continue;
+      if (!(dfuses.contains(x) || gr.name_from_chan.contains (x))) {
+	dead_chans.insert (x);
+      }
+    }
+    
+    if (dead_chans.empty()) {
+      break;
+    }
+
+    for (auto &ch : dead_chans) {
+      processed.insert (ch);
+      auto dead_idx = dfdefs[ch];
+      used_dead.clear();
+      switch (d[dead_idx].u.type()) {
+      case DataflowKind::Func:
+	// for each LHS variable, remove its use from the use-list
+	{
+	  std::vector<DExprDag::Node *> newroots;
+	  std::vector<ChanId> newids;
+	  DExprDag::Node *dead_root = NULL;
+	  std::unordered_set<ChanId> used_rest;
+	  for (int ii = 0; ii < d[dead_idx].u_func().ids.size(); ii++) {
+	    if (d[dead_idx].u_func().ids[ii] != ch) {
+	      newids.push_back (d[dead_idx].u_func().ids[ii]);
+	      newroots.push_back (d[dead_idx].u_func().e.roots[ii]);
+	      // get used vars in the live expressions
+	      DExprDag::iterNodesBelow(d[dead_idx].u_func().e.roots[ii],
+				       [&](const DExprDag::Node &n){
+		      if (n.type() == IRExprTypeKind::Var) {
+			used_rest.insert(n.u_var().id);
+		      } });
+	    }
+	    else {
+	      dead_root = d[dead_idx].u_func().e.roots[ii];
+	      // get used vars in the dead expression
+	      DExprDag::iterNodesBelow(dead_root,
+				       [&](const DExprDag::Node &n){
+		      if (n.type() == IRExprTypeKind::Var) {
+			used_dead.insert(n.u_var().id);
+		      } });
+	    }
+	  }
+	  Assert (dead_root != NULL, "What?");
+	  if (newids.size() == 0) {
+	    delidx.insert (std::pair(dead_idx, -1));
+	  }
+	  else {
+	    d[dead_idx].u_func().ids = newids;
+	    d[dead_idx].u_func().e.roots = newroots;
+	  }
+	  // actual dead nodes are those that were used in the dead
+	  // subgraph MINUS those that are in the live one
+	  used_dead = Algo::set_minus (used_dead, used_rest);
+
+	}
+	break;
+
+      case DataflowKind::Split:
+	// if the split is *,*,* then remove the lhs variables
+	{
+	  int total, opt;
+	  total = 0;
+	  opt = 0;
+	  for (auto &rhs : d[dead_idx].u_split().out_ids) {
+	    total++;
+	    if (rhs) {
+	      if ((*rhs) == ch) {
+		rhs = OptionalChanId::null_id();
+		opt++;
+	      }
+	    }
+	    else {
+	      opt++;
+	    }
+	  }
+	  if (opt == total) {
+	    used_dead.insert (d[dead_idx].u_split().in_id);
+	    used_dead.insert (d[dead_idx].u_split().cond_id);
+	    delidx.insert (std::pair(dead_idx, -1));
+	  }
+	}
+	break;
+
+      case DataflowKind::MergeMix:
+	// remove the LHS variables from the use-list
+	if (d[dead_idx].u_mergemix().cond_id) {
+	  used_dead.insert (*(d[dead_idx].u_mergemix().cond_id));
+	}
+	for (auto &dch : d[dead_idx].u_mergemix().in_ids) {
+	  used_dead.insert (dch);
+	}
+	delidx.insert (std::pair(dead_idx, -1));
+	break;
+
+      case DataflowKind::Init:
+	// remove the lhs variable from the use list
+	used_dead.insert (d[dead_idx].u_init().lhs);
+	delidx.insert (std::pair(dead_idx, -1));
+	break;
+
+      case DataflowKind::Sink:
+	break;
+	
+      case DataflowKind::Arbiter:
+	fatal_error ("What?");
+	break;
+      }
+
+      // now for each dead channel, delete the dead_idx from the
+      // used list
+      for (auto &ud : used_dead) {
+	dfuses[ud].remove (dead_idx);
+	if (dfuses[ud].empty()) {
+	  dfuses.erase (ud);
+	  if (gr.name_from_chan.contains (ud)) {
+	    d.push_back (Dataflow::mkSink (ud));
+	  }
+	}
+      }
+    }
+  }
 
   // delete dead code.
   // code is dead if:
@@ -1703,8 +1856,9 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	else {
 	  // no uses for the RHS, now we see if the LHS has additional
 	  // uses.
-	  if (dfuses[*lhs].front() == dfuses[*lhs].back() ||
+	  if (dfuses[*lhs].front() == dfuses[*lhs].back() &&
 	      !gr.name_from_chan.contains(x.u_func().ids[0])) {
+
 	    // no other uses of the lhs, replace the def
 	    if (dfdefs.contains (*lhs)) {
 	      replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
@@ -1715,6 +1869,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 		replaceChanUses (d[uses], x.u_func().ids[0], *lhs);
 	      }
 	    }
+	    
 	    delidx.insert (std::pair(idx,-1));
 	  }
 	}
@@ -1756,6 +1911,32 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
       }
     }
     idx++;
+  }
+
+  dfuses.clear();
+  dfdefs.clear();
+  idx = 0;
+  for (auto &x : dfinal) {
+    //printf ("F %3d :: ", idx);
+    //x.Print (std::cout);
+    computeUses (idx, x, dfuses, dfdefs);
+    idx++;
+  }
+
+  // check that any used varaible is defined or an input
+  // and any defined variable is used or an output
+  for (auto &[x,l] : dfuses) {
+    if (!(dfdefs.contains(x) || gr.name_from_chan.contains (x))) {
+      warning ("Internal channel C%d is used but not defined?",
+	       (int)x.m_id);
+    }
+  }
+
+  for (auto &[x,l] : dfdefs) {
+    if (!(dfuses.contains(x) || gr.name_from_chan.contains (x))) {
+      warning ("Internal channel C%d is defined, but not used?",
+	       (int)x.m_id);
+    }
   }
   
   return dfinal;
@@ -1859,6 +2040,7 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
     NEW (e, act_dataflow_element);
     e->t = ACT_DFLOW_SINK;
     e->u.sink.chan = map.chanMap (d.u_sink().in_id);
+    list_append (l, e);
     break;
   }
 }

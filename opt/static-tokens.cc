@@ -303,20 +303,6 @@ VarId new_do_assigning_renaming(VarId input_id,
 
 
 template <typename K>
-std::unordered_set<K> absl_setminus(const std::unordered_set<K> &a,
-                                    const std::unordered_set<K> &b) {
-    for (const auto &x : b) {
-        hassert(a.count(x));
-    }
-    std::unordered_set<K> result;
-    for (const auto &x : a) {
-        if (!b.count(x))
-            result.insert(x);
-    }
-    return result;
-}
-
-template <typename K>
 std::unordered_set<K> absl_intersection(const std::unordered_set<K> &a,
                                         const std::unordered_set<K> &b) {
     std::unordered_set<K> result;
@@ -636,7 +622,7 @@ VarIdRemapPair enforce_static_token_form(Sequence seq,
             // After:   h0 := BLAH; *[ h1 := phi(h0, h2); (h2, h3) := phiinv(h1)
             // <- g]; BLAH(h3)
             for (const auto &read_id : Algo::as_sorted_vector<VarId>(
-                     absl_setminus(all_orig_input_ids, loop_ids))) {
+			     Algo::set_minus(all_orig_input_ids, loop_ids))) {
                 VarId pre_id = do_expr_renaming(read_id, curr_renames,
                                                 renames_before_curr, id_pool);
                 curr->u_doloop().in_phis.push_back(Block::Variant_DoLoop::InPhi{
@@ -648,7 +634,7 @@ VarIdRemapPair enforce_static_token_form(Sequence seq,
             // Before:   *[ h := BLAH() <- g]; BLAH(h) After:   *[ h0 := BLAH;
             // (_, h1) := phiinv(h0) <- g]; BLAH(h1)
             for (auto write_id : Algo::as_sorted_vector<VarId>(
-                     absl_setminus(all_orig_output_ids, loop_ids))) {
+                     Algo::set_minus(all_orig_output_ids, loop_ids))) {
                 if (true) { // is_alive(tables_after_doloop, write_id)) {
                     VarId post_id = do_assigning_renaming(
                         write_id, curr_renames, renames_before_curr, id_pool);
@@ -874,7 +860,19 @@ void _run_seq (Sequence seq,
 	  curorig = curmap[orig_id];
 	}
 	else {
+#if 0
+	  if (rename_input) {
+	    curorig = new_do_expr_renaming_fresh (orig_id,
+						  curmap,
+						  blockrenames,
+						  id_pool);
+	  }
+	  else {
+	    curorig = orig_id;
+	  }
+#else
 	  curorig = orig_id;
+#endif	  
 	}
 	curr->u_select().splits.push_back({curorig, ids_on_branches});
       }
@@ -934,7 +932,7 @@ void _run_seq (Sequence seq,
       // After:   h0 := BLAH; *[ h1 := phi(h0, h2); (h2, h3) := phiinv(h1)
       // <- g]; BLAH(h3)
       for (const auto &read_id :
-	     Algo::as_sorted_vector<VarId>(absl_setminus(all_orig_input_ids, loop_ids))) {
+	     Algo::as_sorted_vector<VarId>(Algo::set_minus(all_orig_input_ids, loop_ids))) {
 	
 	VarId pre_id;
 	if (curmap.count(read_id)) {
@@ -986,7 +984,7 @@ void _run_seq (Sequence seq,
       // Before:   *[ h := BLAH() <- g]; BLAH(h) After:   *[ h0 := BLAH;
       // (_, h1) := phiinv(h0) <- g]; BLAH(h1)
       for (auto write_id : Algo::as_sorted_vector<VarId>(
-							 absl_setminus(all_orig_output_ids, loop_ids))) {
+							 Algo::set_minus(all_orig_output_ids, loop_ids))) {
 
 	VarId post_id = new_do_assigning_renaming (write_id,
 						   curmap,
@@ -1288,6 +1286,12 @@ void mergePhis (Sequence seq)
 
 void putIntoNewStaticTokenForm(ChpGraph &g) {
     hassert(!g.is_static_token_form);
+
+#if 0
+    printf ("-------\n");
+    print_chp (std::cout, g);
+    printf ("-------\n\n");
+#endif
 
     auto remaps =
       to_static_token_form (g.m_seq, g.id_pool(), false);

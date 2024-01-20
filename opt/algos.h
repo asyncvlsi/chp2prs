@@ -415,5 +415,18 @@ std::unordered_map<K, V> set_union(const std::unordered_map<K, V> &a,
   return result;
 }
   
+template <typename K>
+std::unordered_set<K> set_minus(const std::unordered_set<K> &a,
+				   const std::unordered_set<K> &b) {
+    for (const auto &x : b) {
+        hassert(a.count(x));
+    }
+    std::unordered_set<K> result;
+    for (const auto &x : a) {
+        if (!b.count(x))
+            result.insert(x);
+    }
+    return result;
+}
 
 } // namespace ChpOptimize::Algo
