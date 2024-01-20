@@ -1020,7 +1020,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    chlist.push_back(msv[idx].ctrlmap[ch]);
 	  }
 	}
-	
+
 	OptionalChanId cfresh;
 
 	if (!dm.isOutermostBlock (ch, curr)) {
@@ -1292,11 +1292,13 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	// deal with guards, phiinv, and phi
 	ChanId guard;
 	bool swap = false;
+#if 0	
 	if (!curr->u_select().splits.empty()
 	    || !curr->u_select().merges.empty()) {
 	  // we need a guard!
-	  guard = nodes_add_guard (curr->u_select(), swap, d, dm);
 	}
+#endif	
+	guard = nodes_add_guard (curr->u_select(), swap, d, dm);
 
 	// phiinv
 	for (auto &split : curr->u_select().splits) {
@@ -1317,7 +1319,6 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	    out[1] = c0;
 	    out[0] = c1;
 	  }
-	  
 	  d.push_back (Dataflow::mkSplit(guard,dm.mapvar (split.pre_id), out));
 	}
 
@@ -1669,7 +1670,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   std::unordered_set<ChanId> used_dead;
 
   std::unordered_set<ChanId> processed;
-  
+
   while (1) {
     dead_chans.clear();
 
@@ -1796,7 +1797,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
       }
     }
   }
-
+  
   // delete dead code.
   // code is dead if:
   //   the def has no uses
