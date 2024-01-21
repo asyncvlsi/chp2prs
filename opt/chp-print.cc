@@ -197,7 +197,10 @@ void print_expr(std::ostream &o, const ChpExprSingleRootDag &dag, int ilevel) {
     print_expr(o, dag.m_dag, ilevel);
 }
 
-void print_chp(std::ostream &o, Sequence sequence, int ilevel) {
+ void print_chp(std::ostream &o, Sequence sequence, int ilevel,
+		std::function<void(std::ostream &os, const Block &b)> pre,
+		std::function<void(std::ostream &os, const Block &b)> post
+		) {
     std::string indent = std::string(ilevel * 4, ' ');
     Block *curr = sequence.startseq->child();
     bool seq_first = true;
@@ -210,6 +213,8 @@ void print_chp(std::ostream &o, Sequence sequence, int ilevel) {
     while (curr->type() != BlockType::EndSequence) {
         if (!seq_first)
             o << ";" << std::endl;
+
+	pre (o,*curr);
         seq_first = false;
         switch (curr->type()) {
         case BlockType::Basic:
@@ -263,7 +268,7 @@ void print_chp(std::ostream &o, Sequence sequence, int ilevel) {
                 if (!first)
                     o << indent << " ||" << std::endl;
                 o << indent << "{" << std::endl;
-                print_chp(o, path, ilevel + 1);
+                print_chp(o, path, ilevel + 1,pre,post);
                 o << std::endl;
                 o << indent << "}" << std::endl;
                 first = false;
@@ -311,7 +316,7 @@ void print_chp(std::ostream &o, Sequence sequence, int ilevel) {
                     break;
                 }
                 o << " ->" << std::endl;
-                print_chp(o, branch.seq, ilevel + 1);
+                print_chp(o, branch.seq, ilevel + 1,pre,post);
                 o << std::endl;
                 first = false;
             }
@@ -344,7 +349,7 @@ void print_chp(std::ostream &o, Sequence sequence, int ilevel) {
                 o << str_of_id(phi.pre_id) << ", tmp_"
                   << str_of_id(phi.bodyout_id) << ");" << std::endl;
             }
-            print_chp(o, curr->u_doloop().branch, ilevel + 1);
+            print_chp(o, curr->u_doloop().branch, ilevel + 1,pre,post);
             o << std::endl;
             for (const auto &phi : curr->u_doloop().out_phis) {
                 o << indent << "(dum_" << str_of_id(phi.bodyout_id) << ",";
@@ -367,13 +372,22 @@ void print_chp(std::ostream &o, Sequence sequence, int ilevel) {
         case BlockType::EndSequence:
             hassert(false); // FALLTHROUGH
         }
+	post(o,*curr);
         curr = curr->child();
     }
 }
+
 } // namespace
 
 void print_chp(std::ostream &o, const ChpGraph &graph) {
-    print_chp(o, graph.m_seq, 0);
+  auto pre = [&] (std::ostream &o, const Block &b) { return; };
+  print_chp(o, graph.m_seq, 0, pre, pre);
 }
 
+void print_chp(std::ostream &o, const ChpGraph &graph,
+	       std::function<void(std::ostream &os, const Block &b)> pre,
+	       std::function<void(std::ostream &os, const Block &b)> post) {
+  print_chp(o, graph.m_seq, 0, pre, post);
+}
+ 
 } // namespace ChpOptimize

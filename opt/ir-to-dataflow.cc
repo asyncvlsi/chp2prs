@@ -1610,9 +1610,12 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   DataflowChannelManager m;
 
   hassert (gr.graph.is_static_token_form);
+#if 0
+  printf ("#############################\n");
+  print_chp(std::cout, gr.graph);
+  printf ("\n#############################\n\n");
+#endif  
 
-  //print_chp(std::cout, gr.graph);
-  
   m.id_pool = &gr.graph.id_pool();
 
   // recursively translate, while doing multichannel stuff
@@ -1918,8 +1921,10 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   dfdefs.clear();
   idx = 0;
   for (auto &x : dfinal) {
-    //printf ("F %3d :: ", idx);
-    //x.Print (std::cout);
+#if 0
+    printf ("F %3d :: ", idx);
+    x.Print (std::cout);
+#endif
     computeUses (idx, x, dfuses, dfdefs);
     idx++;
   }
