@@ -60,8 +60,10 @@ struct UsesAndDefs {
 std::unordered_map<const Block *, UsesAndDefs>
 getDefUsesTable(const ChpGraph &graph);
 
-std::unordered_map<const Block *, std::unordered_set<VarId> >
-getLiveOutVars (const ChpGraph &graph);
+std::pair<
+  std::unordered_map<const Block *, std::unordered_set<VarId> >,
+  std::unordered_map<const Block *, std::unordered_set<VarId> > >
+getLiveVars (const ChpGraph &graph);
   
   
 } // namespace ChpOptimize

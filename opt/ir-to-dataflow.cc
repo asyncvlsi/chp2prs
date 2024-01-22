@@ -1855,20 +1855,23 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	  for (auto uses : dfuses[x.u_func().ids[0]]) {
 	    replaceChanUses (d[uses], x.u_func().ids[0], *lhs);
 	  }
-	  delidx.insert (std::pair(idx,-1));
+	  // this is going to be an internal channel, but check just
+	  // in case...
+	  if (!gr.name_from_chan.contains (x.u_func().ids[0])) {
+	    delidx.insert (std::pair(idx,-1));
+	  }
 	}
 	else {
 	  // no uses for the RHS, now we see if the LHS has additional
 	  // uses.
-	  if (dfuses[*lhs].front() == dfuses[*lhs].back() &&
-	      !gr.name_from_chan.contains(x.u_func().ids[0])) {
-
+	  if (dfuses[*lhs].front() == dfuses[*lhs].back()) {
 	    // no other uses of the lhs, replace the def
 	    if (dfdefs.contains (*lhs)) {
 	      replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
 	    }
 	    // and now replace all uses of RHS with *lhs
 	    if (dfuses.contains (x.u_func().ids[0])) {
+	      Assert (0, "This should not happen!");
 	      for (auto uses : dfuses[x.u_func().ids[0]]) {
 		replaceChanUses (d[uses], x.u_func().ids[0], *lhs);
 	      }

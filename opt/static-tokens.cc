@@ -1275,23 +1275,100 @@ void mergePhis (Sequence seq)
 void putIntoNewStaticTokenForm(ChpGraph &g) {
     hassert(!g.is_static_token_form);
 
-    auto vars = getLiveOutVars (g);
+    auto [livein, liveout] = getLiveVars (g);
 
+    auto defuse = getDefUsesTable(g);
+
+    auto printvars = [&] (std::ostream &os, std::unordered_set<VarId> &vs)
+      {
+       if (vs.empty()) {
+	return;
+       }
+       bool first = true;
+       for (auto &v :
+	      Algo::as_sorted_vector<VarId,std::unordered_set<VarId>> (vs)) {
+	 if (!first) {
+	   os << ",";
+	 }
+	 os << "v" << v.m_id;
+	 first = false;
+       }
+      };
+
+
+    // the default value of variables in 0. However, the IR does not support
+    // uninitialized variables being read. Therefore, add assignments for each
+    // uninitialized variable.
+    if (!g.m_seq.empty()) {
+      auto uninit_vars = livein[g.m_seq.startseq->child()];
+      if (!uninit_vars.empty()) {
+	for (const auto &v :
+	       Algo::as_sorted_vector<VarId,std::unordered_set<VarId>>(uninit_vars)) {
+	  Block *assign = g.blockAllocator().newBlock(
+            Block::makeBasicBlock(Statement::makeAssignment(
+                v, ChpExprSingleRootDag::makeConstant(
+                            BigInt{0}, g.id_pool().getBitwidth(v)))));
+	  Block *start = g.m_seq.startseq->child();
+	  Block::disconnect(g.m_seq.startseq, start);
+	  Block::connect(g.m_seq.startseq, assign);
+	  Block::connect(assign, start);
+	}
+      }
+    }
+    
 #if 0
-    auto pre = [&] (std::ostream &os, const Block &b) { return; };
+    auto pre = [&] (std::ostream &os, const Block &b)
+      {
+       if (livein.contains (&b)) {
+  	os << " {";
+	printvars (os, livein[&b]);
+	os << "}";
+       }
+       else { return; }
+
+       if (b.type() == BlockType::Select) {
+	   os << "; splits: ";
+	   for (auto &var : livein[&b]) {
+	     os << "v" << var.m_id << "->";
+	     for (auto &br : b.u_select().branches) {
+	       if (br.seq.empty() ||
+		   !livein[br.seq.startseq->child()].contains(var)) {
+		 os << "_";
+	       }
+	       else if (defuse[br.seq.startseq].var_reads.contains(var)) {
+		 os << "|";
+	       }
+	       else {
+		 os << "p";
+	       }
+	     }
+	     os << "  ";
+	   }
+       }
+       else if (b.type() == BlockType::DoLoop) {
+
+
+       }       
+      };
     auto post = [&] (std::ostream &os, const Block &b)
       {
-       if (vars.contains (&b)) {
+       if (liveout.contains (&b)) {
   	os << " {";
-	bool first = true;
-	for (auto &v : vars[&b]) {
-	  if (!first) {
-	    os << ",";
-	  }
-	  os << "v" << v.m_id;
-	  first = false;
-	}
+	printvars(os, liveout[&b]);
 	os << "}";
+       }
+
+       if (b.type() == BlockType::Select) {
+	   os << "; pot-merges: ";
+	   for (auto &var : liveout[&b]) {
+	     if (defuse.contains (&b)) {
+	       auto &du = defuse[&b];
+	       if (du.var_writes.contains (var)) {
+		 os << "v" << var.m_id << "<-";
+		 os << "  ";
+	       }
+	     }
+	   }
        }
       };
 
