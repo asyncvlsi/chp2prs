@@ -27,6 +27,7 @@
 #include "ring/ring_forge.h"
 // #include "decomp/analysis.h"
 #include "decomp/breakpoint.h"
+#include "decomp/chopping_block.h"
 
 #include "opt/chp-opt.h"
 
@@ -139,6 +140,11 @@ class RingSynth : public ActSynthesize {
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
       bkp->print_decomp_info();
+      ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
+                                bkp->get_live_vars_map());
+
+      cb->chop_graph();
+      
 
     }
     }

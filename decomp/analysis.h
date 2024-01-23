@@ -20,6 +20,9 @@
  **************************************************************************
  */
 
+#ifndef __DECOMP_ANALYSIS_H__
+#define __DECOMP_ANALYSIS_H__
+
 #include <act/act.h>
 #include "../opt/chp-opt.h"
 #include "../opt/act-names.h"
@@ -113,3 +116,5 @@ class DecompAnalysis {
         void _restore_live_vars_from_parent (); //_restore_live_vars_from_parent
       
 };
+
+#endif
