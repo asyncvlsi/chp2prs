@@ -31,6 +31,7 @@
 #include "utils.h"
 #include <functional>
 #include <iostream>
+#include <common/agraph.h>
 
 template<> struct std::hash<std::pair<int,int>> {
   size_t
@@ -1607,6 +1608,150 @@ void replaceChanUses (Dataflow &d, ChanId src, ChanId dst)
     break;
   }
 }
+
+static void mark_node (void *cookie, AGraph *g, AGvertex *v, bool onentry)
+{
+  if (!onentry) {
+    v->isio = 1;
+  }
+}
+
+static void mark_edge (void *cookie, AGraph *g, AGedge *e)
+{
+  if (!g->getVertex (e->dst)->visited) {
+    // tree edge
+  }
+  else {
+    if (!g->getVertex(e->dst)->isio) {
+      printf ("found back edge!\n");
+      // back edge
+    }
+    else {
+      // cross edge
+    }
+  }
+}
+
+
+void elimZeroSlackCycles (std::vector<Dataflow> &d)
+{
+  // Form a graph for each definition in the dataflow list
+  int count = 0;
+
+  std::unordered_map<ChanId,int> chanmap;
+  std::vector<ChanId> invmap;
+  
+  
+  for (auto &di : d) {
+    switch (di.u.type()) {
+    case DataflowKind::Init:
+      chanmap[di.u_init().rhs] = count;
+      count++;
+      break;
+
+    case DataflowKind::Split:
+      for (auto &rhs : di.u_split().out_ids) {
+	if (rhs) {
+	  chanmap[*rhs] = count;
+	  invmap.push_back(*rhs);
+	  count++;
+	}
+      }
+      break;
+      
+    case DataflowKind::MergeMix:
+      chanmap[di.u_mergemix().out_id] = count;
+      invmap.push_back(di.u_mergemix().out_id);
+      count++;
+      break;
+
+    case DataflowKind::Func:
+      for (auto &ch : di.u_func().ids) {
+	chanmap[ch] = count;
+	count++;
+      }
+      break;
+
+    case DataflowKind::Sink:
+      break;
+
+    case DataflowKind::Arbiter:
+      hassert (false);
+      break;
+    }
+  }
+  if (count < 2) return;
+
+  AGraph *a = new AGraph();
+
+  for (int i=0; i < count; i++) {
+    a->addVertex();
+  }
+  for (auto &di : d) {
+    switch (di.u.type()) {
+    case DataflowKind::Init:
+      if (chanmap.contains (di.u_init().lhs)) {
+	a->addEdge (chanmap[di.u_init().lhs], chanmap[di.u_init().rhs]);
+      }
+      break;
+
+    case DataflowKind::Split:
+      for (auto &rhs : di.u_split().out_ids) {
+	if (rhs) {
+	  if (chanmap.contains (di.u_split().in_id)) {
+	    a->addEdge (chanmap[di.u_split().in_id], chanmap[*rhs]);
+	  }
+	  if (chanmap.contains (di.u_split().cond_id)) {
+	    a->addEdge (chanmap[di.u_split().cond_id], chanmap[*rhs]);
+	  }
+	}
+      }
+      break;
+      
+    case DataflowKind::MergeMix:
+      for (auto &lhs : di.u_mergemix().in_ids) {
+	if (chanmap.contains (lhs)) {
+	  a->addEdge (chanmap[lhs], chanmap[di.u_mergemix().out_id]);
+	}
+      }
+      if (di.u_mergemix().cond_id) {
+	if (chanmap.contains (*di.u_mergemix().cond_id)) {
+	  a->addEdge (chanmap[*di.u_mergemix().cond_id], chanmap[di.u_mergemix().out_id]);
+	}
+      }
+      break;
+
+    case DataflowKind::Func:
+      DExprDag::iterNodes (di.u_func().e,
+			   [&] (const DExprDag::Node &n) {
+			     if (n.type() == IRExprTypeKind::Var) {
+			       if (chanmap.contains (n.u_var().id)) {
+				 for (auto &ids : di.u_func().ids) {
+				   a->addEdge (chanmap[n.u_var().id], chanmap[ids]);
+				 }
+			       }
+			     }
+			   });
+      break;
+
+    case DataflowKind::Sink:
+      break;
+
+    case DataflowKind::Arbiter:
+      hassert (false);
+      break;
+    }
+  }
+
+  FILE *fp = fopen ("test.dot", "w");
+  a->printDot (fp, "Test");
+  fclose (fp);
+
+  a->runDFS (NULL, mark_node, mark_edge);
+
+  delete a;
+}
+
  
 
 } // namespace
@@ -1960,6 +2105,10 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	       (int)x.m_id);
     }
   }
+
+  // now we analyze the graph to see if we have zero slack cycles; if
+  // we do, we add explicit buffers!
+  //elimZeroSlackCycles (dfinal);
   
   return dfinal;
 }
@@ -1991,6 +2140,11 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
       }
       e->u.func.lhs =
 	template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId);
+
+      if (d.keep) {
+	e->u.func.nbufs = const_expr (2);
+      }
+      
       list_append (l, e);
     }
     break;

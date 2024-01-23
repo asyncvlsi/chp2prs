@@ -1284,7 +1284,9 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
     // introducing a redundant copy.
     eliminateCopies (g);
 
-    // finally merge any Phis where you can
+    // finally merge any Phis where you can; this is needed because
+    // copy elimination can get rid of some variables, allowing phiinv
+    // functions to have the same RHS
     mergePhis (g.m_seq);
     
     g.is_static_token_form = true;
