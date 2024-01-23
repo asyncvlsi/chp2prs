@@ -133,18 +133,15 @@ class RingSynth : public ActSynthesize {
       fprintf (stdout, "\n\n");
       chp_print(stdout, l);
 
-      // DecompAnalysis *da = new DecompAnalysis (_pp->fp, g, p->CurScope());
-      // da->analyze();
-      // da->print_decomp_info();
       fprintf (stdout, "\n\n generated info: \n");
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
       bkp->print_decomp_info();
+
       ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
                                 bkp->get_live_vars_map());
-
       cb->chop_graph();
-      
+      cb->print_chopped_seqs();
 
     }
     }

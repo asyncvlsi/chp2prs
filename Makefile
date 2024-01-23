@@ -37,13 +37,13 @@ SHOBJS=chp2prs_pass.os synth.os synth_pass.os
 
 SRCS=$(OBJS:.o=.cc) $(SHOBJS:.os=.cc)
 
-SUBDIRS=lib opt sdt ring
+SUBDIRS=lib opt sdt ring decomp
 
 include $(ACT_HOME)/scripts/Makefile.std
 
 EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
 
-SYNTHLIB=-lactchpopt -lactchpsdt -lactchpring
+SYNTHLIB=-lactchpopt -lactchpsdt -lactchpring -lactchpdecomp
 
 ifdef exproptcommercial_INCLUDE
 EXPRLIB+=-lexproptcommercial_sh

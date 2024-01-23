@@ -22,7 +22,9 @@ TARGETLIBS=libactchpdecomp_$(EXT).so
 
 CPPSTD=c++20
 
-SHOBJS=analysis.os
+SHOBJS=analysis.os \
+	breakpoint.os \
+	chopping_block.os
 
 SRCS=$(SHOBJS:.os=.cc)
 
