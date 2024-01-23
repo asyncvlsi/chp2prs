@@ -1211,12 +1211,14 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
        else { return; }
 
        if (b.type() == BlockType::Select) {
-	   os << "; splits: ";
+	   os << " {{ splits: ";
 	   for (auto &var : livein[&b]) {
 	     os << "v" << var.m_id << "->";
 	     for (auto &br : b.u_select().branches) {
-	       if (br.seq.empty() ||
-		   !livein[br.seq.startseq->child()].contains(var)) {
+	       if (br.seq.empty()) {
+		 os << "p";
+	       }
+	       else if (!livein[br.seq.startseq->child()].contains(var)) {
 		 os << "_";
 	       }
 	       else if (defuse[br.seq.startseq].var_reads.contains(var)) {
@@ -1226,8 +1228,9 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
 		 os << "p";
 	       }
 	     }
-	     os << "  ";
+	     os << " ";
 	   }
+	   os << "}}" << std::endl;
        }
        else if (b.type() == BlockType::DoLoop) {
 
@@ -1243,16 +1246,17 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
        }
 
        if (b.type() == BlockType::Select) {
-	   os << "; pot-merges: ";
+	   os << " {{ pot-merges: ";
 	   for (auto &var : liveout[&b]) {
 	     if (defuse.contains (&b)) {
 	       auto &du = defuse[&b];
 	       if (du.var_writes.contains (var)) {
 		 os << "v" << var.m_id << "<-";
-		 os << "  ";
+		 os << " ";
 	       }
 	     }
 	   }
+	   os << "}}" << std::endl;
        }
       };
 

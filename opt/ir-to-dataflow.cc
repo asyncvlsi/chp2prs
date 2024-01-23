@@ -97,6 +97,10 @@ struct DataflowChannelManager {
     }
   }
 
+  int bitWidth (ChanId ch) {
+    return id_pool->getBitwidth (ch);
+  }
+
   // return a fresh channel with the specified bitwidth
   ChanId fresh (int width) {
     return id_pool->makeUniqueChan (width);
@@ -1379,6 +1383,9 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 		     (guards.first, dm.mapvar (loopphi.bodyout_id),
 		      outp));
 
+	ChanId f2 = dm.fresh (feedback);
+	d.push_back (Dataflow::mkBuf (feedback, f2, dm.bitWidth (feedback)));
+	feedback = f2;
 
 	std::vector<ChanId> inp;
 	inp.push_back (dm.mapvar (loopphi.pre_id));
@@ -1395,6 +1402,11 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	d.push_back (Dataflow::mkMergeMix
 		     (OptionalChanId{guards.second}, inp,
 		      dm.mapvar (inphi.bodyin_id)));
+
+	ChanId f2 = dm.fresh (feedback);
+	d.push_back (Dataflow::mkBuf (feedback, f2, dm.bitWidth (feedback)));
+	feedback = f2;
+	
 
 	std::vector<OptionalChanId> outp;
 	outp.push_back (OptionalChanId::null_id());
@@ -1610,6 +1622,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   DataflowChannelManager m;
 
   hassert (gr.graph.is_static_token_form);
+  
 #if 0
   printf ("#############################\n");
   print_chp(std::cout, gr.graph);

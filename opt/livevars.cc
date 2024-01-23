@@ -106,7 +106,12 @@ void run_seq (Sequence seq,
 	      // propagate liveout to last value in the sequence
 	      liveout[branch.endseq->parent()] = liveout[curr];
 	      run_seq (branch, livein, liveout, raw);
-              livein[curr] = Algo::set_union(livein[curr], livein[branch.startseq->child()]);
+              livein[curr] = Algo::set_union(livein[curr],
+					     livein[branch.startseq->child()]);
+	    }
+	    else {
+	      // skip!
+	      livein[curr] = Algo::set_union(livein[curr], liveout[curr]);
 	    }
 	  }
 	  if (old != livein[curr]) {
@@ -130,7 +135,13 @@ void run_seq (Sequence seq,
 	      liveout[s->endseq->parent()] = liveout[curr];
 	    }
 	    run_seq (*s, livein, liveout, raw);
-            livein[curr] = Algo::set_union (livein[curr], livein[s->startseq->child()]);
+	    if (!s->empty()) {
+	      livein[curr] = Algo::set_union (livein[curr], livein[s->startseq->child()]);
+	    }
+	    else {
+	      // skip
+	      livein[curr] = Algo::set_union (livein[curr], liveout[curr]);
+	    }
 	    if (branch.g.type() == IRGuardType::Expression) {
 	      addIdsUsedByExpr(livein[curr], branch.g.u_e().e);
 	    }

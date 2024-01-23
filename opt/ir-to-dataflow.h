@@ -154,6 +154,18 @@ public:
     return Dataflow{Variant_t{Sink{ch}}};
   }
 
+  static Dataflow mkBuf (ChanId ch_in, ChanId ch_out, int bw) {
+    DExprDag cp;
+    DExprDag::Node *n =
+      cp.newNode (DExprDag::Node::makeVariableAccess (ch_in, bw));
+    cp.roots.push_back (n);
+    std::vector<ChanId> inlist;
+    inlist.clear ();
+    inlist.push_back (ch_out);
+    Dataflow dtmp = Dataflow::mkFunc (inlist, std::move (cp));
+    dtmp.keep = true;
+    return dtmp;
+  }
 
   static DExprDag::Node *helper_or (DExprDag &d,
 				    DExprDag::Node *n1,
