@@ -338,12 +338,51 @@ UsesAndDefs buildVarUsageTable(
     }
     return all_ud;
 }
+
+void updateDefUsesTable (Sequence seq,
+			 std::unordered_map<const Block *, UsesAndDefs> &table)
+{
+  Block *curr = seq.startseq;
+  if (table.contains (curr)) return;
+  curr = curr->child();
+  while (curr->type() != BlockType::EndSequence) {
+    table[seq.startseq] |= table[curr];
+    switch (curr->type()) {
+    case BlockType::Basic:
+      break;
+
+    case BlockType::Par:
+      for (auto &br : curr->u_par().branches) {
+	updateDefUsesTable (br, table);
+      }
+      break;
+      
+    case BlockType::Select:
+      for (auto &br : curr->u_select().branches) {
+	updateDefUsesTable (br.seq, table);
+      }
+      break;
+      
+    case BlockType::DoLoop:
+      updateDefUsesTable (curr->u_doloop().branch, table);
+      break;
+
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    curr = curr->child();
+  }
+}
+ 
 } // namespace
 
 std::unordered_map<const Block *, UsesAndDefs>
 getDefUsesTable(const ChpGraph &graph) {
     std::unordered_map<const Block *, UsesAndDefs> result;
     buildVarUsageTable(graph.m_seq, result);
+    updateDefUsesTable (graph.m_seq, result);
     return result;
 }
 

@@ -440,6 +440,15 @@ std::unordered_set<K> set_minus(const std::unordered_set<K> &a,
     }
     return result;
 }
-  
+
+template <typename K>
+std::unordered_set<K> set_union(const std::unordered_set<K> &a,
+				   const std::unordered_set<K> &b) {
+    std::unordered_set<K> result = a;
+    for (const auto &x : b) {
+            result.insert(x);
+    }
+    return result;
+}
 
 } // namespace ChpOptimize::Algo

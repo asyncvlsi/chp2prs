@@ -24,17 +24,32 @@
 
 namespace ChpOptimize {
 
+namespace {
 
-static
 void run_seq (Sequence seq,
   std::unordered_map<const Block *, std::unordered_set<ChpOptimize::VarId> > &livein,
   std::unordered_map<const Block *, std::unordered_set<ChpOptimize::VarId> > &liveout,
   std::unordered_map<const Block *, UsesAndDefs> &raw)
 {
   bool changed;
-  Block *curr = seq.endseq->parent();
+
+    auto printvars = [&] (std::ostream &os, std::unordered_set<VarId> &vs)
+      {
+       if (vs.empty()) {
+        return;
+       }
+       bool first = true;
+       for (auto &v : vs) {
+         if (!first) {
+           os << ",";
+         }
+         os << "v" << v.m_id;
+         first = false;
+       }
+      };
 
   do {
+    Block *curr = seq.endseq->parent();
     changed = false;
 
     while (curr->type() != BlockType::StartSequence) {
@@ -49,10 +64,6 @@ void run_seq (Sequence seq,
       //    set as the live-in for its successor. This must be manually
       //    propagated to the last element of the "sequence" (for a
       //    non-empty sequence)
-
-      if (!liveout.contains(curr)) {
-	liveout[curr] = std::unordered_set <VarId> ();
-      }
       
       auto old_liveout = liveout[curr];
 
@@ -62,13 +73,21 @@ void run_seq (Sequence seq,
 	liveout[curr] = livein[curr->child()];
       }
 
+#if 0
+      std::cout << "STMT liveout: ";
+      printvars(std::cout, liveout[curr]);
+      std::cout << std::endl;
+      std::cout << "STMT livein: ";
+      printvars(std::cout, livein[curr]);
+      std::cout << std::endl;
+#endif
+
       switch (curr->type()) {
       case BlockType::Basic:
 	{
 	// livein = liveout + reads - writes
 	  UsesAndDefs &ud = raw[curr];
-	  auto newset = liveout[curr];
-	  newset.merge (ud.var_reads);
+	  auto newset = Algo::set_union(liveout[curr], ud.var_reads);
 	  newset = Algo::set_minus (newset, ud.var_writes);
 	  if (newset != livein[curr]) {
 	    changed = true;
@@ -87,7 +106,7 @@ void run_seq (Sequence seq,
 	      // propagate liveout to last value in the sequence
 	      liveout[branch.endseq->parent()] = liveout[curr];
 	      run_seq (branch, livein, liveout, raw);
-	      livein[curr].merge (livein[branch.startseq->child()]);
+              livein[curr] = Algo::set_union(livein[curr], livein[branch.startseq->child()]);
 	    }
 	  }
 	  if (old != livein[curr]) {
@@ -111,8 +130,7 @@ void run_seq (Sequence seq,
 	      liveout[s->endseq->parent()] = liveout[curr];
 	    }
 	    run_seq (*s, livein, liveout, raw);
-	    
-	    livein[curr].merge (livein[s->startseq->child()]);
+            livein[curr] = Algo::set_union (livein[curr], livein[s->startseq->child()]);
 	    if (branch.g.type() == IRGuardType::Expression) {
 	      addIdsUsedByExpr(livein[curr], branch.g.u_e().e);
 	    }
@@ -131,7 +149,8 @@ void run_seq (Sequence seq,
 	s = &curr->u_doloop().branch;
 	if (!s->empty()) {
 	  liveout[s->endseq->parent()] = liveout[curr];
-	  liveout[s->endseq->parent()].merge (livein[s->startseq->child()]);
+	  liveout[s->endseq->parent()] =
+             Algo::set_union(liveout[s->endseq->parent()], livein[s->startseq->child()]);
 	  addIdsUsedByExpr(liveout[s->endseq->parent()],
 			   curr->u_doloop().guard);
 	  run_seq (*s, livein, liveout, raw);
@@ -157,11 +176,17 @@ void run_seq (Sequence seq,
     }
   }  while (changed);
 }
+
+
+}
   
 
 
-std::unordered_map<const Block *, std::unordered_set<VarId> >
-getLiveOutVars (const ChpGraph &graph)
+ std::pair <
+   std::unordered_map<const Block *, std::unordered_set<VarId> >,
+   std::unordered_map<const Block *, std::unordered_set<VarId> >
+   >
+getLiveVars (const ChpGraph &graph)
 {
   std::unordered_map<const Block *, std::unordered_set<VarId> > ret;
   std::unordered_map<const Block *, std::unordered_set<VarId> > livein;
@@ -170,7 +195,7 @@ getLiveOutVars (const ChpGraph &graph)
 
   if (graph.m_seq.empty()) {
     // empty graph!
-    return ret;
+    return std::pair(ret,ret);
   }
       
   raw = getDefUsesTable (graph);
@@ -211,7 +236,7 @@ getLiveOutVars (const ChpGraph &graph)
   // XXX: here
   run_seq (graph.m_seq, livein, ret, raw);
 
-  return ret;
+  return std::pair(livein,ret);
 }
 
 }
