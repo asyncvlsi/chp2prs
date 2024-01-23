@@ -44,8 +44,8 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
     case BlockType::Basic: {
         switch (curr->u_basic().stmt.type()) {
         case StatementType::Send:
-            break;
         case StatementType::Assign:
+            break;
         case StatementType::Receive:
             // break before every new assignment
             di = (live_in_vars_map.find(curr))->second;
