@@ -35,6 +35,7 @@ class ChoppingBlock {
             }
 
         void chop_graph();
+        void print_chopped_seqs();
 
     private:
 
@@ -45,7 +46,14 @@ class ChoppingBlock {
         IdPool idpool;
 
         void _chop_graph(Sequence seq, int root);
-        Block *create_block ();
+        
         Sequence _split_sequence_before(Block *b, Sequence seq_in);
+        
+        Block *_splice_out_block(Block *bb);
+
+        Sequence _wrap_in_do_loop (Sequence seq);
+
+        void _print_seq (Sequence seq);
+         
 
 };
