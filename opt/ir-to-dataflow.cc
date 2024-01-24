@@ -1380,6 +1380,8 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	}
 	outp.push_back (feedback);
 
+	// printf (">> loop: %d .. ", (int)d.size());
+	
 	d.push_back (Dataflow::mkSplit
 		     (guards.first, dm.mapvar (loopphi.bodyout_id),
 		      outp));
@@ -1393,6 +1395,9 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	inp.push_back (feedback);
 	d.push_back (Dataflow::mkMergeMix
 		     (guards.second, inp, dm.mapvar (loopphi.bodyin_id)));
+	
+	//	printf ("%d <<\n", (int)d.size());
+	
       }
 
       for (auto &inphi : curr->u_doloop().in_phis) {
@@ -1400,21 +1405,27 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	ChanId feedback = dm.fresh (inphi.pre_id);
 	inp.push_back (dm.mapvar (inphi.pre_id));
 	inp.push_back (feedback);
+
+	//	printf (">> inphi: %d .. ", (int)d.size());
+	
 	d.push_back (Dataflow::mkMergeMix
 		     (OptionalChanId{guards.second}, inp,
 		      dm.mapvar (inphi.bodyin_id)));
 
 	ChanId f2 = dm.fresh (feedback);
-	d.push_back (Dataflow::mkBuf (feedback, f2, dm.bitWidth (feedback)));
+	d.push_back (Dataflow::mkBuf (f2, feedback, dm.bitWidth (feedback)));
 	feedback = f2;
 	
-
 	std::vector<OptionalChanId> outp;
 	outp.push_back (OptionalChanId::null_id());
 	outp.push_back (feedback);
 	d.push_back (Dataflow::mkSplit
 		     (guards.first, dm.mapvar (inphi.bodyin_id),
 		      outp));
+
+
+	//	printf ("%d <<\n", (int)d.size());
+	
       }
 
       for (auto &outphi : curr->u_doloop().out_phis) {
