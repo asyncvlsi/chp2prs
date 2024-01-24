@@ -486,7 +486,6 @@ void DecompAnalysis::print_decomp_info ()
     _print_decomp_info (g->graph.m_seq, 1);
 }
 
-
 #if 0
 decomp_info_t *DecompAnalysis::_tag_action_with_decomp_info_union_lcd ()
 {
