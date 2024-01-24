@@ -25,6 +25,18 @@
 #include "opt/sequencers.h"
 #include "opt/ir-to-dataflow.h"
 
+
+static int log_2_round_up(unsigned long long n) {
+    int i = 0;
+    n--;
+    while (n > 0) {
+      n >>= 1;
+      ++i;
+    }
+    return i;
+}
+
+
 class DFSynth : public ActSynthesize {
  public:
   DFSynth (const char *prefix,
@@ -49,6 +61,62 @@ class DFSynth : public ActSynthesize {
     pp_printf (_pp, "/* synthesis output */");
     pp_forced (_pp, 0);
 
+    // XXX: dflowmap bug workaround
+    list_t *special_vx;
+    if (p) {
+      special_vx =  ActNamespace::Act()->getDecomp (p);
+    }
+    else {
+      special_vx = NULL;
+    }
+
+    if (special_vx) {
+      char ramchan[32];
+      int cnt = 0;
+      for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
+	for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
+	     li = list_next (li)) {
+	  ValueIdx *vx = (ValueIdx *) list_value (li);
+	  if (TypeFactory::isProcessType (vx->t)) {
+	    /*
+	      These are specially inserted processes during process
+	      decomposition, and hence they should have pre-defined
+	      translations in the library
+	    */
+	    Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
+	    Assert (proc, "Why am I here?");
+	    if (strstr (proc->getName(), "ram") != 0) {
+	      ValueIdx *vx_n, *vx_w;
+	      vx_n = proc->CurScope()->LookupVal ("N");
+	      vx_w = proc->CurScope()->LookupVal ("W");
+	      Assert (vx_n && vx_w, "RAM issue?");
+	      int n, w;
+	      n = proc->CurScope()->getPInt (vx_n->u.idx);
+	      w = proc->CurScope()->getPInt (vx_w->u.idx);
+	      pp_printf (_pp, "/* ram %s : N = %d, W = %d */",
+			 vx->getName(), n, w);
+	      pp_forced (_pp, 0);
+	      pp_printf (_pp, "chan(int<2>) _ri%d;", cnt++);
+	      pp_forced (_pp, 0);
+	      pp_printf (_pp, "chan(int<%d>) _ri%d;",
+			 log_2_round_up (n), cnt++);
+	      pp_forced (_pp, 0);
+	      pp_printf (_pp, "chan(int<%d>) _ri%d;", w, cnt++);
+	      pp_forced (_pp, 0);
+	      pp_printf (_pp, "chan(int<%d>) _ri%d;", w, cnt++);
+	      pp_forced (_pp, 0);
+	      pp_printf (_pp, "_ri%d=%s.rd; _ri%d=%s.addr; _ri%d=%s.din; _ri%d=%s.dout;",
+			 cnt-4, vx->getName(),
+			 cnt-3, vx->getName(),
+			 cnt-2, vx->getName(),
+			 cnt-1, vx->getName());
+	      pp_forced (_pp, 0);
+	    }
+	  }
+	}
+      }
+    }
+    
     pp_flush (_pp);
     fprintf (_pp->fp, "/* start dflow */\n");
     fflush (_pp->fp);

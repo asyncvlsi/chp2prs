@@ -24,6 +24,6 @@ import std;
 
 namespace syn {
   /*-- macros --*/
-  export defproc ram <: std::ram() { }
-  export defproc rom <: std::ram() { }
+  export defproc ram_builtin <: std::ram() { }
+  export defproc rom_builtin <: std::ram() { }
 }
