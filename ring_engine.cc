@@ -130,26 +130,42 @@ class RingSynth : public ActSynthesize {
         }
       }
 
+      fprintf (stdout, "\n\noriginal chp");
       fprintf (stdout, "\n\n");
       chp_print(stdout, l);
 
-      fprintf (stdout, "\n\n generated info: \n");
+      // fprintf (stdout, "\n\n generated info: \n");
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
-      bkp->print_decomp_info();
+      // bkp->print_decomp_info();
 
       ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
                                 bkp->get_live_vars_map());
       cb->chop_graph();
-      cb->print_chopped_seqs();
+      auto vs = cb->get_chopped_seqs();
+      
+      fprintf (stdout, "\n\ndecomposed processes ----------- \n");
+      for (auto v : vs)
+      {
+        GraphWithChanNames gc;
+        gc.graph.m_seq = v;
+        gc.graph.id_pool() = g.graph.id_pool();
+        std::vector<ActId *> newnames;
+        act_chp_lang_t *l = chp_graph_to_act (gc, newnames, p->CurScope());
+        fprintf (stdout, "\n\n");
+        chp_print(stdout, l);
+      }
+      // cb->print_chopped_seqs(p->CurScope());
 
     }
     }
+      fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
 
     act_chp_lang_t *c = p->getlang()->getchp()->c;  
-    fprintf (stdout, "\n\n");
-    chp_print (stdout, c);
-    fprintf (stdout, "\n\n");
+    // fprintf (stdout, "\n\noriginal chp");
+    // fprintf (stdout, "\n\n");
+    // chp_print (stdout, c);
+    // fprintf (stdout, "\n\n");
     // core synthesis functions here
     Assert (c, "hmm c");
     mangle_init();

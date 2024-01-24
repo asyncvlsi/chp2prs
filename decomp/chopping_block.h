@@ -36,6 +36,7 @@ class ChoppingBlock {
 
         void chop_graph();
         void print_chopped_seqs();
+        std::vector<Sequence> get_chopped_seqs();
 
     private:
 
