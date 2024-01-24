@@ -1,4 +1,3 @@
-
 /*************************************************************************
  *
  *  Copyright (c) 2020 Rajit Manohar
@@ -20,8 +19,7 @@
  *
  **************************************************************************
  */
-import globals;
-import std::gates;
+import syn;
 
 /* Syntax directed translation */
 
@@ -489,4 +487,5 @@ namespace syn {
 
     export template<pint W> defproc readport(sdtvar<W> var; sdtexprchan<W> out);
   }
+
 }

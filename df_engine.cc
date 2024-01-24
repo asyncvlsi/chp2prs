@@ -33,7 +33,9 @@ class DFSynth : public ActSynthesize {
 	   char *exprfile)
     : ActSynthesize (prefix, infile, outfile, exprfile) { }
   
-  void emitTopImports(ActPass *ap) { }
+  void emitTopImports(ActPass *ap) { 
+    pp_printf_raw (_pp, "import syn;\n\n");
+  }
 
   void emitFinal () { }
     
