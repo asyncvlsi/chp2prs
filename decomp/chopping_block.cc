@@ -119,6 +119,56 @@ Block *ChoppingBlock::_splice_out_block(Block *bb)
     return after;
 }
 
+Block *ChoppingBlock::_splice_in_block_between (Block *before, Block *after, Block *bb)
+{
+    Block::disconnect(before, after);
+    Block::connect(before, bb);
+    Block::connect(bb, after);
+    return after;
+}
+
+Block *ChoppingBlock::_splice_in_recv_before(Block *bb)
+{
+    decomp_info_t *di = (vmap.find(bb))->second;
+    if (di->tx_vars.size() == 1)
+    {
+        ChanId chan_id = idpool.makeUniqueChan(di->total_bitwidth);
+        VarId var_id = idpool.makeUniqueVar(di->total_bitwidth);
+        Block *receive = g->graph.blockAllocator().newBlock(
+                Block::makeBasicBlock(Statement::makeReceive(chan_id, var_id)));
+
+        _splice_in_block_between (bb->parent(), bb, receive);
+        return bb;
+    }
+    return NULL;
+}
+
+Block *ChoppingBlock::_generate_send(Block *bb)
+{
+    if (bb->type() == BlockType::StartSequence)
+        return NULL;
+    if (bb->type() == BlockType::EndSequence)
+        return NULL;
+
+    decomp_info_t *di = (vmap.find(bb))->second;
+    if (di->tx_vars.size() == 1)
+    {
+        ChanId chan_id = idpool.makeUniqueChan(di->total_bitwidth, false);
+        var_to_actvar vtoa(s, &idpool);
+        ActId *id = vtoa.chanMap(chan_id);
+        g->name_from_chan.insert({chan_id, id});
+
+        VarId var_id = *(di->tx_vars).begin();
+        Block *send =
+            g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
+                chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di->total_bitwidth))));
+    
+        return send;
+    //     return NULL;
+    }
+    return NULL;
+}
+
 Sequence ChoppingBlock::_split_sequence_before(Block *b, Sequence parent_seq)
 {
     std::vector<Block *> v_block_ptrs;
@@ -130,6 +180,11 @@ Sequence ChoppingBlock::_split_sequence_before(Block *b, Sequence parent_seq)
         v_block_ptrs.push_back(itr);
         itr = _splice_out_block(itr);
     }
+
+    Block *send = _generate_send (b);
+    if (send)
+        v_block_ptrs.push_back(send);
+    // _splice_in_recv_before (itr);
 
     Sequence seq_out;
     seq_out = g->graph.blockAllocator().newSequence(v_block_ptrs);
@@ -247,6 +302,6 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     //tail of seq
     if (!seq.empty())
         _split_sequence_before(curr, seq);
-        
+
     return;
 }

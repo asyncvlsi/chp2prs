@@ -26,12 +26,16 @@ class ChoppingBlock {
     public:
 
         ChoppingBlock ( FILE *fp_in, GraphWithChanNames &g_in, 
-                        std::unordered_map<Block *, decomp_info_t *> vmap_in)
+                        std::unordered_map<Block *, decomp_info_t *> vmap_in,
+                        Scope *s_in)
             {
                 fp = fp_in;
                 g = &g_in;
                 vmap = vmap_in;
                 idpool = g->graph.id_pool();
+                s = s_in;
+
+                // var_to_actvar vtoa(s, &idpool);
             }
 
         void chop_graph();
@@ -44,13 +48,21 @@ class ChoppingBlock {
         GraphWithChanNames *g;
         std::unordered_map<Block *, decomp_info_t *> vmap;
         std::vector<Sequence> v_seqs;
+        // var_to_actvar vtoa;
+        Scope *s;
         IdPool idpool;
 
-        void _chop_graph(Sequence seq, int root);
+        void _chop_graph (Sequence seq, int root);
         
-        Sequence _split_sequence_before(Block *b, Sequence seq_in);
+        Sequence _split_sequence_before (Block *b, Sequence seq_in);
         
-        Block *_splice_out_block(Block *bb);
+        Block *_splice_out_block (Block *bb);
+
+        Block *_splice_in_block_between (Block *before, Block *after, Block *bb);
+
+        Block *_generate_send (Block *bb);
+
+        Block *_splice_in_recv_before (Block *bb);
 
         Sequence _wrap_in_do_loop (Sequence seq);
 
