@@ -151,22 +151,48 @@ Block *ChoppingBlock::_generate_send(Block *bb)
         return NULL;
 
     decomp_info_t *di = (vmap.find(bb))->second;
+
+    if (di->tx_vars.size() == 0)
+    {
+        return NULL;
+    }
+
+    ChanId chan_id = idpool.makeUniqueChan(di->total_bitwidth, false);
+    var_to_actvar vtoa(s, &idpool);
+    ActId *id = vtoa.chanMap(chan_id);
+    g->name_from_chan.insert({chan_id, id});
+
     if (di->tx_vars.size() == 1)
     {
-        ChanId chan_id = idpool.makeUniqueChan(di->total_bitwidth, false);
-        var_to_actvar vtoa(s, &idpool);
-        ActId *id = vtoa.chanMap(chan_id);
-        g->name_from_chan.insert({chan_id, id});
-
-        VarId var_id = *(di->tx_vars).begin();
+        VarId var_id = *di->tx_vars.begin();
         Block *send =
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
                 chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di->total_bitwidth))));
-    
         return send;
-    //     return NULL;
     }
-    return NULL;
+
+    ChpExprSingleRootDag conc_vars;
+
+    for ( auto var : di->tx_vars )
+    {
+        if (var == *di->tx_vars.begin())
+        {
+            conc_vars = ChpExprSingleRootDag::makeVariableAccess(var, idpool.getBitwidth(var));
+        }
+        else
+        {
+            auto v1 = ChpExprSingleRootDag::makeVariableAccess(var, idpool.getBitwidth(var));
+            conc_vars = ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::Concat,
+                        std::make_unique<ChpExprSingleRootDag>(std::move(conc_vars)),
+                        std::make_unique<ChpExprSingleRootDag>(std::move(v1)));
+        }
+    }
+
+    Block *send =
+            g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
+                chan_id, std::move(conc_vars))));
+
+    return send;
 }
 
 Sequence ChoppingBlock::_split_sequence_before(Block *b, Sequence parent_seq)
