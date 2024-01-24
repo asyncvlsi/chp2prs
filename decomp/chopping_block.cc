@@ -232,6 +232,8 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     case BlockType::DoLoop:
         // fprintf (stdout, "\ndoloop start\n");
         _chop_graph (curr->u_doloop().branch, 0);
+        if (curr->u_doloop().branch.empty())
+            return;
         // fprintf (stdout, "\ndoloop end");
         break;
     
@@ -243,8 +245,8 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     curr = curr->child();
     }
     //tail of seq
-    _split_sequence_before(curr, seq);
-
-    // fprintf (stdout, "\n\n");
-    // fprintf (stdout, "ended \n");
+    if (!seq.empty())
+        _split_sequence_before(curr, seq);
+        
+    return;
 }

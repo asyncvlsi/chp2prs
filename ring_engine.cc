@@ -148,9 +148,10 @@ class RingSynth : public ActSynthesize {
       for (auto v : vs)
       {
         GraphWithChanNames gc;
-        gc.graph.m_seq = v;
         gc.graph.id_pool() = g.graph.id_pool();
-        std::vector<ActId *> newnames;
+        gc.graph.m_seq = v;
+        gc.name_from_chan = g.name_from_chan; 
+        // std::vector<ActId *> newnames;
         act_chp_lang_t *l = chp_graph_to_act (gc, newnames, p->CurScope());
         fprintf (stdout, "\n\n");
         chp_print(stdout, l);
