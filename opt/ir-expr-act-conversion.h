@@ -261,8 +261,9 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
         hassert(o->u.e.l);
         hassert(o->u.e.r);
         hassert(o->u.e.r->type == E_BITFIELD);
-        hassert(o->u.e.r->u.e.l);
-        hassert(o->u.e.r->u.e.l->type == E_INT);
+        if (o->u.e.r->u.e.l) {
+           hassert(o->u.e.r->u.e.l->type == E_INT);
+        }
         hassert(o->u.e.r->u.e.r);
         hassert(o->u.e.r->u.e.r->type == E_INT);
 
@@ -272,7 +273,7 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
             std::make_unique<IRExpr_t>(
                 IRExpr_t::makeVariableAccess(id, bit_width)),
             detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32(),
-            detail::bigint_from_int_expr(o->u.e.r->u.e.l).first.getI32()));
+            o->u.e.r->u.e.l ?  detail::bigint_from_int_expr(o->u.e.r->u.e.l).first.getI32() : detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32()));
     }
     case E_RAWFREE:
     case E_NUMBER: {
