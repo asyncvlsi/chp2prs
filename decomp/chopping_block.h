@@ -54,7 +54,7 @@ class ChoppingBlock {
 
         void _chop_graph (Sequence seq, int root);
         
-        Sequence _split_sequence_before (Block *b, Sequence seq_in);
+        void _split_sequence_before (Block *b, Sequence seq_in, int root);
         
         Block *_splice_out_block (Block *bb);
 

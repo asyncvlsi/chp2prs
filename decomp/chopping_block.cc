@@ -143,13 +143,13 @@ Block *ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send)
     {
         VarId var_id = *di->tx_vars.begin();
         OptionalVarId ovid(var_id);
-        // fprintf (stdout, "\n bw : %d\n\n", g->graph.id_pool().getBitwidth(var_id));
-        // fprintf (stdout, "\n id : %llu\n\n", var_id.m_id);
-        // var_to_actvar vtoa(s, &g->graph.id_pool());
-        // ActId *id = vtoa.varMap(var_id);
+
         Block *receive = g->graph.blockAllocator().newBlock(
                 Block::makeBasicBlock(Statement::makeReceive(chan_id, ovid)));
         _splice_in_block_between (bb->parent(), bb, receive);
+
+        // test
+        vmap.insert({receive, vmap.find(bb)->second});
 
         return receive;
     }
@@ -160,6 +160,9 @@ Block *ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send)
     Block *receive = g->graph.blockAllocator().newBlock(
             Block::makeBasicBlock(Statement::makeReceive(chan_id, ovid)));
     _splice_in_block_between (bb->parent(), bb, receive);
+    
+    // test
+    vmap.insert({receive, vmap.find(bb)->second});
 
     //  x1 = x{0..i} , x2 = x{i+1..j} ...
     // make the assign blocks, parallel them all
@@ -196,6 +199,7 @@ Block *ChoppingBlock::_generate_send(Block *bb)
     if (bb->type() == BlockType::EndSequence)
         return NULL;
 
+    // fprintf (stdout, "\nhere multi\n ");
     decomp_info_t *di = (vmap.find(bb))->second;
 
     if (di->tx_vars.size() == 0)
@@ -216,6 +220,7 @@ Block *ChoppingBlock::_generate_send(Block *bb)
                 chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di->total_bitwidth))));
         return send;
     }
+
 
     ChpExprSingleRootDag conc_vars;
 
@@ -241,12 +246,34 @@ Block *ChoppingBlock::_generate_send(Block *bb)
     return send;
 }
 
-Sequence ChoppingBlock::_split_sequence_before(Block *b, Sequence parent_seq)
+void ChoppingBlock::_split_sequence_before(Block *b, Sequence parent_seq, int root)
 {
     std::vector<Block *> v_block_ptrs;
 
     Block *itr = parent_seq.startseq->child();
-    Block *blk;
+    int flag = 0;
+    // need to generate the incoming vars for this block..
+    // splice in the send for this block at its location
+    // generate the recv
+    // basically the same, again
+    if (root != 1 && (itr->type() != BlockType::EndSequence))
+    {
+        fprintf (stdout, "\n\nhere: %d\n\n", itr->type());
+        Block *sr = _generate_send (itr);
+        _splice_in_block_between (itr->parent(), itr, sr);
+        fprintf (stdout, "\n\nhere now: %d\n\n", itr->type());
+        _splice_in_recv_before (itr, sr);
+        itr = parent_seq.startseq->child();
+        flag = 1;
+        // itr = itr->child();
+        Assert (itr, "no block");
+        fprintf (stdout, "\n\nhere again: %d\n\n", itr->child()->type());
+        // fprintf (stdout, "\n\n\n");
+        // return;
+    }
+    // if (flag == 1)
+    //     itr = itr->child();
+
     while (itr != b)
     {   
         v_block_ptrs.push_back(itr);
@@ -255,29 +282,23 @@ Sequence ChoppingBlock::_split_sequence_before(Block *b, Sequence parent_seq)
 
     Block *send = _generate_send (b);
     if (send)
-    {
+    {   
         v_block_ptrs.push_back(send);
-        Block *recv = _splice_in_recv_before (b, send);
-        // fprintf (stdout, "\n bw : %d\n\n", g->graph.id_pool().getBitwidth(*(recv->u_basic().stmt.u_receive().var)));
+        _splice_in_recv_before (b, send);
 
     }
     Sequence seq_out;
     seq_out = g->graph.blockAllocator().newSequence(v_block_ptrs);
 
-    // fprintf (stdout, "\nexcised subseq start----");
-    // print_seq (seq_out);
-    // fprintf (stdout, "\nexcised subseq end----\n");
-
-    // v_seqs.push_back(seq_out);
     v_seqs.push_back(_wrap_in_do_loop(seq_out));
 
-    return seq_out;
+    return;
 }
 
 void ChoppingBlock::chop_graph()
 {
     // _print_seq (g->graph.m_seq);
-    _chop_graph(g->graph.m_seq, 0);
+    _chop_graph(g->graph.m_seq, 1);
     // for (auto v_seq : v_seqs)
     // {
     //     print_seq (v_seq);
@@ -298,7 +319,7 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
         if (vmap.contains(curr))
         {
         di = (vmap.find(curr))->second;
-        // fprintf (stdout, "\nbasic : ");
+        fprintf (stdout, "\nbasic : ");
         switch (curr->u_basic().stmt.type()) {
         case StatementType::Send:
         // fprintf (stdout, "send : %d\n\n", di->is_breakpoint);
@@ -310,18 +331,10 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
         // fprintf (stdout, "recv : %d\n\n", di->is_breakpoint);
             break;
         }
-        if (di->is_breakpoint && curr->parent()->type()!=BlockType::StartSequence)
+        if (di->break_before && curr->parent()->type()!=BlockType::StartSequence)
         {
-            // fprintf (stdout, "\nbreaking \n");
-            // di_par = (vmap.find(curr->parent()))->second;
-            // ChanId chan_id = idpool.makeUniqueChan(di_par->total_bitwidth);
-            // auto sendvarexpr = ChpExprSingleRootDag::makeVariableAccess(
-            //                 *(di_par->tx_vars.begin()), 
-            //                 idpool.getBitwidth(chan_id));
-            // new_block = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(
-            //                 Statement::makeSend(chan_id, std::move(sendvarexpr))
-            //                 ));
-            _split_sequence_before (curr, seq);
+            fprintf (stdout, "\nbreaking basic\n");
+            _split_sequence_before (curr, seq, root);
         }
         }
         else
@@ -343,11 +356,11 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
         if (vmap.contains(curr))
         {
         di = (vmap.find(curr))->second;
-        // fprintf (stdout, "select : %d\n\n", di->is_breakpoint);
-        if (di->is_breakpoint && curr->parent()->type()!=BlockType::StartSequence)
+        fprintf (stdout, "select : %d\n\n", di->break_before);
+        if (di->break_before && curr->parent()->type()!=BlockType::StartSequence)
         {
-            // fprintf (stdout, "\nbreaking \n");
-            _split_sequence_before (curr, seq);
+            fprintf (stdout, "\nbreaking sel\n");
+            _split_sequence_before (curr, seq, root);
         }
         }
         else
@@ -360,8 +373,11 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     break;
       
     case BlockType::DoLoop:
+        if (root != 1)
+            fatal_error ("excise internal loops please");
+
         // fprintf (stdout, "\ndoloop start\n");
-        _chop_graph (curr->u_doloop().branch, 0);
+        _chop_graph (curr->u_doloop().branch, 1);
         if (curr->u_doloop().branch.empty())
             return;
         // fprintf (stdout, "\ndoloop end");
@@ -375,8 +391,10 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     curr = curr->child();
     }
     //tail of seq
-    if (!seq.empty())
-        _split_sequence_before(curr, seq);
-
+    if (!seq.empty() && (root==1))
+    {
+        fprintf (stdout, "\nbreaking tail\n");
+        _split_sequence_before(curr, seq, root);
+    }
     return;
 }

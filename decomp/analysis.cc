@@ -384,7 +384,8 @@ decomp_info_t *DecompAnalysis::_generate_decomp_info()
     NEW (di, decomp_info_t);
     di->tx_vars = H_live;
     di->total_bitwidth = _compute_total_bits (H_live);
-    di->is_breakpoint = false;
+    di->break_before = false;
+    di->break_after = false;
     return di;
 }
 
@@ -394,7 +395,8 @@ decomp_info_t *DecompAnalysis::_generate_decomp_info(std::unordered_set<VarId> H
     NEW (di, decomp_info_t);
     di->tx_vars = H;
     di->total_bitwidth = _compute_total_bits (H);
-    di->is_breakpoint = false;
+    di->break_before = false;
+    di->break_after = false;
     return di;
 }
 
@@ -417,7 +419,8 @@ void DecompAnalysis::_print_decomp_info (decomp_info_t *di)
     fprintf(fp, "\n-----------");
     fprintf(fp, "\ntotal bits: %d", di->total_bitwidth);
     fprintf(fp, "\n-----------");
-    fprintf(fp, "\nbreak?: %d", di->is_breakpoint);
+    fprintf(fp, "\nbreak before?: %d", di->break_before);
+    fprintf(fp, "\nbreak after?: %d", di->break_after);
     fprintf(fp, "\n-----------");
     fprintf(fp, "\n\n");
 }

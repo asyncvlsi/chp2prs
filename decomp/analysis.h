@@ -33,7 +33,8 @@ using namespace ChpOptimize;
 typedef struct decomp_info {
     std::unordered_set<VarId> tx_vars;
     int total_bitwidth;
-    bool is_breakpoint;
+    bool break_before;
+    bool break_after;
 } decomp_info_t;
 
 class DecompAnalysis {
