@@ -62,8 +62,6 @@ class ChoppingBlock {
 
         Block *_generate_send (Block *bb);
 
-        // Block *_generate_send (Block *bb);
-
         Block *_splice_in_recv_before (Block *bb, Block *send);
 
         Sequence _wrap_in_do_loop (Sequence seq);

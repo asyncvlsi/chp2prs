@@ -22,10 +22,6 @@
 
 #include "chopping_block.h"
 
-// TODO: Comm. block insertions...
-// TODO: Name and name-mapping handling...
-
-
 void ChoppingBlock::_print_seq (Sequence seq)
 {
     fprintf (stdout, "\n");
@@ -145,7 +141,6 @@ Block *ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send)
 
     if (di->tx_vars.size() == 1)
     {
-        // VarId var_id = g->graph.id_pool().makeUniqueVar(di->total_bitwidth, false);
         VarId var_id = *di->tx_vars.begin();
         OptionalVarId ovid(var_id);
         // fprintf (stdout, "\n bw : %d\n\n", g->graph.id_pool().getBitwidth(var_id));
@@ -159,15 +154,40 @@ Block *ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send)
         return receive;
     }
 
-    // for ( auto var : di->tx_vars )
-    // {
+    VarId var_concat = g->graph.id_pool().makeUniqueVar(di->total_bitwidth, false);
+    OptionalVarId ovid(var_concat);
+    // C?x
+    Block *receive = g->graph.blockAllocator().newBlock(
+            Block::makeBasicBlock(Statement::makeReceive(chan_id, ovid)));
+    _splice_in_block_between (bb->parent(), bb, receive);
 
-    // }
+    //  x1 = x{0..i} , x2 = x{i+1..j} ...
+    // make the assign blocks, parallel them all
 
-    return NULL;
+    int range_ctr = di->total_bitwidth;
+    Block *parallel = g->graph.blockAllocator().newBlock(Block::makeParBlock());
+    for ( auto var : di->tx_vars )
+    {
+        VarId vi = var;
+        int width = g->graph.id_pool().getBitwidth(vi);
+        // vi := v_concat{i+w..i}
+        Block *assign = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(
+                    Statement::makeAssignment(vi, 
+                        ChpExprSingleRootDag::makeBitfield(
+                            std::make_unique<ChpExprSingleRootDag>(
+                                ChpExprSingleRootDag::makeVariableAccess(
+                                    var_concat, di->total_bitwidth)),
+                            range_ctr-1, range_ctr-width)
+                                            )));
+
+        parallel->u_par().branches.push_back(
+                g->graph.blockAllocator().newSequence({assign}));
+        range_ctr -= (width);
+    }
+    
+    _splice_in_block_between (receive, bb, parallel);
+    return parallel;
 }
-
-
 
 Block *ChoppingBlock::_generate_send(Block *bb)
 {
