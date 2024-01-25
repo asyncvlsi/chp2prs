@@ -127,21 +127,47 @@ Block *ChoppingBlock::_splice_in_block_between (Block *before, Block *after, Blo
     return after;
 }
 
-Block *ChoppingBlock::_splice_in_recv_before(Block *bb)
+Block *ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send)
 {
+    if (bb->type() == BlockType::StartSequence)
+        return NULL;
+    if (bb->type() == BlockType::EndSequence)
+        return NULL;
+
     decomp_info_t *di = (vmap.find(bb))->second;
+
+    if (di->tx_vars.size() == 0)
+    {
+        return NULL;
+    }
+
+    ChanId chan_id = send->u_basic().stmt.u_send().chan;
+
     if (di->tx_vars.size() == 1)
     {
-        ChanId chan_id = idpool.makeUniqueChan(di->total_bitwidth);
-        VarId var_id = idpool.makeUniqueVar(di->total_bitwidth);
+        // VarId var_id = g->graph.id_pool().makeUniqueVar(di->total_bitwidth, false);
+        VarId var_id = *di->tx_vars.begin();
+        OptionalVarId ovid(var_id);
+        // fprintf (stdout, "\n bw : %d\n\n", g->graph.id_pool().getBitwidth(var_id));
+        // fprintf (stdout, "\n id : %llu\n\n", var_id.m_id);
+        // var_to_actvar vtoa(s, &g->graph.id_pool());
+        // ActId *id = vtoa.varMap(var_id);
         Block *receive = g->graph.blockAllocator().newBlock(
-                Block::makeBasicBlock(Statement::makeReceive(chan_id, var_id)));
-
+                Block::makeBasicBlock(Statement::makeReceive(chan_id, ovid)));
         _splice_in_block_between (bb->parent(), bb, receive);
-        return bb;
+
+        return receive;
     }
+
+    // for ( auto var : di->tx_vars )
+    // {
+
+    // }
+
     return NULL;
 }
+
+
 
 Block *ChoppingBlock::_generate_send(Block *bb)
 {
@@ -157,8 +183,8 @@ Block *ChoppingBlock::_generate_send(Block *bb)
         return NULL;
     }
 
-    ChanId chan_id = idpool.makeUniqueChan(di->total_bitwidth, false);
-    var_to_actvar vtoa(s, &idpool);
+    ChanId chan_id = g->graph.id_pool().makeUniqueChan(di->total_bitwidth, false);
+    var_to_actvar vtoa(s, &g->graph.id_pool());
     ActId *id = vtoa.chanMap(chan_id);
     g->name_from_chan.insert({chan_id, id});
 
@@ -177,11 +203,11 @@ Block *ChoppingBlock::_generate_send(Block *bb)
     {
         if (var == *di->tx_vars.begin())
         {
-            conc_vars = ChpExprSingleRootDag::makeVariableAccess(var, idpool.getBitwidth(var));
+            conc_vars = ChpExprSingleRootDag::makeVariableAccess(var, g->graph.id_pool().getBitwidth(var));
         }
         else
         {
-            auto v1 = ChpExprSingleRootDag::makeVariableAccess(var, idpool.getBitwidth(var));
+            auto v1 = ChpExprSingleRootDag::makeVariableAccess(var, g->graph.id_pool().getBitwidth(var));
             conc_vars = ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::Concat,
                         std::make_unique<ChpExprSingleRootDag>(std::move(conc_vars)),
                         std::make_unique<ChpExprSingleRootDag>(std::move(v1)));
@@ -209,9 +235,12 @@ Sequence ChoppingBlock::_split_sequence_before(Block *b, Sequence parent_seq)
 
     Block *send = _generate_send (b);
     if (send)
+    {
         v_block_ptrs.push_back(send);
-    // _splice_in_recv_before (itr);
+        Block *recv = _splice_in_recv_before (b, send);
+        // fprintf (stdout, "\n bw : %d\n\n", g->graph.id_pool().getBitwidth(*(recv->u_basic().stmt.u_receive().var)));
 
+    }
     Sequence seq_out;
     seq_out = g->graph.blockAllocator().newSequence(v_block_ptrs);
 
