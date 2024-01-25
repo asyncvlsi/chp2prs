@@ -101,19 +101,19 @@ void run_seq (Sequence seq,
 	  auto old = livein[curr];
 
 	  livein[curr].clear();
+
+	  auto tmp = liveout[curr];
+
+	  // just run them sequentially!
 	  for (auto &branch : curr->u_par().branches) {
 	    if (!branch.empty()) {
 	      // propagate liveout to last value in the sequence
-	      liveout[branch.endseq->parent()] = liveout[curr];
+	      liveout[branch.endseq->parent()] = tmp;
 	      run_seq (branch, livein, liveout, raw);
-              livein[curr] = Algo::set_union(livein[curr],
-					     livein[branch.startseq->child()]);
-	    }
-	    else {
-	      // skip!
-	      livein[curr] = Algo::set_union(livein[curr], liveout[curr]);
+	      tmp = livein[branch.startseq->child()];
 	    }
 	  }
+	  livein[curr] = tmp;
 	  if (old != livein[curr]) {
 	    changed = true;
 	  }
