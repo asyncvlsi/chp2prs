@@ -47,4 +47,8 @@ class BreakPoints : public DecompAnalysis {
         */
         void _mark_breakpoints_v1(Sequence seq, int root);
 
+        /*
+         * Receives only, ignores selections - for testing
+        */
+        void _mark_breakpoints_v2(Sequence seq, int root);
 };

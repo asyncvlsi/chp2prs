@@ -130,32 +130,33 @@ class RingSynth : public ActSynthesize {
         }
       }
 
-      fprintf (stdout, "\n\noriginal chp");
+      fprintf (stdout, "\n\noriginal chp-----");
       fprintf (stdout, "\n\n");
       chp_print(stdout, l);
+      fprintf (stdout, "\n\noriginal chp-----\n\n");
 
-      // BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
-      // bkp->mark_breakpoints();
-      // bkp->print_decomp_info();
+      BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
+      bkp->mark_breakpoints();
+      bkp->print_decomp_info();
 
-      // ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
-      //                           bkp->get_live_vars_map(), p->CurScope());
-      // cb->chop_graph();
+      ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
+                                bkp->get_live_vars_map(), p->CurScope());
+      cb->chop_graph();
 
-      // auto vs = cb->get_chopped_seqs();
-      // fprintf (stdout, "\n\ndecomposed processes ----------- \n");
-      // for (auto v : vs)
-      // {
-      //   GraphWithChanNames gc;
-      //   gc.graph.id_pool() = g.graph.id_pool();
-      //   gc.graph.m_seq = v;
-      //   gc.name_from_chan = g.name_from_chan;  
-      //   // std::vector<ActId *> newnames;
-      //   act_chp_lang_t *l = chp_graph_to_act (gc, newnames, p->CurScope());
-      //   fprintf (stdout, "\n\n");
-      //   chp_print(stdout, l);
-      // }
-      // fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
+      auto vs = cb->get_chopped_seqs();
+      fprintf (stdout, "\n\ndecomposed processes ----------- \n");
+      for (auto v : vs)
+      {
+        GraphWithChanNames gc;
+        gc.graph.id_pool() = g.graph.id_pool();
+        gc.graph.m_seq = v;
+        gc.name_from_chan = g.name_from_chan;  
+        // std::vector<ActId *> newnames;
+        act_chp_lang_t *l = chp_graph_to_act (gc, newnames, p->CurScope());
+        fprintf (stdout, "\n\n");
+        chp_print(stdout, l);
+      }
+      fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
       // cb->print_chopped_seqs(p->CurScope());
 
     }

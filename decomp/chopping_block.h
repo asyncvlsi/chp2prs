@@ -62,11 +62,20 @@ class ChoppingBlock {
 
         Block *_generate_send (Block *bb);
 
-        Block *_splice_in_recv_before (Block *bb, Block *send);
+        Block *_find_next_break_after (Block *b);
+
+        Block *_find_next_break_before (Block *b);
+
+        std::vector<Block *> _split_sequence_from_to(Block *b_start, Block *b_end);
+
+        Block *_build_sequence(Block *b_start, Block *b_end);
+
+        Sequence _generate_recv_and_maybe_assigns (Block *send);
+
+        void _splice_in_recv_before (Block *bb, Block *send);
 
         Sequence _wrap_in_do_loop (Sequence seq);
 
         void _print_seq (Sequence seq);
          
-
 };

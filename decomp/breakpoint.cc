@@ -24,8 +24,9 @@
 
 void BreakPoints::mark_breakpoints()
 {
-    _mark_breakpoints_v0 (g->graph.m_seq, 0);
+    // _mark_breakpoints_v0 (g->graph.m_seq, 0);
     // _mark_breakpoints_v1 (g->graph.m_seq, 0);
+    _mark_breakpoints_v2 (g->graph.m_seq, 0);
 }
 
 void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
@@ -66,7 +67,7 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
         di = (live_in_vars_map.find(curr))->second;
         di->break_before = true;
         di->break_after = true;
-        
+
         for (auto &branch : curr->u_select().branches) {
             _mark_breakpoints_v0 (branch.seq, 0);
         }
@@ -134,4 +135,53 @@ void BreakPoints::_mark_breakpoints_v1(Sequence seq, int mark_next)
     }
     curr = curr->child();
     }
+}
+
+void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
+{
+    Block *curr = seq.startseq->child();
+    decomp_info *di;
+
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        switch (curr->u_basic().stmt.type()) {
+        case StatementType::Send:
+        case StatementType::Assign:
+            break;
+        case StatementType::Receive:
+            di = (live_in_vars_map.find(curr))->second;
+            di->break_before = true;
+            di->break_after = true;
+            break;
+      }
+        di = (live_in_vars_map.find(curr))->second;
+    }
+    break;
+      
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            _mark_breakpoints_v2 (branch, 0);
+        }
+    }
+    break;
+      
+    case BlockType::Select:
+        for (auto &branch : curr->u_select().branches) {
+            _mark_breakpoints_v2 (branch.seq, 0);
+        }
+    break;
+      
+    case BlockType::DoLoop:
+        _mark_breakpoints_v2 (curr->u_doloop().branch, 0);
+        break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
+    // di = (live_in_vars_map.find(curr))->second;
 }
