@@ -25,6 +25,7 @@
 void BreakPoints::mark_breakpoints()
 {
     _mark_breakpoints_v0 (g->graph.m_seq, 0);
+    // _mark_breakpoints_v1 (g->graph.m_seq, 0);
 }
 
 void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
@@ -33,13 +34,6 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
     decomp_info *di;
 
     while (curr->type() != BlockType::EndSequence) {
-    // break after every selection
-    if (curr->parent() && 
-        curr->parent()->type() == BlockType::Select)
-    {
-        di = (live_in_vars_map.find(curr))->second;
-        di->is_breakpoint = true;
-    }
     switch (curr->type()) {
     case BlockType::Basic: {
         switch (curr->u_basic().stmt.type()) {
@@ -49,7 +43,8 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
         case StatementType::Receive:
             // break before every new assignment
             di = (live_in_vars_map.find(curr))->second;
-            di->is_breakpoint = true;
+            di->break_before = true;
+            di->break_after = true;
             break;
       }
         di = (live_in_vars_map.find(curr))->second;
@@ -69,9 +64,9 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
         // fprintf (stdout, "reached select start\n");
         // break before every selection
         di = (live_in_vars_map.find(curr))->second;
-        di->is_breakpoint = true;
-        // _print_decomp_info (di);
-
+        di->break_before = true;
+        di->break_after = true;
+        
         for (auto &branch : curr->u_select().branches) {
             _mark_breakpoints_v0 (branch.seq, 0);
         }
@@ -81,6 +76,55 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
     case BlockType::DoLoop:
         // fprintf (stdout, "\n\nreached do-loop\n");
         _mark_breakpoints_v0 (curr->u_doloop().branch, 0);
+        break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
+
+}
+
+void BreakPoints::_mark_breakpoints_v1(Sequence seq, int mark_next)
+{
+    Block *curr = seq.startseq->child();
+    decomp_info *di;
+
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        switch (curr->u_basic().stmt.type()) {
+        case StatementType::Send:
+        case StatementType::Assign:
+        case StatementType::Receive:
+            break;
+      }
+    }
+    break;
+      
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            _mark_breakpoints_v1 (branch, 0);
+        }
+    }
+    break;
+      
+    case BlockType::Select:
+        // break out every selection
+        di = (live_in_vars_map.find(curr))->second;
+        di->break_before = true;
+        di->break_after = true;
+
+        for (auto &branch : curr->u_select().branches) {
+            _mark_breakpoints_v1 (branch.seq, 0);
+        }
+    break;
+      
+    case BlockType::DoLoop:
+        _mark_breakpoints_v1 (curr->u_doloop().branch, 0);
         break;
     
     case BlockType::StartSequence:
