@@ -191,11 +191,14 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
 
 Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
 {
-    if (bb->type() == BlockType::StartSequence)
+    if (bb->type() == BlockType::StartSequence) {
         fatal_error ("shouldn't have been used like this");
         return NULL;
-    if (bb->type() == BlockType::EndSequence)
+    }
+    if (bb->type() == BlockType::EndSequence) {
+        fprintf (stdout, "\ntype end\n");
         return NULL;
+    }
 
     hassert (vmap.contains(bb));
     decomp_info_t *di = (vmap.find(bb))->second;
@@ -212,11 +215,10 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
 
     if (di->live_out_vars.size() == 1)
     {
-        VarId var_id = *di->live_in_vars.begin();
+        VarId var_id = *di->live_out_vars.begin();
         Block *send =
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
                 chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di->total_bitwidth_out))));
-        
 
         decomp_info_t *di_new = _deepcopy_decomp_info(di);
         di_new->break_after = false;
@@ -251,6 +253,8 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
     di_new->break_after = false;
     di_new->break_before = false;
     vmap.insert({send, di_new});
+
+    fprintf (stdout, "\nsize n\n");
     return send;
 }
 
@@ -435,8 +439,10 @@ int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send)
 {
     if (bb->type() == BlockType::StartSequence)
         return 0;
-    if (bb->type() == BlockType::EndSequence)
-        return 0;
+
+    // hmm... test
+    // if (bb->type() == BlockType::EndSequence)
+    //     return 0;
 
     hassert (send);
 
@@ -520,7 +526,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
 void ChoppingBlock::_process_selection (Block *sel, int n)
 {
     hassert (n<3);
-    hassert (n>0);
+    // hassert (n>0);
     hassert (sel->type() == BlockType::Select);
     hassert (vmap.contains(sel));
     decomp_info_t *di = (vmap.find(sel))->second;
@@ -586,9 +592,10 @@ Block *ChoppingBlock::_generate_split (Block *sel)
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
                 ctrl_chan_id, ChpExprSingleRootDag::makeConstant(BigInt(branch_itr) ,ctrl_bw))));
 
+        // branch has stuff, so send in and pull out the live vars from it
         if (!branch.seq.empty()) {
             // send live-vars to the branch head
-            Block *send_live_vars = 
+            Block *send_live_vars_to_branch = 
                 _generate_send_to_be_recvd_by (branch.seq.startseq->child());
 
             Block *pll_sends = g->graph.blockAllocator().newBlock(Block::makeParBlock());
@@ -598,21 +605,59 @@ Block *ChoppingBlock::_generate_split (Block *sel)
                 g->graph.blockAllocator().newSequence({send_ctrl}));
 
             // parallel compose the control send and live_var send 
-            if (send_live_vars) {
+            if (send_live_vars_to_branch) {
                 pll_sends->u_par().branches.push_back(
-                    g->graph.blockAllocator().newSequence({send_live_vars}));
+                    g->graph.blockAllocator().newSequence({send_live_vars_to_branch}));
                 
                 // insert receive blocks at the branch head to get the live_vars
-                _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars);
+                _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars_to_branch);
+            
             }
+
+            // insert send blocks at the end of the branch
+            Block *send_live_vars_from_branch = 
+                _generate_send_to_be_sent_from (branch.seq.endseq->parent());
+
+            if (send_live_vars_from_branch) {
+                _splice_in_block_between (branch.seq.endseq->parent(),branch.seq.endseq, 
+                                            send_live_vars_from_branch);
+            }
+
 
             split->u_select().branches.emplace_back(
                 g->graph.blockAllocator().newSequence({pll_sends}), std::move(branch.g));
         }
+        // branch is empty, so transmit the live-out-from-selection vars and pull them out 
         else {
+            Block *send_live_vars_to_branch = 
+                _generate_send_to_be_sent_from (sel);
+
+            Block *pll_sends = g->graph.blockAllocator().newBlock(Block::makeParBlock());
+            
+            pll_sends->u_par().branches.push_back(
+                g->graph.blockAllocator().newSequence({send_ctrl}));
+            
+            if (send_live_vars_to_branch) {
+                pll_sends->u_par().branches.push_back(
+                    g->graph.blockAllocator().newSequence({send_live_vars_to_branch}));
+                
+                // insert receive blocks in the branch to get the live_vars
+                _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars_to_branch);
+
+            }
+            
+            // insert send blocks at the end of the branch 
+            // this is unchaged wrt send_live_vars_to_branch since branch is empty
+            Block *send_live_vars_from_branch = 
+                _generate_send_to_be_sent_from (sel);
+
+            if (send_live_vars_from_branch) {
+                _splice_in_block_between (branch.seq.endseq->parent(),branch.seq.endseq, 
+                                            send_live_vars_from_branch);
+            }
+            
             split->u_select().branches.emplace_back(
-                g->graph.blockAllocator().newSequence({send_ctrl}), std::move(branch.g));
-        
+                g->graph.blockAllocator().newSequence({pll_sends}), std::move(branch.g));
         
         }
         branch_itr++;
