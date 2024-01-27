@@ -37,6 +37,17 @@ typedef struct decomp_info {
     bool break_after;
 } decomp_info_t;
 
+static decomp_info_t *_deepcopy_decomp_info(decomp_info_t *di)
+{
+    decomp_info_t *di_new;
+    NEW (di_new, decomp_info_t);
+    di_new->tx_vars = di->tx_vars;
+    di_new->total_bitwidth = di->total_bitwidth;
+    di_new->break_before = di->break_before;
+    di_new->break_after = di->break_after;
+    return di_new;
+}
+
 class DecompAnalysis {
     public:
 

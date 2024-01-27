@@ -60,7 +60,7 @@ class ChoppingBlock {
 
         Block *_splice_in_block_between (Block *before, Block *after, Block *bb);
 
-        Block *_generate_send (Block *bb);
+        Block *_generate_send_to_be_recvd_by (Block *bb);
 
         Block *_find_next_break_after (Block *b);
 
@@ -70,9 +70,13 @@ class ChoppingBlock {
 
         Block *_build_sequence(Block *b_start, Block *b_end);
 
-        Sequence _generate_recv_and_maybe_assigns (Block *send);
+        std::pair<int, Sequence> _generate_recv_and_maybe_assigns (Block *send);
 
-        void _splice_in_recv_before (Block *bb, Block *send);
+        int _splice_in_recv_before (Block *bb, Block *send);
+
+        void _process_selection (Block *sel, int n);
+
+        Block *_generate_split (Block *sel);
 
         Sequence _wrap_in_do_loop (Sequence seq);
 
