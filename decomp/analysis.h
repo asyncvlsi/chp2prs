@@ -33,7 +33,8 @@ using namespace ChpOptimize;
 typedef struct decomp_info {
     std::unordered_set<VarId> live_in_vars;
     std::unordered_set<VarId> live_out_vars;
-    int total_bitwidth;
+    int total_bitwidth_in;
+    int total_bitwidth_out;
     bool break_before;
     bool break_after;
 } decomp_info_t;
@@ -44,7 +45,8 @@ static decomp_info_t *_deepcopy_decomp_info(decomp_info_t *di)
     NEW (di_new, decomp_info_t);
     di_new->live_in_vars = di->live_in_vars;
     di_new->live_out_vars = di->live_out_vars;
-    di_new->total_bitwidth = di->total_bitwidth;
+    di_new->total_bitwidth_in = di->total_bitwidth_in;
+    di_new->total_bitwidth_out = di->total_bitwidth_out;
     di_new->break_before = di->break_before;
     di_new->break_after = di->break_after;
     return di_new;

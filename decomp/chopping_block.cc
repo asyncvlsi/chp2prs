@@ -140,7 +140,7 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
         return NULL;
     }
 
-    ChanId chan_id = g->graph.id_pool().makeUniqueChan(di->total_bitwidth, false);
+    ChanId chan_id = g->graph.id_pool().makeUniqueChan(di->total_bitwidth_in, false);
     var_to_actvar vtoa(s, &g->graph.id_pool());
     ActId *id = vtoa.chanMap(chan_id);
     g->name_from_chan.insert({chan_id, id});
@@ -150,7 +150,7 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
         VarId var_id = *di->live_in_vars.begin();
         Block *send =
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
-                chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di->total_bitwidth))));
+                chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di->total_bitwidth_in))));
         
 
         decomp_info_t *di_new = _deepcopy_decomp_info(di);
@@ -188,6 +188,72 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
     vmap.insert({send, di_new});
     return send;
 }
+
+Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
+{
+    if (bb->type() == BlockType::StartSequence)
+        fatal_error ("shouldn't have been used like this");
+        return NULL;
+    if (bb->type() == BlockType::EndSequence)
+        return NULL;
+
+    hassert (vmap.contains(bb));
+    decomp_info_t *di = (vmap.find(bb))->second;
+
+    if (di->live_out_vars.size() == 0)
+    {
+        return NULL;
+    }
+
+    ChanId chan_id = g->graph.id_pool().makeUniqueChan(di->total_bitwidth_out, false);
+    var_to_actvar vtoa(s, &g->graph.id_pool());
+    ActId *id = vtoa.chanMap(chan_id);
+    g->name_from_chan.insert({chan_id, id});
+
+    if (di->live_out_vars.size() == 1)
+    {
+        VarId var_id = *di->live_in_vars.begin();
+        Block *send =
+            g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
+                chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di->total_bitwidth_out))));
+        
+
+        decomp_info_t *di_new = _deepcopy_decomp_info(di);
+        di_new->break_after = false;
+        di_new->break_before = false;
+        vmap.insert({send, di_new});
+        
+        return send;
+    }
+
+    ChpExprSingleRootDag conc_vars;
+
+    for ( auto var : di->live_out_vars )
+    {
+        if (var == *di->live_out_vars.begin())
+        {
+            conc_vars = ChpExprSingleRootDag::makeVariableAccess(var, g->graph.id_pool().getBitwidth(var));
+        }
+        else
+        {
+            auto v1 = ChpExprSingleRootDag::makeVariableAccess(var, g->graph.id_pool().getBitwidth(var));
+            conc_vars = ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::Concat,
+                        std::make_unique<ChpExprSingleRootDag>(std::move(conc_vars)),
+                        std::make_unique<ChpExprSingleRootDag>(std::move(v1)));
+        }
+    }
+
+    Block *send =
+            g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
+                chan_id, std::move(conc_vars))));
+
+    decomp_info_t *di_new = _deepcopy_decomp_info(di);
+    di_new->break_after = false;
+    di_new->break_before = false;
+    vmap.insert({send, di_new});
+    return send;
+}
+
 
 // new
 // break from the first break_before to the closest break_after
@@ -411,7 +477,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
         return std::pair(1,g->graph.blockAllocator().newSequence({receive}));
     }
 
-    VarId var_concat = g->graph.id_pool().makeUniqueVar(di->total_bitwidth, false);
+    VarId var_concat = g->graph.id_pool().makeUniqueVar(di->total_bitwidth_in, false);
     OptionalVarId ovid(var_concat);
     // C?x
     Block *receive = g->graph.blockAllocator().newBlock(
@@ -427,7 +493,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
     //  x1 = x{0..i} , x2 = x{i+1..j} ...
     // make the assign blocks, parallel them all
 
-    int range_ctr = di->total_bitwidth;
+    int range_ctr = di->total_bitwidth_in;
     Block *parallel = g->graph.blockAllocator().newBlock(Block::makeParBlock());
     for ( auto var : di->live_in_vars )
     {
@@ -439,7 +505,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
                         ChpExprSingleRootDag::makeBitfield(
                             std::make_unique<ChpExprSingleRootDag>(
                                 ChpExprSingleRootDag::makeVariableAccess(
-                                    var_concat, di->total_bitwidth)),
+                                    var_concat, di->total_bitwidth_in)),
                             range_ctr-1, range_ctr-width)
                                             )));
 
@@ -506,8 +572,6 @@ void ChoppingBlock::_process_selection (Block *sel, int n)
 */
 Block *ChoppingBlock::_generate_split (Block *sel)
 {
-
-
     Block *split = g->graph.blockAllocator().newBlock(
         Block::makeSelectBlock());
 
@@ -517,24 +581,28 @@ Block *ChoppingBlock::_generate_split (Block *sel)
     int branch_itr = 0;
     for (auto &branch : sel->u_select().branches) {
 
+        // send control value on split<->merge channel 
         Block *send_ctrl = 
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
                 ctrl_chan_id, ChpExprSingleRootDag::makeConstant(BigInt(branch_itr) ,ctrl_bw))));
 
         if (!branch.seq.empty()) {
+            // send live-vars to the branch head
             Block *send_live_vars = 
                 _generate_send_to_be_recvd_by (branch.seq.startseq->child());
 
             Block *pll_sends = g->graph.blockAllocator().newBlock(Block::makeParBlock());
 
+            // parallel compose the control send and live_var send 
             pll_sends->u_par().branches.push_back(
                 g->graph.blockAllocator().newSequence({send_ctrl}));
 
+            // parallel compose the control send and live_var send 
             if (send_live_vars) {
                 pll_sends->u_par().branches.push_back(
                     g->graph.blockAllocator().newSequence({send_live_vars}));
                 
-                // insert receive blocks at the start of the branches to get the live_vars
+                // insert receive blocks at the branch head to get the live_vars
                 _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars);
             }
 
@@ -544,6 +612,8 @@ Block *ChoppingBlock::_generate_split (Block *sel)
         else {
             split->u_select().branches.emplace_back(
                 g->graph.blockAllocator().newSequence({send_ctrl}), std::move(branch.g));
+        
+        
         }
         branch_itr++;
     }

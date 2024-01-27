@@ -59,6 +59,8 @@ class ChoppingBlock {
 
         Block *_generate_send_to_be_recvd_by (Block *bb);
 
+        Block *_generate_send_to_be_sent_from (Block *bb);
+
         Block *_find_next_break_after (Block *b);
 
         Block *_find_next_break_before (Block *b);

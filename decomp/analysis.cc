@@ -91,6 +91,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
     Block *curr = seq.endseq->parent();
     decomp_info *di;
     std::unordered_set<VarId> live_out;
+    int live_out_width;
     std::unordered_set<VarId> T, T_out;
     std::vector<std::unordered_set<VarId>> Si_s;
 
@@ -100,6 +101,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
         switch (curr->u_basic().stmt.type()) {
         case StatementType::Assign:
             live_out = _generate_decomp_info()->live_in_vars;
+            live_out_width = _generate_decomp_info()->total_bitwidth_in;
             // fprintf (stdout, "reached assign\n");
             for (auto it = curr->u_basic().stmt.u_assign().ids.begin(); 
                         it != curr->u_basic().stmt.u_assign().ids.end(); it++)
@@ -110,27 +112,32 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
             di = _generate_decomp_info ();
             // _print_decomp_info (di);
             di->live_out_vars = live_out;
+            di->total_bitwidth_out = live_out_width;
             _map_block_to_live_vars (curr, di);
             break;
 
         case StatementType::Send:
             live_out = _generate_decomp_info()->live_in_vars;
+            live_out_width = _generate_decomp_info()->total_bitwidth_in;
             // fprintf (stdout, "reached send\n");
             _add_to_live_vars (getIdsUsedByExpr (curr->u_basic().stmt.u_send().e) );
             di = _generate_decomp_info ();
             // _print_decomp_info (di);
             di->live_out_vars = live_out;
+            di->total_bitwidth_out = live_out_width;
             _map_block_to_live_vars (curr, di);
             break;
 
         case StatementType::Receive:
             live_out = _generate_decomp_info()->live_in_vars;
+            live_out_width = _generate_decomp_info()->total_bitwidth_in;
             // fprintf (stdout, "reached recv\n");
             if (curr->u_basic().stmt.u_receive().var != OptionalVarId::null_id())
                 _remove_from_live_vars (*curr->u_basic().stmt.u_receive().var);
             di = _generate_decomp_info ();
             // _print_decomp_info (di);
             di->live_out_vars = live_out;
+            di->total_bitwidth_out = live_out_width;
             _map_block_to_live_vars (curr, di);
             break;
       }
@@ -148,6 +155,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
       
     case BlockType::Select: {
         live_out = _generate_decomp_info()->live_in_vars;
+        live_out_width = _generate_decomp_info()->total_bitwidth_in;
         // fprintf (stdout, "reached select 1\n");
         _init_union();
         T = H_live;
@@ -184,6 +192,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
         // fprintf (stdout, "reached select\n");
         // _print_decomp_info (di);
         di->live_out_vars = live_out;
+        di->total_bitwidth_out = live_out_width;
         _map_block_to_live_vars (curr, di);
 
         _free_union();
@@ -394,23 +403,26 @@ decomp_info_t *DecompAnalysis::_generate_decomp_info()
     NEW (di, decomp_info_t);
     di->live_in_vars = H_live;
     di->live_out_vars = {}; // this should be filled in 
-    di->total_bitwidth = _compute_total_bits (H_live);
+    di->total_bitwidth_in = _compute_total_bits (H_live);
+    di->total_bitwidth_out = -1; // this should be filled in 
     di->break_before = false;
     di->break_after = false;
     return di;
 }
 
 // Unused
+#if 0
 decomp_info_t *DecompAnalysis::_generate_decomp_info(std::unordered_set<VarId> H)
 {
     decomp_info_t *di;
     NEW (di, decomp_info_t);
     di->live_in_vars = H;
-    di->total_bitwidth = _compute_total_bits (H);
+    di->total_bitwidth_in = _compute_total_bits (H);
     di->break_before = false;
     di->break_after = false;
     return di;
 }
+#endif
 
 void DecompAnalysis::_print_decomp_info (decomp_info_t *di)
 {
@@ -434,7 +446,10 @@ void DecompAnalysis::_print_decomp_info (decomp_info_t *di)
         fprintf(fp, "%s, ", (str_of_id(*itr)).c_str());
     }	     
     fprintf(fp, "\n-----------");
-    fprintf(fp, "\ntotal bits live_in: %d", di->total_bitwidth);
+    fprintf(fp, "\ntotal bits live_in: %d", di->total_bitwidth_in);
+    fprintf(fp, "\n-----------");
+    fprintf(fp, "\n-----------");
+    fprintf(fp, "\ntotal bits live_out: %d", di->total_bitwidth_out);
     fprintf(fp, "\n-----------");
     fprintf(fp, "\nbreak before?: %d", di->break_before);
     fprintf(fp, "\nbreak after?: %d", di->break_after);
