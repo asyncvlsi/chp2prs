@@ -135,7 +135,7 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
     hassert (vmap.contains(bb));
     decomp_info_t *di = (vmap.find(bb))->second;
 
-    if (di->tx_vars.size() == 0)
+    if (di->live_in_vars.size() == 0)
     {
         return NULL;
     }
@@ -145,9 +145,9 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
     ActId *id = vtoa.chanMap(chan_id);
     g->name_from_chan.insert({chan_id, id});
 
-    if (di->tx_vars.size() == 1)
+    if (di->live_in_vars.size() == 1)
     {
-        VarId var_id = *di->tx_vars.begin();
+        VarId var_id = *di->live_in_vars.begin();
         Block *send =
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
                 chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di->total_bitwidth))));
@@ -163,9 +163,9 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
 
     ChpExprSingleRootDag conc_vars;
 
-    for ( auto var : di->tx_vars )
+    for ( auto var : di->live_in_vars )
     {
-        if (var == *di->tx_vars.begin())
+        if (var == *di->live_in_vars.begin())
         {
             conc_vars = ChpExprSingleRootDag::makeVariableAccess(var, g->graph.id_pool().getBitwidth(var));
         }
@@ -257,7 +257,7 @@ Block *ChoppingBlock::_find_next_break_before (Block *b)
 Block *ChoppingBlock::_build_sequence (Block *b_start, Block *b_end_plus_1)
 {
     hassert (b_start != b_end_plus_1);
-    
+
     std::vector<Block *> v_block_ptrs = _split_sequence_from_to (b_start, b_end_plus_1);
     
     Block *send = _generate_send_to_be_recvd_by (b_end_plus_1);
@@ -387,16 +387,16 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
     hassert (vmap.contains(send));
     decomp_info_t *di = (vmap.find(send))->second;
 
-    if (di->tx_vars.size() == 0)
+    if (di->live_in_vars.size() == 0)
     {
         return std::pair(0,g->graph.blockAllocator().newSequence({}));
     }
 
     ChanId chan_id = send->u_basic().stmt.u_send().chan;
 
-    if (di->tx_vars.size() == 1)
+    if (di->live_in_vars.size() == 1)
     {
-        VarId var_id = *di->tx_vars.begin();
+        VarId var_id = *di->live_in_vars.begin();
         OptionalVarId ovid(var_id);
 
         Block *receive = g->graph.blockAllocator().newBlock(
@@ -429,7 +429,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
 
     int range_ctr = di->total_bitwidth;
     Block *parallel = g->graph.blockAllocator().newBlock(Block::makeParBlock());
-    for ( auto var : di->tx_vars )
+    for ( auto var : di->live_in_vars )
     {
         VarId vi = var;
         int width = g->graph.id_pool().getBitwidth(vi);
@@ -506,6 +506,8 @@ void ChoppingBlock::_process_selection (Block *sel, int n)
 */
 Block *ChoppingBlock::_generate_split (Block *sel)
 {
+
+
     Block *split = g->graph.blockAllocator().newBlock(
         Block::makeSelectBlock());
 
@@ -549,3 +551,15 @@ Block *ChoppingBlock::_generate_split (Block *sel)
     return split;
     
 }
+
+// Block *ChoppingBlock::_find_successor_of_sel (Block *sel)
+// {
+//     hassert (sel);
+//     hassert (sel->type() == BlockType::Select);
+
+//     if (sel->child()->type() != BlockType::EndSequence)
+//         return sel->child();
+
+
+
+// }

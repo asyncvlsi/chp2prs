@@ -75,6 +75,8 @@ class ChoppingBlock {
 
         Block *_generate_split (Block *sel);
 
+        Block *_find_successor_of_sel (Block *sel);
+
         Sequence _wrap_in_do_loop (Sequence seq);
 
         void _print_seq (Sequence seq);

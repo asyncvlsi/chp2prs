@@ -90,6 +90,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
     // Block *curr = seq.startseq->child();
     Block *curr = seq.endseq->parent();
     decomp_info *di;
+    std::unordered_set<VarId> live_out;
     std::unordered_set<VarId> T, T_out;
     std::vector<std::unordered_set<VarId>> Si_s;
 
@@ -98,6 +99,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
     case BlockType::Basic: {
         switch (curr->u_basic().stmt.type()) {
         case StatementType::Assign:
+            live_out = _generate_decomp_info()->live_in_vars;
             // fprintf (stdout, "reached assign\n");
             for (auto it = curr->u_basic().stmt.u_assign().ids.begin(); 
                         it != curr->u_basic().stmt.u_assign().ids.end(); it++)
@@ -107,23 +109,28 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
             _add_to_live_vars (getIdsUsedByExpr(curr->u_basic().stmt.u_assign().e));
             di = _generate_decomp_info ();
             // _print_decomp_info (di);
+            di->live_out_vars = live_out;
             _map_block_to_live_vars (curr, di);
             break;
 
         case StatementType::Send:
+            live_out = _generate_decomp_info()->live_in_vars;
             // fprintf (stdout, "reached send\n");
             _add_to_live_vars (getIdsUsedByExpr (curr->u_basic().stmt.u_send().e) );
             di = _generate_decomp_info ();
             // _print_decomp_info (di);
+            di->live_out_vars = live_out;
             _map_block_to_live_vars (curr, di);
             break;
 
         case StatementType::Receive:
+            live_out = _generate_decomp_info()->live_in_vars;
             // fprintf (stdout, "reached recv\n");
             if (curr->u_basic().stmt.u_receive().var != OptionalVarId::null_id())
                 _remove_from_live_vars (*curr->u_basic().stmt.u_receive().var);
             di = _generate_decomp_info ();
             // _print_decomp_info (di);
+            di->live_out_vars = live_out;
             _map_block_to_live_vars (curr, di);
             break;
       }
@@ -131,6 +138,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
     break;
       
     case BlockType::Par: {
+        // TODO: Check if this is right
         // fatal_error ("working on par...");
         for (auto &branch : curr->u_par().branches) {
             _generate_decomp_info (branch, 1);
@@ -139,6 +147,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
     break;
       
     case BlockType::Select: {
+        live_out = _generate_decomp_info()->live_in_vars;
         // fprintf (stdout, "reached select 1\n");
         _init_union();
         T = H_live;
@@ -174,6 +183,7 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
         di = _generate_decomp_info ();
         // fprintf (stdout, "reached select\n");
         // _print_decomp_info (di);
+        di->live_out_vars = live_out;
         _map_block_to_live_vars (curr, di);
 
         _free_union();
@@ -382,18 +392,20 @@ decomp_info_t *DecompAnalysis::_generate_decomp_info()
 {
     decomp_info_t *di;
     NEW (di, decomp_info_t);
-    di->tx_vars = H_live;
+    di->live_in_vars = H_live;
+    di->live_out_vars = {}; // this should be filled in 
     di->total_bitwidth = _compute_total_bits (H_live);
     di->break_before = false;
     di->break_after = false;
     return di;
 }
 
+// Unused
 decomp_info_t *DecompAnalysis::_generate_decomp_info(std::unordered_set<VarId> H)
 {
     decomp_info_t *di;
     NEW (di, decomp_info_t);
-    di->tx_vars = H;
+    di->live_in_vars = H;
     di->total_bitwidth = _compute_total_bits (H);
     di->break_before = false;
     di->break_after = false;
@@ -408,16 +420,21 @@ void DecompAnalysis::_print_decomp_info (decomp_info_t *di)
     fprintf(fp, "\nnecessary input transmissions");
     fprintf(fp, "\nif ring is broken just before here:\n");
     std::unordered_set<VarId>::iterator itr;
-    for (itr = di->tx_vars.begin(); itr != di->tx_vars.end(); itr++)
+
+    for (itr = di->live_in_vars.begin(); itr != di->live_in_vars.end(); itr++)
     {
-        // ActId *id = t->varMap(*itr);
-        // char name[1024];
-        // id->sPrint(name, 1024);
-        // fprintf (fp, "%s, ", name);
+        fprintf(fp, "%s, ", (str_of_id(*itr)).c_str());
+    }	     
+
+    fprintf(fp, "\nnecessary output transmissions");
+    fprintf(fp, "\nif ring is broken just after here:\n");
+
+    for (itr = di->live_out_vars.begin(); itr != di->live_out_vars.end(); itr++)
+    {
         fprintf(fp, "%s, ", (str_of_id(*itr)).c_str());
     }	     
     fprintf(fp, "\n-----------");
-    fprintf(fp, "\ntotal bits: %d", di->total_bitwidth);
+    fprintf(fp, "\ntotal bits live_in: %d", di->total_bitwidth);
     fprintf(fp, "\n-----------");
     fprintf(fp, "\nbreak before?: %d", di->break_before);
     fprintf(fp, "\nbreak after?: %d", di->break_after);
