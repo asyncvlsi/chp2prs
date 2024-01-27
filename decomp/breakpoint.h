@@ -21,7 +21,14 @@
  */
 
 #include "analysis.h"
-
+/*
+ * Marks breakpoints on each block. There are a few rules that must
+ * be followed in order for a marking to be a valid marking.
+ * 1. The first block in any sequence/sub-sequence cannot be marked.
+ * 2. If a sequence within a selection has any markings, then
+ *    the parent selection must be marked break_before AND break_after.
+ * 3. I'll probably put more in here as I deal with this thing lol
+*/
 class BreakPoints : public DecompAnalysis {
     public:
 

@@ -34,8 +34,6 @@ class ChoppingBlock {
                 vmap = vmap_in;
                 idpool = g->graph.id_pool();
                 s = s_in;
-
-                // var_to_actvar vtoa(s, &idpool);
             }
 
         void chop_graph();
@@ -48,7 +46,6 @@ class ChoppingBlock {
         GraphWithChanNames *g;
         std::unordered_map<Block *, decomp_info_t *> vmap;
         std::vector<Sequence> v_seqs;
-        // var_to_actvar vtoa;
         Scope *s;
         IdPool idpool;
 

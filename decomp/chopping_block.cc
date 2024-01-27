@@ -256,6 +256,8 @@ Block *ChoppingBlock::_find_next_break_before (Block *b)
 
 Block *ChoppingBlock::_build_sequence (Block *b_start, Block *b_end_plus_1)
 {
+    hassert (b_start != b_end_plus_1);
+    
     std::vector<Block *> v_block_ptrs = _split_sequence_from_to (b_start, b_end_plus_1);
     
     Block *send = _generate_send_to_be_recvd_by (b_end_plus_1);
