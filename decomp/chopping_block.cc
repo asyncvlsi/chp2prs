@@ -258,7 +258,6 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
     return send;
 }
 
-
 // new
 // break from the first break_before to the closest break_after
 
@@ -395,6 +394,9 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
             {   
                 // need to tear out the newly generated recv also
                 fprintf (stdout, "\ngot here\n");
+                // n==0 => selection has variable-less guards i.e. true, false etc.
+                // in which case, go rewrite, will deal with this later
+                hassert (n!=0);
                 _process_selection (curr, n);
                 for (auto &branch : curr->u_select().branches) {
                     _chop_graph (branch.seq, 0);
@@ -536,7 +538,11 @@ void ChoppingBlock::_process_selection (Block *sel, int n)
     Sequence seq, seq_split;
 
     // generate split ------------------------
-    Block *split = _generate_split (sel);
+    Block *split = _generate_split_and_seed_branches (sel);
+    // also sends live_vars to head of branches,
+    // places receives at the headto get them,
+    // places sends at the tails of branches
+    // (done)
 
     if (n==1) {
         recv = sel->parent();
@@ -563,7 +569,6 @@ void ChoppingBlock::_process_selection (Block *sel, int n)
 
     // generate merge
 
-    // insert send blocks at the end of the branches
 
 }
 
@@ -576,7 +581,7 @@ void ChoppingBlock::_process_selection (Block *sel, int n)
         ]
      ]
 */
-Block *ChoppingBlock::_generate_split (Block *sel)
+Block *ChoppingBlock::_generate_split_and_seed_branches (Block *sel)
 {
     Block *split = g->graph.blockAllocator().newBlock(
         Block::makeSelectBlock());
@@ -611,7 +616,6 @@ Block *ChoppingBlock::_generate_split (Block *sel)
                 
                 // insert receive blocks at the branch head to get the live_vars
                 _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars_to_branch);
-            
             }
 
             // insert send blocks at the end of the branch
@@ -622,7 +626,6 @@ Block *ChoppingBlock::_generate_split (Block *sel)
                 _splice_in_block_between (branch.seq.endseq->parent(),branch.seq.endseq, 
                                             send_live_vars_from_branch);
             }
-
 
             split->u_select().branches.emplace_back(
                 g->graph.blockAllocator().newSequence({pll_sends}), std::move(branch.g));
@@ -643,7 +646,6 @@ Block *ChoppingBlock::_generate_split (Block *sel)
                 
                 // insert receive blocks in the branch to get the live_vars
                 _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars_to_branch);
-
             }
             
             // insert send blocks at the end of the branch 
@@ -666,15 +668,3 @@ Block *ChoppingBlock::_generate_split (Block *sel)
     return split;
     
 }
-
-// Block *ChoppingBlock::_find_successor_of_sel (Block *sel)
-// {
-//     hassert (sel);
-//     hassert (sel->type() == BlockType::Select);
-
-//     if (sel->child()->type() != BlockType::EndSequence)
-//         return sel->child();
-
-
-
-// }

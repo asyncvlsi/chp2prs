@@ -75,9 +75,7 @@ class ChoppingBlock {
 
         void _process_selection (Block *sel, int n);
 
-        Block *_generate_split (Block *sel);
-
-        Block *_find_successor_of_sel (Block *sel);
+        Block *_generate_split_and_seed_branches (Block *sel);
 
         Sequence _wrap_in_do_loop (Sequence seq);
 
