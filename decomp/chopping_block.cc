@@ -597,71 +597,52 @@ Block *ChoppingBlock::_generate_split_and_seed_branches (Block *sel)
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
                 ctrl_chan_id, ChpExprSingleRootDag::makeConstant(BigInt(branch_itr) ,ctrl_bw))));
 
-        // branch has stuff, so send in and pull out the live vars from it
+        Block *pll_sends = g->graph.blockAllocator().newBlock(Block::makeParBlock());
+
+        pll_sends->u_par().branches.push_back(
+            g->graph.blockAllocator().newSequence({send_ctrl}));
+
+        Block *send_live_vars_to_branch = NULL;
+        Block *send_live_vars_from_branch = NULL;
+        
+        // branch has stuff, so send in live_vars that it needs --------------
         if (!branch.seq.empty()) {
             // send live-vars to the branch head
-            Block *send_live_vars_to_branch = 
+            send_live_vars_to_branch = 
                 _generate_send_to_be_recvd_by (branch.seq.startseq->child());
-
-            Block *pll_sends = g->graph.blockAllocator().newBlock(Block::makeParBlock());
-
-            // parallel compose the control send and live_var send 
-            pll_sends->u_par().branches.push_back(
-                g->graph.blockAllocator().newSequence({send_ctrl}));
-
-            // parallel compose the control send and live_var send 
-            if (send_live_vars_to_branch) {
-                pll_sends->u_par().branches.push_back(
-                    g->graph.blockAllocator().newSequence({send_live_vars_to_branch}));
-                
-                // insert receive blocks at the branch head to get the live_vars
-                _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars_to_branch);
-            }
-
-            // insert send blocks at the end of the branch
-            Block *send_live_vars_from_branch = 
-                _generate_send_to_be_sent_from (branch.seq.endseq->parent());
-
-            if (send_live_vars_from_branch) {
-                _splice_in_block_between (branch.seq.endseq->parent(),branch.seq.endseq, 
-                                            send_live_vars_from_branch);
-            }
-
-            split->u_select().branches.emplace_back(
-                g->graph.blockAllocator().newSequence({pll_sends}), std::move(branch.g));
         }
-        // branch is empty, so transmit the live-out-from-selection vars and pull them out 
         else {
-            Block *send_live_vars_to_branch = 
+            // send live-vars out of merge
+            send_live_vars_to_branch = 
                 _generate_send_to_be_sent_from (sel);
-
-            Block *pll_sends = g->graph.blockAllocator().newBlock(Block::makeParBlock());
-            
-            pll_sends->u_par().branches.push_back(
-                g->graph.blockAllocator().newSequence({send_ctrl}));
-            
-            if (send_live_vars_to_branch) {
-                pll_sends->u_par().branches.push_back(
-                    g->graph.blockAllocator().newSequence({send_live_vars_to_branch}));
-                
-                // insert receive blocks in the branch to get the live_vars
-                _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars_to_branch);
-            }
-            
-            // insert send blocks at the end of the branch 
-            // this is unchaged wrt send_live_vars_to_branch since branch is empty
-            Block *send_live_vars_from_branch = 
-                _generate_send_to_be_sent_from (sel);
-
-            if (send_live_vars_from_branch) {
-                _splice_in_block_between (branch.seq.endseq->parent(),branch.seq.endseq, 
-                                            send_live_vars_from_branch);
-            }
-            
-            split->u_select().branches.emplace_back(
-                g->graph.blockAllocator().newSequence({pll_sends}), std::move(branch.g));
-        
         }
+        if (send_live_vars_to_branch) {
+            pll_sends->u_par().branches.push_back(
+                g->graph.blockAllocator().newSequence({send_live_vars_to_branch}));
+            // insert receive blocks at the branch head to get the live_vars
+            _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars_to_branch);
+        }
+        // branch has stuff, so send in live_vars that it needs --------------
+
+        split->u_select().branches.emplace_back(
+            g->graph.blockAllocator().newSequence({pll_sends}), std::move(branch.g));
+
+        // insert send blocks at the end of the branch -----------------------
+        if (!branch.seq.empty()) {
+            send_live_vars_from_branch = 
+                _generate_send_to_be_sent_from (branch.seq.endseq->parent());
+        }
+        else {
+        // this is unchaged wrt send_live_vars_to_branch since branch is empty
+            send_live_vars_from_branch = 
+                _generate_send_to_be_sent_from (sel);
+        }
+        if (send_live_vars_from_branch) {
+            _splice_in_block_between (branch.seq.endseq->parent(),branch.seq.endseq, 
+                                        send_live_vars_from_branch);
+        }
+        // insert send blocks at the end of the branch -----------------------
+        
         branch_itr++;
     }
 
