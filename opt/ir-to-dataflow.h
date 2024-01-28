@@ -495,17 +495,9 @@ public:
     inlist.push_back (buf_loopg);
     ret.push_back (Dataflow::mkMergeMix (i_bint, inlist, gval));
 
-    DExprDag cp;
-    DExprDag::Node *n =
-      cp.newNode (DExprDag::Node::makeVariableAccess (loopguard,
-						      log_2_round_up (cin.size())));
-    cp.roots.push_back (n);
-    inlist.clear ();
-    inlist.push_back (buf_loopg);
-    Dataflow dtmp = Dataflow::mkFunc (inlist, std::move (cp));
-    dtmp.keep = true;
-    inlist.clear ();
-    ret.push_back (std::move (dtmp));
+    ret.push_back (Dataflow::mkBuf (loopguard, buf_loopg,
+				    log_2_round_up (cin.size())));
+
 
     /* 3. {gval} B1, ..., BN -> bint */
     ChanId bint = fresh (cin[0]);
@@ -513,7 +505,8 @@ public:
 
     /* 4. bint -> cout */
     DExprDag dg;
-    n = dg.newNode (DExprDag::Node::makeVariableAccess (bint, 2));
+    DExprDag::Node *n =
+      dg.newNode (DExprDag::Node::makeVariableAccess (bint, 2));
     dg.roots.push_back (n);
     inlist.clear();
     inlist.push_back (cout);
