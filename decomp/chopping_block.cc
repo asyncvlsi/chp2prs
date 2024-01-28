@@ -537,8 +537,8 @@ void ChoppingBlock::_process_selection (Block *sel, int n)
     Block *pll_assigns;
     Sequence seq, seq_split;
 
-    // generate split ------------------------
-    Block *split = _generate_split_and_seed_branches (sel);
+    // generate split and merge ------------------------
+    auto [split, merge_send] = _generate_split_merge_and_seed_branches (sel);
     // also sends live_vars to head of branches,
     // places receives at the headto get them,
     // places sends at the tails of branches
@@ -562,13 +562,10 @@ void ChoppingBlock::_process_selection (Block *sel, int n)
         hassert (false);
     }
     v_seqs.push_back(_wrap_in_do_loop(seq_split));
-    // generate split ------------------------
+    // generate split and merge ------------------------
 
     // TODO TMRW
     // generate control-signal fifo
-
-    // generate merge
-
 
 }
 
@@ -581,13 +578,33 @@ void ChoppingBlock::_process_selection (Block *sel, int n)
         ]
      ]
 */
-Block *ChoppingBlock::_generate_split_and_seed_branches (Block *sel)
+std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branches (Block *sel)
 {
-    Block *split = g->graph.blockAllocator().newBlock(
-        Block::makeSelectBlock());
+    Block *split = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
 
     int ctrl_bw = log_2_round_up (sel->u_select().branches.size());
+
     ChanId ctrl_chan_id = g->graph.id_pool().makeUniqueChan(ctrl_bw, false);
+    var_to_actvar vtoa(s, &g->graph.id_pool());
+    ActId *id = vtoa.chanMap(ctrl_chan_id);
+    g->name_from_chan.insert({ctrl_chan_id, id});
+
+    Block *merge = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
+
+    // receive in the merge
+    VarId ctrl_id = g->graph.id_pool().makeUniqueVar(ctrl_bw, false);
+    Block *merge_ctrl_recv = g->graph.blockAllocator().newBlock(
+            Block::makeBasicBlock(Statement::makeReceive(ctrl_chan_id, ctrl_id)));
+    hassert (vmap.contains(sel));
+    decomp_info_t *di_sel = (vmap.find(sel))->second;
+
+    bool merge_needed = true;
+    if (di_sel->total_bitwidth_out == 0) merge_needed = false;
+
+    VarId merge_var;
+    if (merge_needed) {
+        merge_var = g->graph.id_pool().makeUniqueVar(di_sel->total_bitwidth_out, false);
+    }
 
     int branch_itr = 0;
     for (auto &branch : sel->u_select().branches) {
@@ -596,6 +613,15 @@ Block *ChoppingBlock::_generate_split_and_seed_branches (Block *sel)
         Block *send_ctrl = 
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
                 ctrl_chan_id, ChpExprSingleRootDag::makeConstant(BigInt(branch_itr) ,ctrl_bw))));
+        
+        // merge branch guard
+        auto ctrl_id_access = ChpExprSingleRootDag::makeVariableAccess(ctrl_id, g->graph.id_pool().getBitwidth(ctrl_id));
+        IRGuard ctrl_eqs_i = IRGuard::makeExpression (
+                                ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::EQ,
+                                std::make_unique<ChpExprSingleRootDag>(std::move(ctrl_id_access)),
+                                std::make_unique<ChpExprSingleRootDag>(
+                                    ChpExprSingleRootDag::makeConstant(BigInt(branch_itr) ,ctrl_bw)
+                                )));
 
         Block *pll_sends = g->graph.blockAllocator().newBlock(Block::makeParBlock());
 
@@ -604,7 +630,7 @@ Block *ChoppingBlock::_generate_split_and_seed_branches (Block *sel)
 
         Block *send_live_vars_to_branch = NULL;
         Block *send_live_vars_from_branch = NULL;
-        
+
         // branch has stuff, so send in live_vars that it needs --------------
         if (!branch.seq.empty()) {
             // send live-vars to the branch head
@@ -624,8 +650,10 @@ Block *ChoppingBlock::_generate_split_and_seed_branches (Block *sel)
         }
         // branch has stuff, so send in live_vars that it needs --------------
 
+
         split->u_select().branches.emplace_back(
             g->graph.blockAllocator().newSequence({pll_sends}), std::move(branch.g));
+
 
         // insert send blocks at the end of the branch -----------------------
         if (!branch.seq.empty()) {
@@ -640,12 +668,44 @@ Block *ChoppingBlock::_generate_split_and_seed_branches (Block *sel)
         if (send_live_vars_from_branch) {
             _splice_in_block_between (branch.seq.endseq->parent(),branch.seq.endseq, 
                                         send_live_vars_from_branch);
+
+            if (merge_needed) {
+                ChanId recv_chan = send_live_vars_from_branch->u_basic().stmt.u_send().chan;
+                Block *rx_merge = g->graph.blockAllocator().newBlock(
+                        Block::makeBasicBlock(Statement::makeReceive(recv_chan, merge_var)));
+                
+                merge->u_select().branches.emplace_back(
+                    g->graph.blockAllocator().newSequence({rx_merge}), std::move(ctrl_eqs_i));
+            }
+        }
+        else {
+            if (merge_needed) {
+                merge->u_select().branches.emplace_back(
+                    g->graph.blockAllocator().newSequence({}), std::move(ctrl_eqs_i));
+            }
         }
         // insert send blocks at the end of the branch -----------------------
-        
-        branch_itr++;
-    }
 
-    return split;
+        branch_itr++;
+    } //end loop over branches
+
+    Block *merge_send_data = NULL;
+    // generate the send out of the merge
+    if (merge_needed) {
+
+        ChanId merge_send_chan = g->graph.id_pool().makeUniqueChan(di_sel->total_bitwidth_out, false);
+        var_to_actvar vtoa(s, &g->graph.id_pool());
+        ActId *id = vtoa.chanMap(merge_send_chan);
+        g->name_from_chan.insert({merge_send_chan, id});
+
+        merge_send_data = 
+            g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
+                merge_send_chan, ChpExprSingleRootDag::makeVariableAccess(merge_var, di_sel->total_bitwidth_out))));
+
+        Sequence merge_proc = g->graph.blockAllocator().newSequence(
+                                {merge_ctrl_recv, merge, merge_send_data});
+        v_seqs.push_back(_wrap_in_do_loop(merge_proc));
+    }
     
+    return {split,merge_send_data};
 }

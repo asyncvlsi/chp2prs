@@ -75,7 +75,7 @@ class ChoppingBlock {
 
         void _process_selection (Block *sel, int n);
 
-        Block *_generate_split_and_seed_branches (Block *sel);
+        std::pair<Block *, Block *> _generate_split_merge_and_seed_branches (Block *sel);
 
         Sequence _wrap_in_do_loop (Sequence seq);
 
