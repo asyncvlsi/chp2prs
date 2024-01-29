@@ -591,6 +591,7 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branch
     Block *split = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
 
     int ctrl_bw = log_2_round_up (sel->u_select().branches.size());
+    if (ctrl_bw == 0) ctrl_bw = 1;
 
     ChanId ctrl_chan_id = g->graph.id_pool().makeUniqueChan(ctrl_bw, false);
     var_to_actvar vtoa(s, &g->graph.id_pool());
@@ -713,6 +714,8 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branch
                 merge_send_chan, ChpExprSingleRootDag::makeVariableAccess(merge_var, di_sel->total_bitwidth_out))));
 
         decomp_info_t *di_sel_new = _deepcopy_decomp_info(di_sel);
+        di_sel_new->live_in_vars = di_sel->live_out_vars;
+        di_sel_new->live_out_vars = {};
         di_sel_new->break_after = false;
         di_sel_new->break_before = false;
         vmap.insert({merge_send_data, di_sel_new});
