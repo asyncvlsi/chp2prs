@@ -397,13 +397,18 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
                 // n==0 => selection has variable-less guards only i.e. constant true/false.
                 // in which case, go rewrite your program, will deal with this later..
                 hassert (n!=0);
-                _process_selection (curr, n);
+                Block *merge_send = _process_selection (curr, n);
                 for (auto &branch : curr->u_select().branches) {
                     _chop_graph (branch.seq, 0);
                     // v_seqs.push_back(branch.seq);
                 }
+                // tear out the old selection
                 curr = curr->child();
                 _splice_out_block (curr->parent());
+                // insert the recv for the merge_send just after the old selection location
+                if (merge_send) {
+                    int n1 = _splice_in_recv_before (curr, merge_send);
+                }
                 continue;
             }
         }
@@ -525,7 +530,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
     return std::pair(2,g->graph.blockAllocator().newSequence({receive, parallel}));
 }
 
-void ChoppingBlock::_process_selection (Block *sel, int n)
+Block *ChoppingBlock::_process_selection (Block *sel, int n)
 {
     hassert (n<3);
     // hassert (n>0);
@@ -566,7 +571,10 @@ void ChoppingBlock::_process_selection (Block *sel, int n)
 
     // TODO TMRW
     // generate control-signal fifo
-
+    if (merge_send) {
+        return merge_send;
+    }
+    return NULL;
 }
 
 /*
@@ -703,6 +711,11 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branch
         merge_send_data = 
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
                 merge_send_chan, ChpExprSingleRootDag::makeVariableAccess(merge_var, di_sel->total_bitwidth_out))));
+
+        decomp_info_t *di_sel_new = _deepcopy_decomp_info(di_sel);
+        di_sel_new->break_after = false;
+        di_sel_new->break_before = false;
+        vmap.insert({merge_send_data, di_sel_new});
 
         Sequence merge_proc = g->graph.blockAllocator().newSequence(
                                 {merge_ctrl_recv, merge, merge_send_data});

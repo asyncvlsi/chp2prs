@@ -73,7 +73,7 @@ class ChoppingBlock {
 
         int _splice_in_recv_before (Block *bb, Block *send);
 
-        void _process_selection (Block *sel, int n);
+        Block *_process_selection (Block *sel, int n);
 
         std::pair<Block *, Block *> _generate_split_merge_and_seed_branches (Block *sel);
 
