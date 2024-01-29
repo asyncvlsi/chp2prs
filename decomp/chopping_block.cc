@@ -371,10 +371,10 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     break;
       
     case BlockType::Par: {
-        fatal_error ("working on par");
-        for (auto &branch : curr->u_par().branches) {
-            _chop_graph (branch, 0);
-        }
+        // fatal_error ("working on par");
+        // for (auto &branch : curr->u_par().branches) {
+        //     _chop_graph (branch, 0);
+        // }
     }
     break;
       
@@ -408,6 +408,17 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
                 // insert the recv for the merge_send just after the old selection location
                 if (merge_send) {
                     int n1 = _splice_in_recv_before (curr, merge_send);
+                    // switch (n1) {
+                    //     case 0:
+                    //         break;
+                    //     case 1:
+                    //         curr = curr->child();
+                    //         break;
+                    //     case 2:
+                    //         curr = curr->child();
+                    //         curr = curr->child();
+                    //         break;
+                    // }
                 }
                 continue;
             }
@@ -715,7 +726,9 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branch
 
         decomp_info_t *di_sel_new = _deepcopy_decomp_info(di_sel);
         di_sel_new->live_in_vars = di_sel->live_out_vars;
+        di_sel_new->total_bitwidth_in = di_sel->total_bitwidth_out;
         di_sel_new->live_out_vars = {};
+        di_sel_new->total_bitwidth_out = 0;
         di_sel_new->break_after = false;
         di_sel_new->break_before = false;
         vmap.insert({merge_send_data, di_sel_new});
