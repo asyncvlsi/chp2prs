@@ -140,7 +140,7 @@ class RingSynth : public ActSynthesize {
       bkp->print_decomp_info();
 
       ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
-                                bkp->get_live_vars_map(), p->CurScope());
+                                bkp->get_decomp_info_map(), p->CurScope());
       cb->chop_graph();
 
       auto vs = cb->get_chopped_seqs();
@@ -157,7 +157,9 @@ class RingSynth : public ActSynthesize {
         chp_print(stdout, l);
       }
       fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
-      // cb->print_chopped_seqs(p->CurScope());
+      /*
+      */
+      
 
     }
     }

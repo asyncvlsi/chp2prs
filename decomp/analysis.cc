@@ -33,9 +33,9 @@ std::string str_of_id(ChanId id) {
     return "C" + std::to_string(id.m_id); 
 }
 
-std::unordered_map<Block *, decomp_info_t *> DecompAnalysis::get_live_vars_map()
+std::unordered_map<const Block *, decomp_info_t *> DecompAnalysis::get_decomp_info_map()
 {
-    return live_in_vars_map;
+    return decomp_info_map;
 }
 
 int DecompAnalysis::_compute_total_bits (std::unordered_set<VarId> vars)
@@ -52,14 +52,41 @@ int DecompAnalysis::_compute_total_bits (std::unordered_set<VarId> vars)
 
 void DecompAnalysis::analyze ()
 {
-    total_bits = 0;
-    H_live.clear();
-    H_saved.clear();
-    H_parents.clear();
-    live_in_vars_map.clear();
+    // total_bits = 0;
+    // H_live.clear();
+    // H_saved.clear();
+    // H_parents.clear();
+    // decomp_info_map.clear();
     // fprintf (stdout, "\nanalyzing... \n");
-    _generate_decomp_info (g->graph.m_seq, 1);
+    // _generate_decomp_info (g->graph.m_seq, 1);
+
+    auto [lim, lom] = getLiveVars (g->graph);
+    _populate_decomp_info_map (lim, lom);
 }
+
+void DecompAnalysis::_populate_decomp_info_map (
+            std::unordered_map<const Block *, std::unordered_set<VarId>> lim,
+            std::unordered_map<const Block *, std::unordered_set<VarId>> lom)
+{
+    for ( auto x : lim )
+    {
+        auto li_vars = x.second;
+        //check if same block exists in both maps
+        hassert (lom.contains(x.first)); 
+        auto lo_vars = lom.find(x.first)->second;
+
+        decomp_info_t *di;
+        NEW (di, decomp_info_t);
+        di->live_in_vars = li_vars;
+        di->live_out_vars = lo_vars;
+        di->total_bitwidth_in = _compute_total_bits (li_vars);
+        di->total_bitwidth_out = _compute_total_bits (lo_vars);
+        di->break_before = false;
+        di->break_after = false;
+        decomp_info_map.insert({x.first, di});
+    }
+}
+
 
 void DecompAnalysis::_add_to_live_vars (VarId vid)
 {
@@ -77,7 +104,7 @@ void DecompAnalysis::_add_to_live_vars (std::unordered_set<VarId> vids)
 
 void DecompAnalysis::_map_block_to_live_vars (Block *b, decomp_info_t *di)
 {
-    live_in_vars_map.insert({b, di});
+    decomp_info_map.insert({b, di});
 }
 
 void DecompAnalysis::_remove_from_live_vars (VarId vid)
@@ -476,7 +503,7 @@ void DecompAnalysis::_print_decomp_info (Sequence seq, int root)
             fprintf (stdout, "reached recv\n");
             break;
       }
-        di = (live_in_vars_map.find(curr))->second;
+        di = (decomp_info_map.find(curr))->second;
         _print_decomp_info (di);
     }
     break;
@@ -492,7 +519,7 @@ void DecompAnalysis::_print_decomp_info (Sequence seq, int root)
     case BlockType::Select:
         fprintf (stdout, "reached select start\n");
 
-        di = (live_in_vars_map.find(curr))->second;
+        di = (decomp_info_map.find(curr))->second;
         _print_decomp_info (di);
 
         for (auto &branch : curr->u_select().branches) {

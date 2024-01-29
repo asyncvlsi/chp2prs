@@ -26,7 +26,7 @@ class ChoppingBlock {
     public:
 
         ChoppingBlock ( FILE *fp_in, GraphWithChanNames &g_in, 
-                        std::unordered_map<Block *, decomp_info_t *> vmap_in,
+                        std::unordered_map<const Block *, decomp_info_t *> vmap_in,
                         Scope *s_in)
             {
                 fp = fp_in;
@@ -44,7 +44,7 @@ class ChoppingBlock {
 
         FILE *fp;
         GraphWithChanNames *g;
-        std::unordered_map<Block *, decomp_info_t *> vmap;
+        std::unordered_map<const Block *, decomp_info_t *> vmap;
         std::vector<Sequence> v_seqs;
         Scope *s;
         IdPool idpool;

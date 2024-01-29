@@ -306,7 +306,7 @@ Block *ChoppingBlock::_find_next_break_before (Block *b)
  * TODO: check if both are part of same Sequence, 
  * assuming that's true for now.
 */
- std::vector<Block *> ChoppingBlock::_split_sequence_from_to(Block *b_start, Block *b_end)
+std::vector<Block *> ChoppingBlock::_split_sequence_from_to(Block *b_start, Block *b_end)
 {
     hassert (b_start->type() != BlockType::StartSequence);
 

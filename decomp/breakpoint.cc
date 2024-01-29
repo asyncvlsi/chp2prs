@@ -43,12 +43,12 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
             break;
         case StatementType::Receive:
             // break before every new assignment
-            di = (live_in_vars_map.find(curr))->second;
+            di = (decomp_info_map.find(curr))->second;
             di->break_before = true;
             di->break_after = true;
             break;
       }
-        di = (live_in_vars_map.find(curr))->second;
+        di = (decomp_info_map.find(curr))->second;
         // _print_decomp_info (di);
     }
     break;
@@ -64,7 +64,7 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
     case BlockType::Select:
         // fprintf (stdout, "reached select start\n");
         // break before every selection
-        di = (live_in_vars_map.find(curr))->second;
+        di = (decomp_info_map.find(curr))->second;
         di->break_before = true;
         di->break_after = true;
 
@@ -115,7 +115,7 @@ void BreakPoints::_mark_breakpoints_v1(Sequence seq, int mark_next)
       
     case BlockType::Select:
         // break out every selection
-        di = (live_in_vars_map.find(curr))->second;
+        di = (decomp_info_map.find(curr))->second;
         di->break_before = true;
         di->break_after = true;
 
@@ -150,7 +150,7 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
         case StatementType::Assign:
             break;
         case StatementType::Receive:
-            di = (live_in_vars_map.find(curr))->second;
+            di = (decomp_info_map.find(curr))->second;
             if (curr->parent() != seq.startseq)
             {
                 di->break_before = true;
@@ -158,7 +158,7 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
             }
             break;
       }
-        di = (live_in_vars_map.find(curr))->second;
+        di = (decomp_info_map.find(curr))->second;
     }
     break;
       
@@ -170,7 +170,7 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
     break;
       
     case BlockType::Select:
-        di = (live_in_vars_map.find(curr))->second;
+        di = (decomp_info_map.find(curr))->second;
         di->break_before = true;
         di->break_after = true;
         for (auto &branch : curr->u_select().branches) {
@@ -189,5 +189,5 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
     }
     curr = curr->child();
     }
-    // di = (live_in_vars_map.find(curr))->second;
+    // di = (decomp_info_map.find(curr))->second;
 }

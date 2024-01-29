@@ -66,7 +66,7 @@ class DecompAnalysis {
 
         void print_decomp_info ();
 
-        std::unordered_map<Block *, decomp_info_t *> get_live_vars_map ();
+        std::unordered_map<const Block *, decomp_info_t *> get_decomp_info_map ();
     
     protected: 
 
@@ -75,7 +75,11 @@ class DecompAnalysis {
         Scope *s;
 
         // map from a block to variables that are live-in to that block
-        std::unordered_map<Block *, decomp_info_t *> live_in_vars_map;
+        std::unordered_map<const Block *, decomp_info_t *> decomp_info_map;
+
+        void _populate_decomp_info_map ( 
+            std::unordered_map<const Block *, std::unordered_set<VarId>> lim,
+            std::unordered_map<const Block *, std::unordered_set<VarId>> lom);
 
         // running state of live variables
         std::unordered_set<VarId> H_live;
