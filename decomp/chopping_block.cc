@@ -392,10 +392,10 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
 
             if (di->break_after)
             {   
-                // need to tear out the newly generated recv also
+                // need to tear out the newly generated recv also (done)
                 fprintf (stdout, "\ngot here\n");
-                // n==0 => selection has variable-less guards i.e. true, false etc.
-                // in which case, go rewrite, will deal with this later
+                // n==0 => selection has variable-less guards only i.e. constant true/false.
+                // in which case, go rewrite your program, will deal with this later..
                 hassert (n!=0);
                 _process_selection (curr, n);
                 for (auto &branch : curr->u_select().branches) {
@@ -625,8 +625,10 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branch
 
         Block *pll_sends = g->graph.blockAllocator().newBlock(Block::makeParBlock());
 
-        pll_sends->u_par().branches.push_back(
-            g->graph.blockAllocator().newSequence({send_ctrl}));
+        if (merge_needed) {
+            pll_sends->u_par().branches.push_back(
+                g->graph.blockAllocator().newSequence({send_ctrl}));
+        }
 
         Block *send_live_vars_to_branch = NULL;
         Block *send_live_vars_from_branch = NULL;
