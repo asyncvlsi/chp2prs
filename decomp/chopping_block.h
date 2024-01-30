@@ -67,11 +67,13 @@ class ChoppingBlock {
 
         std::vector<Block *> _split_sequence_from_to(Block *b_start, Block *b_end);
 
-        Block *_build_sequence(Block *b_start, Block *b_end);
+        std::vector<Block *> _split_sequence_from_to_new(Block *b_start, Block *b);
 
-        std::pair<int, Sequence> _generate_recv_and_maybe_assigns (Block *send);
+        Block *_build_sequence(Block *b_start, Block *b_end, int type);
 
-        int _splice_in_recv_before (Block *bb, Block *send);
+        std::pair<int, Sequence> _generate_recv_and_maybe_assigns (Block *send, int type);
+
+        int _splice_in_recv_before (Block *bb, Block *send, int type);
 
         Block *_process_selection (Block *sel, int n);
 

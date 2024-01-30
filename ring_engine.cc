@@ -107,6 +107,7 @@ class RingSynth : public ActSynthesize {
       }
       else {
         ChpOptimize::optimize_chp_O0 (g.graph, p->getName(), false);
+        ChpOptimize::propagateConstants (g.graph);
         ChpOptimize::eliminateDeadCode (g.graph);
       }
       uninlineBitfieldExprsHack (g.graph);

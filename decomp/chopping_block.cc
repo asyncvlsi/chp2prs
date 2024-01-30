@@ -23,6 +23,11 @@
 #include "chopping_block.h"
 #include "../opt/utils.h"
 
+#define LIVE_IN 0
+#define LIVE_OUT 1
+
+#define END_INC 0
+#define END_EXC 1
 
 void ChoppingBlock::_print_seq (Sequence seq)
 {
@@ -310,10 +315,10 @@ std::vector<Block *> ChoppingBlock::_split_sequence_from_to(Block *b_start, Bloc
 {
     hassert (b_start->type() != BlockType::StartSequence);
 
-    std::vector<Block *> v_block_ptrs;
+    std::vector<Block *> v_block_ptrs = {};
 
     Block *itr = b_start;
-    
+
     do {
         v_block_ptrs.push_back (itr);
         itr = _splice_out_block (itr);
@@ -323,13 +328,46 @@ std::vector<Block *> ChoppingBlock::_split_sequence_from_to(Block *b_start, Bloc
     return v_block_ptrs;
 }
 
-Block *ChoppingBlock::_build_sequence (Block *b_start, Block *b_end_plus_1)
+std::vector<Block *> ChoppingBlock::_split_sequence_from_to_new(Block *b_start, Block *b)
 {
-    hassert (b_start != b_end_plus_1);
+    hassert (b_start->type() == BlockType::StartSequence);
 
-    std::vector<Block *> v_block_ptrs = _split_sequence_from_to (b_start, b_end_plus_1);
-    
-    Block *send = _generate_send_to_be_recvd_by (b_end_plus_1);
+    std::vector<Block *> v_block_ptrs = {};
+
+    Block *end = b->child();
+    hassert (end);
+
+    Block *itr = b_start->child();
+    hassert (itr);
+
+    do {
+        v_block_ptrs.push_back (itr);
+        itr = _splice_out_block (itr);
+    }
+    while (itr != end);
+
+    return v_block_ptrs;
+}
+
+Block *ChoppingBlock::_build_sequence (Block *b_start, Block *b_end_plus_1, int type)
+{
+    if (type == END_EXC) hassert (b_start != b_end_plus_1);
+
+    std::vector<Block *> v_block_ptrs;
+    if (type == END_EXC) {
+        v_block_ptrs = _split_sequence_from_to (b_start, b_end_plus_1);
+    }
+    else {
+        v_block_ptrs = _split_sequence_from_to_new (b_start, b_end_plus_1);
+    }
+
+    Block *send = NULL;
+    if (type == END_EXC) {
+        send = _generate_send_to_be_recvd_by (b_end_plus_1);
+    }   
+    else {
+        send = _generate_send_to_be_sent_from (b_end_plus_1);
+    } 
     if (send)
         v_block_ptrs.push_back(send);
 
@@ -353,25 +391,43 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     case BlockType::Basic: {
         hassert (vmap.contains(curr));
         di = (vmap.find(curr))->second;
-        // switch (curr->u_basic().stmt.type()) {
-        //     case StatementType::Send:
-        //         break;
-        //     case StatementType::Assign:
-        //         break;
-        //     case StatementType::Receive:
-        //         break;
-        // }
-        if (di->break_before)
+        if (di->break_after)
         {
-            Block *send = _build_sequence (seq.startseq->child(), curr);
-            if (send)
-                _splice_in_recv_before (curr, send);
+            // Block *send = _build_sequence (seq.startseq->child(), curr);
+            Block *tmp = curr->child();
+            Block *send = _build_sequence (seq.startseq, curr, END_INC);
+            if (send) {
+                _splice_in_recv_before (tmp, send, LIVE_OUT);
+            }
+            curr = tmp;
+            continue;
         }
     }
     break;
       
     case BlockType::Par: {
         // fatal_error ("working on par");
+        // if break_before 
+        // just break the head out
+        // if also break_after
+        // parallel send to all the branches
+        // process branches
+        // parallel receive from all branches and send back to main
+
+        hassert (vmap.contains(curr));
+        di = (vmap.find(curr))->second;
+        if (di->break_before)
+        {
+            // Block *send = _build_sequence (seq.startseq->child(), curr);
+            // Block *send = _build_sequence (seq.startseq, curr,);
+            // if (send) {
+            //     n = _splice_in_recv_before (curr, send, LIVE_IN);
+            // }
+            // if (di->break_after)
+            // {
+
+            // }   
+        }
         // for (auto &branch : curr->u_par().branches) {
         //     _chop_graph (branch, 0);
         // }
@@ -383,13 +439,14 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
         di = (vmap.find(curr))->second;
         if (di->break_before)
         {
-            Block *send = _build_sequence (seq.startseq->child(), curr);
+            Block *send = _build_sequence (seq.startseq->child(), curr, END_EXC);
+            // Block *send = _build_sequence (seq.startseq, curr, END_EXC);
             // impossible for non-trivial selections to have no live-in vars.
             // at least guard vars must exist...
             hassert (send);
-            if (send)
-                n = _splice_in_recv_before (curr, send);
-
+            if (send) {
+                n = _splice_in_recv_before (curr, send, LIVE_IN);
+            }
             if (di->break_after)
             {   
                 // need to tear out the newly generated recv also (done)
@@ -407,18 +464,7 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
                 _splice_out_block (curr->parent());
                 // insert the recv for the merge_send just after the old selection location
                 if (merge_send) {
-                    int n1 = _splice_in_recv_before (curr, merge_send);
-                    // switch (n1) {
-                    //     case 0:
-                    //         break;
-                    //     case 1:
-                    //         curr = curr->child();
-                    //         break;
-                    //     case 2:
-                    //         curr = curr->child();
-                    //         curr = curr->child();
-                    //         break;
-                    // }
+                    int n1 = _splice_in_recv_before (curr, merge_send, LIVE_IN);
                 }
                 continue;
             }
@@ -427,8 +473,7 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     break;
       
     case BlockType::DoLoop:
-        if (root != 1)
-            fatal_error ("excise internal loops please");
+        if (root != 1) fatal_error ("excise internal loops please");
         _chop_graph (curr->u_doloop().branch, 1);
         // don't do tail processing for doloop
         return;
@@ -444,16 +489,13 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     // tear out tail
     if (!seq.empty())
     {   
-        // TODO: need to add incoming and outgoing dependencies here too
-        // coz this might be in a sub-branch
-        // Note: Handled in _process_selection
-        // fprintf (stdout, "\ngot to tail\n");
-        _build_sequence (seq.startseq->child(), seq.endseq);
+        // incoming and outgoing dependencies handled in _process_selection
+        _build_sequence (seq.startseq, seq.endseq->parent(), END_INC);
     }
     return;
 }
 
-int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send)
+int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send, int type)
 {
     if (bb->type() == BlockType::StartSequence)
         return 0;
@@ -464,7 +506,7 @@ int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send)
 
     hassert (send);
 
-    std::pair<int, Sequence> recv_plus_maybe_assigns = _generate_recv_and_maybe_assigns (send);
+    std::pair<int, Sequence> recv_plus_maybe_assigns = _generate_recv_and_maybe_assigns (send, type);
     if (!recv_plus_maybe_assigns.second.empty())
     {
         g->graph.spliceInSequenceBefore(bb, recv_plus_maybe_assigns.second);
@@ -472,21 +514,32 @@ int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send)
     return recv_plus_maybe_assigns.first;
 }
 
-std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block *send)
+std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block *send, int type)
 {
     hassert (vmap.contains(send));
     decomp_info_t *di = (vmap.find(send))->second;
 
-    if (di->live_in_vars.size() == 0)
+    std::unordered_set<VarId> vars;
+    int bitwidth;
+    if (type==LIVE_IN) {
+        vars = di->live_in_vars;
+        bitwidth = di->total_bitwidth_in;
+    }
+    else {
+        vars = di->live_out_vars;
+        bitwidth = di->total_bitwidth_out;
+    }
+
+    if (vars.size() == 0)
     {
         return std::pair(0,g->graph.blockAllocator().newSequence({}));
     }
 
     ChanId chan_id = send->u_basic().stmt.u_send().chan;
 
-    if (di->live_in_vars.size() == 1)
+    if (vars.size() == 1)
     {
-        VarId var_id = *di->live_in_vars.begin();
+        VarId var_id = *vars.begin();
         OptionalVarId ovid(var_id);
 
         Block *receive = g->graph.blockAllocator().newBlock(
@@ -501,7 +554,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
         return std::pair(1,g->graph.blockAllocator().newSequence({receive}));
     }
 
-    VarId var_concat = g->graph.id_pool().makeUniqueVar(di->total_bitwidth_in, false);
+    VarId var_concat = g->graph.id_pool().makeUniqueVar(bitwidth, false);
     OptionalVarId ovid(var_concat);
     // C?x
     Block *receive = g->graph.blockAllocator().newBlock(
@@ -517,9 +570,9 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
     //  x1 = x{0..i} , x2 = x{i+1..j} ...
     // make the assign blocks, parallel them all
 
-    int range_ctr = di->total_bitwidth_in;
+    int range_ctr = bitwidth;
     Block *parallel = g->graph.blockAllocator().newBlock(Block::makeParBlock());
-    for ( auto var : di->live_in_vars )
+    for ( auto var : vars )
     {
         VarId vi = var;
         int width = g->graph.id_pool().getBitwidth(vi);
@@ -529,7 +582,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
                         ChpExprSingleRootDag::makeBitfield(
                             std::make_unique<ChpExprSingleRootDag>(
                                 ChpExprSingleRootDag::makeVariableAccess(
-                                    var_concat, di->total_bitwidth_in)),
+                                    var_concat, bitwidth)),
                             range_ctr-1, range_ctr-width)
                                             )));
 
@@ -668,7 +721,7 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branch
             pll_sends->u_par().branches.push_back(
                 g->graph.blockAllocator().newSequence({send_live_vars_to_branch}));
             // insert receive blocks at the branch head to get the live_vars
-            _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars_to_branch);
+            _splice_in_recv_before (branch.seq.startseq->child(), send_live_vars_to_branch, LIVE_IN);
         }
         // branch has stuff, so send in live_vars that it needs --------------
 
