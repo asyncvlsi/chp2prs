@@ -77,10 +77,11 @@ class ChoppingBlock {
 
         Block *_process_selection (Block *sel, int n);
 
+        Block *_process_parallel (Block *sel, int n);
+
         std::pair<Block *, Block *> _generate_split_merge_and_seed_branches (Block *sel);
 
         Sequence _wrap_in_do_loop (Sequence seq);
 
         void _print_seq (Sequence seq);
-         
 };

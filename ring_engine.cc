@@ -28,6 +28,7 @@
 // #include "decomp/analysis.h"
 #include "decomp/breakpoint.h"
 #include "decomp/chopping_block.h"
+#include "decomp/pretty_print.h"
 
 #include "opt/chp-opt.h"
 
@@ -155,7 +156,8 @@ class RingSynth : public ActSynthesize {
         // std::vector<ActId *> newnames;
         act_chp_lang_t *l = chp_graph_to_act (gc, newnames, p->CurScope());
         fprintf (stdout, "\n\n");
-        chp_print(stdout, l);
+        // chp_print(stdout, l);
+        chp_pretty_print(stdout, l);
       }
       fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
       /*

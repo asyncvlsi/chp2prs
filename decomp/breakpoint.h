@@ -24,10 +24,13 @@
 /*
  * Marks breakpoints on each block. There are a few rules that must
  * be followed in order for a marking to be a valid marking.
- * 1. The first block in any sequence/sub-sequence cannot be marked.
- * 2. If a sequence within a selection has any markings, then
+ * 1. The first block in the top-level sequence cannot be marked 
+ *    with a break_before.
+ * 2. The last block in the top-level sequence cannot be marked 
+ *    with a break_after.
+ * 3. If a sequence within a selection has any markings, then
  *    the parent selection must be marked break_before AND break_after.
- * 3. I'll probably put more in here as I deal with this thing lol
+ * 4. I'll probably put more in here as I deal with this thing lol
 */
 class BreakPoints : public DecompAnalysis {
     public:

@@ -151,11 +151,8 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
             break;
         case StatementType::Receive:
             di = (decomp_info_map.find(curr))->second;
-            // if (curr->parent() != seq.startseq)
-            // {
                 di->break_before = true;
                 di->break_after = true;
-            // }
             break;
         }
     }
@@ -176,11 +173,8 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
       
     case BlockType::Select: {
         di = (decomp_info_map.find(curr))->second;
-        if (curr->parent() != seq.startseq)
-        {
             di->break_before = true;
             di->break_after = true;
-        }
         for (auto &branch : curr->u_select().branches) {
             _mark_breakpoints_v2 (branch.seq, 0);
         }

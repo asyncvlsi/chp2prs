@@ -391,16 +391,18 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     case BlockType::Basic: {
         hassert (vmap.contains(curr));
         di = (vmap.find(curr))->second;
-        if (di->break_after)
-        {
-            // Block *send = _build_sequence (seq.startseq->child(), curr);
-            Block *tmp = curr->child();
-            Block *send = _build_sequence (seq.startseq, curr, END_INC);
+        // if (di->break_after)
+        if (di->break_before && (curr != seq.startseq->child()))
+        {   
+            Block *send = _build_sequence (seq.startseq->child(), curr, END_EXC);
+            // Block *tmp = curr->child();
+            // Block *send = _build_sequence (seq.startseq, curr, END_INC);
             if (send) {
-                _splice_in_recv_before (tmp, send, LIVE_OUT);
+                // _splice_in_recv_before (tmp, send, LIVE_OUT);
+                _splice_in_recv_before (curr, send, LIVE_IN);
             }
-            curr = tmp;
-            continue;
+            // curr = tmp;
+            // continue;
         }
     }
     break;
@@ -416,28 +418,34 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
 
         hassert (vmap.contains(curr));
         di = (vmap.find(curr))->second;
-        if (di->break_before)
+        if (di->break_before && di->break_after)
         {
-            // Block *send = _build_sequence (seq.startseq->child(), curr);
-            // Block *send = _build_sequence (seq.startseq, curr,);
-            // if (send) {
-            //     n = _splice_in_recv_before (curr, send, LIVE_IN);
-            // }
-            // if (di->break_after)
-            // {
+            Block *send = _build_sequence (seq.startseq->child(), curr, END_EXC);
+            if (send) {
+                n = _splice_in_recv_before (curr, send, LIVE_IN);
+            }
+            fprintf (stdout, "\ngot here pll\n");
 
-            // }   
+            Block *pll_merge_send = _process_parallel (curr, n);
+            for (auto &branch : curr->u_select().branches) {
+                _chop_graph (branch.seq, 0);
+            }
+            // tear out the old pll
+            curr = curr->child();
+            _splice_out_block (curr->parent());
+            // insert the recv for the merge_send just after the old pll location
+            if (pll_merge_send) {
+                int n1 = _splice_in_recv_before (curr, pll_merge_send, LIVE_IN);
+            }
+            continue;
         }
-        // for (auto &branch : curr->u_par().branches) {
-        //     _chop_graph (branch, 0);
-        // }
     }
     break;
       
     case BlockType::Select: {
         hassert (vmap.contains(curr));
         di = (vmap.find(curr))->second;
-        if (di->break_before)
+        if (di->break_before && di->break_after)
         {
             Block *send = _build_sequence (seq.startseq->child(), curr, END_EXC);
             // Block *send = _build_sequence (seq.startseq, curr, END_EXC);
@@ -447,27 +455,23 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
             if (send) {
                 n = _splice_in_recv_before (curr, send, LIVE_IN);
             }
-            if (di->break_after)
-            {   
-                // need to tear out the newly generated recv also (done)
-                fprintf (stdout, "\ngot here\n");
-                // n==0 => selection has variable-less guards only i.e. constant true/false.
-                // in which case, go rewrite your program, will deal with this later..
-                hassert (n!=0);
-                Block *merge_send = _process_selection (curr, n);
-                for (auto &branch : curr->u_select().branches) {
-                    _chop_graph (branch.seq, 0);
-                    // v_seqs.push_back(branch.seq);
-                }
-                // tear out the old selection
-                curr = curr->child();
-                _splice_out_block (curr->parent());
-                // insert the recv for the merge_send just after the old selection location
-                if (merge_send) {
-                    int n1 = _splice_in_recv_before (curr, merge_send, LIVE_IN);
-                }
-                continue;
+            // need to tear out the newly generated recv also (done)
+            fprintf (stdout, "\ngot here sel\n");
+            // n==0 => selection has variable-less guards only i.e. constant true/false.
+            // in which case, go rewrite your program, will deal with this later..
+            hassert (n!=0);
+            Block *merge_send = _process_selection (curr, n);
+            for (auto &branch : curr->u_select().branches) {
+                _chop_graph (branch.seq, 0);
             }
+            // tear out the old selection
+            curr = curr->child();
+            _splice_out_block (curr->parent());
+            // insert the recv for the merge_send just after the old selection location
+            if (merge_send) {
+                int n1 = _splice_in_recv_before (curr, merge_send, LIVE_IN);
+            }
+            continue;
         }
     }
     break;
@@ -490,7 +494,8 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     if (!seq.empty())
     {   
         // incoming and outgoing dependencies handled in _process_selection
-        _build_sequence (seq.startseq, seq.endseq->parent(), END_INC);
+        // _build_sequence (seq.startseq, seq.endseq->parent(), END_INC);
+        _build_sequence (seq.startseq->child(), seq.endseq, END_EXC);
     }
     return;
 }
@@ -592,6 +597,17 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
     }
 
     return std::pair(2,g->graph.blockAllocator().newSequence({receive, parallel}));
+}
+
+Block *ChoppingBlock::_process_parallel (Block *pll, int n)
+{
+    hassert (n<3);
+    hassert (pll->type() == BlockType::Par);
+    hassert (vmap.contains(pll));
+    decomp_info_t *di = (vmap.find(pll))->second;
+
+
+
 }
 
 Block *ChoppingBlock::_process_selection (Block *sel, int n)
