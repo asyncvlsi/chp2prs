@@ -139,7 +139,7 @@ class RingSynth : public ActSynthesize {
 
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
-      bkp->print_decomp_info();
+      // bkp->print_decomp_info();
 
       ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
                                 bkp->get_decomp_info_map(), p->CurScope());

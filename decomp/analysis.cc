@@ -509,10 +509,15 @@ void DecompAnalysis::_print_decomp_info (Sequence seq, int root)
     break;
       
     case BlockType::Par: {
-        // fatal_error ("working on par...");
+        fprintf (stdout, "reached parallel start\n");
+
+        di = (decomp_info_map.find(curr))->second;
+        _print_decomp_info (di);
+
         for (auto &branch : curr->u_par().branches) {
             _print_decomp_info (branch, 0);
         }
+        fprintf (stdout, "reached parallel end\n");
     }
     break;
       

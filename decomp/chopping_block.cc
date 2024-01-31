@@ -424,11 +424,11 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
             if (send) {
                 n = _splice_in_recv_before (curr, send, LIVE_IN);
             }
-            fprintf (stdout, "\ngot here pll\n");
 
             Block *pll_merge_send = _process_parallel (curr, n);
-            for (auto &branch : curr->u_select().branches) {
-                _chop_graph (branch.seq, 0);
+            for (auto &branch : curr->u_par().branches) {
+                _chop_graph (branch, 0);
+                // v_seqs.push_back(branch);
             }
             // tear out the old pll
             curr = curr->child();
@@ -596,18 +596,50 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
         range_ctr -= (width);
     }
 
+    vmap.insert({parallel, di_new});
+
     return std::pair(2,g->graph.blockAllocator().newSequence({receive, parallel}));
 }
 
 Block *ChoppingBlock::_process_parallel (Block *pll, int n)
 {
     hassert (n<3);
+
     hassert (pll->type() == BlockType::Par);
     hassert (vmap.contains(pll));
     decomp_info_t *di = (vmap.find(pll))->second;
 
+    Block *recv;
+    Block *pll_assigns;
+    Sequence seq_pll;
 
+    auto [sends_to_pll, sends_out_of_pll] = _generate_pll_send_recv_and_seed_branches (pll);
 
+    if (n==0) {
+        seq_pll = g->graph.blockAllocator().newSequence({sends_to_pll});
+    }
+    else if (n==1) {
+        recv = pll->parent();
+        _splice_out_block (recv);
+        seq_pll = g->graph.blockAllocator().newSequence({recv,sends_to_pll});
+    }
+    else if (n==2) {
+        recv = pll->parent()->parent();
+        pll_assigns = pll->parent();
+        _splice_out_block (recv);
+        _splice_out_block (pll_assigns);
+        seq_pll = g->graph.blockAllocator().newSequence({recv, pll_assigns, sends_to_pll});
+    }
+    else {
+        hassert (false);
+    }
+
+    v_seqs.push_back(_wrap_in_do_loop(seq_pll));
+
+    if (sends_out_of_pll) {
+        return sends_out_of_pll;
+    }
+    return NULL;
 }
 
 Block *ChoppingBlock::_process_selection (Block *sel, int n)
@@ -620,7 +652,7 @@ Block *ChoppingBlock::_process_selection (Block *sel, int n)
 
     Block *recv;
     Block *pll_assigns;
-    Sequence seq, seq_split;
+    Sequence seq_split;
 
     // generate split and merge ------------------------
     auto [split, merge_send] = _generate_split_merge_and_seed_branches (sel);
@@ -655,6 +687,89 @@ Block *ChoppingBlock::_process_selection (Block *sel, int n)
         return merge_send;
     }
     return NULL;
+}
+
+std::pair<Block *, Block *> ChoppingBlock::_generate_pll_send_recv_and_seed_branches (Block *pll)
+{
+    hassert (vmap.contains(pll));
+    decomp_info_t *di_pll = (vmap.find(pll))->second;
+
+    bool merge_needed = true;
+    if (di_pll->total_bitwidth_out == 0) merge_needed = false;
+
+    VarId merge_var;
+    if (merge_needed) {
+        merge_var = g->graph.id_pool().makeUniqueVar(di_pll->total_bitwidth_out, false);
+    }
+
+    Block *pll_sends = g->graph.blockAllocator().newBlock(Block::makeParBlock());
+    Block *pll_recvs = g->graph.blockAllocator().newBlock(Block::makeParBlock());
+
+    for (auto &branch : pll->u_par().branches) {
+
+        hassert (!(branch.empty()));
+
+        Block *send_live_vars_to_branch = NULL;
+        Block *send_live_vars_from_branch = NULL;
+
+        // send live-vars to the branch head
+        send_live_vars_to_branch = 
+            _generate_send_to_be_recvd_by (branch.startseq->child());
+
+        if (send_live_vars_to_branch) {
+            pll_sends->u_par().branches.push_back(
+                g->graph.blockAllocator().newSequence({send_live_vars_to_branch}));
+
+            _splice_in_recv_before (branch.startseq->child(), send_live_vars_to_branch, LIVE_IN);
+        }
+
+        send_live_vars_from_branch = 
+            _generate_send_to_be_sent_from (branch.endseq->parent());
+    
+        if (send_live_vars_from_branch) {
+            _splice_in_block_between (branch.endseq->parent(),branch.endseq, 
+                                        send_live_vars_from_branch);
+
+            if (merge_needed) {
+                ChanId recv_chan = send_live_vars_from_branch->u_basic().stmt.u_send().chan;
+                Block *rx_live = g->graph.blockAllocator().newBlock(
+                        Block::makeBasicBlock(Statement::makeReceive(recv_chan, merge_var)));
+                
+                pll_recvs->u_par().branches.emplace_back(
+                    g->graph.blockAllocator().newSequence({rx_live}));      
+            }
+        }
+    } //end loop over branches
+
+    Block *pll_send_data = NULL;
+
+    if (merge_needed) {
+
+        ChanId send_chan = g->graph.id_pool().makeUniqueChan(di_pll->total_bitwidth_out, false);
+        var_to_actvar vtoa(s, &g->graph.id_pool());
+        ActId *id = vtoa.chanMap(send_chan);
+        g->name_from_chan.insert({send_chan, id});
+
+        pll_send_data = 
+            g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
+                send_chan, ChpExprSingleRootDag::makeVariableAccess(merge_var, di_pll->total_bitwidth_out))));
+
+        decomp_info_t *di_pll_new = _deepcopy_decomp_info(di_pll);
+        di_pll_new->live_in_vars = di_pll->live_out_vars;
+        di_pll_new->total_bitwidth_in = di_pll->total_bitwidth_out;
+        di_pll_new->live_out_vars = {};
+        di_pll_new->total_bitwidth_out = 0;
+        di_pll_new->break_after = false;
+        di_pll_new->break_before = false;
+        vmap.insert({pll_send_data, di_pll_new});
+
+        Sequence merge_pll_proc = g->graph.blockAllocator().newSequence(
+                                {pll_recvs, pll_send_data});
+        v_seqs.push_back(_wrap_in_do_loop(merge_pll_proc));
+    }
+
+    return {pll_sends, pll_send_data};
+
 }
 
 /*
