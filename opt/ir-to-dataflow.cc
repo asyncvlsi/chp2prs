@@ -1002,6 +1002,10 @@ MultiChannelState reconcileMultiSeq (Block *curr,
   }
 
   for (auto &[ch, idxvec] : chan_idx) {
+    // don't share these for now
+    dm.rr_noctrl.clear();
+    dm.rr_ctrl.clear();
+    
     if (variable.contains (ch) || idxvec.size() > 1) {
       if (idxvec.size() == 1) {
 	// just propagate the single variable channel up
@@ -1123,6 +1127,8 @@ MultiChannelState reconcileMultiSeq (Block *curr,
       }
     }
   }
+
+  
   return ret;
 }
 
