@@ -36,6 +36,7 @@ void optimize_chp_O0(ChpGraph &g, const std::string &proc_name, bool verbose);
 /* optimizations */
 bool propagateConstants(ChpGraph &graph);
 bool eliminateCopies(ChpGraph &graph);
+bool eliminateCopiesNew(ChpGraph &graph);
 bool eliminateDeadCode(ChpGraph &graph);
 
 void uninlineBitfieldExprsHack(ChpGraph &graph);

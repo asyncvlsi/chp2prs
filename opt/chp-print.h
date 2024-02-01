@@ -29,9 +29,12 @@
 namespace ChpOptimize {
 
 void print_chp(std::ostream &o, const ChpGraph &sequence);
+
 void print_chp(std::ostream &o, const ChpGraph &sequence,
 	       std::function<void(std::ostream &os, const Block &b)> pre,
 	       std::function<void(std::ostream &os, const Block &b)> post
 	       );
+  
+void print_chp_block(std::ostream &o, Block *curr, int ilevel = 0);
 
 } // namespace ChpOptimize

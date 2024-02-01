@@ -197,6 +197,7 @@ void print_expr(std::ostream &o, const ChpExprSingleRootDag &dag, int ilevel) {
     print_expr(o, dag.m_dag, ilevel);
 }
 
+
  void print_chp(std::ostream &o, Sequence sequence, int ilevel,
 		std::function<void(std::ostream &os, const Block &b)> pre,
 		std::function<void(std::ostream &os, const Block &b)> post
@@ -377,6 +378,7 @@ void print_expr(std::ostream &o, const ChpExprSingleRootDag &dag, int ilevel) {
     }
 }
 
+ 
 } // namespace
 
 void print_chp(std::ostream &o, const ChpGraph &graph) {
@@ -388,6 +390,175 @@ void print_chp(std::ostream &o, const ChpGraph &graph,
 	       std::function<void(std::ostream &os, const Block &b)> pre,
 	       std::function<void(std::ostream &os, const Block &b)> post) {
   print_chp(o, graph.m_seq, 0, pre, post);
+}
+
+
+void print_chp_block(std::ostream &o, Block *curr, int ilevel)
+{
+  auto pre = [&] (std::ostream &o, const Block &b) { return; };
+  
+  std::string indent = std::string(ilevel * 4, ' ');
+  if (curr->type() == BlockType::EndSequence) {
+    o << indent << "skip";
+    return;
+  }
+
+  switch (curr->type()) {
+  case BlockType::Basic:
+    switch (curr->u_basic().stmt.type()) {
+    case StatementType::Assign: {
+      const auto &ids = curr->u_basic().stmt.u_assign().ids;
+      if (ids.size() == 1) {
+	o << indent << str_of_id(ids[0]) << " := ";
+	print_expr(o, curr->u_basic().stmt.u_assign().e, ilevel);
+      } else {
+	o << indent << "(";
+	bool is_first_id = true;
+	for (const auto &id : ids) {
+	  if (!is_first_id)
+	    o << ", ";
+	  is_first_id = false;
+	  o << str_of_id(id);
+	}
+	o << ") := ";
+	print_expr(o, curr->u_basic().stmt.u_assign().e, ilevel);
+      }
+      break;
+    }
+    case StatementType::Send: {
+      o << indent << str_of_id(curr->u_basic().stmt.u_send().chan)
+	<< "!";
+      print_expr(o, curr->u_basic().stmt.u_send().e, ilevel);
+      break;
+    }
+    case StatementType::Receive:
+      o << indent << str_of_id(curr->u_basic().stmt.u_receive().chan)
+	<< "?" << str_of_id(curr->u_basic().stmt.u_receive().var);
+      break;
+    }
+    break;
+  case BlockType::Par: {
+    bool first = true;
+    for (const auto &branch : curr->u_par().splits) {
+      o << indent << "(";
+      bool is_first_id = true;
+      for (const auto &id : branch.branch_ids) {
+	if (!is_first_id)
+	  o << ", ";
+	is_first_id = false;
+	o << str_of_id(id);
+      }
+      o << ") = phi_inv(";
+      o << str_of_id(branch.pre_id) << ");" << std::endl;
+    }
+    for (const auto &path : curr->u_par().branches) {
+      if (!first)
+	o << indent << " ||" << std::endl;
+      o << indent << "{" << std::endl;
+      print_chp(o, path, ilevel + 1,pre,pre);
+      o << std::endl;
+      o << indent << "}" << std::endl;
+      first = false;
+    }
+    // print merges
+    for (const auto &branch : curr->u_par().merges) {
+      o << ";" << std::endl
+	<< indent << str_of_id(branch.post_id) << " = phi(";
+      bool is_first_id = true;
+      for (const auto &id : branch.branch_ids) {
+	if (!is_first_id)
+	  o << ", ";
+	is_first_id = false;
+	o << str_of_id(id);
+      }
+      o << ")";
+    }
+    break;
+  }
+  case BlockType::Select: {
+    // print splits
+    for (const auto &branch : curr->u_select().splits) {
+      o << indent << "(";
+      bool is_first_id = true;
+      for (const auto &id : branch.branch_ids) {
+	if (!is_first_id)
+	  o << ", ";
+	is_first_id = false;
+	o << str_of_id(id);
+      }
+      o << ") = phi_inv(";
+      o << str_of_id(branch.pre_id) << ");" << std::endl;
+    }
+
+    o << indent << "[" << std::endl;
+    bool first = true;
+    for (const auto &branch : curr->u_select().branches) {
+      o << indent << (first ? "   " : "[] ");
+      switch (branch.g.type()) {
+      case IRGuardType::Expression:
+	print_expr(o, branch.g.u_e().e, ilevel);
+	break;
+      case IRGuardType::Else:
+	o << "else";
+	break;
+      }
+      o << " ->" << std::endl;
+      print_chp(o, branch.seq, ilevel + 1,pre,pre);
+      o << std::endl;
+      first = false;
+    }
+    o << indent << "]";
+
+    // print merges
+    for (const auto &branch : curr->u_select().merges) {
+      o << ";" << std::endl
+	<< indent << str_of_id(branch.post_id) << " = phi(";
+      bool is_first_id = true;
+      for (const auto &id : branch.branch_ids) {
+	if (!is_first_id)
+	  o << ", ";
+	is_first_id = false;
+	o << str_of_id(id);
+      }
+      o << ")";
+    }
+
+    break;
+  }
+  case BlockType::DoLoop: {
+    o << indent << "*[" << std::endl;
+    for (const auto &phi : curr->u_doloop().in_phis) {
+      o << indent << str_of_id(phi.bodyin_id) << " = phi(";
+      o << str_of_id(phi.pre_id) << ", _ );" << std::endl;
+    }
+    for (const auto &phi : curr->u_doloop().loop_phis) {
+      o << indent << str_of_id(phi.bodyin_id) << " = lphi(";
+      o << str_of_id(phi.pre_id) << ", tmp_"
+	<< str_of_id(phi.bodyout_id) << ");" << std::endl;
+    }
+    print_chp(o, curr->u_doloop().branch, ilevel + 1, pre,pre);
+    o << std::endl;
+    for (const auto &phi : curr->u_doloop().out_phis) {
+      o << indent << "(dum_" << str_of_id(phi.bodyout_id) << ",";
+      o << str_of_id(phi.post_id) << ") = phi_inv("
+	<< str_of_id(phi.bodyout_id) << ");" << std::endl;
+    }
+    for (const auto &phi : curr->u_doloop().loop_phis) {
+      o << indent << "(tmp_" << str_of_id(phi.bodyout_id) << ",";
+      o << str_of_id(phi.post_id) << ") = lphi_inv("
+	<< str_of_id(phi.bodyout_id) << ");" << std::endl;
+    }
+    o << indent << "  <- ";
+    print_expr(o, curr->u_doloop().guard, ilevel);
+    o << std::endl;
+    o << indent << "]";
+
+    break;
+  }
+  case BlockType::StartSequence:
+  case BlockType::EndSequence:
+    hassert(false); // FALLTHROUGH
+  }
 }
  
 } // namespace ChpOptimize

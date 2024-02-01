@@ -1191,10 +1191,29 @@ MultiChannelState reconcileMultiLoop (Block *curr,
   return ret;
 }
 
+static
+void msg (int depth, const char *msg, std::vector<Dataflow> &d)
+{
+#if 0  
+  for (int i=0; i < depth; i++) {
+    printf (".");
+  }
+  printf ("%s: %d\n", msg, (int) d.size());
+#else
+  return;
+#endif  
+}
+  
+
 MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 				  std::vector<Dataflow> &d)
 {
   MultiChannelState ret, empty;
+
+  static int depth = 0;
+
+  msg (depth, "BLOCK-start", d);
+  depth++;
   
   Block *curr = seq.startseq->child();
   std::vector<MultiChannelState> seqs;
@@ -1206,6 +1225,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	// This is straightforward: each variable is mapped to its
 	// current channel mapping, and this is turned into a function
 	// block.
+	msg (depth, "assign", d);
 	d.push_back (
 	     Dataflow::mkFunc(
    	       Algo::map1<ChanId> (curr->u_basic().stmt.u_assign().ids,
@@ -1216,6 +1236,10 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	break;
 	
       case StatementType::Send:
+	msg (depth, "send", d);
+#if 0	
+	print_chp_block (std::cout, curr, depth);
+#endif	
 	{ std::vector<ChanId> ids;
 	  ChanId sc = curr->u_basic().stmt.u_send().chan;
 	  dm.id_pool->setChanDir (sc, false);
@@ -1250,6 +1274,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	break;
 	
       case StatementType::Receive:
+	msg (depth, "recv", d);
 	{
 	  ChanId rc = curr->u_basic().stmt.u_receive().chan;
 	  dm.id_pool->setChanDir (rc, true);
@@ -1285,6 +1310,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
     }
       
     case BlockType::Par: {
+      msg (depth, "par", d);
       // A well-formed program cannot have channel conflicts in
       // parallel branches, so any multi-channel access is the union
       // across all parallel branches.
@@ -1299,6 +1325,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
     }
       
     case BlockType::Select:
+      msg (depth, "sel", d);
       {
 	// deal with guards, phiinv, and phi
 	ChanId guard;
@@ -1360,6 +1387,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
       break;
       
     case BlockType::DoLoop: {
+      msg (depth, "loop", d);
       MultiChannelState ms = createDataflow (curr->u_doloop().branch, dm, d);
 
       // deal with loopphi, phiinv, loopphinv
@@ -1436,8 +1464,8 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 
       for (auto &outphi : curr->u_doloop().out_phis) {
 	std::vector<OptionalChanId> outp;
-	outp.push_back (OptionalChanId::null_id());
 	outp.push_back (dm.mapvar (outphi.post_id));
+	outp.push_back (OptionalChanId::null_id());
 	d.push_back (Dataflow::mkSplit
 		     (guards.first, dm.mapvar (outphi.bodyout_id),
 		      outp));
@@ -1458,6 +1486,9 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 
   // reconcile sequencing multi-channel access
   ret = reconcileMultiSeq (seq.startseq, seqs, dm, d);
+
+  depth--;
+  msg (depth, "BLOCK-end", d);
   
   return ret;
 }
@@ -1789,7 +1820,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   printf ("#############################\n");
   print_chp(std::cout, gr.graph);
   printf ("\n#############################\n\n");
-#endif  
+#endif
 
   m.id_pool = &gr.graph.id_pool();
 
@@ -1822,7 +1853,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     idx++;
   }
 
-#if 0
+#if 1
   // check that any used variable is defined or an input
   // and any defined variable is used or an output
   for (auto &[x,l] : dfuses) {
@@ -1832,12 +1863,17 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     }
   }
 
+#if 0
+  // This can now happen, because we *always* generate guard channels
+  // because we don't know until we process the bodies if we need the
+  // guard channels or not.
   for (auto &[x,l] : dfdefs) {
     if (!(dfuses.contains(x) || gr.name_from_chan.contains (x))) {
       warning ("I-Internal channel C%d is defined, but not used?",
 	       (int)x.m_id);
     }
   }
+#endif  
 #endif  
 
   std::unordered_set<std::pair<int,int>> delidx;
@@ -2029,6 +2065,9 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	  // substitution, and mark this index deleted
 	  for (auto uses : dfuses[x.u_func().ids[0]]) {
 	    replaceChanUses (d[uses], x.u_func().ids[0], *lhs);
+	    // now every location that used to use the old id now uses
+	    // the new id
+	    dfuses[*lhs].push_back (uses);
 	  }
 	  // this is going to be an internal channel, but check just
 	  // in case...

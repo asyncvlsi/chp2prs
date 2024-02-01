@@ -24,7 +24,8 @@ CPPSTD=c++20
 
 SHOBJS=analysis.os \
 	breakpoint.os \
-	chopping_block.os
+	chopping_block.os \
+	pretty_print.os
 
 SRCS=$(SHOBJS:.os=.cc)
 

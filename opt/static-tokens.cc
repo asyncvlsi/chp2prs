@@ -1282,8 +1282,15 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
     // ... and so afer STF this would become
     //   xnew := x + 1; xnew2 := xnew
     // introducing a redundant copy.
-    eliminateCopies (g);
 
+    eliminateCopiesNew (g);
+
+#if 0
+    printf ("/*----\n");
+    print_chp (std::cout, g);
+    printf ("\n----*/\n\n");
+#endif
+    
     // finally merge any Phis where you can; this is needed because
     // copy elimination can get rid of some variables, allowing phiinv
     // functions to have the same RHS
