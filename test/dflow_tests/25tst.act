@@ -1,0 +1,30 @@
+import "25.act";
+import "25_df_chp.act";
+
+defproc test()
+{
+  chan(int) X;
+  chan(int) Y;
+  
+  df_testproc d(X,Y);
+
+  int a, b, c;
+  int i;
+  bool success;
+
+  chp {
+      i := 0;
+      success+;
+   *[  i < 10 ->
+    X!15;
+    Y?a;
+    X!18;
+    Y?b;
+    X!13;
+    Y?c;
+    [ a = 5 & b = 10 & c = 33 -> skip [] else -> success-; log ("FAILURE: ", a, " b=", b, " c=", c) ];
+    i := i + 1
+    ];
+    [ success -> log ("SUCCESS") [] else -> skip ]
+  }
+}
