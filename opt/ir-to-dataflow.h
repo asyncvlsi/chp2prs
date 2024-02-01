@@ -216,6 +216,13 @@ public:
     return d.newNode (DExprDag::Node::makeConstant (BigInt (val), bw));
   }
 
+  static DExprDag::Node *helper_var (DExprDag &d,
+				     ChanId var,
+				     int bw)
+  {
+    return d.newNode (DExprDag::Node::makeVariableAccess (var, bw));
+  }
+  
   static DExprDag::Node *helper_query (DExprDag &d,
 				       DExprDag::Node *n1,
 				       DExprDag::Node *n2,
@@ -313,13 +320,8 @@ public:
 
       4. s -> [0] s_top
 
-      5. (b = 1 | s = 0 | b = 2 & pending) -> bcond
-      6. (b = 1 | s != 0 & b = 2 & pending) ? 1 : (pending ? 2 : 0)  -> bval
-      7. {bcond} bval -> *, cout
-
-      8. (b = 1 ? pending : (s = 0 ? 0 : (s != 0 & b = 2 ? 1 : pending))) -> newpend
-      9. newpend -> [0] pending
     */
+      
     std::list<Dataflow> ret;
 
     int bw = log_2_round_up (cin.size());
@@ -370,74 +372,112 @@ public:
     ret.push_back (mkInit (s, s_top, BigInt (0), bw));
 
     if (cout) {
-      /* 5. (b = 1 | s = 0 | b = 2 & pending) -> bcond */
+      /*
+	5. s = 0 & b != 1 -> just-wrapped 
+
+	6. (pending ? (just-wrapped | b != 0) : (just-wrapped | b = 1) -> bcond
+
+	7. (pending ? (just-wrapped ? 2 : 1) : (just-wrapped ? 0 : 1) -> bval
+
+	8. {bcond} bval -> *, cout
+	
+	9. pending ? (just-wrapped & b = 0 ? 0 : 1) : (just-wrapped ? (b != 0) : (b = 2)) -> newpend
+
+	10. newpend -> [0] pending
+      */
+      
+      // 5. s = 0 & b != 1 -> just-wrapped 
+      ChanId new_wrapped = fresh (OptionalChanId::null_id());
+      ChanId just_wrapped = fresh (OptionalChanId::null_id());
+      {
+	DExprDag dg;
+	DExprDag::Node *n =
+	  helper_and (dg,
+		      helper_eq (dg, s, bw, 0),
+		      helper_ne (dg, b, 2, 1));
+	dg.roots.push_back (n);
+	std::vector<ChanId> id;
+	id.push_back (new_wrapped);
+	ret.push_back (mkFunc (id, std::move (dg)));
+      }
+      ret.push_back (mkInit (new_wrapped, just_wrapped, BigInt(0), 1));
+
+
+      // 6. just-wrapped | (pending ? b != 0 : b = 1) -> bcond
       ChanId pending = fresh (OptionalChanId::null_id());
       ChanId bcond = fresh (OptionalChanId::null_id());
+      {
+	DExprDag dg;
+	DExprDag::Node *n =
+	  helper_or (dg,
+		     helper_var (dg, just_wrapped, 1),
+		     helper_query (dg,
+				   helper_var (dg, pending, 1),
+				   helper_ne (dg, b, 2, 0),
+				   helper_eq (dg, b, 2, 1)));
+	dg.roots.push_back (n);
+	std::vector<ChanId> id;
+	id.push_back (bcond);
+	ret.push_back (mkFunc (id, std::move (dg)));
+      }
 
-      DExprDag dg;
-      DExprDag::Node *n =
-	helper_or (dg, helper_eq (dg, b, 2, 1),
-		   helper_or (dg, helper_eq (dg, s, bw, 0),
-			      helper_and (dg, helper_eq (dg, b, 2, 2),
-					  helper_eq (dg, pending, 1, 1))));
-      dg.roots.push_back (n);
 
-      std::vector<ChanId> id;
-      id.push_back (bcond);
-      ret.push_back (mkFunc (id, std::move (dg)));
-
-      /* 6. (b = 1 | s != 0 & b = 2 & pending) ? 1 : (pending ? 2 : 0) -> bval */
+      // 7. (pending ? (just-wrapped ? 2 : 1) : (just-wrapped ? 0 : 1) -> bval
       ChanId bval = fresh (*cout);
-      DExprDag dg2;
-      DExprDag::Node *n2 =
-	dg2.newNode (DExprDag::Node::makeQuery (
-		helper_or (dg2, helper_eq (dg2, b, 2, 1),
-			   helper_and (dg2, helper_ne (dg2, s, bw, 0),
-				       helper_and (dg2,
-						   helper_eq (dg2, b, 2, 2),
-						   helper_eq (dg2, pending, 1, 1)))),
-		helper_const (dg2, 1, 2),
-	  dg2.newNode
-	(DExprDag::Node::makeQuery (helper_eq (dg2, pending, 1, 1),
-				    helper_const (dg2, 2, 2),
-				    helper_const (dg2, 0, 2)))));
-      dg2.roots.push_back (n2);
-      id.clear();
-      id.push_back (bval);
-      ret.push_back (mkFunc (id, std::move (dg2)));
-
-      /* 7. {bcond} bval -> *, cout */
-      std::vector<OptionalChanId> outid;
-
-      outid.push_back (OptionalChanId::null_id());
-      outid.push_back (*cout);
+      {
+	DExprDag dg;
+	DExprDag::Node *n =
+	  helper_query (dg,
+			helper_var (dg, pending, 1),
+			helper_query (dg,
+				      helper_var (dg, just_wrapped, 1),
+				      helper_const (dg, 2, 2),
+				      helper_const (dg, 1, 2)),
+			helper_query (dg,
+				      helper_var (dg, just_wrapped, 1),
+				      helper_const (dg, 0, 2),
+				      helper_const (dg, 1, 2))
+			);
+	dg.roots.push_back (n);
+	std::vector<ChanId> id;
+	id.push_back (bval);
+	ret.push_back (mkFunc (id, std::move (dg)));
+      }
+				      
       
-      ret.push_back (mkSplit (bcond, bval, outid));
 
-      /*  8. (b = 1 ? pending : (s = 0 ? 0 : (s != 0 & b = 2 ? 1 : pending))) -> newpend */
+      // 8. {bcond} bval -> *, cout
+      {
+	std::vector<OptionalChanId> outid;
+	outid.push_back (OptionalChanId::null_id());
+	outid.push_back (*cout);
+      
+	ret.push_back (mkSplit (bcond, bval, outid));
+      }
+
+      // 9. pending ? (just-wrapped & b = 0 ? 0 : 1) : (just-wrapped ? (b != 0) : (b = 2)) -> newpend
       ChanId newpend = fresh (OptionalChanId::null_id());
       {
 	DExprDag dg;
-      DExprDag::Node *n =
-	dg.newNode (DExprDag::Node::makeQuery (
-	       helper_eq (dg, b, 2, 1),
-	       dg.newNode (DExprDag::Node::makeVariableAccess (pending, 1)),
-	       dg.newNode
-	       (DExprDag::Node::makeQuery
-		(helper_eq (dg, s, bw, 0),
-		 helper_const (dg, 0, 1),
-		 dg.newNode (DExprDag::Node::makeQuery
-			     (helper_eq (dg, b, 2, 2),
-			      helper_const (dg, 1, 1),
-			      dg.newNode (DExprDag::Node::makeVariableAccess (pending, 1))))))));
-      dg.roots.push_back (n);
-      std::vector<ChanId> id;
-      id.push_back (newpend);
-      
-      ret.push_back (mkFunc (id, std::move (dg)));
+	DExprDag::Node *n =
+	  helper_query (dg,
+			helper_var (dg, pending, 1),
+			helper_query (dg,
+				      helper_and (dg,
+						  helper_var (dg, just_wrapped, 1),
+						  helper_eq (dg, b, 2, 0)),
+				      helper_const (dg, 0, 1),
+				      helper_const (dg, 1, 1)),
+			helper_query (dg, helper_var (dg, just_wrapped, 1),
+				      helper_ne (dg, b, 2, 0),
+				      helper_eq (dg, b, 2, 2)));
+	dg.roots.push_back (n);
+	std::vector<ChanId> id;
+	id.push_back (newpend);
+	ret.push_back (mkFunc (id, std::move (dg)));
       }
 
-      /* 9. newpend -> [0] pending */
+      // 10. newpend -> [0] pending
       ret.push_back (mkInit (newpend, pending, BigInt(0), 1));
     }
 
@@ -455,21 +495,21 @@ public:
 			     std::function<ChanId (const OptionalChanId &)> fresh, bool swap)
   {
     /*
-    1.  bintVal -> [0] i_bint
+      1.  bintVal -> [0] i_bint
 
-    2. {i_bint} guard, LoopGuard -> gval
+      2. {i_bint} guard, LoopGuard -> gval
 
-    3. {gval} B1, ..., BN -> bint
+      3. {gval} B1, ..., BN -> bint
 
-    4. bint -> cout
+      4. bint -> cout
 
-    5.  bint != 0 -> g2
+      5.  bint != 0 -> g2
 
-    6.  bint = 1 -> bintVal
+      6.  bint = 1 -> bintVal
+      
+      7. {g2} gval -> *, sel
 
-    7. {g2} gval -> *, sel
-
-    8.  {bintVal} gval -> *, LoopGuard
+      8.  {bintVal} gval -> *, LoopGuard
     */
     std::list<Dataflow> ret;
 

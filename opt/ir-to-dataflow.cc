@@ -1020,6 +1020,8 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    special_case = false;
 	  }
 	}
+	special_case = false;
+
 	std::vector<ChanId> chlist;
 	if (!special_case) {
 	  for (auto idx : idxvec) {
@@ -1038,6 +1040,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	else {
 	  cfresh = OptionalChanId::null_id();
 	}
+
 
 	if (special_case) {
 	  // control channel is simply 0, 1, 2, 3 (repeat)
@@ -1079,7 +1082,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	}
 	else {
 	  auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId { if (ch) return dm.fresh (*ch); else return dm.fresh(1); };
-	  
+
 	  std::list<Dataflow> tmp = Dataflow::mkInstSeq (chlist,
 							 cfresh,
 							 selout,
@@ -1090,7 +1093,6 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    d.push_back (std::move (xd));
 	  }
 	  //printf (">> seq-ctrl-end: %d\n", (int) d.size());
-	  
 	}
 	
 	chlist.clear();
@@ -1106,13 +1108,20 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  fresh = ch;
 	}
 	if (!dm.id_pool->isChanInput (ch)) {
-	  d.push_back(Dataflow::mkMergeMix (selout, chlist, fresh));
+	  ChanId fresh2 = dm.fresh (fresh);
+	  d.push_back (Dataflow::mkBuf (fresh2, fresh, dm.bitWidth (fresh)));
+	  d.push_back(Dataflow::mkMergeMix (selout, chlist, fresh2));
 	}
 	else {
 	  d.push_back(Dataflow::mkSplit (selout, fresh,
 					 Algo::map1<OptionalChanId> (chlist,
 								     [&] (const ChanId &ch) {
 								       return OptionalChanId{ch}; })));
+	  if (!dm.isOutermostBlock (ch, curr)) {
+	    ChanId fresh2 = dm.fresh (fresh);
+	    d.push_back (Dataflow::mkBuf (fresh2, fresh, dm.bitWidth (fresh)));
+	    fresh = fresh2;
+	  }
 	}
 	if (!dm.isOutermostBlock (ch, curr)) {
 	  ret.datamap[ch] = fresh;

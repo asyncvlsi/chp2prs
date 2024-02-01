@@ -8,11 +8,18 @@ defproc test()
   df_testproc d(X,Y);
 
   int a, b;
+  bool success;
 
   chp {
+    success+;
     X!5;
     Y?a;
     Y?b;
-    [ a = 6 & b = 15 -> log ("SUCCESS") [] else -> log ("FAILURE") ]
+    [ a = 6 & b = 15 -> skip [] else -> success- ];
+    X!5;
+    Y?a;
+    Y?b;
+    [ a = 6 & b = 15 -> skip [] else -> success- ];
+    [ success -> log ("SUCCESS") [] else -> log ("FAILURE") ]
   }
 }
