@@ -1203,7 +1203,7 @@ MultiChannelState reconcileMultiLoop (Block *curr,
 static
 void msg (int depth, const char *msg, std::vector<Dataflow> &d)
 {
-#if 0  
+#if 0
   for (int i=0; i < depth; i++) {
     printf (".");
   }
@@ -1246,7 +1246,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	
       case StatementType::Send:
 	msg (depth, "send", d);
-#if 0	
+#if 0
 	print_chp_block (std::cout, curr, depth);
 #endif	
 	{ std::vector<ChanId> ids;
@@ -1841,6 +1841,23 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   MultiChannelState ret = createDataflow (gr.graph.m_seq, m, d);
   hassert (ret.datamap.empty() && ret.ctrlmap.empty());
 
+
+  std::unordered_map<ChanId, std::list<int>> dfuses;
+  std::unordered_map<ChanId, int> dfdefs;
+  
+  int idx = 0;
+  for (auto &x : d) {
+    computeUses (idx, x, dfuses, dfdefs);
+    idx++;
+  }
+
+  // sink UNUSED channels that are part of the varmap!
+  for (auto &[var, ch] : m.varmap) {
+    if (!dfuses.contains (ch)) {
+      d.push_back (Dataflow::mkSink (ch));
+    }
+  }
+  
 #if 0
   printf ("---\n");
   int pos = 0;
@@ -1853,14 +1870,6 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 #endif  
 
   // strip out single fanout buffers
-  std::unordered_map<ChanId, std::list<int>> dfuses;
-  std::unordered_map<ChanId, int> dfdefs;
-  
-  int idx = 0;
-  for (auto &x : d) {
-    computeUses (idx, x, dfuses, dfdefs);
-    idx++;
-  }
 
 #if 1
   // check that any used variable is defined or an input
