@@ -808,8 +808,7 @@ void genOrigToNewGuard (std::vector<int> &idx,
 			ChanId inguard,
 			ChanId out_guard,
 			DataflowChannelManager &dm,
-			std::vector<Dataflow> &d,
-			bool swap)
+			std::vector<Dataflow> &d)
 {
   // compute guard as follows:
   //  g = (idx[0] ? 0 : idx[1] ? 1 : .. idx[N] ? n : n + 1)
@@ -824,29 +823,22 @@ void genOrigToNewGuard (std::vector<int> &idx,
   ibw = dm.id_pool->getBitwidth (inguard);
   obw = dm.id_pool->getBitwidth (out_guard);
   
-  if (swap) {
-    root = Dataflow::helper_query (newguard,
-				   Dataflow::helper_eq (newguard, inguard, ibw, idx[pos]),
-				   Dataflow::helper_const (newguard, pos+1, obw),
-				   Dataflow::helper_const (newguard, pos, obw));
-  }
-  else {
+  root = Dataflow::helper_query
+    (newguard,
+     Dataflow::helper_eq (newguard, inguard, ibw, idx[pos]),
+     Dataflow::helper_const (newguard, pos, obw),
+     Dataflow::helper_const (newguard, pos+1, obw)
+     );
+  
+  while (pos > 0) {
+    pos--;
     root = Dataflow::helper_query
       (newguard,
        Dataflow::helper_eq (newguard, inguard, ibw, idx[pos]),
        Dataflow::helper_const (newguard, pos, obw),
-       Dataflow::helper_const (newguard, pos+1, obw)
-       );
-  
-    while (pos > 0) {
-      pos--;
-      root = Dataflow::helper_query
-	(newguard,
-	 Dataflow::helper_eq (newguard, inguard, ibw, idx[pos]),
-	 Dataflow::helper_const (newguard, pos, obw),
-	 root);
-    }
+       root);
   }
+
   newguard.roots.push_back (root);
 
   std::vector<ChanId> ids;
@@ -935,7 +927,7 @@ MultiChannelState reconcileMultiSel (Block *curr,
 	ch_guard = dm.fresh (guard_width (idxvec.size()+1));
 	// one more to indicate "no value"
 
-	genOrigToNewGuard (idxvec, guard, ch_guard, dm, d, swap);
+	genOrigToNewGuard (idxvec, guard, ch_guard, dm, d);
 
 	// note that if swap is true, the guard is backward
 
@@ -1881,7 +1873,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 
   hassert (gr.graph.is_static_token_form);
   
-#if 1
+#if 0
   printf ("/*#############################\n");
   print_chp(std::cout, gr.graph);
   printf ("\n#############################*/\n\n");

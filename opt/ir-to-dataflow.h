@@ -622,6 +622,11 @@ public:
       ChanId c1 = cin[1];
       cin[0] = c1;
       cin[1] = c0;
+
+      c0 = cin_nz[0];
+      c1 = cin_nz[1];
+      cin_nz[0] = c1;
+      cin_nz[1] = c0;
     }
 
     /* 1.  bintVal -> [0] i_bint */
