@@ -90,6 +90,7 @@ public:
   };
 
   bool keep;
+  const char *msg;
 
 private:
   using Variant_t =
@@ -101,7 +102,7 @@ private:
 		  Arbiter, DataflowKind::Arbiter,
 		  Sink, DataflowKind::Sink>;
 
-  explicit Dataflow (Variant_t u_) : u{std::move(u_)} { keep = false; }
+  explicit Dataflow (Variant_t u_) : u{std::move(u_)} { keep = false; msg = NULL; }
 
 public:
   Variant_t u;
@@ -255,6 +256,7 @@ public:
 
   static std::list<Dataflow> mkInstSeqRR (int N,
 					  OptionalChanId cout,
+					  OptionalChanId cout_nz,
 					  ChanId sel,
 					  std::function<ChanId (ChanId &)> fresh)
   {
@@ -300,6 +302,9 @@ public:
       std::vector<ChanId> ids;
       ids.push_back(*cout);
       ret.push_back (Dataflow::mkFunc (ids, std::move (dg)));
+
+      // const src
+      ret.push_back (Dataflow::mkSrc (*cout_nz, BigInt (1), 1));
     }
     
     return ret;
@@ -307,14 +312,20 @@ public:
 
   static std::list<Dataflow>
   mkInstSeq (std::vector<ChanId> cin,
+	     std::vector<ChanId> cin_nz,
 	     OptionalChanId cout,
+	     OptionalChanId cout_nz,
 	     ChanId sel,
 	     std::function<ChanId (const OptionalChanId &)> fresh)
   {
     /*
       1. {s_top} B0, ..., BN -> b
+      1a. {s_top} Bnz0, ..., BnzN -> bnz
 
-      2. {b!=0} s_top -> *, sel
+      1b. bnz | just_wrapped & ~pending -> sendbnz
+      1c. {sendbnz} bnz -> *, BnzOut
+
+      2. {bnz} s_top -> *, sel
 
       3. (b != 1 ? s_top + 1 : s_top) -> s
 
@@ -332,25 +343,55 @@ public:
     s_top = fresh (sel);
     ret.push_back (mkMergeMix (s_top, cin, b));
 
-    /* 2.  b != 0 -> bzero 
-           {bzero} s_top -> *, sel
+    ChanId just_wrapped = fresh (OptionalChanId::null_id());
+    ChanId pending = fresh (OptionalChanId::null_id());
+
+
+    /* 1a. */
+    ChanId bnz = fresh (cin_nz[0]);
+    ret.push_back (mkMergeMix (s_top, cin_nz, bnz));
+
+
+    if (cout) {
+      /* 1b */
+      ChanId sendbnz = fresh (OptionalChanId::null_id());
+      {
+	DExprDag dg;
+	DExprDag::Node *n =
+	  helper_or (dg,
+		     helper_var (dg, bnz, 1),
+		     helper_and (dg,
+				 helper_var (dg, just_wrapped, 1),
+				 helper_eq (dg, pending, 1, 0)
+				 )
+		     );
+	dg.roots.push_back (n);
+	std::vector<ChanId> id;
+	id.push_back (sendbnz);
+	ret.push_back (mkFunc (id, std::move (dg)));
+      }
+      /* 1c */
+      {
+	std::vector<OptionalChanId> outs;
+	outs.push_back (OptionalChanId::null_id());
+	outs.push_back (cout_nz);
+	ret.push_back (mkSplit (sendbnz, bnz, outs));
+      }
+    }
+    
+
+    /* 2.  
+           {bnz} s_top -> *, sel
     */
     {
-      // b != 0 -> bzero
-      ChanId bzero = fresh (OptionalChanId::null_id());
-      DExprDag dg;
-      DExprDag::Node *n = helper_ne (dg, b, 2, 0);
-      dg.roots.push_back(n);
-      std::vector<ChanId> id;
-      id.push_back (bzero);
-      ret.push_back (mkFunc (id, std::move (dg)));
-
-      // {bzero} s_top -> *, sel
+      // {bnz} s_top -> *, sel
 
       std::vector<OptionalChanId> out;
       out.push_back (OptionalChanId::null_id());
       out.push_back (sel);
-      ret.push_back (mkSplit (bzero, s_top, out));
+      Dataflow dx = mkSplit (bnz, s_top, out);
+      dx.msg = "seq-select";
+      ret.push_back (std::move (dx));
     }
 
     /* 3.  (b != 1 ? s_top + 1 : s_top) -> s  */
@@ -376,6 +417,18 @@ public:
 	5. s = 0 & b != 1 -> just-wrapped 
 
 	6. (pending ? (just-wrapped | b != 0) : (just-wrapped | b = 1) -> bcond
+   
+          -> adjust this to:
+                just-wrapped = 1 then:  
+                       bcond = 1       <--- without waiting for b
+                just-wrapped = 0 then:
+                      bcond = pending ? (b != 0) : (b = 1) 
+
+           6a. {just_wrapped} b -> bc, *
+           6a. {just_wrapped} pending -> pc, *
+	   6b. 1 -> const1
+	   6c. {just_wrapped} calc, const1 -> bcond
+	   6d. pc ? (bc != 0) : (bc = 1) -> calc
 
 	7. (pending ? (just-wrapped ? 2 : 1) : (just-wrapped ? 0 : 1) -> bval
 
@@ -388,7 +441,6 @@ public:
       
       // 5. s = 0 & b != 1 -> just-wrapped 
       ChanId new_wrapped = fresh (OptionalChanId::null_id());
-      ChanId just_wrapped = fresh (OptionalChanId::null_id());
       {
 	DExprDag dg;
 	DExprDag::Node *n =
@@ -402,10 +454,53 @@ public:
       }
       ret.push_back (mkInit (new_wrapped, just_wrapped, BigInt(0), 1));
 
+      /*
+           6a. {just_wrapped} b -> bc, *
+           6a. {just_wrapped} pending -> pc, *
+	   6b. 1 -> const1
+	   6c. {just_wrapped} calc, const1 -> bcond
+	   6d. pc ? (bc != 0) : (bc = 1) -> calc
+      */
+      ChanId bc, pc, calc, const1;
+      bc = fresh (b);
+      pc = fresh (OptionalChanId::null_id());
+      calc = fresh(OptionalChanId::null_id());
+      const1 = fresh(OptionalChanId::null_id());
 
-      // 6. just-wrapped | (pending ? b != 0 : b = 1) -> bcond
-      ChanId pending = fresh (OptionalChanId::null_id());
       ChanId bcond = fresh (OptionalChanId::null_id());
+      {
+	std::vector<OptionalChanId> out;
+	out.push_back (bc);
+	out.push_back (OptionalChanId::null_id());
+	ret.push_back (mkSplit (just_wrapped, b, out));
+      }
+      {
+	std::vector<OptionalChanId> out;
+	out.push_back (pc);
+	out.push_back (OptionalChanId::null_id());
+	ret.push_back (mkSplit (just_wrapped, pending, out));
+      }
+      ret.push_back (mkSrc (const1, BigInt (1), 1));
+      {
+	std::vector<ChanId> in;
+	in.push_back (calc);
+	in.push_back (const1);
+	ret.push_back (mkMergeMix (just_wrapped, in, bcond));
+      }
+      {
+	DExprDag dg;
+	DExprDag::Node *n =
+	  helper_query (dg, helper_var (dg, pc, 1),
+			helper_ne (dg, bc, 2, 0),
+			helper_eq (dg, bc, 2, 1));
+	dg.roots.push_back (n);
+	std::vector<ChanId> id;
+	id.push_back (calc);
+	ret.push_back (mkFunc (id, std::move (dg)));
+      }
+      
+#if 0
+      // 6. just-wrapped | (pending ? b != 0 : b = 1) -> bcond
       {
 	DExprDag dg;
 	DExprDag::Node *n =
@@ -420,7 +515,7 @@ public:
 	id.push_back (bcond);
 	ret.push_back (mkFunc (id, std::move (dg)));
       }
-
+#endif
 
       // 7. (pending ? (just-wrapped ? 2 : 1) : (just-wrapped ? 0 : 1) -> bval
       ChanId bval = fresh (*cout);
@@ -451,8 +546,11 @@ public:
 	std::vector<OptionalChanId> outid;
 	outid.push_back (OptionalChanId::null_id());
 	outid.push_back (*cout);
+
+	Dataflow dx = mkSplit (bcond, bval, outid);
+	dx.msg = "B-seq-out";
       
-	ret.push_back (mkSplit (bcond, bval, outid));
+	ret.push_back (std::move(dx));
       }
 
       // 9. pending ? (just-wrapped & b = 0 ? 0 : 1) : (just-wrapped ? (b != 0) : (b = 2)) -> newpend
@@ -488,7 +586,9 @@ public:
 
 	 
   static std::list<Dataflow> mkInstSel (std::vector<ChanId> cin,
+					std::vector<ChanId> cin_nz,
 			     ChanId cout,
+ 			     ChanId cout_nz,
 			     ChanId guard,
 			     OptionalChanId sel,
 			     int selw,
@@ -500,6 +600,7 @@ public:
       2. {i_bint} guard, LoopGuard -> gval
 
       3. {gval} B1, ..., BN -> bint
+      3a. {gval} B1nz, ..., BNnz -> cout_nz
 
       4. bint -> cout
 
@@ -543,6 +644,10 @@ public:
     ChanId bint = fresh (cin[0]);
     ret.push_back (Dataflow::mkMergeMix (gval, cin, bint));
 
+    /* 3a. */
+    ret.push_back (Dataflow::mkMergeMix (gval, cin_nz, cout_nz));
+    
+
     /* 4. bint -> cout */
     DExprDag dg;
     DExprDag::Node *n =
@@ -554,7 +659,8 @@ public:
 
     /* 5.  bint != 0 -> g2 */
 
-    ChanId g2;
+    ChanId g2 = cout_nz;
+#if 0
     if (sel) {
       g2 = fresh (OptionalChanId::null_id());
 
@@ -567,6 +673,7 @@ public:
       inlist.push_back (g2);
       ret.push_back (Dataflow::mkFunc (inlist, std::move (dg2)));
     }
+#endif    
 
     /* 6. bint = 1 -> bintVal */
     DExprDag dg3;
@@ -620,7 +727,9 @@ public:
   }
   
   static std::list<Dataflow> mkInstDoLoop (ChanId cin,
+					   ChanId cin_nz,
 				ChanId cout,
+			        ChanId cout_nz,
 				ChanId guard,
 				std::function<ChanId (const OptionalChanId &)> fresh)
 
@@ -641,7 +750,7 @@ public:
 
 	in_loop ? 1 : (pending ? 2 : 0) -> bval
 	in_loop & (b = 1 | b = 2 & pending) | ~in_loop & g = 0 -> bcond
-	{bcond} bval -> *, cout    
+	{bcond} bval -> *, cout
     */
 
 
@@ -783,6 +892,96 @@ public:
     slist.push_back (OptionalChanId::null_id());
     slist.push_back (cout);
     ret.push_back (mkSplit (bcond, bval, slist));
+
+
+    /* 
+       0 -> bnzfinal
+       {in_loop} bnzfinal, cin_nz -> bnz_int 
+    */
+    ChanId bnzfinal = fresh (cin_nz);
+    ChanId bnz_int = fresh (cin_nz);
+    ret.push_back (mkSrc (bnzfinal, BigInt(0), 1));
+    {
+      std::vector<ChanId> in;
+      in.push_back (bnzfinal);
+      in.push_back (cin_nz);
+      ret.push_back (mkMergeMix (in_loop, in, bnz_int));
+    }
+
+    /*
+      in_loop & bnz_int -> c1
+    */
+    ChanId c1 = fresh (cin_nz);
+    {
+      DExprDag dg;
+      DExprDag::Node *n =
+	helper_and (dg,
+		    helper_var (dg, in_loop, 1),
+		    helper_var (dg, bnz_int, 1));
+      dg.roots.push_back (n);
+      std::vector<ChanId> out;
+      out.push_back (c1);
+      ret.push_back (mkFunc (out, std::move (dg)));
+    }
+
+    /*
+      ~in_loop & gval = 0 & pending = 0 -> c2
+    */
+    ChanId c2 = fresh (OptionalChanId::null_id());
+    {
+      DExprDag dg;
+      DExprDag::Node *n =
+	helper_and (dg,
+		    helper_eq (dg, in_loop, 1, 0),
+		    helper_and (dg,
+				helper_eq (dg, gval, 1, 0),
+				helper_eq (dg, pending, 1, 0)
+				)
+		    );
+      dg.roots.push_back (n);
+      std::vector<ChanId> out;
+      out.push_back (c2);
+      ret.push_back (mkFunc (out, std::move (dg)));
+    }
+
+    /* 
+       {c1} c2 -> condc2,*
+    */
+    ChanId condc2 = fresh (c2);
+    {
+      std::vector<OptionalChanId> out;
+      out.push_back (condc2);
+      out.push_back (OptionalChanId::null_id());
+      ret.push_back (mkSplit (c1, c2, out));
+    }
+
+    /*
+      {c1} condc2, 1 -> genbnz
+    */
+    ChanId genone = fresh (OptionalChanId::null_id());
+    ret.push_back (mkSrc (genone, BigInt (1), 1));
+    ChanId genbnz = fresh (OptionalChanId::null_id());
+    {
+      std::vector<ChanId> in;
+      in.push_back (condc2);
+      in.push_back (genone);
+      Dataflow xd = mkMergeMix (c1, in, genbnz);
+      xd.msg = "loop-genbnz";
+      ret.push_back (std::move (xd));
+    }
+
+    /*
+      {genbnz} in_loop -> *, cout_nz
+    */
+    {
+      std::vector<OptionalChanId> out;
+      out.push_back (OptionalChanId::null_id());
+      out.push_back (cout_nz);
+      Dataflow xd = mkSplit (genbnz, in_loop, out);
+      xd.msg = "loop-cout_nz";
+      ret.push_back (std::move (xd));
+    }
+     
     
     return ret;
   }
@@ -797,7 +996,10 @@ public:
 	for (int i=0; i < u_func().ids.size(); i++) {
 	  printDataflowExpr (os, *u_func().e.roots[i]);
 	  os << " -> C";
-	  os << u_func().ids[i].m_id << std::endl;
+	  os << u_func().ids[i].m_id;
+	  if (u_func().ids.size() > 1) {
+	    os << std::endl;
+	  }
 	}
 	if (u_func().ids.size() > 1) {
 	  os << "}" << std::endl;
@@ -808,8 +1010,7 @@ public:
     case DataflowKind::Init:
       os << "C" << u_init().lhs.m_id << " -> ["
 	 << u_init().v.to_hex_string().c_str() << "]"
-	 << "C" << u_init().rhs.m_id
-	 << std::endl;
+	 << "C" << u_init().rhs.m_id;
       break;
 
     case DataflowKind::Split:
@@ -820,8 +1021,7 @@ public:
 				     return (x) ?
 				       string_format ("C%d", (*x).m_id) :
 				       "*";
-				   }, ",")
-	 << std::endl;
+				   }, ",");
       break;
 
     case DataflowKind::MergeMix:
@@ -832,8 +1032,7 @@ public:
 				   [&] (const ChanId &x) {
 				     return string_format ("C%d", x.m_id);
 				   }, ",")
-	 << " -> C" << u_mergemix().out_id.m_id
-	 << std::endl;
+	 << " -> C" << u_mergemix().out_id.m_id;
       break;
 
     case DataflowKind::Arbiter:
@@ -846,14 +1045,16 @@ public:
       if (u_arbiter().sel_id) {
 	os << ", C" << (*u_arbiter().sel_id).m_id;
       }
-      os << std::endl;
       break;
 
     case DataflowKind::Sink:
-      os << "C" << u_sink().in_id.m_id << " -> *"
-	 << std::endl;
+      os << "C" << u_sink().in_id.m_id << " -> *";
       break;
     }
+    if (msg) {
+      os << " // " << msg;
+    }
+    os << std::endl;
   }
 };
 

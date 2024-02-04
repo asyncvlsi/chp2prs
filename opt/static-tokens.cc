@@ -738,15 +738,31 @@ void _run_seq (Sequence seq,
 	  for (auto &br : curr->u_select().branches) {
 	    if (br.seq.empty()) {
 	      // passthru
-	      calcsplit[var].push_back
-		(new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
+	      if (defuse[curr].var_writes.contains (var)) {
+		calcsplit[var].push_back
+		  (new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
+	      }
+	      else {
+		calcsplit[var].push_back (OptionalVarId::null_id());
+	      }
 	    }
 	    else if (!livein[br.seq.startseq->child()].contains(var)) {
-	      calcsplit[var].push_back(OptionalVarId::null_id());
+	      if (defuse[curr].var_writes.contains (var)) {
+		calcsplit[var].push_back
+		  (new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
+	      }
+	      else {
+		calcsplit[var].push_back(OptionalVarId::null_id());
+	      }
 	    }
 	    else {
-	      calcsplit[var].push_back
-		(new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
+	      if (defuse[br.seq.startseq].var_reads.contains (var)) {
+		calcsplit[var].push_back
+		  (new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
+	      }
+	      else {
+		calcsplit[var].push_back (OptionalVarId::null_id());
+	      }
 	    }
 	    ii++;
 	  }
@@ -1260,9 +1276,9 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
        }
       };
 
-    printf ("-------\n");
+    printf ("/*-------\n");
     print_chp (std::cout, g, pre, post);
-    printf ("-------\n\n");
+    printf ("-------*/\n\n");
 #endif
 
     VarIdRemap curmap;

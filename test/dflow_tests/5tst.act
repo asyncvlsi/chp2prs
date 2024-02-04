@@ -10,13 +10,13 @@ defproc test()
   int a0, a1, a2, a3;
 
   chp {
-    X!6;
-    Y?a0;
-    X!8;
-    Y?a1;
-    X!int(-10,32);
-    Y?a2;
-    Y?a3;
+    X!6; log ("send 1");
+    Y?a0; log ("recv 1");
+    X!8; log ("send 2");
+    Y?a1; log ("recv 2");
+    X!int(-10,32); log ("send 3");
+    Y?a2; log ("recv 3");
+    Y?a3; log ("recv 4");
     [ a0 = 6 & a1 = 14 & a2 = 4 & a3 = 4 -> log ("SUCCESS") [] else -> log ("FAILURE") ]
   }
 }

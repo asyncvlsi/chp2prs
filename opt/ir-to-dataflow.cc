@@ -65,6 +65,7 @@ struct MultiChannelState {
     for the channel (the 0/1/2 sequence).
   */
   std::unordered_map<ChanId, ChanId> ctrlmap;
+  std::unordered_map<ChanId, ChanId> ctrlmapnz;
 
 };
     
@@ -137,16 +138,30 @@ struct DataflowChannelManager {
 
 
   /* source that generates a 2 */
-  ChanId generateMultiBaseCase (std::vector<Dataflow> &d) {
+  std::pair<ChanId,ChanId> generateMultiBaseCase (std::vector<Dataflow> &d) {
     ChanId fv = fresh (2);
-    DExprDag e;
-    DExprDag::Node *n =
-      e.newNode (DExprDag::Node::makeConstant (BigInt (2), 2));
-    e.roots.push_back (n);
-    std::vector<ChanId> ids;
-    ids.push_back (fv);
-    d.push_back (Dataflow::mkFunc (ids, std::move (e)));
-    return fv;
+    {
+      DExprDag e;
+      DExprDag::Node *n =
+	e.newNode (DExprDag::Node::makeConstant (BigInt (2), 2));
+      e.roots.push_back (n);
+      std::vector<ChanId> ids;
+      ids.push_back (fv);
+      d.push_back (Dataflow::mkFunc (ids, std::move (e)));
+    }
+
+    ChanId fv2 = fresh (1);
+    {
+      DExprDag e;
+      DExprDag::Node *n =
+	e.newNode (DExprDag::Node::makeConstant (BigInt (1), 1));
+      e.roots.push_back (n);
+      std::vector<ChanId> ids;
+      ids.push_back (fv2);
+      d.push_back (Dataflow::mkFunc (ids, std::move (e)));
+    }
+    
+    return std::pair<ChanId,ChanId>(fv,fv2);
   }
 
   void generateCopy (ChanId from, ChanId to, std::vector<Dataflow> &d) {
@@ -793,7 +808,8 @@ void genOrigToNewGuard (std::vector<int> &idx,
 			ChanId inguard,
 			ChanId out_guard,
 			DataflowChannelManager &dm,
-			std::vector<Dataflow> &d)
+			std::vector<Dataflow> &d,
+			bool swap)
 {
   // compute guard as follows:
   //  g = (idx[0] ? 0 : idx[1] ? 1 : .. idx[N] ? n : n + 1)
@@ -808,20 +824,28 @@ void genOrigToNewGuard (std::vector<int> &idx,
   ibw = dm.id_pool->getBitwidth (inguard);
   obw = dm.id_pool->getBitwidth (out_guard);
   
-  root = Dataflow::helper_query
-    (newguard,
-     Dataflow::helper_eq (newguard, inguard, ibw, idx[pos]),
-     Dataflow::helper_const (newguard, pos, obw),
-     Dataflow::helper_const (newguard, pos+1, obw)
-     );
-  
-  while (pos > 0) {
-    pos--;
+  if (swap) {
+    root = Dataflow::helper_query (newguard,
+				   Dataflow::helper_eq (newguard, inguard, ibw, idx[pos]),
+				   Dataflow::helper_const (newguard, pos+1, obw),
+				   Dataflow::helper_const (newguard, pos, obw));
+  }
+  else {
     root = Dataflow::helper_query
       (newguard,
        Dataflow::helper_eq (newguard, inguard, ibw, idx[pos]),
        Dataflow::helper_const (newguard, pos, obw),
-       root);
+       Dataflow::helper_const (newguard, pos+1, obw)
+       );
+  
+    while (pos > 0) {
+      pos--;
+      root = Dataflow::helper_query
+	(newguard,
+	 Dataflow::helper_eq (newguard, inguard, ibw, idx[pos]),
+	 Dataflow::helper_const (newguard, pos, obw),
+	 root);
+    }
   }
   newguard.roots.push_back (root);
 
@@ -830,6 +854,19 @@ void genOrigToNewGuard (std::vector<int> &idx,
   d.push_back (Dataflow::mkFunc(ids, std::move(newguard)));
 }
 
+static
+void msg (int depth, const char *msg, std::vector<Dataflow> &d)
+{
+#if 0
+  for (int i=0; i < depth; i++) {
+    printf (".");
+  }
+  printf ("%s: %d\n", msg, (int) d.size());
+#else
+  return;
+#endif  
+}
+  
 MultiChannelState reconcileMultiSel (Block *curr,
 				     ChanId guard,
 				     std::vector<MultiChannelState> &msv,
@@ -869,16 +906,22 @@ MultiChannelState reconcileMultiSel (Block *curr,
     else {
       fresh = dm.fresh (ch);
     }
+    msg (0, ">> sel-ctrl-start", d);
 
+    // this is the selection control
     OptionalChanId ctrlguard;
 
     if (idxvec.size() != msv.size() || variable.contains(ch)) {
       std::vector<ChanId> ctrl_chans;
+      std::vector<ChanId> ctrl_chansnz;
       for (auto idx : idxvec) {
 	if (!msv[idx].ctrlmap.contains (ch)) {
-	  msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
+	  auto [ch1, ch2] =  dm.generateMultiBaseCase (d);
+	  msv[idx].ctrlmap[ch] = ch1;
+	  msv[idx].ctrlmapnz[ch] = ch2;
 	}
 	ctrl_chans.push_back(msv[idx].ctrlmap[ch]);
+	ctrl_chansnz.push_back (msv[idx].ctrlmapnz[ch]);
       }
       // all msv[ ] that contain the channels also include
       // the variable control token sequence
@@ -892,15 +935,18 @@ MultiChannelState reconcileMultiSel (Block *curr,
 	ch_guard = dm.fresh (guard_width (idxvec.size()+1));
 	// one more to indicate "no value"
 
-	genOrigToNewGuard (idxvec, guard, ch_guard, dm, d);
+	genOrigToNewGuard (idxvec, guard, ch_guard, dm, d, swap);
 
 	// note that if swap is true, the guard is backward
 
 	// we also need to generate a dummy extra ctrl channel for the
 	// "no value"; this is always "B!0"
 	ChanId xtractrl = dm.fresh (2);
+	ChanId xtranz = dm.fresh (1);
 	d.push_back(Dataflow::mkSrc (xtractrl, BigInt(0), 2));
 	ctrl_chans.push_back (xtractrl);
+	d.push_back(Dataflow::mkSrc (xtranz, BigInt(0), 1));
+	ctrl_chansnz.push_back (xtranz);
       }
       else {
 	ch_guard = guard;
@@ -916,8 +962,10 @@ MultiChannelState reconcileMultiSel (Block *curr,
 	// no sel out needed for channel
 	ctrlguard = OptionalChanId::null_id();
       }
-      
+
+      // B and Bnz output from selection merging
       ChanId cfresh = dm.fresh (2);
+      ChanId cfreshnz = dm.fresh (1);
 
       auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId {
 								  if (ch) {
@@ -925,21 +973,21 @@ MultiChannelState reconcileMultiSel (Block *curr,
 
       // XXX: DOES THIS NEED "swap"? I think so, because the guard is backward
       std::list<Dataflow> tmp = Dataflow::mkInstSel (ctrl_chans,
+						     ctrl_chansnz,
 						     cfresh,
+						     cfreshnz,
 						     ch_guard,
 						     ctrlguard,
 						     selw,
 						     freshalloc,
 						     swap);
 
-      //printf (">> sel-ctrl-start: %d\n", (int) d.size());
       for (auto &xd : tmp) {
 	d.push_back (std::move (xd));
       }
-      //printf (">> sel-ctrl-end: %d\n", (int) d.size());
-      
       if (ch != fresh) {
 	ret.ctrlmap[ch] = cfresh;
+	ret.ctrlmapnz[ch] = cfreshnz;
       }
     }
     else {
@@ -973,6 +1021,7 @@ MultiChannelState reconcileMultiSel (Block *curr,
     else {
       ret.datamap[ch] = chlist[0];
     }
+    msg (0, ">> sel-ctrl-end", d);
   }
   return ret;
 }
@@ -985,7 +1034,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
   if (msv.size() == 1) {
     return msv[0];
   }
-  
+
   std::unordered_map<ChanId,std::vector<int>>  chan_idx;
   std::unordered_set<ChanId> variable;
   MultiChannelState ret;
@@ -1011,8 +1060,12 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	// just propagate the single variable channel up
 	ret.datamap[ch] = msv[idxvec[0]].datamap[ch];
 	ret.ctrlmap[ch] = msv[idxvec[0]].ctrlmap[ch];
+	ret.ctrlmapnz[ch] = msv[idxvec[0]].ctrlmapnz[ch];
       }
       else {
+	//printf ("/* ch %d, sz %d */\n", ch.m_id, idxvec.size());
+	msg (0, ">> seq-ctrl-start", d);
+	
 	ChanId selout = dm.fresh (guard_width (idxvec.size()));
 	bool special_case = true;
 	for (auto idx : idxvec) {
@@ -1023,22 +1076,28 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	special_case = false;
 
 	std::vector<ChanId> chlist;
+	std::vector<ChanId> chlistnz;
 	if (!special_case) {
 	  for (auto idx : idxvec) {
 	    if (!msv[idx].ctrlmap.contains (ch)) {
-	      msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
+	      auto [ch1, ch2] = dm.generateMultiBaseCase (d);
+	      msv[idx].ctrlmap[ch] = ch1;
+	      msv[idx].ctrlmapnz[ch] = ch2;
 	    }
 	    chlist.push_back(msv[idx].ctrlmap[ch]);
+	    chlistnz.push_back(msv[idx].ctrlmapnz[ch]);
 	  }
 	}
 
-	OptionalChanId cfresh;
+	OptionalChanId cfresh, cfreshnz;
 
 	if (!dm.isOutermostBlock (ch, curr)) {
 	  cfresh = dm.fresh (2);
+	  cfreshnz = dm.fresh (1);
 	}
 	else {
 	  cfresh = OptionalChanId::null_id();
+	  cfreshnz = OptionalChanId::null_id();
 	}
 
 
@@ -1054,11 +1113,14 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    dm.generateCopy (res.first, selout, d);
 	    if (cfresh) {
 	      dm.generateCopy (res.second, *cfresh, d);
+	      // constant 1 is the output
+	      d.push_back (Dataflow::mkSrc(*cfreshnz, BigInt(1), 1));
 	    }
 	  }
 	  else if (cfresh) {
 	    std::list<Dataflow> tmp =
-	      Dataflow::mkInstSeqRR(idxvec.size(), cfresh, selout, freshalloc);
+	      Dataflow::mkInstSeqRR(idxvec.size(), cfresh, cfreshnz,
+				    selout, freshalloc);
 	    for (auto &xd : tmp) {
 	      d.push_back (std::move(xd));
 	    }
@@ -1071,7 +1133,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  }
 	  else {
 	    std::list<Dataflow> tmp =
-	      Dataflow::mkInstSeqRR(idxvec.size(), cfresh, selout, freshalloc);
+	      Dataflow::mkInstSeqRR(idxvec.size(), cfresh, cfreshnz, selout, freshalloc);
 	    for (auto &xd : tmp) {
 	      d.push_back (std::move(xd));
 	    }
@@ -1084,15 +1146,15 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId { if (ch) return dm.fresh (*ch); else return dm.fresh(1); };
 
 	  std::list<Dataflow> tmp = Dataflow::mkInstSeq (chlist,
+							 chlistnz,
 							 cfresh,
+							 cfreshnz,
 							 selout,
 							 freshalloc);
 
-	  //printf (">> seq-ctrl-start: %d\n", (int) d.size());
 	  for (auto &xd : tmp) {
 	    d.push_back (std::move (xd));
 	  }
-	  //printf (">> seq-ctrl-end: %d\n", (int) d.size());
 	}
 	
 	chlist.clear();
@@ -1126,7 +1188,9 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	if (!dm.isOutermostBlock (ch, curr)) {
 	  ret.datamap[ch] = fresh;
 	  ret.ctrlmap[ch] = (*cfresh);
+	  ret.ctrlmapnz[ch] = (*cfreshnz);
 	}
+	msg (0, ">> seq-ctrl-end", d);
       }
     }
     else {
@@ -1136,7 +1200,6 @@ MultiChannelState reconcileMultiSeq (Block *curr,
       }
     }
   }
-
   
   return ret;
 }
@@ -1177,42 +1240,34 @@ MultiChannelState reconcileMultiLoop (Block *curr,
     }
     else {
       if (!msv.ctrlmap.contains (ch)) {
-	msv.ctrlmap[ch] = dm.generateMultiBaseCase (d);
+	auto [ch1, ch2] = dm.generateMultiBaseCase (d);
+	msv.ctrlmap[ch] = ch1;
+	msv.ctrlmapnz[ch] = ch2;
       }
 
 
       ChanId cfresh = dm.fresh (msv.ctrlmap[ch]);
+      ChanId cfreshnz = dm.fresh (msv.ctrlmapnz[ch]);
       std::list<Dataflow> tmp = Dataflow::mkInstDoLoop (msv.ctrlmap[ch],
-							cfresh,
+							msv.ctrlmapnz[ch],
+							cfresh, cfreshnz,
 							guard, freshalloc);
 
       
-      //printf (">> do-ctrl-start: %d\n", (int) d.size());
+      msg (0, ">> do-ctrl-start", d);
       for (auto &x : tmp) {
 	d.push_back (std::move (x));
       }
-      //printf (">> do-ctrl-end: %d\n", (int) d.size());
+      msg (0, ">> do-ctrl-end", d);
       
       ret.datamap[ch] = rhs;
       ret.ctrlmap[ch] = cfresh;
+      ret.ctrlmapnz[ch] = cfreshnz;
     }
   }
   return ret;
 }
 
-static
-void msg (int depth, const char *msg, std::vector<Dataflow> &d)
-{
-#if 0
-  for (int i=0; i < depth; i++) {
-    printf (".");
-  }
-  printf ("%s: %d\n", msg, (int) d.size());
-#else
-  return;
-#endif  
-}
-  
 
 MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 				  std::vector<Dataflow> &d)
@@ -1328,6 +1383,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	ms = createDataflow (branch, dm, d);
 	acc.datamap = Algo::set_union (acc.datamap, ms.datamap);
 	acc.ctrlmap = Algo::set_union (acc.ctrlmap, ms.ctrlmap);
+	acc.ctrlmapnz = Algo::set_union (acc.ctrlmapnz, ms.ctrlmapnz);
       }
       seqs.push_back (acc);
       break;
@@ -1826,9 +1882,9 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   hassert (gr.graph.is_static_token_form);
   
 #if 0
-  printf ("#############################\n");
+  printf ("/*#############################\n");
   print_chp(std::cout, gr.graph);
-  printf ("\n#############################\n\n");
+  printf ("\n#############################*/\n\n");
 #endif
 
   m.id_pool = &gr.graph.id_pool();
@@ -1841,7 +1897,18 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   MultiChannelState ret = createDataflow (gr.graph.m_seq, m, d);
   hassert (ret.datamap.empty() && ret.ctrlmap.empty());
 
+#if 0
+  printf ("/*---\n");
+  int pos = 0;
+  for (auto &elem : d) {
+    printf ("I0 %3d :: ", pos);
+    elem.Print (std::cout);
+    pos++;
+  }
+  printf ("---*/\n");
+#endif  
 
+  
   std::unordered_map<ChanId, std::list<int>> dfuses;
   std::unordered_map<ChanId, int> dfdefs;
   
@@ -1857,21 +1924,20 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
       d.push_back (Dataflow::mkSink (ch));
     }
   }
-  
+
 #if 0
-  printf ("---\n");
+  printf ("/*---\n");
   int pos = 0;
   for (auto &elem : d) {
     printf ("I %3d :: ", pos);
     elem.Print (std::cout);
     pos++;
   }
-  printf ("---\n");
+  printf ("---*/\n");
 #endif  
 
   // strip out single fanout buffers
 
-#if 1
   // check that any used variable is defined or an input
   // and any defined variable is used or an output
   for (auto &[x,l] : dfuses) {
@@ -1891,7 +1957,6 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	       (int)x.m_id);
     }
   }
-#endif  
 #endif  
 
   std::unordered_set<std::pair<int,int>> delidx;
@@ -2159,6 +2224,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   dfuses.clear();
   dfdefs.clear();
   idx = 0;
+  //  printf ("/*\n");
   for (auto &x : dfinal) {
 #if 0
     printf ("F %3d :: ", idx);
@@ -2167,6 +2233,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     computeUses (idx, x, dfuses, dfdefs);
     idx++;
   }
+  // printf ("*/\n");
 
   // check that any used varaible is defined or an input
   // and any defined variable is used or an output

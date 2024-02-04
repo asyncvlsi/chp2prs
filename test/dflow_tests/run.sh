@@ -68,7 +68,7 @@ do
 	do
         if [ $ok -eq 1 ]
         then
-	$ACTTOOL $opt -p testproc -o runs/${orig}_df.act $i >runs/$i.t.stderr 2>&1
+	$ACTTOOL $opt -p testproc $i > runs/${orig}_df.act  2>runs/$i.t.stderr
         if test -s runs/$i.t.stderr 
         then
                 echo 
