@@ -738,31 +738,15 @@ void _run_seq (Sequence seq,
 	  for (auto &br : curr->u_select().branches) {
 	    if (br.seq.empty()) {
 	      // passthru
-	      if (defuse[curr].var_writes.contains (var)) {
-		calcsplit[var].push_back
-		  (new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
-	      }
-	      else {
-		calcsplit[var].push_back (OptionalVarId::null_id());
-	      }
+	      calcsplit[var].push_back
+		(new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
 	    }
 	    else if (!livein[br.seq.startseq->child()].contains(var)) {
-	      if (defuse[curr].var_writes.contains (var)) {
-		calcsplit[var].push_back
-		  (new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
-	      }
-	      else {
-		calcsplit[var].push_back(OptionalVarId::null_id());
-	      }
+	      calcsplit[var].push_back(OptionalVarId::null_id());
 	    }
 	    else {
-	      if (defuse[br.seq.startseq].var_reads.contains (var)) {
-		calcsplit[var].push_back
-		  (new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
-	      }
-	      else {
-		calcsplit[var].push_back (OptionalVarId::null_id());
-	      }
+	      calcsplit[var].push_back
+		(new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
 	    }
 	    ii++;
 	  }

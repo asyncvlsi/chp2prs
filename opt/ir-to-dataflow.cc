@@ -1881,7 +1881,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 
   hassert (gr.graph.is_static_token_form);
   
-#if 0
+#if 1
   printf ("/*#############################\n");
   print_chp(std::cout, gr.graph);
   printf ("\n#############################*/\n\n");
