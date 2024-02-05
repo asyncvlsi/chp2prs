@@ -2086,13 +2086,14 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
       }
     }
   }
+
   
   // delete dead code.
   // code is dead if:
   //   the def has no uses
   //   the channel defined is not in the original chp
   for (auto &[ch, idx] : dfdefs) {
-    if (!dfuses.contains (ch) && !gr.name_from_chan.contains (ch)) {
+    if (!(dfuses.contains (ch) || gr.name_from_chan.contains (ch))) {
       // check this
       if (d[idx].u.type() == DataflowKind::Func) {
 	int subidx = 0;
@@ -2156,15 +2157,16 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	  if (dfuses[*lhs].front() == dfuses[*lhs].back()) {
 	    // no other uses of the lhs, replace the def
 	    if (dfdefs.contains (*lhs)) {
+	      // replace *lhs with the rhs in the def
 	      replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
 
-	      // and now replace all uses of RHS with *lhs
-	      if (dfuses.contains (x.u_func().ids[0])) {
-		Assert (0, "This should not happen!");
-		for (auto uses : dfuses[x.u_func().ids[0]]) {
-		  replaceChanUses (d[uses], x.u_func().ids[0], *lhs);
+	      // replace any uses of the LHS with the rhs
+	      if (dfuses.contains (*lhs)) {
+		for (auto uses : dfuses[*lhs]) {
+		  replaceChanUses (d[uses], *lhs, x.u_func().ids[0]);
 		}
 	      }
+	      // and now replace all uses of RHS with *lhs
 	      delidx.insert (std::pair(idx,-1));
 	    }
 	    else {
@@ -2177,7 +2179,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     }
     idx++;
   }
-#if 0  
+#if 0
   for (auto &[x,y] : delidx) {
     printf ("  --> (%d,%d)\n", x, y);
   }
