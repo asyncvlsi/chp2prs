@@ -722,7 +722,8 @@ void _run_seq (Sequence seq,
 	  else if (!livein[br.seq.startseq->child()].contains(var)) {
 	    count_dead++;
 	  }
-	  else if (!defuse[br.seq.startseq].var_reads.contains(var)) {
+	  else if (!(defuse[br.seq.startseq].var_reads.contains(var) ||
+		     defuse[br.seq.startseq].var_writes.contains(var))) {
 	    count_passthru++;
 	  }
 	}
@@ -1169,13 +1170,38 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
 	return;
        }
        bool first = true;
+       int initval = -1;
+       int lastval = -1;
        for (auto &v :
 	      Algo::as_sorted_vector<VarId,std::unordered_set<VarId>> (vs)) {
+	 if (initval == -1) {
+	   initval = v.m_id;
+	   lastval = initval;
+	 }
+	 else if (lastval+1 == v.m_id) {
+	   lastval++;
+	 }
+	 else {
+	   if (!first) {
+	     os << ",";
+	   }
+	   os << "v" << initval;
+	   if (lastval != initval) {
+	     os << "-" << lastval;
+	   }
+	   initval = v.m_id;
+	   lastval = initval;
+	   first = false;
+	 }
+       }
+       if (initval != -1) {
 	 if (!first) {
 	   os << ",";
 	 }
-	 os << "v" << v.m_id;
-	 first = false;
+	 os << "v" << initval;
+	 if (lastval != initval) {
+	   os << "-" << lastval;
+	 }
        }
       };
 
@@ -1224,6 +1250,9 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
 	       else if (defuse[br.seq.startseq].var_reads.contains(var)) {
 		 os << "|";
 	       }
+	       else if (defuse[br.seq.startseq].var_writes.contains(var)) {
+		 os << "/";
+	       }
 	       else {
 		 os << "p";
 	       }
@@ -1262,6 +1291,7 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
 
     printf ("/*-------\n");
     print_chp (std::cout, g, pre, post);
+    //print_chp (std::cout, g);
     printf ("-------*/\n\n");
 #endif
 

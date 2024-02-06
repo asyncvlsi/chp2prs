@@ -2154,9 +2154,10 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	else {
 	  // no uses for the RHS, now we see if the LHS has additional
 	  // uses.
-	  if (dfuses[*lhs].front() == dfuses[*lhs].back()) {
+	  if (1 || dfuses[*lhs].front() == dfuses[*lhs].back()) {
 	    // no other uses of the lhs, replace the def
 	    if (dfdefs.contains (*lhs)) {
+              if (!gr.name_from_chan.contains (x.u_func().ids[0])) {
 	      // replace *lhs with the rhs in the def
 	      replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
 
@@ -2168,6 +2169,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	      }
 	      // and now replace all uses of RHS with *lhs
 	      delidx.insert (std::pair(idx,-1));
+              }
 	    }
 	    else {
 	      // no defs for the lhs; must be a primary input!
