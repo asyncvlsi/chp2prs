@@ -594,6 +594,47 @@ VarIdRemapPair enforce_static_token_form(Sequence seq,
 }
 
 
+void printvars (std::ostream &os, std::unordered_set<VarId> &vs)
+{
+  if (vs.empty()) {
+    return;
+  }
+  bool first = true;
+  int initval = -1;
+  int lastval = -1;
+  for (auto &v : Algo::as_sorted_vector<VarId,std::unordered_set<VarId>> (vs)) {
+    if (initval == -1) {
+      initval = v.m_id;
+      lastval = initval;
+    }
+    else if (lastval+1 == v.m_id) {
+      lastval++;
+    }
+    else {
+      if (!first) {
+	os << ",";
+      }
+      os << "v" << initval;
+      if (lastval != initval) {
+	os << "-" << lastval;
+      }
+      initval = v.m_id;
+      lastval = initval;
+      first = false;
+    }
+  }
+  if (initval != -1) {
+    if (!first) {
+      os << ",";
+    }
+    os << "v" << initval;
+    if (lastval != initval) {
+      os << "-" << lastval;
+    }
+  }
+}
+
+
 
 using VarSet = std::unordered_set<VarId>;
 
@@ -708,46 +749,54 @@ void _run_seq (Sequence seq,
 	 variable is in the phiinv block. We have this info already.
       */
       std::unordered_map<VarId, std::vector<OptionalVarId> > calcsplit;
-      for (auto &var : livein[curr]) {
-	// Variables that are livein to the selection are candidates
-	// for a split.
-	// Check if they are either dead in all branches, or are pure
-	// pass-throughs
-	int count_passthru = 0;
-	int count_dead = 0;
-	for (auto &br : curr->u_select().branches) {
-	  if (br.seq.empty()) {
-	    count_passthru++;
+
+
+      VarSet livein_branches;
+      VarSet branch_defuse;
+      
+      for (auto &br : curr->u_select().branches) {
+	if (!br.seq.empty()) {
+	  livein_branches = Algo::set_union (livein_branches,
+					     livein[br.seq.startseq->child()]);
+	  if (defuse.contains(br.seq.startseq)) {
+	    branch_defuse = Algo::set_union (branch_defuse,
+					     defuse[br.seq.startseq].var_reads);
+	    branch_defuse = Algo::set_union (branch_defuse,
+					     defuse[br.seq.startseq].var_writes);
 	  }
-	  else if (!livein[br.seq.startseq->child()].contains(var)) {
-	    count_dead++;
-	  }
-	  else if (!(defuse[br.seq.startseq].var_reads.contains(var) ||
-		     defuse[br.seq.startseq].var_writes.contains(var))) {
-	    count_passthru++;
-	  }
-	}
-	if (count_passthru == curr->u_select().branches.size()) {
-	  // nothing to do here, pure passthrough
-	}
-	else if (count_dead == curr->u_select().branches.size()) {
-	  // nothing to do here, pure dead
 	}
 	else {
-	  // we need to add a split
+	  livein_branches = Algo::set_union (livein_branches,
+					     liveout[curr]);
+	}
+      }
+
+      //std::cout << "Hello!" << std::endl;
+      for (auto &var : livein_branches) {
+	//std::cout << "v" << var.m_id << " is live" << std::endl;
+	if (branch_defuse.contains(var)) {
+	  //std::cout << "v" << var.m_id << " is in the defuse set" << std::endl;
 	  int ii = 0;
 	  for (auto &br : curr->u_select().branches) {
-	    if (br.seq.empty()) {
-	      // passthru
+	    //std::cout << "br" << ii << ": {";
+	    //printvars (std::cout, livein[br.seq.startseq]);
+	    //std::cout << "} ";
+	    if (!br.seq.empty() &&
+		livein[br.seq.startseq->child()].contains (var)) {
 	      calcsplit[var].push_back
 		(new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
+	      //printf ("here, added: %d for %d\n", newcurmaps[ii][var].m_id,
+	      //var.m_id);
 	    }
-	    else if (!livein[br.seq.startseq->child()].contains(var)) {
-	      calcsplit[var].push_back(OptionalVarId::null_id());
+	    else if (br.seq.empty() && liveout[curr].contains (var) &&
+		     defuse[curr].var_writes.contains (var)) {
+	      //printf ("empty case for %d\n", var.m_id);
+	      calcsplit[var].push_back
+		(new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
 	    }
 	    else {
-	      calcsplit[var].push_back
-		(new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
+	      //printf ("NULL case for %d\n", var.m_id);
+	      calcsplit[var].push_back(OptionalVarId::null_id());
 	    }
 	    ii++;
 	  }
