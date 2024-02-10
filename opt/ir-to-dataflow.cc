@@ -65,7 +65,6 @@ struct MultiChannelState {
     for the channel (the 0/1/2 sequence).
   */
   std::unordered_map<ChanId, ChanId> ctrlmap;
-  std::unordered_map<ChanId, ChanId> ctrlmapnz;
 
 };
     
@@ -137,31 +136,23 @@ struct DataflowChannelManager {
   }
 
 
-  /* source that generates a 2 */
-  std::pair<ChanId,ChanId> generateMultiBaseCase (std::vector<Dataflow> &d) {
-    ChanId fv = fresh (2);
+  /* source that generates a 1,0 */
+  ChanId generateMultiBaseCase (std::vector<Dataflow> &d) {
+    /* ~s -> news
+       news -> [1] s
+    */
+    ChanId s = fresh (1);
+    ChanId news = fresh (1);
     {
       DExprDag e;
-      DExprDag::Node *n =
-	e.newNode (DExprDag::Node::makeConstant (BigInt (2), 2));
+      DExprDag::Node *n = Dataflow::helper_ne (e, s, 1, 0);
       e.roots.push_back (n);
       std::vector<ChanId> ids;
-      ids.push_back (fv);
+      ids.push_back (news);
       d.push_back (Dataflow::mkFunc (ids, std::move (e)));
+      d.push_back (Dataflow::mkInit (news, s, BigInt (1), 1));
     }
-
-    ChanId fv2 = fresh (1);
-    {
-      DExprDag e;
-      DExprDag::Node *n =
-	e.newNode (DExprDag::Node::makeConstant (BigInt (1), 1));
-      e.roots.push_back (n);
-      std::vector<ChanId> ids;
-      ids.push_back (fv2);
-      d.push_back (Dataflow::mkFunc (ids, std::move (e)));
-    }
-    
-    return std::pair<ChanId,ChanId>(fv,fv2);
+    return s;
   }
 
   void generateCopy (ChanId from, ChanId to, std::vector<Dataflow> &d) {
@@ -905,15 +896,11 @@ MultiChannelState reconcileMultiSel (Block *curr,
 
     if (idxvec.size() != msv.size() || variable.contains(ch)) {
       std::vector<ChanId> ctrl_chans;
-      std::vector<ChanId> ctrl_chansnz;
       for (auto idx : idxvec) {
 	if (!msv[idx].ctrlmap.contains (ch)) {
-	  auto [ch1, ch2] =  dm.generateMultiBaseCase (d);
-	  msv[idx].ctrlmap[ch] = ch1;
-	  msv[idx].ctrlmapnz[ch] = ch2;
+	  msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
 	}
 	ctrl_chans.push_back(msv[idx].ctrlmap[ch]);
-	ctrl_chansnz.push_back (msv[idx].ctrlmapnz[ch]);
       }
       // all msv[ ] that contain the channels also include
       // the variable control token sequence
@@ -933,12 +920,9 @@ MultiChannelState reconcileMultiSel (Block *curr,
 
 	// we also need to generate a dummy extra ctrl channel for the
 	// "no value"; this is always "B!0"
-	ChanId xtractrl = dm.fresh (2);
-	ChanId xtranz = dm.fresh (1);
-	d.push_back(Dataflow::mkSrc (xtractrl, BigInt(0), 2));
+	ChanId xtractrl = dm.fresh (1);
+	d.push_back(Dataflow::mkSrc (xtractrl, BigInt(0), 1));
 	ctrl_chans.push_back (xtractrl);
-	d.push_back(Dataflow::mkSrc (xtranz, BigInt(0), 1));
-	ctrl_chansnz.push_back (xtranz);
       }
       else {
 	ch_guard = guard;
@@ -956,8 +940,7 @@ MultiChannelState reconcileMultiSel (Block *curr,
       }
 
       // B and Bnz output from selection merging
-      ChanId cfresh = dm.fresh (2);
-      ChanId cfreshnz = dm.fresh (1);
+      ChanId cfresh = dm.fresh (1);
 
       auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId {
 								  if (ch) {
@@ -965,9 +948,7 @@ MultiChannelState reconcileMultiSel (Block *curr,
 
       // XXX: DOES THIS NEED "swap"? I think so, because the guard is backward
       std::list<Dataflow> tmp = Dataflow::mkInstSel (ctrl_chans,
-						     ctrl_chansnz,
 						     cfresh,
-						     cfreshnz,
 						     ch_guard,
 						     ctrlguard,
 						     selw,
@@ -979,7 +960,6 @@ MultiChannelState reconcileMultiSel (Block *curr,
       }
       if (ch != fresh) {
 	ret.ctrlmap[ch] = cfresh;
-	ret.ctrlmapnz[ch] = cfreshnz;
       }
     }
     else {
@@ -1052,7 +1032,6 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	// just propagate the single variable channel up
 	ret.datamap[ch] = msv[idxvec[0]].datamap[ch];
 	ret.ctrlmap[ch] = msv[idxvec[0]].ctrlmap[ch];
-	ret.ctrlmapnz[ch] = msv[idxvec[0]].ctrlmapnz[ch];
       }
       else {
 	//printf ("/* ch %d, sz %d */\n", ch.m_id, idxvec.size());
@@ -1068,28 +1047,22 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	special_case = false;
 
 	std::vector<ChanId> chlist;
-	std::vector<ChanId> chlistnz;
 	if (!special_case) {
 	  for (auto idx : idxvec) {
 	    if (!msv[idx].ctrlmap.contains (ch)) {
-	      auto [ch1, ch2] = dm.generateMultiBaseCase (d);
-	      msv[idx].ctrlmap[ch] = ch1;
-	      msv[idx].ctrlmapnz[ch] = ch2;
+	      msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
 	    }
 	    chlist.push_back(msv[idx].ctrlmap[ch]);
-	    chlistnz.push_back(msv[idx].ctrlmapnz[ch]);
 	  }
 	}
 
-	OptionalChanId cfresh, cfreshnz;
+	OptionalChanId cfresh;
 
 	if (!dm.isOutermostBlock (ch, curr)) {
-	  cfresh = dm.fresh (2);
-	  cfreshnz = dm.fresh (1);
+	  cfresh = dm.fresh (1);
 	}
 	else {
 	  cfresh = OptionalChanId::null_id();
-	  cfreshnz = OptionalChanId::null_id();
 	}
 
 
@@ -1106,13 +1079,12 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    if (cfresh) {
 	      dm.generateCopy (res.second, *cfresh, d);
 	      // constant 1 is the output
-	      d.push_back (Dataflow::mkSrc(*cfreshnz, BigInt(1), 1));
+	      // XXX: THIS IS WRONG!
 	    }
 	  }
 	  else if (cfresh) {
 	    std::list<Dataflow> tmp =
-	      Dataflow::mkInstSeqRR(idxvec.size(), cfresh, cfreshnz,
-				    selout, freshalloc);
+	      Dataflow::mkInstSeqRR(idxvec.size(), cfresh, selout, freshalloc);
 	    for (auto &xd : tmp) {
 	      d.push_back (std::move(xd));
 	    }
@@ -1125,7 +1097,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  }
 	  else {
 	    std::list<Dataflow> tmp =
-	      Dataflow::mkInstSeqRR(idxvec.size(), cfresh, cfreshnz, selout, freshalloc);
+	      Dataflow::mkInstSeqRR(idxvec.size(), cfresh, selout, freshalloc);
 	    for (auto &xd : tmp) {
 	      d.push_back (std::move(xd));
 	    }
@@ -1138,9 +1110,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId { if (ch) return dm.fresh (*ch); else return dm.fresh(1); };
 
 	  std::list<Dataflow> tmp = Dataflow::mkInstSeq (chlist,
-							 chlistnz,
 							 cfresh,
-							 cfreshnz,
 							 selout,
 							 freshalloc);
 
@@ -1180,7 +1150,6 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	if (!dm.isOutermostBlock (ch, curr)) {
 	  ret.datamap[ch] = fresh;
 	  ret.ctrlmap[ch] = (*cfresh);
-	  ret.ctrlmapnz[ch] = (*cfreshnz);
 	}
 	msg (0, ">> seq-ctrl-end", d);
       }
@@ -1232,17 +1201,13 @@ MultiChannelState reconcileMultiLoop (Block *curr,
     }
     else {
       if (!msv.ctrlmap.contains (ch)) {
-	auto [ch1, ch2] = dm.generateMultiBaseCase (d);
-	msv.ctrlmap[ch] = ch1;
-	msv.ctrlmapnz[ch] = ch2;
+	msv.ctrlmap[ch] = dm.generateMultiBaseCase (d);
       }
 
 
       ChanId cfresh = dm.fresh (msv.ctrlmap[ch]);
-      ChanId cfreshnz = dm.fresh (msv.ctrlmapnz[ch]);
       std::list<Dataflow> tmp = Dataflow::mkInstDoLoop (msv.ctrlmap[ch],
-							msv.ctrlmapnz[ch],
-							cfresh, cfreshnz,
+							cfresh,
 							guard, freshalloc);
 
       
@@ -1254,7 +1219,6 @@ MultiChannelState reconcileMultiLoop (Block *curr,
 
       ret.datamap[ch] = rhs;
       ret.ctrlmap[ch] = cfresh;
-      ret.ctrlmapnz[ch] = cfreshnz;
     }
   }
   return ret;
@@ -1375,7 +1339,6 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	ms = createDataflow (branch, dm, d);
 	acc.datamap = Algo::set_union (acc.datamap, ms.datamap);
 	acc.ctrlmap = Algo::set_union (acc.ctrlmap, ms.ctrlmap);
-	acc.ctrlmapnz = Algo::set_union (acc.ctrlmapnz, ms.ctrlmapnz);
       }
       seqs.push_back (acc);
       break;

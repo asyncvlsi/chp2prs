@@ -256,7 +256,6 @@ public:
 
   static std::list<Dataflow> mkInstSeqRR (int N,
 					  OptionalChanId cout,
-					  OptionalChanId cout_nz,
 					  ChanId sel,
 					  std::function<ChanId (ChanId &)> fresh)
   {
@@ -302,9 +301,6 @@ public:
       std::vector<ChanId> ids;
       ids.push_back(*cout);
       ret.push_back (Dataflow::mkFunc (ids, std::move (dg)));
-
-      // const src
-      ret.push_back (Dataflow::mkSrc (*cout_nz, BigInt (1), 1));
     }
     
     return ret;
@@ -312,9 +308,7 @@ public:
 
   static std::list<Dataflow>
   mkInstSeq (std::vector<ChanId> cin,
-	     std::vector<ChanId> cin_nz,
 	     OptionalChanId cout,
-	     OptionalChanId cout_nz,
 	     ChanId sel,
 	     std::function<ChanId (const OptionalChanId &)> fresh)
   {
@@ -337,250 +331,6 @@ public:
 
     int bw = log_2_round_up (cin.size());
 
-    /* 1. {s_top} B0, ..., BN-1 -> b */
-    ChanId b = fresh (cin[0]);
-    ChanId s_top;
-    s_top = fresh (sel);
-    ret.push_back (mkMergeMix (s_top, cin, b));
-
-    ChanId just_wrapped = fresh (OptionalChanId::null_id());
-    ChanId pending = fresh (OptionalChanId::null_id());
-
-
-    /* 1a. */
-    ChanId bnz = fresh (cin_nz[0]);
-    ret.push_back (mkMergeMix (s_top, cin_nz, bnz));
-
-    if (cout) {
-      /* 1b */
-      ChanId sendbnz = fresh (OptionalChanId::null_id());
-      {
-	DExprDag dg;
-	DExprDag::Node *n =
-	  helper_or (dg,
-		     helper_var (dg, bnz, 1),
-		     helper_and (dg,
-				 helper_var (dg, just_wrapped, 1),
-				 helper_eq (dg, pending, 1, 0)
-				 )
-		     );
-	dg.roots.push_back (n);
-	std::vector<ChanId> id;
-	id.push_back (sendbnz);
-	ret.push_back (mkFunc (id, std::move (dg)));
-      }
-      /* 1c */
-      {
-	std::vector<OptionalChanId> outs;
-	outs.push_back (OptionalChanId::null_id());
-	outs.push_back (cout_nz);
-
-	Dataflow xd = mkSplit (sendbnz, bnz, outs);
-	xd.msg = "seq-Bnzout";
-	ret.push_back (std::move (xd));
-      }
-    }
-    
-
-    /* 2.  
-           {bnz} s_top -> *, sel
-    */
-    {
-      // {bnz} s_top -> *, sel
-
-      std::vector<OptionalChanId> out;
-      out.push_back (OptionalChanId::null_id());
-      out.push_back (sel);
-      Dataflow dx = mkSplit (bnz, s_top, out);
-      dx.msg = "seq-select";
-      ret.push_back (std::move (dx));
-    }
-
-    /* 3.  (b != 1 ? s_top + 1 : s_top) -> s  */
-    ChanId s = fresh (sel);
-    {
-      DExprDag dg;
-      DExprDag::Node *n =
-	dg.newNode (DExprDag::Node::makeQuery (
-           helper_ne (dg, b, 2, 1), // b != 1
-	   helper_inc (dg, s_top, bw, cin.size()),
-	   dg.newNode (DExprDag::Node::makeVariableAccess (s_top, bw))));
-      dg.roots.push_back (n);
-      std::vector<ChanId> ids;
-      ids.push_back (s);
-      ret.push_back (mkFunc (ids, std::move(dg)));
-    }
-											 
-    /* 4. s -> [0] s_top */
-    ret.push_back (mkInit (s, s_top, BigInt (0), bw));
-
-    if (cout) {
-      /*
-	5. s = 0 & b != 1 -> just-wrapped 
-
-	6. (pending ? (just-wrapped | b != 0) : (just-wrapped | b = 1)) -> bcond
-   
-          -> adjust this to:
-                just-wrapped = 1 then:  
-                       bcond = 1       <--- without waiting for b
-                just-wrapped = 0 then:
-                      bcond = pending ? (b != 0) : (b = 1) 
-
-           6a. {just_wrapped} b -> bc, *
-           6a. {just_wrapped} pending -> pc, *
-	   6b. 1 -> const1
-	   6c. {just_wrapped} calc, const1 -> bcond
-	   6d. pc ? (bc != 0) : (bc = 1) -> calc
-
-	7. (pending ? (just-wrapped ? 2 : 1) : (just-wrapped ? 0 : 1) -> bval
-
-	8. {bcond} bval -> *, cout
-	
-	9. pending ? (just-wrapped & b = 0 ? 0 : 1) : (just-wrapped ? (b != 0) : (b = 2)) -> newpend
-
-	10. newpend -> [0] pending
-      */
-      
-      // 5. s = 0 & b != 1 -> just-wrapped 
-      ChanId new_wrapped = fresh (OptionalChanId::null_id());
-      {
-	DExprDag dg;
-	DExprDag::Node *n =
-	  helper_and (dg,
-		      helper_eq (dg, s, bw, 0),
-		      helper_ne (dg, b, 2, 1));
-	dg.roots.push_back (n);
-	std::vector<ChanId> id;
-	id.push_back (new_wrapped);
-	ret.push_back (mkFunc (id, std::move (dg)));
-      }
-      ret.push_back (mkInit (new_wrapped, just_wrapped, BigInt(0), 1));
-
-      /*
-           6a. {just_wrapped} b -> bc, *
-           6a. {just_wrapped} pending -> pc, *
-	   6b. 1 -> const1
-	   6c. {just_wrapped} calc, const1 -> bcond
-	   6d. pc ? (bc != 0) : (bc = 1) -> calc
-      */
-      ChanId bc, pc, calc, const1;
-      bc = fresh (b);
-      pc = fresh (OptionalChanId::null_id());
-      calc = fresh(OptionalChanId::null_id());
-      const1 = fresh(OptionalChanId::null_id());
-
-      ChanId bcond = fresh (OptionalChanId::null_id());
-      {
-	std::vector<OptionalChanId> out;
-	out.push_back (bc);
-	out.push_back (OptionalChanId::null_id());
-	ret.push_back (mkSplit (just_wrapped, b, out));
-      }
-      {
-	std::vector<OptionalChanId> out;
-	out.push_back (pc);
-	out.push_back (OptionalChanId::null_id());
-	ret.push_back (mkSplit (just_wrapped, pending, out));
-      }
-      ret.push_back (mkSrc (const1, BigInt (1), 1));
-      {
-	std::vector<ChanId> in;
-	in.push_back (calc);
-	in.push_back (const1);
-	ret.push_back (mkMergeMix (just_wrapped, in, bcond));
-      }
-      {
-	DExprDag dg;
-	DExprDag::Node *n =
-	  helper_query (dg, helper_var (dg, pc, 1),
-			helper_ne (dg, bc, 2, 0),
-			helper_eq (dg, bc, 2, 1));
-	dg.roots.push_back (n);
-	std::vector<ChanId> id;
-	id.push_back (calc);
-	ret.push_back (mkFunc (id, std::move (dg)));
-      }
-      
-#if 0
-      // 6. just-wrapped | (pending ? b != 0 : b = 1) -> bcond
-      {
-	DExprDag dg;
-	DExprDag::Node *n =
-	  helper_or (dg,
-		     helper_var (dg, just_wrapped, 1),
-		     helper_query (dg,
-				   helper_var (dg, pending, 1),
-				   helper_ne (dg, b, 2, 0),
-				   helper_eq (dg, b, 2, 1)));
-	dg.roots.push_back (n);
-	std::vector<ChanId> id;
-	id.push_back (bcond);
-	ret.push_back (mkFunc (id, std::move (dg)));
-      }
-#endif
-
-      // 7. (pending ? (just-wrapped ? 2 : 1) : (just-wrapped ? 0 : 1) -> bval
-      ChanId bval = fresh (*cout);
-      {
-	DExprDag dg;
-	DExprDag::Node *n =
-	  helper_query (dg,
-			helper_var (dg, pending, 1),
-			helper_query (dg,
-				      helper_var (dg, just_wrapped, 1),
-				      helper_const (dg, 2, 2),
-				      helper_const (dg, 1, 2)),
-			helper_query (dg,
-				      helper_var (dg, just_wrapped, 1),
-				      helper_const (dg, 0, 2),
-				      helper_const (dg, 1, 2))
-			);
-	dg.roots.push_back (n);
-	std::vector<ChanId> id;
-	id.push_back (bval);
-	ret.push_back (mkFunc (id, std::move (dg)));
-      }
-				      
-      
-
-      // 8. {bcond} bval -> *, cout
-      {
-	std::vector<OptionalChanId> outid;
-	outid.push_back (OptionalChanId::null_id());
-	outid.push_back (*cout);
-
-	Dataflow dx = mkSplit (bcond, bval, outid);
-	dx.msg = "B-seq-out";
-      
-	ret.push_back (std::move(dx));
-      }
-
-      // 9. pending ? (just-wrapped & b = 0 ? 0 : 1) : (just-wrapped ? (b != 0) : (b = 2)) -> newpend
-      ChanId newpend = fresh (OptionalChanId::null_id());
-      {
-	DExprDag dg;
-	DExprDag::Node *n =
-	  helper_query (dg,
-			helper_var (dg, pending, 1),
-			helper_query (dg,
-				      helper_and (dg,
-						  helper_var (dg, just_wrapped, 1),
-						  helper_eq (dg, b, 2, 0)),
-				      helper_const (dg, 0, 1),
-				      helper_const (dg, 1, 1)),
-			helper_query (dg, helper_var (dg, just_wrapped, 1),
-				      helper_ne (dg, b, 2, 0),
-				      helper_eq (dg, b, 2, 2)));
-	dg.roots.push_back (n);
-	std::vector<ChanId> id;
-	id.push_back (newpend);
-	ret.push_back (mkFunc (id, std::move (dg)));
-      }
-
-      // 10. newpend -> [0] pending
-      ret.push_back (mkInit (newpend, pending, BigInt(0), 1));
-    }
-
     return ret;
   }
 
@@ -588,9 +338,7 @@ public:
 
 	 
   static std::list<Dataflow> mkInstSel (std::vector<ChanId> cin,
-					std::vector<ChanId> cin_nz,
 			     ChanId cout,
- 			     ChanId cout_nz,
 			     ChanId guard,
 			     OptionalChanId sel,
 			     int selw,
@@ -616,6 +364,7 @@ public:
     */
     std::list<Dataflow> ret;
 
+#if 0    
     ChanId bintV = fresh (OptionalChanId::null_id());
     ChanId i_bint = fresh (OptionalChanId{bintV});
 
@@ -734,20 +483,19 @@ public:
     outlist.push_back (OptionalChanId::null_id());
     outlist.push_back (loopguard);
     ret.push_back (Dataflow::mkSplit (bintV, gval, outlist));
-
+#endif
+    
     return ret;
   }
   
   static std::list<Dataflow> mkInstDoLoop (ChanId cin,
-					   ChanId cin_nz,
 				ChanId cout,
-			        ChanId cout_nz,
 				ChanId guard,
 				std::function<ChanId (const OptionalChanId &)> fresh)
 
   {
     std::list<Dataflow> ret;
-
+#if 0
     /*
 	0 -> Bloop
 	{in_loop} Bloop, Bi -> b
@@ -1028,6 +776,7 @@ XXX changed:    {bcond} bval -> *, cout
       ret.push_back (std::move (xd));
     }
      
+#endif
     
     return ret;
   }
