@@ -138,14 +138,14 @@ struct DataflowChannelManager {
 
   /* source that generates a 1,0 */
   ChanId generateMultiBaseCase (std::vector<Dataflow> &d) {
-    /* ~s -> news
+    /* (s != 1) -> news
        news -> [1] s
     */
     ChanId s = fresh (1);
     ChanId news = fresh (1);
     {
       DExprDag e;
-      DExprDag::Node *n = Dataflow::helper_ne (e, s, 1, 0);
+      DExprDag::Node *n = Dataflow::helper_ne (e, s, 1, 1);
       e.roots.push_back (n);
       std::vector<ChanId> ids;
       ids.push_back (news);
@@ -942,9 +942,15 @@ MultiChannelState reconcileMultiSel (Block *curr,
       // B and Bnz output from selection merging
       ChanId cfresh = dm.fresh (1);
 
-      auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId {
-								  if (ch) {
-									   return dm.fresh (*ch); } else { return dm.fresh (1); } };
+      auto freshalloc =
+	[&] (const OptionalChanId &ch) -> ChanId {
+	  if (ch) {
+	   return dm.fresh (*ch);
+	  }
+	  else {
+	   return dm.fresh (1);
+	  }
+      };
 
       // XXX: DOES THIS NEED "swap"? I think so, because the guard is backward
       std::list<Dataflow> tmp = Dataflow::mkInstSel (ctrl_chans,
