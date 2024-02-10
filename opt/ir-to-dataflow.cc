@@ -1251,7 +1251,7 @@ MultiChannelState reconcileMultiLoop (Block *curr,
 	d.push_back (std::move (x));
       }
       msg (0, ">> do-ctrl-end", d);
-      
+
       ret.datamap[ch] = rhs;
       ret.ctrlmap[ch] = cfresh;
       ret.ctrlmapnz[ch] = cfreshnz;
@@ -2392,6 +2392,16 @@ act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
   ret->order = NULL;
 
   newnames = std::move(table.newvars);
+  
+#if 0
+  printf ("/*\n");
+  for (auto &[ch, id] : table.name_from_chan) {
+    printf ("  C%d -> ", (int)ch.m_id);
+    id->Print (stdout);
+    printf ("\n");
+  }
+  printf ("*/\n");
+#endif
   
   return ret;
 }
