@@ -1,0 +1,9 @@
+defproc testproc(chan?(int) X, A, B; chan!(int) Y)
+{
+  int a, b, c, d;
+
+   chp {
+      X?a;
+    *[ X?a;B?b;Y!(a+b) ]
+   }
+}

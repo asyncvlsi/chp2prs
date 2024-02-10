@@ -4,6 +4,6 @@ defproc testproc(chan?(int) X; chan!(int) Y)
 
    chp {
       X?a;Y!5;
-    *[ X?a;Y!5; X?a; Y!5 ]
+    *[ X?a;Y!5; X?a; Y!(a = 0 ? 5+a : 5) ]
    }
 }

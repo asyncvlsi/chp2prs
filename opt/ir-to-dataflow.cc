@@ -1050,7 +1050,6 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    special_case = false;
 	  }
 	}
-	special_case = false;
 
 	std::vector<ChanId> chlist;
 	if (!special_case) {
@@ -1076,7 +1075,8 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  // control channel is simply 0, 1, 2, 3 (repeat)
 	  // variable sequence is      1, 1, 1, 2 (repeat)
 
-	  auto freshalloc = [&] (ChanId &ch) -> ChanId { return dm.fresh (ch); };
+	  auto freshalloc = [&] (ChanId &ch, int bw) -> ChanId {
+								if (bw > 0) { return dm.fresh (bw); } else { return dm.fresh (ch); } };
 	  
 
 	  if (dm.rr_ctrl.contains(idxvec.size())) {
@@ -1084,8 +1084,6 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    dm.generateCopy (res.first, selout, d);
 	    if (cfresh) {
 	      dm.generateCopy (res.second, *cfresh, d);
-	      // constant 1 is the output
-	      // XXX: THIS IS WRONG!
 	    }
 	  }
 	  else if (cfresh) {

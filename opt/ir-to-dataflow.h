@@ -257,9 +257,8 @@ public:
   static std::list<Dataflow> mkInstSeqRR (int N,
 					  OptionalChanId cout,
 					  ChanId sel,
-					  std::function<ChanId (ChanId &)> fresh)
+					  std::function<ChanId (ChanId &, int)> fresh)
   {
-    ChanId f = fresh(sel);
     std::list<Dataflow> ret;
 
     /*
@@ -268,12 +267,15 @@ public:
 
        if there is a cout:
 
-       sel = N - 1 ? 2 : 1 -> cout
+       g -> [0] gint
+       gint = N ? 0 : gint + 1 -> g
+       g = N ? 0 : 1 -> cout
     */
 
     int bw = log_2_round_up (N);
 
     // f -> [0] sel
+    ChanId f = fresh(sel, 0);
     ret.push_back (Dataflow::mkInit(f, sel, BigInt(0), bw));
 
     // sel = N-1 ? 0 : sel + 1 -> f
@@ -288,19 +290,33 @@ public:
     }
 
     if (cout) {
-      // sel = N - 1 ? 2 : 1 -> cout
+      ChanId g, gint;
+
+      bw = log_2_round_up (N+1);
+      
+      g = fresh (sel, bw);
+      gint = fresh (g,0);
+
+      // g -> [0] gint
+      ret.push_back (Dataflow::mkInit (g, gint, BigInt (0), bw));
+      
+      // gint = N ? 0 : gint + 1 -> g
       DExprDag dg;
-      DExprDag::Node *n =
-      dg.newNode (
-	 DExprDag::Node::makeQuery (
-	    helper_eq (dg, sel, bw, N-1),
-	    helper_const (dg, 2, 2),
-	    helper_const (dg, 1, 2)));
+      DExprDag::Node *n = helper_inc (dg, gint, bw, N+1);
       dg.roots.push_back (n);
-				     
       std::vector<ChanId> ids;
-      ids.push_back(*cout);
+      ids.push_back (g);
       ret.push_back (Dataflow::mkFunc (ids, std::move (dg)));
+
+      //   gint = N ? 0 : 1 -> cout
+      DExprDag dg2;
+      n = helper_query (dg2, helper_eq (dg2, gint, bw, N),
+			helper_const (dg2, 0, 1),
+			helper_const (dg2, 1, 1));
+      dg2.roots.push_back(n);
+      ids.clear ();
+      ids.push_back(*cout);
+      ret.push_back (Dataflow::mkFunc (ids, std::move (dg2)));
     }
     
     return ret;
