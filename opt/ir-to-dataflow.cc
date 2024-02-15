@@ -2187,7 +2187,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   dfuses.clear();
   dfdefs.clear();
   idx = 0;
-  //  printf ("/*\n");
+  // printf ("/*\n");
   for (auto &x : dfinal) {
 #if 0
     printf ("F %3d :: ", idx);

@@ -458,7 +458,7 @@ public:
 
     /* 2. {i_bint} guard, LoopGuard -> gval */
     ChanId loopguard;
-    if (sel) {
+    if (sel && selw == log_2_round_up(cin.size())) {
       loopguard = *sel;
     }
     else {
@@ -497,7 +497,24 @@ public:
       std::vector<OptionalChanId> out;
       out.push_back (OptionalChanId::null_id());
       out.push_back (loopguard);
-      ret.push_back (mkSplit (bintV, gval, out));
+      Dataflow xd = mkSplit (bintV, gval, out);
+      ret.push_back (std::move (xd));
+    }
+    if (sel && selw != log_2_round_up(cin.size())) {
+      Assert (selw + 1 == log_2_round_up (cin.size()), "What?");
+      DExprDag dg;
+      DExprDag::Node *n =
+	dg.newNode (DExprDag::Node::makeResize(
+					       helper_var (dg, loopguard,
+							   selw+1),
+					       selw));
+      dg.roots.push_back (n);
+      std::vector<ChanId> id;
+      id.push_back (*sel);
+      ret.push_back (mkFunc (id, std::move (dg)));
+      /*
+	{bintVal} gval -> *, sel 
+      */
     }
     
     return ret;
