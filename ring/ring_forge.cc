@@ -1308,6 +1308,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         {
             block_id = sel_merge_block_id;
         }
+
+        _save_read_ids();
         break;
 
     case ACT_CHP_SELECT_NONDET:
@@ -1423,12 +1425,13 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
         // collect unassigned branch ids for OR-gate
         if ( need_or )
         {
-            for ( int i=0 ; i<n_branches ; i++ )
+            for ( int i=_branch_id ; i<n_branches+_branch_id ; i++ )
             {
                 int flag=0;
                 for ( lj = list_first(branch_map) ; lj ; lj = list_next(list_next(lj)) )
                 {
                     int mux_port = list_ivalue(lj)+_branch_id;
+                    // fprintf(_fp, "\n// mux port: %d, parent branch id: %d\n", mux_port, _branch_id);
                     if (mux_port == i)
                     { flag=1; break; }
                 }
@@ -1491,12 +1494,17 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
         }
         branch_ctr = 0;
     }
-    float max_delay = _lookup_mux_delays (max_mux_size, max_or_size);
-    Assert ((max_delay != -1), "mux lookup out of range" );
-    // fprintf (fp, "\nmax mux delay: %f", max_delay);
-    // fprintf (fp, "\nmax mux size: %d", max_mux_size);
-    // fprintf (fp, "\nmax or size: %d", max_or_size);
-    return int(max_delay/(2*invx1_delay_ps)) + 1;
+    if ( max_mux_size>0 ) {
+        float max_delay = _lookup_mux_delays (max_mux_size, max_or_size);
+        fprintf (_fp, "\nmax mux delay: %f", max_delay);
+        fprintf (_fp, "\nmax mux size: %d", max_mux_size);
+        fprintf (_fp, "\nmax or size: %d", max_or_size);
+        Assert ((max_delay != -1), "mux lookup out of range" );
+        return int(max_delay/(2*invx1_delay_ps)) + 1;
+    }
+    else {
+        return 0;
+    }
 }
 
 /*

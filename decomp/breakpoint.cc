@@ -147,8 +147,8 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
     case BlockType::Basic: {
         switch (curr->u_basic().stmt.type()) {
         case StatementType::Send:
-        case StatementType::Assign:
             break;
+        case StatementType::Assign:
         case StatementType::Receive:
             di = (decomp_info_map.find(curr))->second;
                 di->break_before = true;

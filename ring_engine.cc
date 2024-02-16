@@ -98,7 +98,7 @@ class RingSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     bundled = dp->getIntParam ("bundled_dpath");
 
-    if (1) { //opt
+    if (0) { //opt
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
@@ -162,7 +162,6 @@ class RingSynth : public ActSynthesize {
       fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
       /*
       */
-      
 
     }
     }
@@ -190,7 +189,7 @@ class RingSynth : public ActSynthesize {
     // da->analyze();
     // da->print_decomp_info();
 
-    // rf->run_forge();
+    rf->run_forge();
     
     /*
     ChpOptimize::putIntoNewStaticTokenForm (cg.graph);
@@ -216,3 +215,4 @@ ActSynthesize *gen_ring_engine (const char *prefix,
   return new RingSynth (prefix, infile, outfile, exprfile);
 }
 
+  
