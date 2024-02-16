@@ -1389,8 +1389,8 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
                 list_iappend_head (branch_map, iwrite-i);
                 list_iappend_head (branch_map, latest_branch_id-_branch_id-1);
                 branch_ctr++;
-                // fprintf (fp, "// latch branch id %d, merge port id %d, latch id %d\n", 
-                //                     latest_branch_id, latest_branch_id-branch_id-1, iwrite-i);
+                fprintf (_fp, "// absolute latch branch id %d, parent branch id %d, latch id %d\n", 
+                                    latest_branch_id, _branch_id, iwrite-i);
             }
             lj = list_next (lj);
             latest_branch_id_prev = latest_branch_id;
@@ -1456,6 +1456,11 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
             // increase nwrite and iwrite for the variable so it can be connected to correctly downstream
             vi->iwrite++; vi->nwrite++;
             vi->latest_for_read = (vi->iwrite)-1;
+            while (list_ivalue(list_first(vi->latest_latch_branches)) > _branch_id )
+            {
+                list_delete_ihead(vi->latest_latch_branches);
+            }
+            list_iappend_head (vi->latest_latch_branches, _branch_id-1);
 
             lj = list_first(branch_map);
             for ( int i=0 ; i<mux_size ; i++ )
@@ -1469,7 +1474,7 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
                     for (listitem_t *lk = list_first(unassigned_branches) ; lk ; lk = list_next(lk))
                     {
                         fprintf (_fp, "or_%s_%d.in[%d] = %s%d.ci[%d].r;\n", vi->name, mux_id, j, 
-                                            ring_block_prefix, merge_block_id, list_ivalue(lk));
+                                            ring_block_prefix, merge_block_id, list_ivalue(lk)-_branch_id);
                         j++;
                     }
                     // connect pre-split data to mux last data input
@@ -1483,6 +1488,7 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
                 }
 
                 // connect mux input control and data
+                fprintf (_fp, "\n// BRANCH ID: %d\n", _branch_id);
                 fprintf (_fp, "%s%s_%d.c[%d] = %s%d.ci[%d].r;\n", capture_block_prefix, vi->name, 
                                                     iwrite+1, i, ring_block_prefix, 
                                                         merge_block_id, list_ivalue(lj));
