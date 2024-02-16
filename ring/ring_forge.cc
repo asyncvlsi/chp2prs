@@ -1496,9 +1496,9 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
     }
     if ( max_mux_size>0 ) {
         float max_delay = _lookup_mux_delays (max_mux_size, max_or_size);
-        fprintf (_fp, "\nmax mux delay: %f", max_delay);
-        fprintf (_fp, "\nmax mux size: %d", max_mux_size);
-        fprintf (_fp, "\nmax or size: %d", max_or_size);
+        // fprintf (_fp, "\nmax mux delay: %f", max_delay);
+        // fprintf (_fp, "\nmax mux size: %d", max_mux_size);
+        // fprintf (_fp, "\nmax or size: %d", max_or_size);
         Assert ((max_delay != -1), "mux lookup out of range" );
         return int(max_delay/(2*invx1_delay_ps)) + 1;
     }
