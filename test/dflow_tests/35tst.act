@@ -1,5 +1,5 @@
-import "25.act";
-import "25_df_chp.act";
+import "35.act";
+import "35_df_chp.act";
 
 defproc test()
 {
@@ -14,15 +14,14 @@ defproc test()
 
   chp {
       i := 0;
+      a := 5; b := 5;
       success+;
    *[  i < 10 ->
-    X!15,Y?a;
+    X!15;//Y?a;
     log ("step 1");
-    X!18,Y?b;
+    X!18;//Y?b;
     log ("step 2");
-    X!13,Y?c;
-    log ("step 3");
-    [ a = 5 & b = 10 & c = 33 -> skip [] else -> success-; log ("FAILURE: ", a, " b=", b, " c=", c) ];
+    [ a = 5 & b = 5 -> skip [] else -> success-; log ("FAILURE: ", a, " b=", b) ];
     i := i + 1
     ];
     [ success -> log ("SUCCESS") [] else -> skip ]

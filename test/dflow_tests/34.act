@@ -1,0 +1,20 @@
+defproc testproc(chan?(int) X; chan!(int) Y)
+{
+  int a, b, c; 
+  bool send;
+
+  chp {
+      a := 0;
+      b := 0;
+     *[ X?a;
+        send-;
+        [ a{0} = 0 -> skip
+       [] else -> b := a*2;
+	  [ a{1} = 0 -> c := 7
+         [] else -> c := b*2; send+
+          ]
+        ];
+       [ send -> Y!c [] else -> skip ]
+     ]
+   }
+}

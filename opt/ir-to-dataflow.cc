@@ -136,17 +136,23 @@ struct DataflowChannelManager {
   }
 
 
-  /* source that generates a 2 */
+  /* source that generates a 1,0 */
   ChanId generateMultiBaseCase (std::vector<Dataflow> &d) {
-    ChanId fv = fresh (2);
-    DExprDag e;
-    DExprDag::Node *n =
-      e.newNode (DExprDag::Node::makeConstant (BigInt (2), 2));
-    e.roots.push_back (n);
-    std::vector<ChanId> ids;
-    ids.push_back (fv);
-    d.push_back (Dataflow::mkFunc (ids, std::move (e)));
-    return fv;
+    /* (s != 1) -> news
+       news -> [1] s
+    */
+    ChanId s = fresh (1);
+    ChanId news = fresh (1);
+    {
+      DExprDag e;
+      DExprDag::Node *n = Dataflow::helper_ne (e, s, 1, 1);
+      e.roots.push_back (n);
+      std::vector<ChanId> ids;
+      ids.push_back (news);
+      d.push_back (Dataflow::mkFunc (ids, std::move (e)));
+      d.push_back (Dataflow::mkInit (news, s, BigInt (1), 1));
+    }
+    return s;
   }
 
   void generateCopy (ChanId from, ChanId to, std::vector<Dataflow> &d) {
@@ -823,6 +829,7 @@ void genOrigToNewGuard (std::vector<int> &idx,
        Dataflow::helper_const (newguard, pos, obw),
        root);
   }
+
   newguard.roots.push_back (root);
 
   std::vector<ChanId> ids;
@@ -830,6 +837,19 @@ void genOrigToNewGuard (std::vector<int> &idx,
   d.push_back (Dataflow::mkFunc(ids, std::move(newguard)));
 }
 
+static
+void msg (int depth, const char *msg, std::vector<Dataflow> &d)
+{
+#if 0
+  for (int i=0; i < depth; i++) {
+    printf (".");
+  }
+  printf ("%s: %d\n", msg, (int) d.size());
+#else
+  return;
+#endif  
+}
+  
 MultiChannelState reconcileMultiSel (Block *curr,
 				     ChanId guard,
 				     std::vector<MultiChannelState> &msv,
@@ -869,7 +889,9 @@ MultiChannelState reconcileMultiSel (Block *curr,
     else {
       fresh = dm.fresh (ch);
     }
+    msg (0, ">> sel-ctrl-start", d);
 
+    // this is the selection control
     OptionalChanId ctrlguard;
 
     if (idxvec.size() != msv.size() || variable.contains(ch)) {
@@ -898,8 +920,8 @@ MultiChannelState reconcileMultiSel (Block *curr,
 
 	// we also need to generate a dummy extra ctrl channel for the
 	// "no value"; this is always "B!0"
-	ChanId xtractrl = dm.fresh (2);
-	d.push_back(Dataflow::mkSrc (xtractrl, BigInt(0), 2));
+	ChanId xtractrl = dm.fresh (1);
+	d.push_back(Dataflow::mkSrc (xtractrl, BigInt(0), 1));
 	ctrl_chans.push_back (xtractrl);
       }
       else {
@@ -916,12 +938,19 @@ MultiChannelState reconcileMultiSel (Block *curr,
 	// no sel out needed for channel
 	ctrlguard = OptionalChanId::null_id();
       }
-      
-      ChanId cfresh = dm.fresh (2);
 
-      auto freshalloc = [&] (const OptionalChanId &ch) -> ChanId {
-								  if (ch) {
-									   return dm.fresh (*ch); } else { return dm.fresh (1); } };
+      // B and Bnz output from selection merging
+      ChanId cfresh = dm.fresh (1);
+
+      auto freshalloc =
+	[&] (const OptionalChanId &ch) -> ChanId {
+	  if (ch) {
+	   return dm.fresh (*ch);
+	  }
+	  else {
+	   return dm.fresh (1);
+	  }
+      };
 
       // XXX: DOES THIS NEED "swap"? I think so, because the guard is backward
       std::list<Dataflow> tmp = Dataflow::mkInstSel (ctrl_chans,
@@ -932,12 +961,9 @@ MultiChannelState reconcileMultiSel (Block *curr,
 						     freshalloc,
 						     swap);
 
-      //printf (">> sel-ctrl-start: %d\n", (int) d.size());
       for (auto &xd : tmp) {
 	d.push_back (std::move (xd));
       }
-      //printf (">> sel-ctrl-end: %d\n", (int) d.size());
-      
       if (ch != fresh) {
 	ret.ctrlmap[ch] = cfresh;
       }
@@ -973,6 +999,7 @@ MultiChannelState reconcileMultiSel (Block *curr,
     else {
       ret.datamap[ch] = chlist[0];
     }
+    msg (0, ">> sel-ctrl-end", d);
   }
   return ret;
 }
@@ -985,7 +1012,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
   if (msv.size() == 1) {
     return msv[0];
   }
-  
+
   std::unordered_map<ChanId,std::vector<int>>  chan_idx;
   std::unordered_set<ChanId> variable;
   MultiChannelState ret;
@@ -1013,6 +1040,9 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	ret.ctrlmap[ch] = msv[idxvec[0]].ctrlmap[ch];
       }
       else {
+	//printf ("/* ch %d, sz %d */\n", ch.m_id, idxvec.size());
+	msg (0, ">> seq-ctrl-start", d);
+	
 	ChanId selout = dm.fresh (guard_width (idxvec.size()));
 	bool special_case = true;
 	for (auto idx : idxvec) {
@@ -1020,7 +1050,6 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    special_case = false;
 	  }
 	}
-	special_case = false;
 
 	std::vector<ChanId> chlist;
 	if (!special_case) {
@@ -1035,7 +1064,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	OptionalChanId cfresh;
 
 	if (!dm.isOutermostBlock (ch, curr)) {
-	  cfresh = dm.fresh (2);
+	  cfresh = dm.fresh (1);
 	}
 	else {
 	  cfresh = OptionalChanId::null_id();
@@ -1046,7 +1075,8 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  // control channel is simply 0, 1, 2, 3 (repeat)
 	  // variable sequence is      1, 1, 1, 2 (repeat)
 
-	  auto freshalloc = [&] (ChanId &ch) -> ChanId { return dm.fresh (ch); };
+	  auto freshalloc = [&] (ChanId &ch, int bw) -> ChanId {
+								if (bw > 0) { return dm.fresh (bw); } else { return dm.fresh (ch); } };
 	  
 
 	  if (dm.rr_ctrl.contains(idxvec.size())) {
@@ -1088,11 +1118,9 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 							 selout,
 							 freshalloc);
 
-	  //printf (">> seq-ctrl-start: %d\n", (int) d.size());
 	  for (auto &xd : tmp) {
 	    d.push_back (std::move (xd));
 	  }
-	  //printf (">> seq-ctrl-end: %d\n", (int) d.size());
 	}
 	
 	chlist.clear();
@@ -1127,6 +1155,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	  ret.datamap[ch] = fresh;
 	  ret.ctrlmap[ch] = (*cfresh);
 	}
+	msg (0, ">> seq-ctrl-end", d);
       }
     }
     else {
@@ -1136,7 +1165,6 @@ MultiChannelState reconcileMultiSeq (Block *curr,
       }
     }
   }
-
   
   return ret;
 }
@@ -1187,12 +1215,12 @@ MultiChannelState reconcileMultiLoop (Block *curr,
 							guard, freshalloc);
 
       
-      //printf (">> do-ctrl-start: %d\n", (int) d.size());
+      msg (0, ">> do-ctrl-start", d);
       for (auto &x : tmp) {
 	d.push_back (std::move (x));
       }
-      //printf (">> do-ctrl-end: %d\n", (int) d.size());
-      
+      msg (0, ">> do-ctrl-end", d);
+
       ret.datamap[ch] = rhs;
       ret.ctrlmap[ch] = cfresh;
     }
@@ -1200,19 +1228,6 @@ MultiChannelState reconcileMultiLoop (Block *curr,
   return ret;
 }
 
-static
-void msg (int depth, const char *msg, std::vector<Dataflow> &d)
-{
-#if 0
-  for (int i=0; i < depth; i++) {
-    printf (".");
-  }
-  printf ("%s: %d\n", msg, (int) d.size());
-#else
-  return;
-#endif  
-}
-  
 
 MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 				  std::vector<Dataflow> &d)
@@ -1826,9 +1841,9 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   hassert (gr.graph.is_static_token_form);
   
 #if 0
-  printf ("#############################\n");
+  printf ("/*#############################\n");
   print_chp(std::cout, gr.graph);
-  printf ("\n#############################\n\n");
+  printf ("\n#############################*/\n\n");
 #endif
 
   m.id_pool = &gr.graph.id_pool();
@@ -1841,7 +1856,18 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   MultiChannelState ret = createDataflow (gr.graph.m_seq, m, d);
   hassert (ret.datamap.empty() && ret.ctrlmap.empty());
 
+#if 0
+  printf ("/*---\n");
+  int pos = 0;
+  for (auto &elem : d) {
+    printf ("I0 %3d :: ", pos);
+    elem.Print (std::cout);
+    pos++;
+  }
+  printf ("---*/\n");
+#endif  
 
+  
   std::unordered_map<ChanId, std::list<int>> dfuses;
   std::unordered_map<ChanId, int> dfdefs;
   
@@ -1857,21 +1883,20 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
       d.push_back (Dataflow::mkSink (ch));
     }
   }
-  
+
 #if 0
-  printf ("---\n");
+  printf ("/*---\n");
   int pos = 0;
   for (auto &elem : d) {
     printf ("I %3d :: ", pos);
     elem.Print (std::cout);
     pos++;
   }
-  printf ("---\n");
+  printf ("---*/\n");
 #endif  
 
   // strip out single fanout buffers
 
-#if 1
   // check that any used variable is defined or an input
   // and any defined variable is used or an output
   for (auto &[x,l] : dfuses) {
@@ -1891,7 +1916,6 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	       (int)x.m_id);
     }
   }
-#endif  
 #endif  
 
   std::unordered_set<std::pair<int,int>> delidx;
@@ -2029,13 +2053,14 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
       }
     }
   }
+
   
   // delete dead code.
   // code is dead if:
   //   the def has no uses
   //   the channel defined is not in the original chp
   for (auto &[ch, idx] : dfdefs) {
-    if (!dfuses.contains (ch) && !gr.name_from_chan.contains (ch)) {
+    if (!(dfuses.contains (ch) || gr.name_from_chan.contains (ch))) {
       // check this
       if (d[idx].u.type() == DataflowKind::Func) {
 	int subidx = 0;
@@ -2096,19 +2121,22 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	else {
 	  // no uses for the RHS, now we see if the LHS has additional
 	  // uses.
-	  if (dfuses[*lhs].front() == dfuses[*lhs].back()) {
+	  if (1 || dfuses[*lhs].front() == dfuses[*lhs].back()) {
 	    // no other uses of the lhs, replace the def
 	    if (dfdefs.contains (*lhs)) {
+              if (!gr.name_from_chan.contains (x.u_func().ids[0])) {
+	      // replace *lhs with the rhs in the def
 	      replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
 
-	      // and now replace all uses of RHS with *lhs
-	      if (dfuses.contains (x.u_func().ids[0])) {
-		Assert (0, "This should not happen!");
-		for (auto uses : dfuses[x.u_func().ids[0]]) {
-		  replaceChanUses (d[uses], x.u_func().ids[0], *lhs);
+	      // replace any uses of the LHS with the rhs
+	      if (dfuses.contains (*lhs)) {
+		for (auto uses : dfuses[*lhs]) {
+		  replaceChanUses (d[uses], *lhs, x.u_func().ids[0]);
 		}
 	      }
+	      // and now replace all uses of RHS with *lhs
 	      delidx.insert (std::pair(idx,-1));
+              }
 	    }
 	    else {
 	      // no defs for the lhs; must be a primary input!
@@ -2120,7 +2148,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     }
     idx++;
   }
-#if 0  
+#if 0
   for (auto &[x,y] : delidx) {
     printf ("  --> (%d,%d)\n", x, y);
   }
@@ -2159,6 +2187,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   dfuses.clear();
   dfdefs.clear();
   idx = 0;
+  // printf ("/*\n");
   for (auto &x : dfinal) {
 #if 0
     printf ("F %3d :: ", idx);
@@ -2167,6 +2196,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     computeUses (idx, x, dfuses, dfdefs);
     idx++;
   }
+  // printf ("*/\n");
 
   // check that any used varaible is defined or an input
   // and any defined variable is used or an output
@@ -2329,6 +2359,16 @@ act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
   ret->order = NULL;
 
   newnames = std::move(table.newvars);
+  
+#if 0
+  printf ("/*\n");
+  for (auto &[ch, id] : table.name_from_chan) {
+    printf ("  C%d -> ", (int)ch.m_id);
+    id->Print (stdout);
+    printf ("\n");
+  }
+  printf ("*/\n");
+#endif
   
   return ret;
 }
