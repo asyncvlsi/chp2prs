@@ -1,0 +1,33 @@
+import "37.act";
+import "37_df_chp.act";
+
+defproc test()
+{
+  chan(int) X;
+  chan(int) Y, Z;
+  
+  df_testproc inst(X,Y,Z);
+
+  int a, b, c, d;
+  int i, j;
+  bool success;
+
+  chp {
+      i := 0;
+      a := 5; b := 5;
+      success+;
+   *[  i < 10 ->
+    X!10;Y?a; [ a != 11 -> success-; log ("FAIL, a=", a) [] else -> skip ];
+    X!10;Y?a; [ a != 11 -> success-; log ("FAIL, a=", a) [] else -> skip ];
+    X!10;Y?a; [ a != 11 -> success-; log ("FAIL, a=", a) [] else -> skip ];
+    X!10;Y?a; [ a != 11 -> success-; log ("FAIL, a=", a) [] else -> skip ];
+    X!20;Y?a; [ a != 22 -> success-; log ("FAIL, a=", a) [] else -> skip ];
+    j := 0;
+    *[ j < 3 -> X!40;Y?a; [ a != 43 -> success-; log ("FAIL, a=", a) [] else -> skip ]; j := j + 1 ];
+    X!30;Y?a; [ a != 33 -> success-; log ("FAIL, a=", a) [] else -> skip ];
+    (;I:3: Z?a;Z?b;Z?c;Z?d; [ a != 0 | b != 1 | c != 2 | d != 3 -> success-; log ("FAIL, a=", a, " ", b, " ", c, " ", d) [] else -> skip ]);
+    i := i + 1
+    ];
+    [ success -> log ("SUCCESS") [] else -> skip ]
+  }
+}
