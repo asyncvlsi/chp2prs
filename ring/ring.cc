@@ -368,6 +368,7 @@ void RingEngine::_restore_read_ids ()
     hash_iter_init (var_infos, &itr);
     while ((b = hash_iter_next (var_infos, &itr))) {
       b_saved = hash_lookup(var_infos_read_ids, b->key);
+      Assert (b_saved, "No var_info_read_id ??");
       vi_saved = (var_info *)b_saved->v;
       vi = (var_info *)b->v;
       vi->latest_for_read = vi_saved->latest_for_read;

@@ -1308,6 +1308,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         {
             block_id = sel_merge_block_id;
         }
+
+        _save_read_ids();
         break;
 
     case ACT_CHP_SELECT_NONDET:
@@ -1387,8 +1389,8 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
                 list_iappend_head (branch_map, iwrite-i);
                 list_iappend_head (branch_map, latest_branch_id-_branch_id-1);
                 branch_ctr++;
-                // fprintf (fp, "// latch branch id %d, merge port id %d, latch id %d\n", 
-                //                     latest_branch_id, latest_branch_id-branch_id-1, iwrite-i);
+                fprintf (_fp, "// absolute latch branch id %d, parent branch id %d, latch id %d\n", 
+                                    latest_branch_id, _branch_id, iwrite-i);
             }
             lj = list_next (lj);
             latest_branch_id_prev = latest_branch_id;
@@ -1423,12 +1425,13 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
         // collect unassigned branch ids for OR-gate
         if ( need_or )
         {
-            for ( int i=0 ; i<n_branches ; i++ )
+            for ( int i=_branch_id ; i<n_branches+_branch_id ; i++ )
             {
                 int flag=0;
                 for ( lj = list_first(branch_map) ; lj ; lj = list_next(list_next(lj)) )
                 {
                     int mux_port = list_ivalue(lj)+_branch_id;
+                    // fprintf(_fp, "\n// mux port: %d, parent branch id: %d\n", mux_port, _branch_id);
                     if (mux_port == i)
                     { flag=1; break; }
                 }
@@ -1453,6 +1456,11 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
             // increase nwrite and iwrite for the variable so it can be connected to correctly downstream
             vi->iwrite++; vi->nwrite++;
             vi->latest_for_read = (vi->iwrite)-1;
+            while (list_ivalue(list_first(vi->latest_latch_branches)) > _branch_id )
+            {
+                list_delete_ihead(vi->latest_latch_branches);
+            }
+            list_iappend_head (vi->latest_latch_branches, _branch_id-1);
 
             lj = list_first(branch_map);
             for ( int i=0 ; i<mux_size ; i++ )
@@ -1466,7 +1474,7 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
                     for (listitem_t *lk = list_first(unassigned_branches) ; lk ; lk = list_next(lk))
                     {
                         fprintf (_fp, "or_%s_%d.in[%d] = %s%d.ci[%d].r;\n", vi->name, mux_id, j, 
-                                            ring_block_prefix, merge_block_id, list_ivalue(lk));
+                                            ring_block_prefix, merge_block_id, list_ivalue(lk)-_branch_id);
                         j++;
                     }
                     // connect pre-split data to mux last data input
@@ -1480,6 +1488,7 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
                 }
 
                 // connect mux input control and data
+                fprintf (_fp, "\n// BRANCH ID: %d\n", _branch_id);
                 fprintf (_fp, "%s%s_%d.c[%d] = %s%d.ci[%d].r;\n", capture_block_prefix, vi->name, 
                                                     iwrite+1, i, ring_block_prefix, 
                                                         merge_block_id, list_ivalue(lj));
@@ -1491,12 +1500,17 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
         }
         branch_ctr = 0;
     }
-    float max_delay = _lookup_mux_delays (max_mux_size, max_or_size);
-    Assert ((max_delay != -1), "mux lookup out of range" );
-    // fprintf (fp, "\nmax mux delay: %f", max_delay);
-    // fprintf (fp, "\nmax mux size: %d", max_mux_size);
-    // fprintf (fp, "\nmax or size: %d", max_or_size);
-    return int(max_delay/(2*invx1_delay_ps)) + 1;
+    if ( max_mux_size>0 ) {
+        float max_delay = _lookup_mux_delays (max_mux_size, max_or_size);
+        // fprintf (_fp, "\nmax mux delay: %f", max_delay);
+        // fprintf (_fp, "\nmax mux size: %d", max_mux_size);
+        // fprintf (_fp, "\nmax or size: %d", max_or_size);
+        Assert ((max_delay != -1), "mux lookup out of range" );
+        return int(max_delay/(2*invx1_delay_ps)) + 1;
+    }
+    else {
+        return 0;
+    }
 }
 
 /*
