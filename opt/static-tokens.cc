@@ -859,7 +859,8 @@ void _run_seq (Sequence seq,
       std::vector<tmploop> loopphis;
 
       for (auto &var : livein[curr]) {
-	if (defuse[curr].var_reads.contains (var)) {
+	if (defuse[curr].var_reads.contains (var) ||
+	    defuse[curr].var_writes.contains (var)) {
 	  if (!defuse[curr].var_writes.contains (var)) {
 	    // Scenario I:
 	    //     h := BLAH; *[ USE(h) <- g ]; ...
@@ -1284,7 +1285,7 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
 	os << "}";
        }
        else { return; }
-
+#if 0
        if (b.type() == BlockType::Select) {
 	   os << " {{ splits: ";
 	   for (auto &var : livein[&b]) {
@@ -1313,7 +1314,8 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
        else if (b.type() == BlockType::DoLoop) {
 
 
-       }       
+       }
+#endif       
       };
     auto post = [&] (std::ostream &os, const Block &b)
       {
@@ -1322,7 +1324,7 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
 	printvars(os, liveout[&b]);
 	os << "}";
        }
-
+#if 0
        if (b.type() == BlockType::Select) {
 	   os << " {{ pot-merges: ";
 	   for (auto &var : liveout[&b]) {
@@ -1336,6 +1338,7 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
 	   }
 	   os << "}}" << std::endl;
        }
+#endif       
       };
 
     printf ("/*-------\n");

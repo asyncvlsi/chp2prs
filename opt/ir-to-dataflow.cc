@@ -1922,9 +1922,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   
   // This can happen because a guard for a split/merge is unused!
   std::unordered_set<ChanId> dead_chans;
-
   std::unordered_set<ChanId> used_dead;
-
   std::unordered_set<ChanId> processed;
 
   while (1) {
@@ -1985,7 +1983,6 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	  // actual dead nodes are those that were used in the dead
 	  // subgraph MINUS those that are in the live one
 	  used_dead = Algo::set_minus (used_dead, used_rest);
-
 	}
 	break;
 
@@ -2054,7 +2051,6 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     }
   }
 
-  
   // delete dead code.
   // code is dead if:
   //   the def has no uses
@@ -2076,12 +2072,14 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 
 #if 0
   idx = 0;
+  printf ("/*\n");
   for (auto &x : d) {
     printf ("F %3d :: ", idx);
     x.Print (std::cout);
     idx++;
   }
   printf ("----\n");
+  printf ("*/\n");
 #endif  
 
   idx = 0;
@@ -2187,16 +2185,21 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   dfuses.clear();
   dfdefs.clear();
   idx = 0;
-  // printf ("/*\n");
   for (auto &x : dfinal) {
-#if 0
-    printf ("F %3d :: ", idx);
-    x.Print (std::cout);
-#endif
     computeUses (idx, x, dfuses, dfdefs);
     idx++;
   }
-  // printf ("*/\n");
+  
+#if 0  
+  idx = 0;
+  printf ("/*\n");
+  for (auto &x : dfinal) {
+    printf ("F %3d :: ", idx);
+    x.Print (std::cout);
+    idx++;
+  }
+  printf ("*/\n");
+#endif  
 
   // check that any used varaible is defined or an input
   // and any defined variable is used or an output
