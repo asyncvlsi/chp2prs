@@ -98,7 +98,7 @@ class RingSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     bundled = dp->getIntParam ("bundled_dpath");
 
-    if (0) { //opt
+    if (1) { //opt
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
@@ -109,7 +109,7 @@ class RingSynth : public ActSynthesize {
       else {
         ChpOptimize::optimize_chp_O0 (g.graph, p->getName(), false);
         ChpOptimize::propagateConstants (g.graph);
-        ChpOptimize::eliminateDeadCode (g.graph);
+        // ChpOptimize::eliminateDeadCode (g.graph);
       }
       uninlineBitfieldExprsHack (g.graph);
 
@@ -136,7 +136,7 @@ class RingSynth : public ActSynthesize {
       fprintf (stdout, "\n\n");
       chp_print(stdout, l);
       fprintf (stdout, "\n\noriginal chp-----\n\n");
-
+#if 0
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
       // bkp->print_decomp_info();
@@ -162,6 +162,7 @@ class RingSynth : public ActSynthesize {
       fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
       /*
       */
+#endif
 
     }
     }

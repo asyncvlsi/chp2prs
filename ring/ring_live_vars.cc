@@ -273,6 +273,8 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
         {
             gc = c_t->u.gc;
             _generate_live_var_info (gc->s, 0);
+            _tag_action_with_reqd_vars_union_lcd (c_t);
+            _print_var_list ((list_t *)c_t->space);
             break;
         }
         else
