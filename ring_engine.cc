@@ -55,11 +55,12 @@ class RingSynth : public ActSynthesize {
       pp_printf_raw (_pp, "import \"true_pipe_c_brs_bd.act\";\n");
     }
     else {
-      pp_printf_raw (_pp, "import \"syn/qdi/_all_.act\";\n");
+      pp_printf_raw (_pp, "import \"true_pipe_c_brs_bd.act\";\n");
+      // pp_printf_raw (_pp, "import \"syn/qdi/_all_.act\";\n");
     }
     pp_printf_raw (_pp, "import \"%s\";\n", _ename);
     // open the operating namespace
-    pp_printf_raw (_pp, "open syn;\n");
+    pp_printf_raw (_pp, "open syn::expr;\n");
     pp_forced (_pp, 0);
     pp_forced (_pp, 0);
 
@@ -98,7 +99,7 @@ class RingSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     bundled = dp->getIntParam ("bundled_dpath");
 
-    if (1) { //opt
+    if (0) { //opt
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
