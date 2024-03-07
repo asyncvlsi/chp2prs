@@ -30,7 +30,7 @@ class RingEngine {
         RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp, 
             const char *circuit_library,
-            const char *exprfile = "expr.act");
+            const char *exprfile);
     
         // void run_forge ();
 

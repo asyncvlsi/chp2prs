@@ -32,7 +32,7 @@ class RingForge : public RingEngine {
     RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp, 
             const char *circuit_library,
-            const char *exprfile = "expr.act" );
+            const char *exprfile);
 
         void run_forge ();
 
@@ -55,6 +55,7 @@ class RingForge : public RingEngine {
         int _generate_selection_merge(int);
         int _generate_init_cond_itb(int, int, int, int);
         int _generate_pipe_element_custom(int, int, int, ActId *);
+        int _generate_pipe_element_lcd(int, ActId *);
 
         // Datapath generation functions
         int _generate_single_latch (var_info *, int);

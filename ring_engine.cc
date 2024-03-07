@@ -183,8 +183,8 @@ class RingSynth : public ActSynthesize {
 
     // p->CurScope()->Print(stdout);
     Assert (b, "hmm b");
-
-    RingForge *rf = new RingForge (_pp->fp, p, c, b, "");
+    // fprintf (stdout, "%s", _ename);
+    RingForge *rf = new RingForge (_pp->fp, p, c, b, "", _ename);
 
     // for verification, need to remove
     // DecompAnalysis_old *da = new DecompAnalysis_old (_pp->fp, p, c);
