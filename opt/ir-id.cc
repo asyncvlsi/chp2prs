@@ -48,11 +48,13 @@ OptionalChanId NameParsingIdPool::chanIdFromActId(ActId *id) {
     InstType *chanType = varChannel->datatype();
     Int *varInt = dynamic_cast<Int *>(chanType->BaseType());
     bool is_bool = dynamic_cast<Bool *>(chanType->BaseType());
+    bool is_enum = TypeFactory::isUserEnum (chanType);
 
     /* XXX: will fail for data types and structures */
-    hassert(varInt || is_bool);
+    hassert(varInt || is_bool || is_enum);
     
-    int bitwidth = varInt ? TypeFactory::bitWidth(varInt) : 1;
+    int bitwidth = varInt ? TypeFactory::bitWidth(varInt) :
+      (is_enum ? TypeFactory::bitWidth (chanType) : 1);
 
     /* XXX: this will fail if the channel is a pure synchronization
        channel 
@@ -87,10 +89,14 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
     hassert(varType);
     Int *varInt = dynamic_cast<Int *>(varType->BaseType());
     bool is_bool = TypeFactory::isBoolType(varType);
+    bool is_enum = TypeFactory::isUserEnum (varType);
 
     /* XXX: will fail for data types and structures */
-    hassert(varInt || is_bool);
-    int bitwidth = varInt ? TypeFactory::bitWidth(varInt) : 1;
+    hassert(varInt || is_bool || is_enum);
+    
+    int bitwidth = varInt ? TypeFactory::bitWidth(varInt) :
+      (is_enum ? TypeFactory::bitWidth (varType) : 1);
+    
     hassert(bitwidth > 0);
 
     // then create a variable to hold it
