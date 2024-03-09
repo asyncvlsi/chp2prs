@@ -355,6 +355,54 @@ int RingForge::_generate_pipe_element_custom(int bd_chan_id, int type, int width
 }
 
 /*
+    Similar to the previous, but used to pulse latch for
+     implementing loop-carried dependencies from 
+    one iteration of the ring to the next. 
+*/
+int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
+{
+    Expr *e = NULL;
+    int block_id;
+    char chan_name[1024];
+    int first_latch_id, last_latch_id;
+    int bw;
+    hash_bucket_t *b;
+    var_info *vi;
+    char tname[1024];
+
+    block_id = _gen_block_id();
+    Assert (var, "no variable (_generate_pipe_element_lcd");
+
+    switch(type)
+    {
+    case ACT_CHP_ASSIGN:
+        fprintf(_fp,"\n// Pipe block for lcd. transmission.");
+        fprintf(_fp,"\n");
+        fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        char tname[1024];
+        get_true_name(tname, var, _p->CurScope());
+        b = hash_lookup(var_infos, tname);
+        Assert (b, "variable not found");
+        vi = (var_info *)b->v;
+        first_latch_id = 0;
+        last_latch_id = vi->latest_for_read;
+        // connect last latch output to first latch input
+        fprintf(_fp,"%s%s_%d.dout = %s%s_%d.din;\n",capture_block_prefix,vi->name,last_latch_id,
+                                            capture_block_prefix,
+                                            vi->name,first_latch_id);
+        // connect pipe block action port to latch go port
+        fprintf(_fp,"%s%d.zero = %s%s_%d.go;\n",ring_block_prefix,block_id,capture_block_prefix,
+                                            vi->name,first_latch_id);
+        break;
+
+    default:
+        fatal_error("Shouldn't be here... (generate_pipe_element_lcd)");
+        break;
+    }
+    return block_id;
+}
+
+/*
     Generate dataless ITB that initializes the ring.
 */
 int RingForge::_generate_itb()
@@ -880,7 +928,7 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
     int first_block_id;
     int init_chan, lcd_chan;
     int init_latch = -1;
-    list_t *lcd_chan_list, *lcd_var_list;
+    list_t *lcd_chan_list;
     list_t *tag_list = NULL;
     var_info *vi;
     ActId *id;
@@ -915,13 +963,12 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
             prev_block_id = first_block_id;
 
             // new I.C. handling method -----
-            #if 0
-            lcd_var_list = list_new();
+#if 1
             // loop through initial condition assignments to create latches with correct initial values
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
             {
                 act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP)
+                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
                 {
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;
@@ -929,19 +976,18 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
                     Assert (e->type == E_INT, "Constants only in initial conditions");
                     int ival = e->u.ival.v;
                     char tname[1024];
-                    get_true_name(tname, id, p->CurScope());
+                    get_true_name(tname, id, _p->CurScope());
                     hash_bucket_t *b = hash_lookup(var_infos, tname);
-                    // hash_bucket_t *b = hash_lookup(var_infos, id->rootVx(p->CurScope())->getName());
                     vi = (var_info *)b->v;
-                    int latch_id = generate_single_latch (fp, vi, ival);
-                    list_append(lcd_var_list, vi->name);
+                    int latch_id = _generate_single_latch (vi, ival);
+                    Assert (latch_id == 0, "Same variable has more than one initial condition?");
+                    // list_iappend(latch_id_list, latch_id);
                 }
             }
-
-            tag_lcds(main_loop, p, lcd_var_list);
-            #endif
+#endif
             // new --------------------------
 
+#if 0
             // old ---------
             lcd_chan_list = list_new();
             // loop through initial condition assignments to create ITBs and receives
@@ -971,12 +1017,14 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
                 }
             }
             // old ---------
+#endif
 
             // main program synthesis
             gc = main_loop->u.gc;
             block_id = generate_one_ring(gc->s, 0, prev_block_id);
             prev_block_id = block_id;
 
+#if 0
             // old ---------
             lk = list_first(lcd_chan_list);
             // loop through initial condition assignments again to create loop-carried dependency sends
@@ -999,6 +1047,25 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
                 }
             }
             // old ---------
+#endif
+
+#if 1
+            // new I.C. handling method -----
+            for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
+            {
+                act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
+                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
+                {
+                    Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
+                    id = stmt1->u.assign.id;
+                    char tname[1024];
+                    get_true_name(tname, id, _p->CurScope());
+                    block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id);
+                    _connect_pipe_elements (prev_block_id, block_id);
+                    prev_block_id = block_id;
+                }
+            }
+#endif
 
             _connect_pipe_elements(block_id, first_block_id);
             break;
@@ -1148,6 +1215,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             first_block_id = _generate_itb();
             prev_block_id = first_block_id;
 
+#if 0
             // loop through initial condition assignments to create ITBs and receives
             lcd_chan_list = list_new();
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
@@ -1174,12 +1242,57 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     prev_block_id = block_id;
                 }
             }
+#endif
+            // new I.C. handling method -----
+#if 1
+            // loop through initial condition assignments to create latches with correct initial values
+            for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
+            {
+                act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
+                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
+                {
+                    Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
+                    id = stmt1->u.assign.id;
+                    Expr *e = stmt1->u.assign.e;
+                    Assert (e->type == E_INT, "Constants only in initial conditions");
+                    int ival = e->u.ival.v;
+                    char tname[1024];
+                    get_true_name(tname, id, _p->CurScope());
+                    hash_bucket_t *b = hash_lookup(var_infos, tname);
+                    vi = (var_info *)b->v;
+                    int latch_id = _generate_single_latch (vi, ival);
+                    Assert (latch_id == 0, "Same variable has more than one initial condition?");
+                    // list_iappend(latch_id_list, latch_id);
+                }
+            }
+#endif
+            // new --------------------------
 
             // main program synthesis
             gc = main_loop->u.gc;
             block_id = generate_branched_ring(gc->s, 0, prev_block_id, 0);
             prev_block_id = block_id;
 
+
+#if 1
+            // new I.C. handling method -----
+            for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
+            {
+                act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
+                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
+                {
+                    Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
+                    id = stmt1->u.assign.id;
+                    char tname[1024];
+                    get_true_name(tname, id, _p->CurScope());
+                    block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id);
+                    _connect_pipe_elements (prev_block_id, block_id);
+                    prev_block_id = block_id;
+                }
+            }
+#endif
+
+#if 0
             // loop through initial condition assignments again to create loop-carried dependency sends
             lk = list_first(lcd_chan_list);
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
@@ -1200,6 +1313,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     lk = list_next(lk);
                 }
             }
+#endif
+
             _connect_pipe_elements(block_id, first_block_id);
             break;
         }
