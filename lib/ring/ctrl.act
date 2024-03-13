@@ -129,6 +129,28 @@ export defproc elem_c_skip (a1of1 m1; a1of1 p1)
 }
 // ------------------------------------
 
+
+// Pause element -----------------------
+
+export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
+{
+  bool _m1_r;
+  inverter m1_inv(m1.r,_m1_r);
+
+  bool u, _u, v;
+  std::ideal_arbiter ia(pause.r, m1.a, u, p1.r);
+  inverter pause_inv(u,_u);
+
+  syn::NOR2X1 and(_m1_r, _u, pause.a);
+
+  prs {
+      ~Reset & (~_m1_r & ~p1.r & ~p1.a) -> m1.a+ 
+        Reset | (_m1_r &  p1.r &  p1.a) -> m1.a-
+  }
+}
+// ------------------------------------
+
+
 // Initial token buffer ---------------
 
 export defproc elem_c_itb (a1of1 m1; a1of1 p1)
