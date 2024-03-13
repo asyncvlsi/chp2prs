@@ -1,0 +1,436 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2024 Karthi Srinivasan
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+
+// CMOS implementable versions of the pipeline elements
+// Bundled Data Datapath
+
+import globals;
+import std;
+open std::channel;
+open std::gates;
+
+import std::cells -> syn;
+
+namespace syn {
+  
+// Basic Elements -----------------------------------------
+
+defproc inverter (bool? in; bool! out)
+{
+    prs{
+        in => out-
+    }
+}
+// --------------------------------------------------------
+
+
+// Connectors ---------------------------------------------
+
+export defproc gp_connect (a1of1 m1; a1of1 p1)
+{
+  m1 = p1;
+}
+
+export template<pint W>
+defproc connect_inchan_to_ctrl (bd<W> ch; a1of1 ctrl)
+{
+  ch.r = ctrl.r;
+  ch.a = ctrl.a;
+}
+
+export template<pint W>
+defproc connect_outchan_to_ctrl (bd<W> ch; a1of1 ctrl)
+{
+  ch.r = ctrl.r;
+  ch.a = ctrl.a;
+}
+
+export template<pint W>
+defproc connect_capture_din (bd<W> ch; bool d[W])
+{
+  ch.d = d;
+}
+
+export template<pint W>
+defproc connect_capture_dout (bool fin[W]; bool d[W])
+{
+  fin = d;
+}
+
+export template<pint W>
+defproc connect_fblock_dout (bd<W> ch; bool d[W])
+{
+  ch.d = d;
+}
+// --------------------------------------------------------
+
+
+// Control Elements ---------------------------------------
+
+// The Two Main Pipe Elements ---------
+
+export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
+{
+
+  bool _m1_r;
+  inverter m1_inv(m1.r,_m1_r);
+
+  zero.a = p1.r;
+  zero.r = m1.a;
+
+  prs {
+      ~Reset & (~_m1_r & ~zero.a & ~p1.a) -> zero.r+ 
+        Reset | (_m1_r &  zero.a &  p1.a) -> zero.r-
+  }
+}
+
+export defproc elem_c_ppa_brs_bd (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
+{
+
+  bool _zero_r, _m1_r;
+  inverter zero_inv(zero.r,_zero_r);
+  inverter m1_inv(m1.r,_m1_r);
+
+  zero.a = p1.r;
+  data.a = zero.a;
+  data.r = m1.a;
+
+  prs {
+      ~Reset & (~_m1_r &  ~_zero_r & ~p1.a) -> data.r+ 
+        Reset | (_m1_r &   _zero_r &  p1.a) -> data.r-
+  }
+}
+// ------------------------------------
+
+// Skip element -----------------------
+
+export defproc elem_c_skip (a1of1 m1; a1of1 p1)
+{
+    m1 = p1;
+}
+// ------------------------------------
+
+// Initial token buffer ---------------
+
+export defproc elem_c_itb (a1of1 m1; a1of1 p1)
+{
+  std::gates::ctree<2,false> c_itb;
+  syn::NOR2X1 nor_reset;
+
+  c_itb.in[0] = m1.r;
+  c_itb.in[1] = p1.a;
+  c_itb.out = m1.a;
+
+  nor_reset.A = Reset;
+  nor_reset.B = c_itb.out;
+  nor_reset.Y = p1.r;
+}
+// ------------------------------------
+
+
+// N-way parallelizer -----------------
+// for comma-separated statements
+
+export template<pint N>
+defproc parallel_split(a1of1? m1; a1of1 co[N]) 
+{
+    std::gates::sigbuf<N> s(m1.r);
+    ( i : N: s.out[i] = co[i].r; )
+
+    std::gates::ctree<N, false> ct(, m1.a);
+    ( i : N: ct.in[i] = co[i].a; )
+}
+
+export template<pint N>
+defproc parallel_merge(a1of1 ci[N]; a1of1! p1) 
+{
+    std::gates::ctree<N, false> ct(, p1.r);
+    ( i : N: ct.in[i] = ci[i].r; )
+
+    std::gates::sigbuf<N> s(p1.a);
+    ( i : N: s.out[i] = ci[i].a; )
+}
+// ------------------------------------
+
+
+// N-way selection split & merge ------
+// for selections
+
+export template<pint N>
+defproc selection_split(bool? gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+    syn::AND2X1 ands[N];
+    ( i : N: ands[i].A = m1.r; )
+    ( i : N: ands[i].B = gs[i]; )
+    ( i : N: ands[i].Y = co[i].r; )
+
+    std::gates::ortree<N, false> ort(, m1.a);
+    ( i : N: ort.in[i] = co[i].a; )
+}
+
+export template<pint N>
+defproc selection_merge(a1of1 ci[N]; a1of1! p1) 
+{
+    std::gates::ortree<N, false> ort(, p1.r);
+    ( i : N: ort.in[i] = ci[i].r; )
+
+    std::gates::sigbuf<N> s(p1.a);
+    ( i : N: s.out[i] = ci[i].a; )
+}
+// ------------------------------------
+
+// N : No. of inputs, W : Width of each input
+export template<pint N,W>
+defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
+{
+  // ands
+  syn::AND2X1 stage_1[N][W];
+  
+  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
+  ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
+
+  // ors
+  std::gates::ortree<N, false> stage_2[W]; 
+
+  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
+  ( j : W : stage_2[j].out = dout[j]; )
+
+}
+
+// N : No. of inputs, W : Width of each input
+export template<pint N,W>
+defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
+{
+  // nands
+  syn::NAND2X1 stage_1[N][W];
+  
+  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
+  ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
+
+  // nands
+  std::gates::andtree<N, true> stage_2[W]; 
+
+  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
+  ( j : W : stage_2[j].out = dout[j]; )
+
+}
+
+defproc merge_mux_new_prim(bool? S1, S2, A, B; bool! Y)
+{
+  // One-hot control mux 
+  // Y = S1?A : S2?B : 0
+  bool _Y;
+  prs {
+    ~B & ~S1 | ~A & ~S2 -> _Y+
+     A &  S1 |  B &  S2 -> _Y-
+    _Y => Y-
+  }
+  sizing { Y{-1} }
+}
+
+// Unused as of now..
+template<pint N, W>
+defproc merge_mux_new(bool? c[N]; bool? din[N][W]; bool! dout[W])
+{
+  merge_mux_new_prim mux[N-1][W];
+
+  // switch to tree
+
+  ( j : W : mux[N-1][j].Y = dout[j]; )
+  ( j : W : ( i : N-1 : mux[i][j].Y = mux[i+1][j].A; ) )
+  ( j : W : ( i : N-1 : mux[i][j].B = din[i+1][j];  ) )
+  ( j : W : mux[0][j].A = din[0][j]; )
+
+  // TODO: control decoder: one hot -> bleh
+  // ( i : N : )
+
+}
+
+defproc test_merge_mux()
+{
+  // merge_mux_ohc<2,1> m;
+  merge_mux_ohc_opt<3,32> m;
+}
+// --------------------------------------------------------
+
+
+
+// Bundled Data Datapath Elements -------------------------
+// Copied from dflowmap_netlist/dflow_std/qdigen.act
+
+export template <pint V, W>
+defproc constant_value(bool! d[W])
+{
+  (i:W: 
+    [((V >> i) & 1) = 0 -> 
+      syn::TIELOX1 tielow[i..i]; 
+      tielow[i].Y = d[i];
+    []else -> 
+      syn::TIEHIX1 tiehigh[i..i]; 
+      tiehigh[i].Y = d[i];
+    ]
+  )
+}
+
+export template <pint N>
+defproc delay_line(bool? in; bool! out)
+{
+  syn::INVX1 invs[2*N];
+  invs[0].A = in;
+  (i:2*N-1 : 
+    invs[i].Y = invs[i+1].A;
+  )
+  invs[2*N-1].Y = out;
+}
+
+export template <pint N>
+defproc delay_line_chan(a1of1 m1; a1of1 p1)
+{
+  delay_line<N> d;
+  m1.r = d.in;
+  p1.r = d.out;
+  m1.a = p1.a;
+}
+
+export template <pint PW>
+defproc pulse(bool? in; bool! out)
+{
+  syn::INVX1 invs[2*PW+1];
+  invs[0].A = in;
+  (i:2*PW: 
+    invs[i].Y = invs[i+1].A;
+  )
+
+  syn::AND2X1 and;
+  and.A = in;
+  and.B = invs[2*PW].Y;
+
+  out = and.Y;
+
+  spec {
+    timing in+: out+ <[1] and.B-
+    // this delay margin is a placeholder, 
+    // its actual value depends on the delay of LATCH
+  }
+}
+
+export template <pint CD, PW, W>
+defproc capture(a1of1 go; bool? din[W]; bool! dout[W])
+{
+  delay_line<CD> capture_delay;
+  go.r = capture_delay.in;
+  go.a = capture_delay.out;
+
+  pulse<PW> pulse_generator;
+  go.r = pulse_generator.in;
+
+  sigbuf<W> fanout_tree;
+  pulse_generator.out = fanout_tree.in;
+
+  syn::LATCH x[W];
+  // syn::LATCHLO x[W];
+  (i:W:
+    x[i].CLK = fanout_tree.out[i];
+    x[i].D = din[i];
+    x[i].Q = dout[i];
+  )
+
+  spec {
+    timing go.r+: dout < go.a+
+  }
+}
+
+export template <pint CD, PW, W, INIT_VAL>
+defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])
+{
+  delay_line<CD> capture_delay;
+  go.r = capture_delay.in;
+  go.a = capture_delay.out;
+
+  pulse<PW> pulse_generator;
+  go.r = pulse_generator.in;
+
+  sigbuf<W> fanout_tree;
+  pulse_generator.out = fanout_tree.in;
+
+  { INIT_VAL >= 0 : "Only non-negative initial values" };
+  { INIT_VAL <= (1<<W)-1 : "Initial value out of bounds" };
+
+  pint ival = INIT_VAL;
+  pint j = 0;
+
+  *[ j < W -> [ (ival%2) = 0 -> syn::LATCHLO x_lo[j..j];                         
+                                x_lo[j].CLK = fanout_tree.out[j];
+                                x_lo[j].D = din[j];
+                                x_lo[j].Q = dout[j];
+                                x_lo[j].R = Reset;
+
+             [] (ival%2) = 1 -> syn::LATCHHI x_hi[j..j];
+                                x_hi[j].CLK = fanout_tree.out[j];
+                                x_hi[j].D = din[j];
+                                x_hi[j].Q = dout[j];
+                                x_hi[j].S = Reset;
+
+              ]; j = j + 1; ival = ival >> 1;
+  ]
+  
+  spec {
+    timing go.r+: dout < go.a+
+  }
+}
+
+export template <pint CD, PW, W, INIT_VAL>
+defproc itb_wrapper (bd<W> R_out; bd<W> S_in)
+{
+  a1of1 m1, p1;
+  capture_init<CD, PW, W, INIT_VAL> x_init;
+  std::gates::ctree<2,false> c_itb;
+  syn::NOR2X1 nor_reset;
+
+  c_itb.in[0] = m1.r;
+  c_itb.in[1] = p1.a;
+
+  c_itb.out = x_init.go.r;
+  m1.a = x_init.go.a;
+  nor_reset.A = Reset;
+  nor_reset.B = c_itb.out;
+
+  nor_reset.Y = p1.r;
+
+  x_init.dout = R_out.d;
+  x_init.din  = S_in.d; 
+
+  connect_inchan_to_ctrl<W> r_p1(R_out, p1);
+  connect_outchan_to_ctrl<W> s_m1(S_in, m1);
+
+}
+// --------------------------------------------------------
+
+// Variables ----------------------------------------------
+
+export template <pint M>
+deftype bd_int <: int<M> (bool d[M])
+{
+} 
+// --------------------------------------------------------
+
+}

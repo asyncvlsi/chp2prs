@@ -50,14 +50,14 @@ class RingSynth : public ActSynthesize {
     int bundled_data = dp->getIntParam ("bundled_dpath");
 
     /* print imports */
-    if (bundled_data) {
-      // pp_printf_raw (_pp, "import \"syn/bdopt/_all_.act\";\n");
-      pp_printf_raw (_pp, "import \"true_pipe_c_brs_bd.act\";\n");
-    }
-    else {
-      pp_printf_raw (_pp, "import \"true_pipe_c_brs_bd.act\";\n");
-      // pp_printf_raw (_pp, "import \"syn/qdi/_all_.act\";\n");
-    }
+    // if (bundled_data) {
+    pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
+    pp_printf_raw (_pp, "open syn;\n");
+    // }
+    // else {
+    //   pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
+    // pp_printf_raw (_pp, "open syn;\n");
+    // }
     pp_printf_raw (_pp, "import \"%s\";\n", _ename);
     // open the operating namespace
     pp_printf_raw (_pp, "open syn::expr;\n");
@@ -109,8 +109,8 @@ class RingSynth : public ActSynthesize {
       }
       else {
         ChpOptimize::optimize_chp_O0 (g.graph, p->getName(), false);
-        ChpOptimize::propagateConstants (g.graph);
-        // ChpOptimize::eliminateDeadCode (g.graph);
+        // ChpOptimize::propagateConstants (g.graph);
+        ChpOptimize::eliminateDeadCode (g.graph);
       }
       uninlineBitfieldExprsHack (g.graph);
 
@@ -133,10 +133,10 @@ class RingSynth : public ActSynthesize {
         }
       }
 
-      fprintf (stdout, "\n\noriginal chp-----");
-      fprintf (stdout, "\n\n");
-      chp_print(stdout, l);
-      fprintf (stdout, "\n\noriginal chp-----\n\n");
+      // fprintf (stdout, "\n\noriginal chp-----");
+      // fprintf (stdout, "\n\n");
+      // chp_print(stdout, l);
+      // fprintf (stdout, "\n\noriginal chp-----\n\n");
 #if 0
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
@@ -147,7 +147,11 @@ class RingSynth : public ActSynthesize {
       cb->chop_graph();
 
       auto vs = cb->get_chopped_seqs();
-      fprintf (stdout, "\n\ndecomposed processes ----------- \n");
+      // fprintf (stdout, "\n\ndecomposed processes ----------- \n");
+      act_chp_lang_t *decomp;
+      NEW (decomp, act_chp_lang_t);
+      decomp->type = ACT_CHP_COMMA;
+      list_t *decomp_procs = list_new();
       for (auto v : vs)
       {
         GraphWithChanNames gc;
@@ -156,11 +160,28 @@ class RingSynth : public ActSynthesize {
         gc.name_from_chan = g.name_from_chan;  
         // std::vector<ActId *> newnames;
         act_chp_lang_t *l = chp_graph_to_act (gc, newnames, p->CurScope());
-        fprintf (stdout, "\n\n");
-        // chp_print(stdout, l);
-        chp_pretty_print(stdout, l);
+        list_append(decomp_procs, l);
+        // fprintf (stdout, "\n\n");
+        // chp_pretty_print(stdout, l);
+        // for (auto id : newnames) {
+        //   InstType *it = p->CurScope()->Lookup (id->getName());
+        //   if (TypeFactory::isBoolType (it)) {
+        //     // pp_printf (_pp, "syn::sdtboolvar %s;", id->getName());
+        //     // pp_forced (_pp, 0);
+        //     fatal_error ("no bools");
+        //   }
+        //   else {
+        //     pp_printf (_pp, "bd_int<%d> %s;",
+        //         TypeFactory::bitWidth (it), id->getName());
+        //     pp_forced (_pp, 0);
+        //     // p->CurScope()->Add (id->getName(), it);
+        //   }
+        // }
       }
-      fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
+      decomp->u.semi_comma.cmd = decomp_procs;
+      p->getlang()->getchp()->c = decomp;
+      // fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
+      p->Print(stdout);
       /*
       */
 #endif
@@ -183,23 +204,20 @@ class RingSynth : public ActSynthesize {
 
     // p->CurScope()->Print(stdout);
     Assert (b, "hmm b");
-    // fprintf (stdout, "%s", _ename);
+
     RingForge *rf = new RingForge (_pp->fp, p, c, b, "", _ename);
+    rf->run_forge();
 
     // for verification, need to remove
     // DecompAnalysis_old *da = new DecompAnalysis_old (_pp->fp, p, c);
     // da->analyze();
     // da->print_decomp_info();
-
-    rf->run_forge();
     
     /*
     ChpOptimize::putIntoNewStaticTokenForm (cg.graph);
     auto d = ChpOptimize::chp_to_dataflow(cg.graph);
-
     std::vector<ActId *> res;
     act_dataflow *newd = dataflow_to_act (d, cg, res, p->CurScope());
-
     dflow_print (stdout, newd);
     */
     fprintf (_pp->fp, "/* end rsyn */\n");

@@ -259,7 +259,7 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
     di_new->break_before = false;
     vmap.insert({send, di_new});
 
-    fprintf (stdout, "\nsize n\n");
+    // fprintf (stdout, "\nsize n\n");
     return send;
 }
 
@@ -456,7 +456,7 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
                 n = _splice_in_recv_before (curr, send, LIVE_IN);
             }
             // need to tear out the newly generated recv also (done)
-            fprintf (stdout, "\ngot here sel\n");
+            // fprintf (stdout, "\ngot here sel\n");
             // n==0 => selection has variable-less guards only i.e. constant true/false.
             // in which case, go rewrite your program, will deal with this later..
             hassert (n!=0);
