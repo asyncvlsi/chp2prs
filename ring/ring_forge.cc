@@ -402,6 +402,14 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
     return block_id;
 }
 
+int RingForge::_generate_pause_element()
+{   
+    fprintf(_fp,"\n// Pause element to suspend execution of ring\n");
+    int id = _gen_block_id();
+    fprintf(_fp,"elem_c_pause %s%d;\n",ring_block_prefix,id);
+    return id;
+}
+
 /*
     Generate dataless ITB that initializes the ring.
 */
@@ -1118,6 +1126,15 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
             init_latch = list_ivalue(list_first(tag_list));
             Assert (init_latch>-1, "wut");
         }// if (tag_list) 
+        if (c->label && !strcmp(c->label,"pause"))
+        {
+            // fprintf (stdout, "\n found a matching label: %s \n", c->label);
+            block_id = _generate_pause_element();
+            fprintf (stdout, "\n a1of1 pause port placed here : %s%d.pause \n",ring_block_prefix,block_id);
+            fprintf (stdout, "\n pause.r must be grounded for ring execution \n");
+            _connect_pipe_elements(prev_block_id, block_id);
+            prev_block_id = block_id;
+        }
         block_id = _generate_pipe_element(c, init_latch);
         _connect_pipe_elements(prev_block_id, block_id);
         break;
@@ -1192,6 +1209,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
         {
             block_id = generate_branched_ring ((act_chp_lang_t *)list_value(li), 0, pll_split_block_id, 0);
+            // BUG TODO : Assuming elementary actions only in parallel
             _connect_pll_split_outputs_to_pipe (pll_split_block_id, block_id, pll_port);
             _connect_pipe_to_pll_merge_inputs (pll_merge_block_id, block_id, pll_port);
             pll_port++;
@@ -1436,10 +1454,25 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     case ACT_CHP_SEND:
     case ACT_CHP_RECV:
         // do stuff
-        block_id = _generate_pipe_element(c, -1);
-        if (connect_prev == 1)
+        if (c->label && !strcmp(c->label,"pause"))
         {
+            block_id = _generate_pause_element();
+            fprintf (stdout, "\n a1of1 pause port placed here : %s%d.pause \n",ring_block_prefix,block_id);
+            fprintf (stdout, "\n pause.r must be grounded for ring execution \n");
+            if (connect_prev == 1)
+            {
+                _connect_pipe_elements(prev_block_id, block_id);
+            }
+            prev_block_id = block_id;
+            block_id = _generate_pipe_element(c, -1);
             _connect_pipe_elements(prev_block_id, block_id);
+        }
+        else {
+            block_id = _generate_pipe_element(c, -1);
+            if (connect_prev == 1)
+            {
+                _connect_pipe_elements(prev_block_id, block_id);
+            }
         }
         break;
 
