@@ -85,6 +85,8 @@ class ChoppingBlock {
 
         Block *_excise_loop (Block *curr);
 
+        Sequence _construct_sm_loop (Block *, std::vector<Block *>, Block *);
+
         Sequence _wrap_in_do_loop (Sequence seq);
 
         void _print_seq (Sequence seq);

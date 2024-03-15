@@ -480,7 +480,9 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
         if (root != 1) 
         {
             // fatal_error ("excise internal loops please");
+            tmp = curr->child();
             _excise_loop(curr);
+            tmp = tmp->parent();
         }
         else {
             _chop_graph (curr->u_doloop().branch, 0);
@@ -511,23 +513,144 @@ Block *ChoppingBlock::_excise_loop (Block *curr)
     Block *prev = curr->parent();
     Block *next = curr->child();
 
-    Block *send_live_vars_to_loop = NULL;
-    Block *recv_live_vars_from_loop = NULL;
-    send_live_vars_to_loop = _generate_send_to_be_recvd_by (curr);
-    recv_live_vars_from_loop = _generate_send_to_be_sent_from (curr);
-
+    Block *send_to_loop = NULL;
+    Block *send_from_loop = NULL;
     std::vector<Block *> v_block_ptrs;
-    if (send_live_vars_to_loop) v_block_ptrs.push_back(send_live_vars_to_loop);
-    if (recv_live_vars_from_loop) v_block_ptrs.push_back(recv_live_vars_from_loop);
+    std::vector<Block *> v_for_sm;
+
+    std::pair<int, Sequence> recv_in_loop = {0, {}};
+    std::pair<int, Sequence> recv_from_loop = {0, {}};
+
+    send_to_loop = _generate_send_to_be_recvd_by (curr);
+    if (send_to_loop) {
+        v_block_ptrs.push_back(send_to_loop);
+        recv_in_loop = _generate_recv_and_maybe_assigns (send_to_loop, LIVE_IN);
+        switch(recv_in_loop.first)
+        {
+            case 0:
+                break;
+            case 1:
+                v_for_sm.push_back(recv_in_loop.second.startseq->child());
+                _splice_out_block(recv_in_loop.second.startseq->child());
+                break;
+            case 2:
+                v_for_sm.push_back(recv_in_loop.second.startseq->child());
+                _splice_out_block(recv_in_loop.second.startseq->child());
+                v_for_sm.push_back(recv_in_loop.second.startseq->child());
+                _splice_out_block(recv_in_loop.second.startseq->child());
+                break;
+        }
+    }
+
+    send_from_loop = _generate_send_to_be_sent_from (curr);
+    if (send_from_loop) {
+        recv_from_loop = _generate_recv_and_maybe_assigns (send_from_loop, LIVE_IN);
+        switch(recv_from_loop.first)
+        {
+            case 0:
+                break;
+            case 1:
+                v_block_ptrs.push_back(recv_from_loop.second.startseq->child());
+                _splice_out_block(recv_from_loop.second.startseq->child());
+                break;
+            case 2:
+                v_block_ptrs.push_back(recv_from_loop.second.startseq->child());
+                _splice_out_block(recv_from_loop.second.startseq->child());
+                v_block_ptrs.push_back(recv_from_loop.second.startseq->child());
+                _splice_out_block(recv_from_loop.second.startseq->child());
+                break;
+        }
+    }
 
     Sequence loop_call;
     loop_call = g->graph.blockAllocator().newSequence(v_block_ptrs);
+
+    // place the loop function call+return in the right spot
     g->graph.spliceInSequenceBefore(curr, loop_call);
+    
+    // tear out the loop
     _splice_out_block (curr);
 
-    v_seqs.push_back(g->graph.blockAllocator().newSequence({curr}));
+    // wrap the loop in the state machine to act as function
+    Sequence sm = _construct_sm_loop (curr, v_for_sm, send_from_loop);
+
+    Sequence _ = g->graph.blockAllocator().newSequence({curr});
+
+    v_seqs.push_back(sm);
+    return NULL;
+}
+
+/*
+    construct this:
+    x:=0;
+    *[  [ c=0 -> Ls?{vars};{assign all from concat};c:=1 (line 1)
+        []c=1 -> skip (line 2)
+        ];
+        [ L
+        []else -> Lf!{vars};c:=0 (line 3)
+        ]  ]
     
-    return next->parent();
+    where L is the original loop (turned into selection) and an else branch is added
+*/
+Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> recv, Block *send)
+{
+
+    hassert (curr->type() == BlockType::DoLoop);
+
+    VarId c = g->graph.id_pool().makeUniqueVar(1, false);
+    // assign: c := 0
+    Block *init_c = g->graph.blockAllocator().newBlock(
+            Block::makeBasicBlock(Statement::makeAssignment(c,ChpExprSingleRootDag::makeConstant(BigInt(0),1))));
+
+    // assign: c := 1
+    Block *c_1 = g->graph.blockAllocator().newBlock(
+            Block::makeBasicBlock(Statement::makeAssignment(c,ChpExprSingleRootDag::makeConstant(BigInt(1),1))));
+
+    // assign: c := 0 (another for later)
+    Block *c_0 = g->graph.blockAllocator().newBlock(
+            Block::makeBasicBlock(Statement::makeAssignment(c,ChpExprSingleRootDag::makeConstant(BigInt(0),1))));
+    
+    // expr: c=0 
+    auto c_access_0 = ChpExprSingleRootDag::makeVariableAccess(c, 1);
+    IRGuard c_eqs_0 = IRGuard::makeExpression (
+                            ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::EQ,
+                            std::make_unique<ChpExprSingleRootDag>(std::move(c_access_0)),
+                            std::make_unique<ChpExprSingleRootDag>(
+                                ChpExprSingleRootDag::makeConstant(BigInt(0),1)
+                            )));
+
+    // expr: c=1 
+    auto c_access_1 = ChpExprSingleRootDag::makeVariableAccess(c, 1);
+    IRGuard c_eqs_1 = IRGuard::makeExpression (
+                            ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::EQ,
+                            std::make_unique<ChpExprSingleRootDag>(std::move(c_access_1)),
+                            std::make_unique<ChpExprSingleRootDag>(
+                                ChpExprSingleRootDag::makeConstant(BigInt(1),1)
+                            )));
+
+    Block *select_1 = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
+    Block *select_2 = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
+
+    recv.push_back(c_1);
+    Sequence line_1 = g->graph.blockAllocator().newSequence(recv);
+    Sequence line_2 = g->graph.blockAllocator().newSequence({});
+
+    select_1->u_select().branches.push_back({line_1,std::move(c_eqs_0)});
+    select_1->u_select().branches.push_back({line_2,std::move(c_eqs_1)});
+
+    Sequence line_3 = g->graph.blockAllocator().newSequence({c_0,send});
+
+    ChpExprSingleRootDag e;
+    e = ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard);
+
+    select_2->u_select().branches.push_back({curr->u_doloop().branch,
+                                IRGuard::makeExpression(std::move(e))});
+    select_2->u_select().branches.push_back({line_3, IRGuard::makeElse()});
+
+    Sequence func = _wrap_in_do_loop(g->graph.blockAllocator().newSequence({select_1,select_2}));
+    _splice_in_block_between (func.startseq, func.startseq->child(),init_c);
+
+    return func;
 }
 
 int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send, int type)
