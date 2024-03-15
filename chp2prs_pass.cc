@@ -85,8 +85,8 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
   if (externopt) {
 #if defined(FOUND_expropt) && defined (FOUND_abc)
     sdt = new ExternOptSDT (bundled, chpopt, fp, exprfile,
-			      use_yosys == 1 ? yosys :  
-                             (use_yosys == 0 ? genus : abc ));
+			      use_yosys == 1 ? "yosys" :  
+                             (use_yosys == 0 ? "genus" : NULL ));
     _pending = sdt;
 #else
     fatal_error ("External optimization package not installed.");

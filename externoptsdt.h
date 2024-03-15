@@ -36,7 +36,7 @@ class ExternOptSDT : public BasicSDT {
                   int isopt, 
                   FILE *fpout,
 		  const char *ef,
-                  expr_mapping_software map = yosys,
+		  const char *map =  "yosys",
                   const char *tmp_path = ".") :
       BasicSDT(isbundled, isopt, fpout, ef) {
       
@@ -52,7 +52,7 @@ class ExternOptSDT : public BasicSDT {
    }
 
   private:
-  expr_mapping_software _map;
+  const char *_map;
 
     /**
      * the path where the temporary syntesis files are generated in, not yet implemented uses the exceution directory of the program currently.

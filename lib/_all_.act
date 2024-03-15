@@ -1,4 +1,3 @@
-
 /*************************************************************************
  *
  *  Copyright (c) 2020 Rajit Manohar
@@ -20,30 +19,29 @@
  *
  **************************************************************************
  */
+import globals;
 import std;
-open std::data;
-open std::channel;
 
 namespace syn {
-  export deftype sdtvar <: Mx1of2 () {}
-  export deftype sdtboolvar <: bool (sdtvar<1> x) {}
+  /*-- macros --*/
+export template<pint N, W>
+defproc ram_builtin (chan?(int<2>) rd; chan?(int<std::ceil_log2(N)>) addr;
+             chan?(int<W>) din;
+             chan!(int<W>) dout)
+{
+  pint bits = std::ceil_log2(N);
+  int<W> m[N];
+  int<bits> a;
+  int<2> b;
 
-  export template<pint N>
-  defchan ax1of1 <: chan(int<N>) (bool d[N]; bool a; bool r) {}
+  chp {
+      *[ addr?a,rd?b;
+         [ b=0 -> din?m[a]
+        [] b=1 -> dout!m[a]
+        [] b=2 -> dout!m[a]; din?m[a]
+         ]
+       ]
+    }
+}
 
-  export template<pint N>
-  defchan rx1of1 <: chan(int<N>) (bool r; bool a; bool d[N]) {}
-
-  // specify bd datapath channels
-  export defchan sdtchan <: std::channel::bd () {}
-  export defchan sdtexprchan <: rx1of1 () {}
-  export defchan sdtboolchan <: std::channel::bdbool (sdtchan<1> x) 
-  { x.d[0] = d; x.r = r; x.a = a; }
-
-  export defchan r1of2 <: sdtexprchan<1> (bool t, f) {}
-
-  export template<pint W>
-  defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c) {
-    e.d = c.d;
-  }
 }
