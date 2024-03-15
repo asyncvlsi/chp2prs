@@ -83,6 +83,8 @@ class ChoppingBlock {
 
         std::pair<Block *, Block *> _generate_pll_send_recv_and_seed_branches (Block *pll);
 
+        Block *_excise_loop (Block *curr);
+
         Sequence _wrap_in_do_loop (Sequence seq);
 
         void _print_seq (Sequence seq);

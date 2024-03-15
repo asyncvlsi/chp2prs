@@ -477,10 +477,16 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     break;
       
     case BlockType::DoLoop:
-        if (root != 1) fatal_error ("excise internal loops please");
-        _chop_graph (curr->u_doloop().branch, 1);
+        if (root != 1) 
+        {
+            // fatal_error ("excise internal loops please");
+            _excise_loop(curr);
+        }
+        else {
+            _chop_graph (curr->u_doloop().branch, 0);
+            return;
+        }
         // don't do tail processing for doloop
-        return;
         break;
     
     case BlockType::StartSequence:
@@ -498,6 +504,30 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
         _build_sequence (seq.startseq->child(), seq.endseq, END_EXC);
     }
     return;
+}
+
+Block *ChoppingBlock::_excise_loop (Block *curr)
+{
+    Block *prev = curr->parent();
+    Block *next = curr->child();
+
+    Block *send_live_vars_to_loop = NULL;
+    Block *recv_live_vars_from_loop = NULL;
+    send_live_vars_to_loop = _generate_send_to_be_recvd_by (curr);
+    recv_live_vars_from_loop = _generate_send_to_be_sent_from (curr);
+
+    std::vector<Block *> v_block_ptrs;
+    if (send_live_vars_to_loop) v_block_ptrs.push_back(send_live_vars_to_loop);
+    if (recv_live_vars_from_loop) v_block_ptrs.push_back(recv_live_vars_from_loop);
+
+    Sequence loop_call;
+    loop_call = g->graph.blockAllocator().newSequence(v_block_ptrs);
+    g->graph.spliceInSequenceBefore(curr, loop_call);
+    _splice_out_block (curr);
+
+    v_seqs.push_back(g->graph.blockAllocator().newSequence({curr}));
+    
+    return next->parent();
 }
 
 int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send, int type)

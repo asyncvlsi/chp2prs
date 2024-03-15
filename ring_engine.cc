@@ -50,14 +50,9 @@ class RingSynth : public ActSynthesize {
     int bundled_data = dp->getIntParam ("bundled_dpath");
 
     /* print imports */
-    // if (bundled_data) {
     pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
     pp_printf_raw (_pp, "open syn;\n");
-    // }
-    // else {
-    //   pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
-    // pp_printf_raw (_pp, "open syn;\n");
-    // }
+
     pp_printf_raw (_pp, "import \"%s\";\n", _ename);
     // open the operating namespace
     pp_printf_raw (_pp, "open syn::expr;\n");
@@ -99,7 +94,7 @@ class RingSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     bundled = dp->getIntParam ("bundled_dpath");
 
-    if (0) { //opt
+    if (1) { //opt
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
@@ -121,8 +116,6 @@ class RingSynth : public ActSynthesize {
       for (auto id : newnames) {
         InstType *it = p->CurScope()->Lookup (id->getName());
         if (TypeFactory::isBoolType (it)) {
-          // pp_printf (_pp, "syn::sdtboolvar %s;", id->getName());
-          // pp_forced (_pp, 0);
           fatal_error ("no bools");
         }
         else {
@@ -132,12 +125,11 @@ class RingSynth : public ActSynthesize {
           // p->CurScope()->Add (id->getName(), it);
         }
       }
-
-      // fprintf (stdout, "\n\noriginal chp-----");
-      // fprintf (stdout, "\n\n");
-      // chp_print(stdout, l);
-      // fprintf (stdout, "\n\noriginal chp-----\n\n");
-#if 0
+      fprintf (stdout, "\n\noriginal chp-----");
+      fprintf (stdout, "\n\n");
+      chp_print(stdout, l);
+      fprintf (stdout, "\n\noriginal chp-----\n\n");
+#if 1
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
       // bkp->print_decomp_info();
@@ -161,8 +153,8 @@ class RingSynth : public ActSynthesize {
         // std::vector<ActId *> newnames;
         act_chp_lang_t *l = chp_graph_to_act (gc, newnames, p->CurScope());
         list_append(decomp_procs, l);
-        // fprintf (stdout, "\n\n");
-        // chp_pretty_print(stdout, l);
+        fprintf (stdout, "\n\n");
+        chp_pretty_print(stdout, l);
         // for (auto id : newnames) {
         //   InstType *it = p->CurScope()->Lookup (id->getName());
         //   if (TypeFactory::isBoolType (it)) {
@@ -181,7 +173,7 @@ class RingSynth : public ActSynthesize {
       decomp->u.semi_comma.cmd = decomp_procs;
       p->getlang()->getchp()->c = decomp;
       // fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
-      p->Print(stdout);
+      // p->Print(stdout);
       /*
       */
 #endif
@@ -195,23 +187,20 @@ class RingSynth : public ActSynthesize {
     // chp_print (stdout, c);
     // fprintf (stdout, "\n\n");
     // core synthesis functions here
-    Assert (c, "hmm c");
-    mangle_init();
-    fill_in_else_explicit (c, p, 1);
+    bool synthesize = false;
+    if (synthesize)
+    {
+      Assert (c, "hmm c");
+      mangle_init();
+      fill_in_else_explicit (c, p, 1);
 
-    ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
-    b->run(p);
+      ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
+      b->run(p);
+      Assert (b, "hmm b");
 
-    // p->CurScope()->Print(stdout);
-    Assert (b, "hmm b");
-
-    RingForge *rf = new RingForge (_pp->fp, p, c, b, "", _ename);
-    rf->run_forge();
-
-    // for verification, need to remove
-    // DecompAnalysis_old *da = new DecompAnalysis_old (_pp->fp, p, c);
-    // da->analyze();
-    // da->print_decomp_info();
+      RingForge *rf = new RingForge (_pp->fp, p, c, b, "", _ename);
+      rf->run_forge();
+    }
     
     /*
     ChpOptimize::putIntoNewStaticTokenForm (cg.graph);
