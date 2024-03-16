@@ -24,7 +24,7 @@ fi
 
 export ACT_PATH=runs/${file}_out
 
-perl -pi.bak -e 's/unpipe_/pipe_/g' runs/${file}_out/${file}_df_chp.act
+#perl -pi.bak -e 's/unpipe_/pipe_/g' runs/${file}_out/${file}_df_chp.act
 
 actsim $REF -Wlang_subst:off ${file}tst.act test <<EOF > runs/${file}_sim.out 2>&1
 cycle

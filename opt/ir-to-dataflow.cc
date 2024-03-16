@@ -1452,8 +1452,11 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	inp.push_back (dm.mapvar (loopphi.pre_id));
 	inp.push_back (feedback);
 
-	d.push_back (Dataflow::mkMergeMix
-		     (guards.second, inp, dm.mapvar (loopphi.bodyin_id)));
+	ChanId f3 = dm.fresh (dm.mapvar (loopphi.bodyin_id));
+	d.push_back (Dataflow::mkBuf (f3, dm.mapvar (loopphi.bodyin_id),
+				      dm.bitWidth (f3)));
+
+	d.push_back (Dataflow::mkMergeMix (guards.second, inp, f3));
 	
 	//	printf ("%d <<\n", (int)d.size());
 	
