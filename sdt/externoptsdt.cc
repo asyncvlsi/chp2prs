@@ -110,12 +110,12 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
   {
     double delay;
 
-    delay = block_info->delay_max;
+    delay = block_info->getDelay().max_val;
     if (delay == 0) {
-      delay = block_info->delay_typ;
+      delay = block_info->getDelay().typ_val;
     }
     if (delay == 0) {
-      delay = block_info->delay_min;
+      delay = block_info->getDelay().min_val;
     }
     _emit_bd_ctl_bypass (*id, all_leaves, delay);
   }

@@ -27,7 +27,6 @@
 #include <act/act.h>
 #include <act/iter.h>
 #include <act/passes.h>
-#include "config_pkg.h"
 
 static void usage(char *name)
 {

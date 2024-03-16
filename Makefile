@@ -25,8 +25,6 @@ TARGETLIBS=libactchp2prspass_$(EXT).so
 
 CPPSTD=c++20
 
-include config.mk
-
 OBJS1=main.o
 
 OBJS2=main2.o sdt_engine.o df_engine.o ring_engine.o
@@ -44,10 +42,6 @@ include $(ACT_HOME)/scripts/Makefile.std
 EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
 
 SYNTHLIB=-lactchpopt -lactchpsdt -lactchpring -lactchpdecomp
-
-ifdef exproptcommercial_INCLUDE
-EXPRLIB+=-lexproptcommercial_sh
-endif
 
 $(BINARY): $(LIB) $(OBJS1) $(ACTDEPEND)
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(SHLIBACTPASS)

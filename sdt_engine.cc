@@ -165,8 +165,8 @@ class SDTSynth : public ActSynthesize {
 
     if (externopt) {
       sdt = new ExternOptSDT (bundled, chpopt, _pp->fp, _ename,
-                              use_yosys == 1 ? yosys :
-			      (use_yosys == 0 ? genus : abc ));
+                              use_yosys == 1 ? "yosys" :
+			      (use_yosys == 0 ? "genus" : "abc" ));
       _pending = sdt;
     }
     else {

@@ -497,7 +497,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 {
     // fprintf (fp, "// hello from expropt\n");
     // create mapper object
-    ExternalExprOpt *eeo = new ExternalExprOpt(abc, bd, false, _exprfile, 
+    ExternalExprOpt *eeo = new ExternalExprOpt("abc", bd, false, _exprfile, 
                                                 expr_block_input_prefix,
                                                 expr_block_prefix);
     Assert ((eeo), "Could not create mapper");
@@ -553,8 +553,8 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
     }
     else 
     {
-        Assert ((ebi->delay_typ != -1), "Delay not extracted by abc!");
-        double typ_delay_ps = (ebi->delay_typ)*1e12;
+        Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
+        double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
         delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
         if (delay_line_n == 0) { delay_line_n = 1; }
 
@@ -580,7 +580,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
 {
     // create mapper object
-    ExternalExprOpt *eeo = new ExternalExprOpt(abc, bd, false, _exprfile, 
+    ExternalExprOpt *eeo = new ExternalExprOpt("abc", bd, false, _exprfile, 
                                                 expr_block_input_prefix,
                                                 expr_block_prefix);
     Assert ((eeo), "Could not create mapper");
@@ -611,8 +611,8 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     // run abc, then v2act to create the combinational-logic-for-math process
     ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
     
-    Assert ((ebi->delay_typ != -1), "Delay not extracted by abc!");
-    double typ_delay_ps = (ebi->delay_typ)*1e12;
+    Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
+    double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
     int delay_line_n = int((typ_delay_ps/(2*invx1_delay_ps)) + 1); 
     if (delay_line_n == 0) { delay_line_n = 1; }
 

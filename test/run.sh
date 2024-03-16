@@ -45,9 +45,4 @@ else
 ./run_expr_bdopt.sh genus || exit 1
 fi
 
-if [ `grep FOUND_abc ../config_pkg.h | wc -l` -eq 0 ]
-then
-	echo "abc not found; skipping abc tests"
-else
-	./run_expr_bdoptabc.sh || exit 1
-fi
+./run_expr_bdoptabc.sh || exit 1
