@@ -1451,6 +1451,7 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	std::vector<ChanId> inp;
 	inp.push_back (dm.mapvar (loopphi.pre_id));
 	inp.push_back (feedback);
+
 	d.push_back (Dataflow::mkMergeMix
 		     (guards.second, inp, dm.mapvar (loopphi.bodyin_id)));
 	
@@ -1473,12 +1474,17 @@ MultiChannelState createDataflow (Sequence seq, DataflowChannelManager &dm,
 	ChanId f2 = dm.fresh (feedback);
 	d.push_back (Dataflow::mkBuf (f2, feedback, dm.bitWidth (feedback)));
 	feedback = f2;
+
+	ChanId bufval = dm.fresh (dm.mapvar (inphi.bodyin_id));
+	d.push_back (Dataflow::mkBuf (dm.mapvar (inphi.bodyin_id),
+				      bufval,
+				      dm.bitWidth (bufval)));
 	
 	std::vector<OptionalChanId> outp;
 	outp.push_back (OptionalChanId::null_id());
 	outp.push_back (feedback);
 	d.push_back (Dataflow::mkSplit
-		     (guards.first, dm.mapvar (inphi.bodyin_id),
+		     (guards.first, bufval,
 		      outp));
 
 
@@ -2253,7 +2259,7 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
 	template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId);
 
       if (d.keep) {
-	e->u.func.nbufs = const_expr (2);
+	e->u.func.nbufs = const_expr (1);
       }
       
       list_append (l, e);
