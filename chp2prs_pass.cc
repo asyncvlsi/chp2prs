@@ -58,12 +58,17 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
   const char *exprfile;
   FILE *fp;
   BasicSDT *sdt;
-  int use_yosys;
+  const char *mapper;
 
   chpopt = dp->getIntParam ("chp_optimize");
   externopt = dp->getIntParam ("externopt");
   bundled = dp->getIntParam ("bundled_dpath");
-  use_yosys = dp->getIntParam ("use_yosys");
+  if (dp->hasParam ("synthesis_engine")) {
+    mapper = (char *) dp->getPtrParam ("synthesis_engine");
+  }
+  else {
+    mapper = NULL;
+  }
   exprfile = (const char *) dp->getPtrParam ("expr_file");
   fp = (FILE *) dp->getPtrParam ("output_fp");
 
@@ -83,10 +88,8 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
   }
 
   if (externopt) {
-#if defined(FOUND_expropt) && defined (FOUND_abc)
-    sdt = new ExternOptSDT (bundled, chpopt, fp, exprfile,
-			      use_yosys == 1 ? "yosys" :  
-                             (use_yosys == 0 ? "genus" : NULL ));
+#if defined(FOUND_expropt)
+    sdt = new ExternOptSDT (bundled, chpopt, fp, exprfile, mapper);
     _pending = sdt;
 #else
     fatal_error ("External optimization package not installed.");

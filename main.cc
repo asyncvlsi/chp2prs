@@ -304,20 +304,7 @@ int main(int argc, char **argv)
   c2p->setParam ("externopt", external_opt);
   c2p->setParam ("bundled_dpath", bundled);
   if (external_opt) {
-    int param = 0;
-    if (strcmp (syntesistool, "genus") == 0) {
-       param = 0;
-    } 
-    else if (strcmp (syntesistool, "yosys") == 0) {
-       param = 1;
-    }
-    else if (strcmp (syntesistool, "abc") == 0) {
-       param = 2;
-    }
-    else {
-       fatal_error ("Unknown synthesis option %s", syntesistool);
-    }
-    c2p->setParam ("use_yosys", param);
+    c2p->setParam ("synthesis_engine", syntesistool);
   }
   c2p->setParam ("expr_file", exprfile);
   c2p->setParam ("output_fp", fpout);
