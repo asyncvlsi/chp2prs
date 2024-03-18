@@ -220,6 +220,84 @@ defproc selection_merge(a1of1 ci[N]; a1of1! p1)
 }
 // ------------------------------------
 
+
+// N-way loop construct ---------------
+// Last (N-th) guard must be the 'else' 
+// i.e. the case where the loop terminates
+// 
+
+template <pint N>
+defproc loop_wrapper (bool? gs[N+1]; a1of1? m1; 
+                      a1of1 spi[N]; a1of1 spo[N]; 
+                      bool! delay_o; bool? delay_i; a1of1 p1)
+{
+
+  syn::AND2X1 ctrl_and; 
+  std::gates::ctree<2, true> c;
+
+  ctrl_and.A = m1.r;
+  ctrl_and.B = c.out;
+  ctrl_and.Y = delay_o;
+
+  syn::AND2X1 ands[N+1];
+  ( i : N+1 : ands[i].A = delay_i; )
+  ( i : N+1 : ands[i].B = gs[i]; )
+  ( i : N : ands[i].Y = spi[i].r; )
+            ands[N].Y = p1.r;
+
+  std::gates::ortree<N, false> or_spi;
+  ( i : N: or_spi.in[i] = spi[i].a; )
+
+  std::gates::ortree<N, false> or_spo;
+  ( i : N: or_spo.in[i] = spo[i].r; )
+  ( i : N: or_spo.out   = spo[i].a; )
+
+  c.in[0] = or_spi.out;
+  c.in[1] = or_spo.out;
+
+  p1.a = m1.a;
+}
+
+defproc testloop ()
+{
+  loop_wrapper<4> x;
+}
+// ------------------------------------
+
+// Do-loop construct ------------------
+// Only one guard allowed
+
+defproc doloop_wrapper (bool? g; a1of1? m1; 
+                        a1of1 spi; a1of1 spo; 
+                        bool! delay_o; bool? delay_i; a1of1 p1) 
+{
+
+  syn::AND2X1 ctrl_and; 
+  std::gates::ctree<2, true> c;
+
+  ctrl_and.A = m1.r;
+  ctrl_and.B = c.out;
+  ctrl_and.Y = spi.r;
+
+  syn::AND2X1 ands[2];
+  syn::INVX1 inv_g;
+  inv_g.A = g;
+
+  spo.r = delay_o;
+
+  ands[0].A = g;        ands[0].B = delay_i;  
+  ands[1].A = inv_g.Y;  ands[1].B = delay_i;
+
+  ands[0].Y = c.in[0];  
+  ands[0].Y = spo.a;
+  c.in[1]   = spi.a;
+
+  ands[1].Y = p1.r;
+
+  p1.a = m1.a;
+}
+// ------------------------------------
+
 // N : No. of inputs, W : Width of each input
 export template<pint N,W>
 defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
