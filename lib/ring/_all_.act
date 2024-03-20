@@ -20,4 +20,8 @@
  **************************************************************************
  */
 
+import std::cells -> syn;
+
 import "syn/ring/ctrl.act";
+
+import "syn/ring/ctrl_2phase.act";

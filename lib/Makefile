@@ -20,7 +20,7 @@
 #-------------------------------------------------------------------------
 TARGETINSTALL=
 TARGETINSTALL_QDI=qdi/_all_.act qdi/dpath.act qdi/chan.act qdi/math.act qdi/stdcells.act qdi/var.act
-TARGETINSTALL_RING=ring/_all_.act ring/ctrl.act
+TARGETINSTALL_RING=ring/_all_.act ring/ctrl.act ring/ctrl_2phase.act
 TARGETINSTALL_BDOPT=bdopt/_all_.act bdopt/stdcells.act bdopt/dpath.act bdopt/chan.act
 TARGETINSTALL_LIBERTY=osu018_stdcells.lib LICENSE.osu018_stdcells.lib
 

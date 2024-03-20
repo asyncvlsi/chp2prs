@@ -30,7 +30,7 @@ open std::gates;
 
 namespace syn {
   
-  export namespace ring {
+  export namespace ring_2phase {
     
 
 // Basic Elements -----------------------------------------
@@ -218,14 +218,14 @@ defproc selection_split(bool? gs[N]; a1of1? m1; a1of1 co[N])
     ( i : N: ands[i].B = gs[i]; )
     ( i : N: ands[i].Y = co[i].r; )
 
-    std::gates::ortree<N, false> ort(, m1.a);
+    std::gates::xortree<N, false> ort(, m1.a);
     ( i : N: ort.in[i] = co[i].a; )
 }
 
 export template<pint N>
 defproc selection_merge(a1of1 ci[N]; a1of1! p1) 
 {
-    std::gates::ortree<N, false> ort(, p1.r);
+    std::gates::xortree<N, false> ort(, p1.r);
     ( i : N: ort.in[i] = ci[i].r; )
 
     std::gates::sigbuf<N> s(p1.a);
@@ -271,6 +271,10 @@ defproc loop_wrapper (bool? gs[N+1]; a1of1? m1;
   p1.a = m1.a;
 }
 
+defproc testloop ()
+{
+  loop_wrapper<4> x;
+}
 // ------------------------------------
 
 // Do-loop construct ------------------
@@ -372,20 +376,20 @@ defproc delay_line_chan(a1of1 m1; a1of1 p1)
 export template <pint PW>
 defproc pulse(bool? in; bool! out)
 {
-  syn::INVX1 invs[2*PW+1];
+  syn::INVX1 invs[2*PW];
   invs[0].A = in;
-  (i:2*PW: 
+  (i:(2*PW)-1: 
     invs[i].Y = invs[i+1].A;
   )
 
-  syn::AND2X1 and;
-  and.A = in;
-  and.B = invs[2*PW].Y;
+  syn::XOR2X1 xor;
+  xor.A = in;
+  xor.B = invs[(2*PW)-1].Y;
 
-  out = and.Y;
+  out = xor.Y;
 
   spec {
-    timing in+: out+ <[1] and.B-
+    timing in+: out+ <[1] xor.B-
     // this delay margin is a placeholder, 
     // its actual value depends on the delay of LATCH
   }
