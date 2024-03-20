@@ -1690,66 +1690,37 @@ void replaceChanUses (Dataflow &d, ChanId src, ChanId dst)
   }
 }
 
-static void mark_node (void *cookie, AGraph *g, AGvertex *v, bool onentry)
-{
-  if (!onentry) {
-    v->isio = 1;
-  }
-}
 
-static void mark_edge (void *cookie, AGraph *g, AGedge *e)
-{
-  if (!g->getVertex (e->dst)->visited) {
-    // tree edge
-  }
-  else {
-    if (!g->getVertex(e->dst)->isio) {
-      printf ("found back edge!\n");
-      // back edge
-    }
-    else {
-      // cross edge
-    }
-  }
-}
-
-
-void elimZeroSlackCycles (std::vector<Dataflow> &d)
+void elimDeadCycles (std::vector<Dataflow> &d, GraphWithChanNames &gr)
 {
   // Form a graph for each definition in the dataflow list
-  int count = 0;
+  int count;
 
+  // map each channel definition to the dataflow element #
   std::unordered_map<ChanId,int> chanmap;
-  std::vector<ChanId> invmap;
-  
-  
+
+  count = 0;
   for (auto &di : d) {
     switch (di.u.type()) {
     case DataflowKind::Init:
       chanmap[di.u_init().rhs] = count;
-      count++;
       break;
 
     case DataflowKind::Split:
       for (auto &rhs : di.u_split().out_ids) {
 	if (rhs) {
 	  chanmap[*rhs] = count;
-	  invmap.push_back(*rhs);
-	  count++;
 	}
       }
       break;
       
     case DataflowKind::MergeMix:
       chanmap[di.u_mergemix().out_id] = count;
-      invmap.push_back(di.u_mergemix().out_id);
-      count++;
       break;
 
     case DataflowKind::Func:
       for (auto &ch : di.u_func().ids) {
 	chanmap[ch] = count;
-	count++;
       }
       break;
 
@@ -1760,6 +1731,7 @@ void elimZeroSlackCycles (std::vector<Dataflow> &d)
       hassert (false);
       break;
     }
+    count++;
   }
   if (count < 2) return;
 
@@ -1768,37 +1740,27 @@ void elimZeroSlackCycles (std::vector<Dataflow> &d)
   for (int i=0; i < count; i++) {
     a->addVertex();
   }
+
+  count = 0;
   for (auto &di : d) {
     switch (di.u.type()) {
     case DataflowKind::Init:
-      if (chanmap.contains (di.u_init().lhs)) {
-	a->addEdge (chanmap[di.u_init().lhs], chanmap[di.u_init().rhs]);
-      }
+      a->addEdge (chanmap[di.u_init().lhs], count);
       break;
 
     case DataflowKind::Split:
       for (auto &rhs : di.u_split().out_ids) {
-	if (rhs) {
-	  if (chanmap.contains (di.u_split().in_id)) {
-	    a->addEdge (chanmap[di.u_split().in_id], chanmap[*rhs]);
-	  }
-	  if (chanmap.contains (di.u_split().cond_id)) {
-	    a->addEdge (chanmap[di.u_split().cond_id], chanmap[*rhs]);
-	  }
-	}
+	a->addEdge (chanmap[di.u_split().in_id], count);
+	a->addEdge (chanmap[di.u_split().cond_id], count);
       }
       break;
       
     case DataflowKind::MergeMix:
       for (auto &lhs : di.u_mergemix().in_ids) {
-	if (chanmap.contains (lhs)) {
-	  a->addEdge (chanmap[lhs], chanmap[di.u_mergemix().out_id]);
-	}
+	a->addEdge (chanmap[lhs], count);
       }
       if (di.u_mergemix().cond_id) {
-	if (chanmap.contains (*di.u_mergemix().cond_id)) {
-	  a->addEdge (chanmap[*di.u_mergemix().cond_id], chanmap[di.u_mergemix().out_id]);
-	}
+	a->addEdge (chanmap[*di.u_mergemix().cond_id], count);
       }
       break;
 
@@ -1806,30 +1768,58 @@ void elimZeroSlackCycles (std::vector<Dataflow> &d)
       DExprDag::iterNodes (di.u_func().e,
 			   [&] (const DExprDag::Node &n) {
 			     if (n.type() == IRExprTypeKind::Var) {
-			       if (chanmap.contains (n.u_var().id)) {
-				 for (auto &ids : di.u_func().ids) {
-				   a->addEdge (chanmap[n.u_var().id], chanmap[ids]);
-				 }
-			       }
+			       a->addEdge (chanmap[n.u_var().id], count);
 			     }
 			   });
       break;
 
     case DataflowKind::Sink:
+      a->addEdge (chanmap[di.u_sink().in_id], count);
       break;
 
     case DataflowKind::Arbiter:
       hassert (false);
       break;
     }
+    count++;
   }
 
-  FILE *fp = fopen ("test.dot", "w");
-  a->printDot (fp, "Test");
-  fclose (fp);
+  // mark primary inputs and outputs as live, and then walk the graph
+  // until you can't any more.
+  list_t *idxlist = list_new ();
+  for (auto &[ch, _] : gr.name_from_chan) {
+    int id = chanmap[ch];
+    list_iappend (idxlist, id);
+    a->getVertex(id)->visited = 1;
+  }
 
-  a->runDFS (NULL, mark_node, mark_edge);
+  // mark all reachable nodes
+  while (!list_isempty (idxlist)) {
+    int id = list_delete_ihead (idxlist);
+    Assert (a->getVertex(id)->visited, "What?");
+    // now traverse forward and backward
+    AGvertexFwdIter fw(a, id);
+    for (auto e : fw) {
+      if (!a->getVertex (e->dst)->visited) {
+	a->getVertex (e->dst)->visited = 1;
+	list_iappend (idxlist, e->dst);
+      }
+    }
+    AGvertexBwdIter bw(a, id);
+    for (auto e : bw) {
+      if (!a->getVertex (e->src)->visited) {
+	a->getVertex (e->src)->visited = 1;
+	list_iappend (idxlist, e->src);
+      }
+    }
+  }
 
+  for (int i=0; i < a->numVertices(); i++) {
+    AGvertex *v = a->getVertex (i);
+    if (!v->visited) {
+      d[i].dead = true;
+    }
+  }
   delete a;
 }
 
@@ -2226,9 +2216,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     }
   }
 
-  // now we analyze the graph to see if we have zero slack cycles; if
-  // we do, we add explicit buffers!
-  //elimZeroSlackCycles (dfinal);
+  elimDeadCycles (dfinal, gr);
   
   return dfinal;
 }
@@ -2366,6 +2354,7 @@ act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
   ret->isexpanded = 1;
 
   for (auto &x : d) {
+    if (x.dead) continue;
     toAct (ret->dflow, x, table);
   }
   ret->order = NULL;

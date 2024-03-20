@@ -90,6 +90,7 @@ public:
   };
 
   bool keep;
+  bool dead;
   const char *msg;
 
 private:
@@ -102,7 +103,7 @@ private:
 		  Arbiter, DataflowKind::Arbiter,
 		  Sink, DataflowKind::Sink>;
 
-  explicit Dataflow (Variant_t u_) : u{std::move(u_)} { keep = false; msg = NULL; }
+  explicit Dataflow (Variant_t u_) : u{std::move(u_)} { keep = false; dead = false; msg = NULL; }
 
 public:
   Variant_t u;
