@@ -24,7 +24,8 @@
 
 #include "ring/reqs.h"
 #include "ring/ring_else_gen.h"
-#include "ring/ring_forge.h"
+// #include "ring/ring_forge.h"
+#include "ring/tiny_forge.h"
 // #include "decomp/analysis.h"
 #include "decomp/breakpoint.h"
 #include "decomp/chopping_block.h"
@@ -94,7 +95,7 @@ class RingSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     bundled = dp->getIntParam ("bundled_dpath");
 
-    if (1) { //opt
+    if (0) { //opt
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
@@ -187,7 +188,7 @@ class RingSynth : public ActSynthesize {
     // chp_print (stdout, c);
     // fprintf (stdout, "\n\n");
     // core synthesis functions here
-    bool synthesize = false;
+    bool synthesize = true;
     if (synthesize)
     {
       Assert (c, "hmm c");
@@ -200,6 +201,9 @@ class RingSynth : public ActSynthesize {
 
       RingForge *rf = new RingForge (_pp->fp, p, c, b, "", _ename);
       rf->run_forge();
+      // TinyForge *tf = new TinyForge (_pp->fp, p, c, b, "", _ename);
+      // tf->run_forge();
+
     }
     
     /*
