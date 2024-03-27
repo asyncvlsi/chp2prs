@@ -73,17 +73,8 @@ void RingForge::run_forge ()
 void RingForge::_run_forge_helper ()
 {
     int has_branches = chp_has_branches(_c, 1);
-    
-    // TODO: fix one pipe synthesis
-    // int is_pipeable = check_if_pipeable(_c, _p, 1);
-    // if (is_pipeable == 1)
-
-    if (false)
-    {
-        fprintf (_fp, "// One Pipe ---------------------\n");
-        // generate_pipe (_c,1);
-    }
-    else if (has_branches == 0)
+  
+    if (has_branches == 0)
     {
         fprintf (_fp, "// One Ring ---------------------\n");
         generate_one_ring (_c,1,0);
@@ -556,7 +547,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
         Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
         double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
         delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
-        if (delay_line_n == 0) { delay_line_n = 1; }
+        if (delay_line_n < 0) { delay_line_n = 1; }
 
         fprintf(_fp, "\n// typical delay: %gps\n",typ_delay_ps);
     }
@@ -646,7 +637,7 @@ void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves)
         ib = ihash_lookup (_inexprmap, (long)e_var);
 
         // connect variables to math block inputs 
-        if ( e_var->type == E_VAR )
+        if ( e_var->type == E_VAR || e_var->type == E_BITFIELD )
         {
             ActId *var = (ActId *)e_var->u.e.l;
             char tname[1024];
@@ -673,7 +664,9 @@ void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves)
         {
             fatal_error ("This shouldn't have been used (constant as input to expr block)");
         }
-        else { fatal_error ("leaf (primary input) is neither variable nor constant int?? (instantiate_expr_block)"); }
+        else { 
+            fprintf (stdout, "e_var type: %d \n", e_var->type);
+            fatal_error ("leaf (primary input) is neither variable nor constant int?? (instantiate_expr_block)"); }
     }
 }
 
@@ -1360,10 +1353,15 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             _connect_pipe_elements(block_id, first_block_id);
             break;
         }
-        else
-        {
-            fatal_error ("should've excised internal loops.. (generate_branched_ring)");
-        }
+        else { fatal_error ("bleh"); }
+        // else if (c->type == ACT_CHP_LOOP)
+        // {
+        //     block_id = _generate_loop_wrapper ();
+        // }
+        // else if (c->type == ACT_CHP_DOLOOP)
+        // {
+        //     block_id = _generate_doloop_wrapper ();
+        // }
         break;
         
     case ACT_CHP_SELECT:

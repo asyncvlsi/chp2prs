@@ -51,7 +51,9 @@ class RingSynth : public ActSynthesize {
     int bundled_data = dp->getIntParam ("bundled_dpath");
 
     /* print imports */
-    pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
+    // pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
+    pp_printf_raw (_pp, "import syn::ring;\n");
+    pp_printf_raw (_pp, "open syn::ring;\n");
     pp_printf_raw (_pp, "open syn;\n");
 
     pp_printf_raw (_pp, "import \"%s\";\n", _ename);
