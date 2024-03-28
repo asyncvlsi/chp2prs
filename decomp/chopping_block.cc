@@ -271,6 +271,11 @@ void ChoppingBlock::chop_graph()
     _chop_graph(g->graph.m_seq, 1);
 }
 
+void ChoppingBlock::excise_internal_loops()
+{
+    _excise_internal_loops(g->graph.m_seq, 1);
+}
+
 Block *ChoppingBlock::_find_next_break_after (Block *b)
 {
     if (b->type() == BlockType::StartSequence || b->type() == BlockType::EndSequence)
@@ -479,10 +484,11 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     case BlockType::DoLoop:
         if (root != 1) 
         {
-            // fatal_error ("excise internal loops please");
-            tmp = curr->child();
-            _excise_loop(curr);
-            tmp = tmp->parent();
+            fatal_error ("excise internal loops please");
+            // fprintf(stdout, "\nexcising internal loop \n");
+            // tmp = curr->child();
+            // _excise_loop(curr);
+            // tmp = tmp->parent();
         }
         else {
             _chop_graph (curr->u_doloop().branch, 0);
@@ -505,6 +511,57 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
         // _build_sequence (seq.startseq, seq.endseq->parent(), END_INC);
         _build_sequence (seq.startseq->child(), seq.endseq, END_EXC);
     }
+    return;
+}
+
+void ChoppingBlock::_excise_internal_loops(Sequence seq, int root)
+{
+    Block *curr = seq.startseq->child();
+    Block *tmp;
+
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic:
+    break;
+      
+    case BlockType::Par: {
+        for ( auto &branch : curr->u_par().branches )
+            _excise_internal_loops (branch, 0);
+    }
+    break;
+      
+    case BlockType::Select: {
+        for ( auto &branch : curr->u_select().branches )
+            _excise_internal_loops (branch.seq, 0);
+    }
+    break;
+      
+    case BlockType::DoLoop:
+        if (root != 1) 
+        {
+            _excise_internal_loops (curr->u_doloop().branch, 0);
+            fprintf(stdout, "\nexcising internal loop \n");
+            tmp = curr->child();
+            _excise_loop(curr);
+            tmp = tmp->parent();
+        }
+        else {
+            _excise_internal_loops (curr->u_doloop().branch, 0); 
+            if (!seq.empty())
+            {   
+                v_seqs.push_back (seq);
+            }
+            return;
+        }
+        break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }   
     return;
 }
 
@@ -643,8 +700,17 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
     ChpExprSingleRootDag e;
     e = ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard);
 
-    select_2->u_select().branches.push_back({curr->u_doloop().branch,
-                                IRGuard::makeExpression(std::move(e))});
+    Block *doloop_select = curr->u_doloop().branch.startseq->child()->child();
+    hassert (doloop_select->type() == BlockType::Select);
+
+    for ( auto &branch : doloop_select->u_select().branches )
+    {
+        if (!(branch.g.type() == IRGuardType::Else))
+        {   
+            select_2->u_select().branches.push_back({branch.seq,
+                                        IRGuard::deep_copy(branch.g)});
+        }
+    }
     select_2->u_select().branches.push_back({line_3, IRGuard::makeElse()});
 
     Sequence func = _wrap_in_do_loop(g->graph.blockAllocator().newSequence({select_1,select_2}));

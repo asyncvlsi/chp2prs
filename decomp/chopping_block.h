@@ -37,6 +37,7 @@ class ChoppingBlock {
             }
 
         void chop_graph();
+        void excise_internal_loops();
         void print_chopped_seqs();
         std::vector<Sequence> get_chopped_seqs();
 
@@ -50,6 +51,8 @@ class ChoppingBlock {
         IdPool idpool;
 
         void _chop_graph (Sequence seq, int root);
+        
+        void _excise_internal_loops (Sequence seq, int root);
         
         void _split_sequence_before (Block *b, Sequence seq_in, int root);
         

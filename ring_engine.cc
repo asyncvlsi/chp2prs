@@ -107,8 +107,8 @@ class RingSynth : public ActSynthesize {
       }
       else {
         ChpOptimize::optimize_chp_O0 (g.graph, p->getName(), false);
-        // ChpOptimize::propagateConstants (g.graph);
-        ChpOptimize::eliminateDeadCode (g.graph);
+        // ChpOptimize::eliminateDeadCode (g.graph);
+        ChpOptimize::propagateConstants (g.graph);
       }
       uninlineBitfieldExprsHack (g.graph);
 
@@ -132,14 +132,17 @@ class RingSynth : public ActSynthesize {
       fprintf (stdout, "\n\n");
       chp_print(stdout, l);
       fprintf (stdout, "\n\noriginal chp-----\n\n");
-#if 1
+
+
+#if 0
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
-      bkp->mark_breakpoints();
+      // bkp->mark_breakpoints();
       // bkp->print_decomp_info();
 
       ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
                                 bkp->get_decomp_info_map(), p->CurScope());
-      cb->chop_graph();
+      // cb->chop_graph();
+      cb->excise_internal_loops();
 
       auto vs = cb->get_chopped_seqs();
       // fprintf (stdout, "\n\ndecomposed processes ----------- \n");
@@ -156,8 +159,8 @@ class RingSynth : public ActSynthesize {
         // std::vector<ActId *> newnames;
         act_chp_lang_t *l = chp_graph_to_act (gc, newnames, p->CurScope());
         list_append(decomp_procs, l);
-        fprintf (stdout, "\n\n");
-        chp_pretty_print(stdout, l);
+        fprintf (_pp->fp, "\n\n");
+        chp_pretty_print(_pp->fp, l);
         // for (auto id : newnames) {
         //   InstType *it = p->CurScope()->Lookup (id->getName());
         //   if (TypeFactory::isBoolType (it)) {
