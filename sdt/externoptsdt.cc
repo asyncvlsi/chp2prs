@@ -604,12 +604,14 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
     if (collect_phase) {
       varmap_info *v;
       ihash_bucket_t *b;
-      v = _var_getinfo ((ActId *)e->u.e.l);
-      b = ihash_add (_inexprmap, (long)e);
-      b->i = _gen_expr_id ();
       ihash_bucket_t *b_width;
-      b_width = ihash_add (_inwidthmap, (long) e);
-      b_width->i = v->width;
+      v = _var_getinfo ((ActId *)e->u.e.l);
+      if (!ihash_lookup (_inexprmap, (long)e)) {
+        b = ihash_add (_inexprmap, (long)e);
+        b->i = _gen_expr_id ();
+        b_width = ihash_add (_inwidthmap, (long) e);
+        b_width->i = v->width;
+      }
     }
     else {
       ihash_bucket_t *b;
