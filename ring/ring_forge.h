@@ -69,6 +69,7 @@ class RingForge : public RingEngine {
 
         void _expr_collect_vars (Expr *, int);
         void _instantiate_expr_block (int, list_t *);
+        void _print_list_of_vars (FILE *fp, list_t *);
 
         // Channel generation functions
         int _generate_bd_chan(int);

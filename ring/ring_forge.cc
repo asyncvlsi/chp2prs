@@ -790,11 +790,15 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
         b = hash_lookup(var_infos, tname);
         // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
         vi = (var_info *)b->v;
-        ihash_bucket_t *ib = ihash_add (_inexprmap, (long)e);
-        ib->i = _gen_expr_id();
+        ihash_bucket_t *ib;
         ihash_bucket_t *b_width;
-        b_width = ihash_add (_inwidthmap, (long) e);
-        b_width->i = vi->width;
+        if (!ihash_lookup (_inexprmap, (long)e)) 
+        {
+            ib = ihash_add (_inexprmap, (long)e);
+            ib->i = _gen_expr_id();
+            b_width = ihash_add (_inwidthmap, (long) e);
+            b_width->i = vi->width;
+        }
     }
     else {
     //   ihash_bucket_t *b;
@@ -1378,8 +1382,10 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         sel_merge_block_id = _generate_selection_merge(gc_len);
 
         live_vars = (list_t *)c->space;
-        // fprintf (fp, "\n\nlive vars at merge:");
-        // print_live_vars_temp(live_vars);
+        // fprintf (stdout, "\n\nlive vars at merge:");
+        // _print_list_of_vars(stdout, live_vars);
+        // fprintf (stdout, "\n\n");
+
         save_var_infos();
 
         gp_connect_ids = list_new();
@@ -1417,6 +1423,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
 
         // muxing variables live-out of merge so downstream can access correctly
         delay_n_merge = _compute_merge_mux_info(live_vars, gc_len, sel_merge_block_id);
+        // delay_n_merge = 0;
 
         // generate delay line for max guard evaluator delay (split)
         fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
@@ -1508,18 +1515,22 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
 
     if ( list_isempty(live_vars) ) return 0;
 
+    // fprintf (stdout, "\ngot here\n");
+
     for ( li = list_first(live_vars) ; li ; li = list_next(li) )
     {
         b = hash_lookup (var_infos, (const char *)list_value(li));
         if (!b) fatal_error ("variable not found - whatt");
         b_pre = hash_lookup (var_infos_copy, (const char *)list_value(li));
         if (!b_pre) fatal_error ("variable not found - whatt");
+    // fprintf (stdout, "\ngot here 2\n");
 
         vi = (var_info *)b->v;
         vi_pre = (var_info *)b_pre->v;
         latch_branches = vi->latest_latch_branches;
         iwrite = (vi->iwrite)-1;
         iwrite_pre = (vi_pre->iwrite)-1;
+    // fprintf (stdout, "\ngot here 3 : %d, %d\n", iwrite, iwrite_pre);
 
         Assert ((iwrite>=0), "hmmst");
         fprintf (_fp, "\n// variable: %s\n", vi->name);
@@ -1543,6 +1554,7 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
             // match latches to branches
         }
 
+    // fprintf (stdout, "\ngot here 4\n");
         int need_mux, need_or, mux_size, or_size;
 
         // compare with n_branches, see if OR-gate is needed
@@ -1567,6 +1579,7 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
             if (max_or_size < or_size) max_or_size = or_size;
         }
 
+    // fprintf (stdout, "\ngot here 5\n");
         list_t *unassigned_branches = list_new();
         // collect unassigned branch ids for OR-gate
         if ( need_or )
@@ -1590,6 +1603,7 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
         }
         Assert ((list_length(unassigned_branches) == or_size), "what the..");
 
+    // fprintf (stdout, "\ngot here 6: %d\n", need_mux);
         // generate the mux if needed (looks like latch to downstream) and connect latch outputs correctly
         int mux_id, i;
         int j = 0;
@@ -1602,11 +1616,16 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
             // increase nwrite and iwrite for the variable so it can be connected to correctly downstream
             vi->iwrite++; vi->nwrite++;
             vi->latest_for_read = (vi->iwrite)-1;
-            while (list_ivalue(list_first(vi->latest_latch_branches)) > _branch_id )
+
+    // fprintf (stdout, "\ngot here 7: %d, %d\n", list_ivalue(list_first(vi->latest_latch_branches)), _branch_id);
+
+            while (!(list_isempty(vi->latest_latch_branches)) && (list_ivalue(list_first(vi->latest_latch_branches)) > _branch_id) )
             {
                 list_delete_ihead(vi->latest_latch_branches);
-            }
+            } 
             list_iappend_head (vi->latest_latch_branches, _branch_id-1);
+
+    // fprintf (stdout, "\ngot here 8\n");
 
             lj = list_first(branch_map);
             for ( int i=0 ; i<mux_size ; i++ )
@@ -1646,6 +1665,8 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
         }
         branch_ctr = 0;
     }
+
+    // fprintf (stdout, "\ngot here 10\n");
     if ( max_mux_size>0 ) {
         float max_delay = _lookup_mux_delays (max_mux_size, max_or_size);
         // fprintf (_fp, "\nmax mux delay: %f", max_delay);
@@ -1671,5 +1692,22 @@ float RingForge::_lookup_mux_delays (int mux_sz, int or_sz)
     return -1;
 }
 
-
+void RingForge::_print_list_of_vars (FILE *fp, list_t *vars)
+{
+    listitem_t *li;
+    if (list_isempty(vars))
+    {
+        fprintf (fp, "\nempty list\n");
+        return;
+    }
+  
+    fprintf(fp, "\n-----------\n");
+    for (li = list_first(vars); li; li = list_next(li)) 
+    {
+        fprintf(fp, "%s, ", (char *)list_value(li));
+    }	     
+    fprintf(fp, "\n-----------");
+    fprintf(fp, "\n\n");
+    return;
+}
 
