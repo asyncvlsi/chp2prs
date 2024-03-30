@@ -97,7 +97,7 @@ class RingSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     bundled = dp->getIntParam ("bundled_dpath");
 
-    if (0) { //opt
+    if (1) { //opt
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
@@ -134,15 +134,15 @@ class RingSynth : public ActSynthesize {
       fprintf (stdout, "\n\noriginal chp-----\n\n");
 
 
-#if 0
+#if 1
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
-      // bkp->mark_breakpoints();
+      bkp->mark_breakpoints();
       // bkp->print_decomp_info();
 
       ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
                                 bkp->get_decomp_info_map(), p->CurScope());
-      // cb->chop_graph();
-      cb->excise_internal_loops();
+      cb->chop_graph();
+      // cb->excise_internal_loops();
 
       auto vs = cb->get_chopped_seqs();
       // fprintf (stdout, "\n\ndecomposed processes ----------- \n");
@@ -193,7 +193,7 @@ class RingSynth : public ActSynthesize {
     // chp_print (stdout, c);
     // fprintf (stdout, "\n\n");
     // core synthesis functions here
-    bool synthesize = true;
+    bool synthesize = false;
     if (synthesize)
     {
       Assert (c, "hmm c");

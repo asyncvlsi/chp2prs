@@ -61,4 +61,15 @@ class BreakPoints : public DecompAnalysis {
          * Receives only, ignores selections - for testing
         */
         void _mark_breakpoints_v2(Sequence seq, int root);
+
+        /*
+         * Breakpoints at minimum live var. points
+        */
+        void _mark_breakpoints_v3(Sequence seq, int root);
+
+        void _compute_min_and_max();
+
+        int min_live_var_bw;
+        int max_live_var_bw;
+        
 };

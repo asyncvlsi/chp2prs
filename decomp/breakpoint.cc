@@ -26,7 +26,9 @@ void BreakPoints::mark_breakpoints()
 {
     // _mark_breakpoints_v0 (g->graph.m_seq, 0);
     // _mark_breakpoints_v1 (g->graph.m_seq, 0);
-    _mark_breakpoints_v2 (g->graph.m_seq, 0);
+    // _mark_breakpoints_v2 (g->graph.m_seq, 0);
+    _compute_min_and_max();
+    _mark_breakpoints_v3 (g->graph.m_seq, 0);
 }
 
 void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
@@ -194,3 +196,87 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
     }
     // di = (decomp_info_map.find(curr))->second;
 }
+
+void BreakPoints::_compute_min_and_max()
+{
+    min_live_var_bw = 0;
+    max_live_var_bw = INFINITY;
+
+    for (auto dim_itr : decomp_info_map)
+    {
+        auto di = dim_itr.second;
+        if (min_live_var_bw > di->total_bitwidth_in) min_live_var_bw = di->total_bitwidth_in;
+        if (max_live_var_bw < di->total_bitwidth_in) max_live_var_bw = di->total_bitwidth_in;
+    }
+}
+
+void BreakPoints::_mark_breakpoints_v3(Sequence seq, int mark_next)
+{
+    // heuristic
+    int testval = 0.5*(min_live_var_bw+max_live_var_bw);
+
+    Block *curr = seq.startseq->child();
+    decomp_info *di;
+
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        switch (curr->u_basic().stmt.type()) {
+        case StatementType::Send:
+        case StatementType::Assign:
+        case StatementType::Receive:
+            // break before every new assignment
+            di = (decomp_info_map.find(curr))->second;
+            if (di->total_bitwidth_in > testval)
+            {
+                di->break_before = true;
+            }
+            if (di->total_bitwidth_out > testval)
+            {
+                di->break_after = true;
+            }
+            break;
+      }
+        // di = (decomp_info_map.find(curr))->second;
+        // _print_decomp_info (di);
+    }
+    break;
+      
+    case BlockType::Par: {
+        // fatal_error ("working on par...");
+        for (auto &branch : curr->u_par().branches) {
+            _mark_breakpoints_v3 (branch, 0);
+        }
+    }
+    break;
+      
+    case BlockType::Select:
+        // fprintf (stdout, "reached select start\n");
+        // break before every selection
+        di = (decomp_info_map.find(curr))->second;
+        if (di->total_bitwidth_in > testval)
+        {
+            di->break_before = true;
+            di->break_after = true;
+        }
+        for (auto &branch : curr->u_select().branches) {
+            _mark_breakpoints_v3 (branch.seq, 0);
+        }
+        // fprintf (stdout, "reached select end\n");
+    break;
+      
+    case BlockType::DoLoop:
+        // fprintf (stdout, "\n\nreached do-loop\n");
+        _mark_breakpoints_v3 (curr->u_doloop().branch, 0);
+        break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
+
+}
+
