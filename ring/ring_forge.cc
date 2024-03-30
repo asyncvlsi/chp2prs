@@ -1534,12 +1534,14 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
 
         Assert ((iwrite>=0), "hmmst");
         fprintf (_fp, "\n// variable: %s\n", vi->name);
+        // fprintf (_fp, "// %d, %d\n", iwrite, iwrite_pre);
         lj = list_first (latch_branches);
         list_t *branch_map = list_new();
 
         for ( int i=0 ; i < (iwrite-iwrite_pre) ; i++ )
         {
             latest_branch_id = int(list_ivalue(lj));
+            // fprintf (_fp, "// %d, %d\n", latest_branch_id, latest_branch_id_prev);
             // all branch check
             if (latest_branch_id != latest_branch_id_prev) 
             {
@@ -1646,6 +1648,8 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
                     fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n", capture_block_prefix, vi->name, 
                                                         iwrite+1, i, (vi->width)-1,
                                             capture_block_prefix, vi->name, iwrite_pre);
+                    Assert ((iwrite_pre>=0), "latch id negative?");
+                    Assert ((iwrite+1)>=0, "latch id negative?");
                     // connect OR-gate output to mux input
                     fprintf (_fp, "or_%s_%d.out = %s%s_%d.c[%d];\n", vi->name, mux_id,
                                             capture_block_prefix, vi->name, iwrite+1, i);
@@ -1660,10 +1664,13 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
                 fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n",capture_block_prefix, vi->name, 
                                                     iwrite+1, i, (vi->width)-1,
                                         capture_block_prefix, vi->name, list_ivalue(list_next(lj)));
+                Assert ((iwrite+1)>=0, "latch id negative?");
+                Assert ((list_ivalue(list_next(lj)))>=0, "latch id negative?");
                 lj = list_next(list_next(lj));
             }
         }
         branch_ctr = 0;
+        latest_branch_id_prev = -1;
     }
 
     // fprintf (stdout, "\ngot here 10\n");
