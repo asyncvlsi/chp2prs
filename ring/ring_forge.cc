@@ -53,7 +53,7 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     _bd_chan_id = 0;
     _sync_chan_id = 0;
     _expr_id = 0;
-    _expr_block_id = 0;
+    // _expr_block_id = 0;
     _mux_block_id = 0;
     _branch_id = 0;
 }

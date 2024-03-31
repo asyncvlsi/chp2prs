@@ -97,7 +97,7 @@ class RingSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     bundled = dp->getIntParam ("bundled_dpath");
 
-    if (1) { //opt
+    if (0) { //opt
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
@@ -134,7 +134,7 @@ class RingSynth : public ActSynthesize {
       fprintf (stdout, "\n\noriginal chp-----\n\n");
 
 
-#if 1
+#if 0
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
       // bkp->print_decomp_info();
@@ -193,7 +193,7 @@ class RingSynth : public ActSynthesize {
     // chp_print (stdout, c);
     // fprintf (stdout, "\n\n");
     // core synthesis functions here
-    bool synthesize = false;
+    bool synthesize = true;
     if (synthesize)
     {
       Assert (c, "hmm c");

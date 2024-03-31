@@ -1,0 +1,30 @@
+
+defproc buf (chan?(int) l; chan!(int) r)
+{
+	int x;
+	chp{
+		*[l?x;r!x]
+	}
+}
+
+defproc src (chan!(int) r)
+{
+	chp{
+		*[r!5]
+	}
+}
+
+defproc snk (chan?(int) l)
+{
+	int x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int) X;chan!(int) Y)
+{
+  buf b(X,Y);
+  src i(X);
+  snk o(Y);
+}

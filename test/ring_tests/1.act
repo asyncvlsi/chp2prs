@@ -1,0 +1,30 @@
+
+defproc buf (chan?(int<4>) l; chan!(int<4>) r)
+{
+	int<4> x;
+	chp{
+		*[l?x;r!(~x)]
+	}
+}
+
+defproc src (chan!(int<4>) r)
+{
+	chp{
+		*[r!5]
+	}
+}
+
+defproc snk (chan?(int<4>) l)
+{
+	int<4> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<4>) X;chan!(int<4>) Y)
+{
+  buf b(X,Y);
+  src i(X);
+  snk o(Y);
+}

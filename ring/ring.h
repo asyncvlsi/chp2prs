@@ -86,7 +86,7 @@ class RingEngine {
         unsigned int _bd_chan_id;
         unsigned int _sync_chan_id;
         unsigned int _expr_id;
-        unsigned int _expr_block_id;
+        static unsigned int _expr_block_id;
         unsigned int _mux_block_id;
 
         int _gen_block_id ();
