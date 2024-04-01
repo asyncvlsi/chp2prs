@@ -605,7 +605,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
     int delay_line_n = int((typ_delay_ps/(2*invx1_delay_ps)) + 1); 
-    if (delay_line_n == 0) { delay_line_n = 1; }
+    if (delay_line_n < 0) { delay_line_n = 1; }
 
     fprintf(_fp, "\n// typical delay: %gps\n",typ_delay_ps);
     _instantiate_expr_block (xid, all_leaves);
@@ -1426,6 +1426,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         // delay_n_merge = 0;
 
         // generate delay line for max guard evaluator delay (split)
+        Assert (max_delay_n_sel>0, "negative delay?");
         fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
         fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",max_delay_n_sel,sel_split_block_id);
         // connect prev. block p1 to delay_line then connect to select block from the output
