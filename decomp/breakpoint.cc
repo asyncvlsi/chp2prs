@@ -200,7 +200,7 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
 void BreakPoints::_compute_min_and_max()
 {
     min_live_var_bw = 0;
-    max_live_var_bw = INFINITY;
+    max_live_var_bw = INT32_MAX;
 
     for (auto dim_itr : decomp_info_map)
     {
