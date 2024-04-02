@@ -1144,6 +1144,7 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
     case ACT_CHP_HOLE: /* to support verification */
     case ACT_CHP_MACRO:
     case ACT_HSE_FRAGMENTS:
+        block_id = prev_block_id;
         break;
 
     default:
@@ -1490,6 +1491,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     case ACT_CHP_HOLE: /* to support verification */
     case ACT_CHP_MACRO:
     case ACT_HSE_FRAGMENTS:
+        block_id = prev_block_id;
         break;
 
     default:
