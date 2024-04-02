@@ -5,10 +5,18 @@ import "0_ring.act";
 defproc test()
 {
   ring_testproc t;
-  bool a[32];
+  bool a[8];
   a = t.Y.d;
   chp {
       // a=5 
-      [a[0]=true & a[2]=true -> log("SUCCESS")]
+      [a[0]=true  & 
+       a[1]=false & 
+       a[2]=true  &
+       a[3]=false &
+       a[4]=false &
+       a[5]=false &
+       a[6]=false &
+       a[7]=false
+       -> log("SUCCESS")]
   }
 }

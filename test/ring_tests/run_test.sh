@@ -17,7 +17,7 @@ set GND 0
 cycle
 mode run
 set Reset 0
-step 2000
+step 50000
 EOF
 if grep SUCCESS runs/${file}_sim.out >/dev/null 2>&1
 then

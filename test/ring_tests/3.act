@@ -1,0 +1,31 @@
+
+defproc mult (chan?(int<8>) l1, l2; chan!(int<8>) r)
+{
+	int<8> x1, x2;
+	chp{
+		*[l1?x1;l2?x2;r!(x1*x2)]
+	}
+}
+
+defproc src (chan!(int<8>) r)
+{
+	chp{
+		*[r!5]
+	}
+}
+
+defproc snk (chan?(int<8>) l)
+{
+	int<8> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<8>) X1, X2; chan!(int<8>) Y)
+{
+  mult m(X1,X2,Y);
+  src i1(X1);
+  src i2(X2);
+  snk o (Y);
+}

@@ -1,28 +1,28 @@
 
-defproc buf (chan?(int) l; chan!(int) r)
+defproc buf (chan?(int<8>) l; chan!(int<8>) r)
 {
-	int x;
+	int<8> x;
 	chp{
 		*[l?x;r!x]
 	}
 }
 
-defproc src (chan!(int) r)
+defproc src (chan!(int<8>) r)
 {
 	chp{
 		*[r!5]
 	}
 }
 
-defproc snk (chan?(int) l)
+defproc snk (chan?(int<8>) l)
 {
-	int x;
+	int<8> x;
 	chp{
 		*[l?x; log("%d", x)]
 	}
 }
 
-defproc testproc (chan?(int) X;chan!(int) Y)
+defproc testproc (chan?(int<8>) X;chan!(int<8>) Y)
 {
   buf b(X,Y);
   src i(X);
