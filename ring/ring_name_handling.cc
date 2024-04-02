@@ -38,8 +38,9 @@ void get_true_name (char *buf, ActId *id, Scope *s, bool mangle)
 {
   char str[1024];
   id->sPrint(str,1024,NULL,style_global);
-  if (mangle)
+  if (mangle && !(TypeFactory::isChanType(s->FullLookup((id->getName()))))) {
     a_mangle->mangle_string(str,buf,1024);
+  }
   else  
     snprintf (buf, 1024, "%s", str);
 }
