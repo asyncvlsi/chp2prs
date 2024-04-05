@@ -1,5 +1,5 @@
 
-defproc buf (chan?(int<4>) l; chan!(int<4>) r)
+defproc bufi (chan?(int<4>) l; chan!(int<4>) r)
 {
 	int<4> x;
 	chp{
@@ -24,7 +24,7 @@ defproc snk (chan?(int<4>) l)
 
 defproc testproc (chan?(int<4>) X;chan!(int<4>) Y)
 {
-  buf b(X,Y);
+  bufi b(X,Y);
   src i(X);
   snk o(Y);
 }

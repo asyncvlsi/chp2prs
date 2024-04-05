@@ -88,268 +88,6 @@ defproc connect_fblock_dout (bd<W> ch; bool d[W])
 // --------------------------------------------------------
 
 
-// Control Elements ---------------------------------------
-
-// The Two Main Pipe Elements ---------
-
-export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
-{
-
-  bool _m1_r;
-  inverter m1_inv(m1.r,_m1_r);
-
-  zero.a = p1.r;
-  zero.r = m1.a;
-
-  prs {
-      ~Reset & (~_m1_r & ~zero.a & ~p1.a) -> zero.r+ 
-        Reset | (_m1_r &  zero.a &  p1.a) -> zero.r-
-  }
-  sizing { 
-      zero.r{-1} 
-  }
-}
-
-export defproc elem_c_ppa_brs_bd (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
-{
-
-  bool _zero_r, _m1_r;
-  inverter zero_inv(zero.r,_zero_r);
-  inverter m1_inv(m1.r,_m1_r);
-
-  zero.a = p1.r;
-  data.a = zero.a;
-  data.r = m1.a;
-
-  prs {
-      ~Reset & (~_m1_r &  ~_zero_r & ~p1.a) -> data.r+ 
-        Reset | (_m1_r &   _zero_r &  p1.a) -> data.r-
-  }
-  sizing { 
-      data.r{-1} 
-  }
-}
-// ------------------------------------
-
-// Skip element -----------------------
-
-export defproc elem_c_skip (a1of1 m1; a1of1 p1)
-{
-    m1 = p1;
-}
-// ------------------------------------
-
-
-// Pause element ----------------------
-
-export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
-{
-  bool _m1_r;
-  inverter m1_inv(m1.r,_m1_r);
-
-  bool u, _u, v;
-  std::ideal_arbiter ia(pause.r, m1.a, u, p1.r);
-  inverter pause_inv(u,_u);
-
-  syn::NOR2X1 and(_m1_r, _u, pause.a);
-
-  prs {
-      ~Reset & (~_m1_r & ~p1.r & ~p1.a) -> m1.a+ 
-        Reset | (_m1_r &  p1.r &  p1.a) -> m1.a-
-  }
-  sizing { 
-      m1.a{-1} 
-  }
-}
-// ------------------------------------
-
-
-// Initial token buffer ---------------
-
-export defproc elem_c_itb (a1of1 m1; a1of1 p1)
-{
-  std::gates::ctree<2,false> c_itb;
-  syn::NOR2X1 nor_reset;
-
-  c_itb.in[0] = m1.r;
-  c_itb.in[1] = p1.a;
-  c_itb.out = m1.a;
-
-  nor_reset.A = Reset;
-  nor_reset.B = c_itb.out;
-  nor_reset.Y = p1.r;
-}
-// ------------------------------------
-
-
-// N-way parallelizer -----------------
-// for comma-separated statements
-
-export template<pint N>
-defproc parallel_split(a1of1? m1; a1of1 co[N]) 
-{
-    std::gates::sigbuf<N> s(m1.r);
-    ( i : N: s.out[i] = co[i].r; )
-
-    std::gates::ctree<N, false> ct(, m1.a);
-    ( i : N: ct.in[i] = co[i].a; )
-}
-
-export template<pint N>
-defproc parallel_merge(a1of1 ci[N]; a1of1! p1) 
-{
-    std::gates::ctree<N, false> ct(, p1.r);
-    ( i : N: ct.in[i] = ci[i].r; )
-
-    std::gates::sigbuf<N> s(p1.a);
-    ( i : N: s.out[i] = ci[i].a; )
-}
-// ------------------------------------
-
-
-// N-way selection split & merge ------
-// for selections
-
-export template<pint N>
-defproc selection_split(bool? gs[N]; a1of1? m1; a1of1 co[N]) 
-{
-    syn::AND2X1 ands[N];
-    ( i : N: ands[i].A = m1.r; )
-    ( i : N: ands[i].B = gs[i]; )
-    ( i : N: ands[i].Y = co[i].r; )
-
-    std::gates::xortree<N, false> ort(, m1.a);
-    ( i : N: ort.in[i] = co[i].a; )
-}
-
-export template<pint N>
-defproc selection_merge(a1of1 ci[N]; a1of1! p1) 
-{
-    std::gates::xortree<N, false> ort(, p1.r);
-    ( i : N: ort.in[i] = ci[i].r; )
-
-    std::gates::sigbuf<N> s(p1.a);
-    ( i : N: s.out[i] = ci[i].a; )
-}
-// ------------------------------------
-
-
-// N-way loop construct ---------------
-// Last (N-th) guard must be the 'else' 
-// i.e. the case where the loop terminates
-// 
-
-template <pint N>
-defproc loop_wrapper (bool? gs[N+1]; a1of1? m1; 
-                      a1of1 spi[N]; a1of1 spo[N]; 
-                      bool! delay_o; bool? delay_i; a1of1 p1)
-{
-
-  syn::AND2X1 ctrl_and; 
-  std::gates::ctree<2, true> c;
-
-  ctrl_and.A = m1.r;
-  ctrl_and.B = c.out;
-  ctrl_and.Y = delay_o;
-
-  syn::AND2X1 ands[N+1];
-  ( i : N+1 : ands[i].A = delay_i; )
-  ( i : N+1 : ands[i].B = gs[i]; )
-  ( i : N : ands[i].Y = spi[i].r; )
-            ands[N].Y = p1.r;
-
-  std::gates::ortree<N, false> or_spi;
-  ( i : N: or_spi.in[i] = spi[i].a; )
-
-  std::gates::ortree<N, false> or_spo;
-  ( i : N: or_spo.in[i] = spo[i].r; )
-  ( i : N: or_spo.out   = spo[i].a; )
-
-  c.in[0] = or_spi.out;
-  c.in[1] = or_spo.out;
-
-  p1.a = m1.a;
-}
-
-defproc testloop ()
-{
-  loop_wrapper<4> x;
-}
-// ------------------------------------
-
-// Do-loop construct ------------------
-// Only one guard allowed
-
-defproc doloop_wrapper (bool? g; a1of1? m1; 
-                        a1of1 spi; a1of1 spo; 
-                        bool! delay_o; bool? delay_i; a1of1 p1) 
-{
-
-  syn::AND2X1 ctrl_and; 
-  std::gates::ctree<2, true> c;
-
-  ctrl_and.A = m1.r;
-  ctrl_and.B = c.out;
-  ctrl_and.Y = spi.r;
-
-  syn::AND2X1 ands[2];
-  syn::INVX1 inv_g;
-  inv_g.A = g;
-
-  spo.r = delay_o;
-
-  ands[0].A = g;        ands[0].B = delay_i;  
-  ands[1].A = inv_g.Y;  ands[1].B = delay_i;
-
-  ands[0].Y = c.in[0];  
-  ands[0].Y = spo.a;
-  c.in[1]   = spi.a;
-
-  ands[1].Y = p1.r;
-
-  p1.a = m1.a;
-}
-// ------------------------------------
-
-// N : No. of inputs, W : Width of each input
-export template<pint N,W>
-defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
-{
-  // ands
-  syn::AND2X1 stage_1[N][W];
-  
-  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
-  ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
-
-  // ors
-  std::gates::ortree<N, false> stage_2[W]; 
-
-  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
-  ( j : W : stage_2[j].out = dout[j]; )
-
-}
-
-// N : No. of inputs, W : Width of each input
-export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
-{
-  // nands
-  syn::NAND2X1 stage_1[N][W];
-  
-  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
-  ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
-
-  // nands
-  std::gates::andtree<N, true> stage_2[W]; 
-
-  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
-  ( j : W : stage_2[j].out = dout[j]; )
-
-}
-
-// --------------------------------------------------------
-
-
 // Bundled Data Datapath Elements -------------------------
 // Some copied from dflowmap_netlist/dflow_std/qdigen.act
 
@@ -486,6 +224,273 @@ defproc itb_wrapper (bd<W> R_out; bd<W> S_in)
 
 }
 // --------------------------------------------------------
+
+// Control Elements ---------------------------------------
+
+// The Two Main Pipe Elements ---------
+
+export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
+{
+
+  bool _m1_r;
+  inverter m1_inv(m1.r,_m1_r);
+
+  zero.a = p1.r;
+  zero.r = m1.a;
+
+  prs {
+      ~Reset & (~_m1_r & ~zero.a & ~p1.a) -> zero.r+ 
+        Reset | (_m1_r &  zero.a &  p1.a) -> zero.r-
+  }
+  sizing { 
+      zero.r{-1} 
+  }
+}
+
+export defproc elem_c_ppa_brs_bd (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
+{
+
+  bool _zero_r, _m1_r;
+  inverter zero_inv(zero.r,_zero_r);
+  inverter m1_inv(m1.r,_m1_r);
+
+  zero.a = p1.r;
+  data.a = zero.a;
+  data.r = m1.a;
+
+  prs {
+      ~Reset & (~_m1_r &  ~_zero_r & ~p1.a) -> data.r+ 
+        Reset | (_m1_r &   _zero_r &  p1.a) -> data.r-
+  }
+  sizing { 
+      data.r{-1} 
+  }
+}
+// ------------------------------------
+
+// Skip element -----------------------
+
+export defproc elem_c_skip (a1of1 m1; a1of1 p1)
+{
+    m1 = p1;
+}
+// ------------------------------------
+
+
+// Pause element ----------------------
+
+export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
+{
+  bool _m1_r;
+  inverter m1_inv(m1.r,_m1_r);
+
+  bool u, _u, v;
+  std::ideal_arbiter ia(pause.r, m1.a, u, p1.r);
+  inverter pause_inv(u,_u);
+
+  syn::NOR2X1 and(_m1_r, _u, pause.a);
+
+  prs {
+      ~Reset & (~_m1_r & ~p1.r & ~p1.a) -> m1.a+ 
+        Reset | (_m1_r &  p1.r &  p1.a) -> m1.a-
+  }
+  sizing { 
+      m1.a{-1} 
+  }
+}
+// ------------------------------------
+
+
+// Initial token buffer ---------------
+
+export defproc elem_c_itb (a1of1 m1; a1of1 p1)
+{
+  std::gates::ctree<2,false> c_itb;
+  syn::NOR2X1 nor_reset;
+
+  c_itb.in[0] = m1.r;
+  c_itb.in[1] = p1.a;
+  c_itb.out = m1.a;
+
+  nor_reset.A = Reset;
+  nor_reset.B = c_itb.out;
+  nor_reset.Y = p1.r;
+}
+// ------------------------------------
+
+
+// N-way parallelizer -----------------
+// for comma-separated statements
+
+export template<pint N>
+defproc parallel_split(a1of1? m1; a1of1 co[N]) 
+{
+    std::gates::sigbuf<N> s(m1.r);
+    ( i : N: s.out[i] = co[i].r; )
+
+    std::gates::ctree<N, false> ct(, m1.a);
+    ( i : N: ct.in[i] = co[i].a; )
+}
+
+export template<pint N>
+defproc parallel_merge(a1of1 ci[N]; a1of1! p1) 
+{
+    std::gates::ctree<N, false> ct(, p1.r);
+    ( i : N: ct.in[i] = ci[i].r; )
+
+    std::gates::sigbuf<N> s(p1.a);
+    ( i : N: s.out[i] = ci[i].a; )
+}
+// ------------------------------------
+
+
+// N-way selection split & merge ------
+// for selections
+
+export template<pint N>
+defproc selection_split(bool? gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+    capture_init<5, 6, 1, 0> capt[N];
+    syn::XOR2X1 xors[N];
+
+    capt.go.r = m1.r;
+    ( i : N: xors[i].A = co[i].a; )
+    ( i : N: xors[i].B = gs[i]; )
+    ( i : N: xors[i].Y = capt[i].din[0]; )
+    ( i : N: capt[i].dout[0].Y = co[i].r; )
+
+    std::gates::xortree<N, false> ort(, m1.a);
+    ( i : N: ort.in[i] = co[i].a; )
+}
+
+export template<pint N>
+defproc selection_merge(a1of1 ci[N]; a1of1! p1) 
+{
+    std::gates::xortree<N, false> ort(, p1.r);
+    ( i : N: ort.in[i] = ci[i].r; )
+
+    std::gates::sigbuf<N> s(p1.a);
+    ( i : N: s.out[i] = ci[i].a; )
+}
+// ------------------------------------
+
+
+// N-way loop construct ---------------
+// Last (N-th) guard must be the 'else' 
+// i.e. the case where the loop terminates
+// 
+
+template <pint N>
+defproc loop_wrapper (bool? gs[N+1]; a1of1? m1; 
+                      a1of1 spi[N]; a1of1 spo[N]; 
+                      bool! delay_o; bool? delay_i; a1of1 p1)
+{
+
+  syn::AND2X1 ctrl_and; 
+  std::gates::ctree<2, true> c;
+
+  ctrl_and.A = m1.r;
+  ctrl_and.B = c.out;
+  ctrl_and.Y = delay_o;
+
+  syn::AND2X1 ands[N+1];
+  ( i : N+1 : ands[i].A = delay_i; )
+  ( i : N+1 : ands[i].B = gs[i]; )
+  ( i : N : ands[i].Y = spi[i].r; )
+            ands[N].Y = p1.r;
+
+  std::gates::ortree<N, false> or_spi;
+  ( i : N: or_spi.in[i] = spi[i].a; )
+
+  std::gates::ortree<N, false> or_spo;
+  ( i : N: or_spo.in[i] = spo[i].r; )
+  ( i : N: or_spo.out   = spo[i].a; )
+
+  c.in[0] = or_spi.out;
+  c.in[1] = or_spo.out;
+
+  p1.a = m1.a;
+}
+
+defproc testloop ()
+{
+  loop_wrapper<4> x;
+}
+// ------------------------------------
+
+// Do-loop construct ------------------
+// Only one guard allowed
+
+defproc doloop_wrapper (bool? g; a1of1? m1; 
+                        a1of1 spi; a1of1 spo; 
+                        bool! delay_o; bool? delay_i; a1of1 p1) 
+{
+
+  syn::AND2X1 ctrl_and; 
+  std::gates::ctree<2, true> c;
+
+  ctrl_and.A = m1.r;
+  ctrl_and.B = c.out;
+  ctrl_and.Y = spi.r;
+
+  syn::AND2X1 ands[2];
+  syn::INVX1 inv_g;
+  inv_g.A = g;
+
+  spo.r = delay_o;
+
+  ands[0].A = g;        ands[0].B = delay_i;  
+  ands[1].A = inv_g.Y;  ands[1].B = delay_i;
+
+  ands[0].Y = c.in[0];  
+  ands[0].Y = spo.a;
+  c.in[1]   = spi.a;
+
+  ands[1].Y = p1.r;
+
+  p1.a = m1.a;
+}
+// ------------------------------------
+
+// N : No. of inputs, W : Width of each input
+export template<pint N,W>
+defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
+{
+  // ands
+  syn::AND2X1 stage_1[N][W];
+  
+  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
+  ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
+
+  // ors
+  std::gates::ortree<N, false> stage_2[W]; 
+
+  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
+  ( j : W : stage_2[j].out = dout[j]; )
+
+}
+
+// N : No. of inputs, W : Width of each input
+export template<pint N,W>
+defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
+{
+  // nands
+  syn::NAND2X1 stage_1[N][W];
+  
+  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
+  ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
+
+  // nands
+  std::gates::andtree<N, true> stage_2[W]; 
+
+  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
+  ( j : W : stage_2[j].out = dout[j]; )
+
+}
+
+// --------------------------------------------------------
+
+
 
 // Variables ----------------------------------------------
 
