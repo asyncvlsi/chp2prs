@@ -44,6 +44,24 @@ defproc inverter (bool? in; bool! out)
         out{-1} 
     }
 }
+
+export defproc sink_brs (a1of1 c)
+{
+  bool x;
+  prs{
+      c.r => x-
+      x   => c.a-
+  }
+  sizing { x{-1}; c.a{-1} }
+}
+
+export defproc source_brs (a1of1 c)
+{
+  prs{
+        ~c.a => c.r+
+  }
+  sizing { c.r{-1} }
+}
 // --------------------------------------------------------
 
 
@@ -350,14 +368,14 @@ defproc parallel_merge(a1of1 ci[N]; a1of1! p1)
 export template<pint N>
 defproc selection_split(bool? gs[N]; a1of1? m1; a1of1 co[N]) 
 {
-    capture_init<5, 6, 1, 0> capt[N];
+    capture_init<5, 6, N, 0> capt;
     syn::XOR2X1 xors[N];
 
     capt.go.r = m1.r;
     ( i : N: xors[i].A = co[i].a; )
     ( i : N: xors[i].B = gs[i]; )
-    ( i : N: xors[i].Y = capt[i].din[0]; )
-    ( i : N: capt[i].dout[0].Y = co[i].r; )
+    ( i : N: xors[i].Y = capt.din[i]; )
+    ( i : N: capt.dout[i] = co[i].r; )
 
     std::gates::xortree<N, false> ort(, m1.a);
     ( i : N: ort.in[i] = co[i].a; )

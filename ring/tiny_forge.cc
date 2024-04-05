@@ -48,6 +48,7 @@ TinyForge::TinyForge ( FILE *fp, Process *p, act_chp_lang_t *c,
 
 void TinyForge::run_forge ()
 {
+    construct_var_infos ();
     _generate_pipe (_c, 1);
 }
 

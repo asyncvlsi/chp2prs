@@ -247,6 +247,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             char tname[1024];
             get_true_name(tname, var, _p->CurScope());
             b = hash_lookup(var_infos, tname);
+            Assert (b, "No var info?");
             vi = (var_info *)b->v;
             if (init_latch == -1)
             {

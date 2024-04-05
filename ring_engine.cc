@@ -205,10 +205,14 @@ class RingSynth : public ActSynthesize {
       Assert (b, "hmm b");
 
       RingForge *rf = new RingForge (_pp->fp, p, c, b, "", _ename);
-      rf->run_forge();
-      // TinyForge *tf = new TinyForge (_pp->fp, p, c, b, "", _ename);
-      // tf->run_forge();
+      TinyForge *tf = new TinyForge (_pp->fp, p, c, b, "", _ename);
 
+      if (tf->check_if_pipeable(c,1))
+        tf->run_forge();
+      else
+        rf->run_forge();
+
+      // rf->run_forge();
     }
     
     /*
