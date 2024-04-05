@@ -110,12 +110,17 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
   {
     double delay;
 
+    if (block_info->getDelay().exists()) {
     delay = block_info->getDelay().max_val;
     if (delay == 0) {
       delay = block_info->getDelay().typ_val;
     }
     if (delay == 0) {
       delay = block_info->getDelay().min_val;
+    }
+    }
+    else {
+     delay = 100e-9;
     }
     _emit_bd_ctl_bypass (*id, all_leaves, delay);
   }
@@ -530,73 +535,12 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
     break;
 
   case E_TRUE:
-    if (0) {
-      if (collect_phase) {
-        ihash_bucket_t *b_name;
-        b_name = ihash_add (_inexprmap, (long) e);
-        b_name->i = _gen_expr_id ();
-        ihash_bucket_t *b_width;
-        b_width = ihash_add (_inwidthmap, (long) e);
-        b_width->i = 1;
-
-      }
-      else {
-        id = ihash_lookup(_inexprmap, (long) e)->i;
-        _emit_expr_const (id, 1, 1, false);
-      }
-    }
-    
     break;
     
   case E_FALSE:
-    if (0) {
-    if (!bundled_data) {
-        ihash_bucket_t *b_name;
-        b_name = ihash_add (_inexprmap, (long) e);
-        b_name->i = _gen_expr_id ();
-        ihash_bucket_t *b_width;
-        b_width = ihash_add (_inwidthmap, (long) e);
-        b_width->i = 1;
-      }
-      else {
-        id = ihash_lookup(_inexprmap, (long) e)->i;
-        _emit_expr_const (id, 1, 0, false);
-      }
-    }
     break;
     
   case E_INT:
-    if (0) {
-      if (collect_phase) {
-        int w = 0;
-        int val = e->u.ival.v;
-        if (val < 0) {
-          val = -val;
-          w = 32;
-        }
-        else {
-          while (val) {
-            val >>= 1;
-            w++;
-          }
-        }
-        if (w == 0) {
-          w = 1;
-        }
-        ihash_bucket_t *b_name;
-        b_name = ihash_add (_inexprmap, (long) e);
-        b_name->i = _gen_expr_id ();
-        ihash_bucket_t *b_width;
-        b_width = ihash_add (_inwidthmap, (long) e);
-        b_width->i = w;
-      }
-      else {
-        int w;
-        id = ihash_lookup(_inexprmap, (long) e)->i;
-        w = ihash_lookup(_inwidthmap, (long) e)->i;
-        _emit_expr_const (id, w, e->u.ival.v, false);
-      }
-    }
     break;
 
   case E_BITFIELD:
