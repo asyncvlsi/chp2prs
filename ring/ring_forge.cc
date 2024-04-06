@@ -1430,7 +1430,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         _branch_id = _branch_id - gc_len;
 
         // muxing variables live-out of merge so downstream can access correctly
-        delay_n_merge = _compute_merge_mux_info(live_vars, gc_len, sel_merge_block_id);
+        delay_n_merge = _compute_merge_mux_info(live_vars, gc_len, sel_split_block_id);
         // delay_n_merge = 0;
 
         // generate delay line for max guard evaluator delay (split)
@@ -1510,7 +1510,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     a selection can be addressed correctly when exiting the selection, 
     based on which branch was taken in this iteration of the loop.
 */
-int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int merge_block_id)
+int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int split_block_id)
 {
     var_info *vi, *vi_pre;
     hash_bucket_t *b, *b_pre;
@@ -1650,8 +1650,10 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
                     // connect OR-gate inputs (merge_block inputs)
                     for (listitem_t *lk = list_first(unassigned_branches) ; lk ; lk = list_next(lk))
                     {
-                        fprintf (_fp, "or_%s_%d.in[%d] = %s%d.ci[%d].r;\n", vi->name, mux_id, j, 
-                                            ring_block_prefix, merge_block_id, list_ivalue(lk)-_branch_id);
+                        // fprintf (_fp, "or_%s_%d.in[%d] = %s%d.ci[%d].r;\n", vi->name, mux_id, j, 
+                        //                     ring_block_prefix, merge_block_id, list_ivalue(lk)-_branch_id);
+                        fprintf (_fp, "or_%s_%d.in[%d] = %s%d.co[%d].r;\n", vi->name, mux_id, j, 
+                                            ring_block_prefix, split_block_id, list_ivalue(lk)-_branch_id);
                         j++;
                     }
                     // connect pre-split data to mux last data input
@@ -1668,9 +1670,12 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int m
 
                 // connect mux input control and data
                 fprintf (_fp, "\n// BRANCH ID: %d\n", _branch_id);
-                fprintf (_fp, "%s%s_%d.c[%d] = %s%d.ci[%d].r;\n", capture_block_prefix, vi->name, 
+                // fprintf (_fp, "%s%s_%d.c[%d] = %s%d.ci[%d].r;\n", capture_block_prefix, vi->name, 
+                //                                     iwrite+1, i, ring_block_prefix, 
+                //                                         merge_block_id, list_ivalue(lj));
+                fprintf (_fp, "%s%s_%d.c[%d] = %s%d.co[%d].r;\n", capture_block_prefix, vi->name, 
                                                     iwrite+1, i, ring_block_prefix, 
-                                                        merge_block_id, list_ivalue(lj));
+                                                        split_block_id, list_ivalue(lj));
                 fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n",capture_block_prefix, vi->name, 
                                                     iwrite+1, i, (vi->width)-1,
                                         capture_block_prefix, vi->name, list_ivalue(list_next(lj)));
