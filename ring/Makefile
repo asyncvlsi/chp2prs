@@ -23,6 +23,7 @@ TARGETLIBS=libactchpring_$(EXT).so
 CPPSTD=c++20
 
 SHOBJS=ring.os \
+	tiny_forge.os \
 	ring_forge.os \
 	ring_else_gen.os \
 	ring_name_handling.os \
