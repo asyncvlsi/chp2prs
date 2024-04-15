@@ -29,18 +29,16 @@
 using namespace ChpOptimize;
 
 // To hold a block* and the id of the channel (will become alias ids)
-// typedef std::pair<ChanId, Block *> chan_blk_pair;
-typedef std::unordered_map<Block *, ChanId> chan_blk_pair;
+// the unsigned int is the 'alias number' of the alias chan
+typedef std::unordered_map<Block *, std::pair<ChanId, unsigned int>> chan_blk_pair;
 
 // program-wide data structure to hold all chan ids
 // and their alias info, block * etc.
 typedef std::unordered_map<ChanId, chan_blk_pair> multichan_alias_struct;
 
-// // possibilities for how to compute next alias
-// enum class NextAliasType { Direct, Branch, Unknown };
-
 // next alias map
-typedef std::unordered_map<ChanId, OptionalChanId> next_alias_set; 
+// if vec longer than 1, it's the 
+typedef std::unordered_map<OptionalChanId, std::vector<OptionalChanId>> next_alias_set; 
 
 /*
     Handler for Multiple Channel Access.
@@ -60,7 +58,7 @@ class MultiChan : public DecompAnalysis {
 
         void process_multichans();
 
-        void get_auxiliary_procs();
+        std::vector<Sequence> get_auxiliary_procs();
 
     private:
 
@@ -76,15 +74,24 @@ class MultiChan : public DecompAnalysis {
 
         void _insert_guard_comm (Block *);
 
-        void _replace_with_alias (Block *);
-
-        void _compute_next_aliases (Sequence, ChanId);
+        void _replace_with_alias (Block *, ChanId);
 
         bool _contains_chan_access (Sequence, ChanId);
 
+        Sequence _build_aux_process (Sequence, ChanId);
+
+        Block *_compute_first_alias_block (Sequence, ChanId, int);
+
+        std::pair<Block *, std::pair<ChanId, unsigned int>>
+             _compute_next_alias (Block *);
+
+        Block *_wrap_in_do_loop (Sequence);
+
         multichan_alias_struct mc_info;
 
-        next_alias_set nas;
+        std::vector<Sequence> v_aux;
+
+        unsigned int alias_number;
 
 };
 
