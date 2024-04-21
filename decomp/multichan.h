@@ -97,7 +97,7 @@ class MultiChan : public DecompAnalysis {
 
         void _add_chan_blk_pair (Block *, ChanId);
 
-        void _insert_guard_comm (Block *);
+        void _insert_guard_comm (Block *, ChanId, int);
 
         void _replace_with_alias (Block *, ChanId);
 
@@ -107,6 +107,7 @@ class MultiChan : public DecompAnalysis {
         Sequence _build_aux_process_new (StateTable, ChanId);
 
         IRGuard _build_send_guard (VarId, int, int);
+        Block *_build_next_assign (VarId, int, std::vector<int>, VarId, int);
 
         Block *_find_alias_block (ChanId, unsigned int);
 
@@ -129,6 +130,8 @@ class MultiChan : public DecompAnalysis {
         int _gen_alias_number ();
 
         bool _seq_contains_block (Block *, Sequence);
+
+        Block *_splice_in_block_between (Block *, Block *, Block *);
 
 };
 
