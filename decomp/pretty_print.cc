@@ -145,7 +145,7 @@ static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec = 0, int in
 	  }
 	  if (gc->s) {
 	    fprintf (fp, " -> ");
-	    _chp_pretty_print (fp, gc->s, 0);
+	    _chp_pretty_print (fp, gc->s, 0, indent+indent_inc);
 	  }
 	  if (gc->next) {
 	    fprintf (fp, "\n%s[]", ib);

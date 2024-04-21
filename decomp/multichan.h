@@ -36,9 +36,34 @@ typedef std::unordered_map<Block *, std::pair<ChanId, unsigned int>> chan_blk_pa
 // and their alias info, block * etc.
 typedef std::unordered_map<ChanId, chan_blk_pair> multichan_alias_struct;
 
-// next alias map
-// if vec longer than 1, it's the 
-typedef std::unordered_map<OptionalChanId, std::vector<OptionalChanId>> next_alias_set; 
+enum class Cond { False, True, Guard };
+
+class StateRow {
+    public:
+        int curr;
+        Cond c;
+        std::vector<int> nexts;
+        Block *sel;
+
+        StateRow (int curr_st, int next_st)
+        {
+            curr = curr_st;
+            c = Cond::True;
+            nexts.clear();
+            nexts.push_back(next_st);
+            sel = NULL;
+        }
+        StateRow (int curr_st, std::vector<int> next_sts, Block *sel_blk)
+        {
+            Assert ((sel_blk->type() == BlockType::Select), "hmm");
+            curr = curr_st;
+            c = Cond::Guard;
+            nexts = next_sts;
+            sel = sel_blk;
+        }
+};
+
+typedef std::vector<StateRow> StateTable;
 
 /*
     Handler for Multiple Channel Access.
@@ -77,21 +102,33 @@ class MultiChan : public DecompAnalysis {
         void _replace_with_alias (Block *, ChanId);
 
         bool _contains_chan_access (Sequence, ChanId);
+        bool _contains_chan_access_shallow (Sequence, ChanId);
 
-        Sequence _build_aux_process (Sequence, ChanId);
+        Sequence _build_aux_process_new (StateTable, ChanId);
 
-        Block *_compute_first_alias_block (Sequence, ChanId, int);
+        IRGuard _build_send_guard (VarId, int, int);
 
-        std::pair<Block *, std::pair<ChanId, unsigned int>>
-             _compute_next_alias (Block *);
+        Block *_find_alias_block (ChanId, unsigned int);
+
+        Block *_compute_next_alias_block (Sequence, ChanId, int);
 
         Block *_wrap_in_do_loop (Sequence);
 
         multichan_alias_struct mc_info;
 
+        StateTable _st;
+
+        int _build_state_table (Sequence, ChanId, int);
+
+        void _print_state_table (StateTable);
+
         std::vector<Sequence> v_aux;
 
         unsigned int alias_number;
+        
+        int _gen_alias_number ();
+
+        bool _seq_contains_block (Block *, Sequence);
 
 };
 
