@@ -36,7 +36,7 @@ typedef std::unordered_map<Block *, std::pair<ChanId, unsigned int>> chan_blk_pa
 // and their alias info, block * etc.
 typedef std::unordered_map<ChanId, chan_blk_pair> multichan_alias_struct;
 
-enum class Cond { False, True, Guard };
+enum class Cond { Dead, True, Guard };
 
 class StateRow {
     public:
@@ -120,6 +120,9 @@ class MultiChan : public DecompAnalysis {
         StateTable _st;
 
         int _build_state_table (Sequence, ChanId, int);
+
+        void _optimize_state_table ();
+        void _replace_next_states (int, int);
 
         void _print_state_table (StateTable);
 

@@ -51,6 +51,9 @@ void MultiChan::process_multichans()
         alias_number = tmp;
         Assert(alias_number == cbp.second.size(), "hmm");
 
+        _optimize_state_table();
+        _print_state_table (_st);
+
         auto aux = _build_aux_process_new (_st, cbp.first);
         v_aux.push_back(aux);
         _st.clear();
@@ -326,9 +329,6 @@ Block* MultiChan::_compute_next_alias_block (Sequence seq, ChanId id, int root)
     return ret;
 }
 
-// NOTE : Will probably have to directly build the aux. process as
-// i walk through the program tree, to prevent this AST rebuilding ...
-
 bool MultiChan::_seq_contains_block (Block *b, Sequence seq)
 {
     Block *curr = seq.startseq->child();
@@ -439,7 +439,7 @@ void MultiChan::_print_state_table (StateTable st)
             case Cond::True:
                 fprintf(fp, "%d : true : %d", sr.curr, sr.nexts.front());
             break;
-            case Cond::False:
+            case Cond::Dead:
                 fatal_error ("brr");
             break;
             case Cond::Guard:
@@ -457,6 +457,55 @@ void MultiChan::_print_state_table (StateTable st)
     fprintf (fp, "\n-------------------- \n");
 }
 
+/*
+    For every staterow where the current state is a
+    non-receiving state, replace all its (curr) occurrences
+    in the next_state vectors of all other rows with
+    next_state of this row. Effectively trims 
+    unconditional state updates from a non-receiving state
+    to other states.
+*/
+void MultiChan::_optimize_state_table ()
+{
+    for ( auto &sr : _st )
+    {
+        // if non-receiving state (not optimizing the zero state
+        //  since that will cause some ambiguity in program gen)
+        if ( sr.curr > alias_number ) 
+        {
+            if (sr.c == Cond::True) // and if unconditional state update
+            {
+                fprintf (fp, "\nremoving row with curr = %d\n", sr.curr);
+                _replace_next_states (sr.curr, sr.nexts.front()); 
+                sr.c = Cond::Dead; // mark for removal
+            }
+        }
+    }
+
+    StateTable temp;
+    // remove dead rows
+    for ( auto sr1 : _st)
+    {
+        if (sr1.c != Cond::Dead)
+        {
+            temp.push_back(sr1);
+        }
+    }
+    _st.clear();
+    _st = temp;
+}
+
+void MultiChan::_replace_next_states (int old_st, int new_st)
+{
+    for ( auto &sr : _st )
+    {
+        for ( int i = 0 ; i<sr.nexts.size() ; i++ )
+        {
+            if (sr.nexts[i] == old_st) 
+                sr.nexts[i] = new_st;
+        }
+    }
+}
 // NOTE: From one block, compute all next reachable aliases
 // and build an expr for the next_alias assignment... 
 // next_alias := (g1=0)? a1 : (g1=1)? a2 : ...
@@ -614,7 +663,8 @@ Block *MultiChan::_build_next_assign (VarId v, int v_bw, std::vector<int> nxts, 
     return ret;
 }
 
-// this is a bad way of doing it - gotta fix this later
+// this is inefficient - gotta fix this later
+// it's probably fine lol
 Block *MultiChan::_find_alias_block (ChanId id, unsigned int alias_i)
 {
     auto cbp = mc_info.find(id)->second;
