@@ -123,6 +123,8 @@ class MultiChan : public DecompAnalysis {
 
         void _optimize_state_table ();
         void _replace_next_states (int, int);
+        void _re_encode_states ();
+        void _re_encode_state (int, int);
 
         void _print_state_table (StateTable);
 

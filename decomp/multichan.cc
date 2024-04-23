@@ -53,6 +53,13 @@ void MultiChan::process_multichans()
 
         _optimize_state_table();
         _print_state_table (_st);
+        Assert(alias_number == cbp.second.size(), "hmm");
+        
+        _re_encode_states ();
+        _print_state_table (_st);
+
+        alias_number = tmp;
+        Assert(alias_number == cbp.second.size(), "hmm");
 
         auto aux = _build_aux_process_new (_st, cbp.first);
         v_aux.push_back(aux);
@@ -506,6 +513,37 @@ void MultiChan::_replace_next_states (int old_st, int new_st)
         }
     }
 }
+
+// Can probably merge this into the optimize_state_table run
+void MultiChan::_re_encode_states ()
+{
+    int alias_n = alias_number;
+    for ( auto &sr : _st )
+    {
+        if ( sr.curr > alias_n ) 
+        {   
+            auto x = _gen_alias_number ();
+            _re_encode_state (sr.curr, x);
+        }
+    }
+}
+    
+void MultiChan::_re_encode_state (int old_st, int new_st)
+{
+    for ( auto &sr : _st )
+    {
+        if (sr.curr == old_st)
+        {
+            sr.curr = new_st;
+        }
+        for ( int i = 0 ; i<sr.nexts.size() ; i++ )
+        {
+            if (sr.nexts[i] == old_st) 
+                sr.nexts[i] = new_st;
+        }
+    }
+}
+
 // NOTE: From one block, compute all next reachable aliases
 // and build an expr for the next_alias assignment... 
 // next_alias := (g1=0)? a1 : (g1=1)? a2 : ...
