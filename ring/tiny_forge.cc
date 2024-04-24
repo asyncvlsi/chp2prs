@@ -134,7 +134,7 @@ bool TinyForge::check_if_pipeable (act_chp_lang_t *c, int root)
 
     case ACT_CHP_SEMI:
 
-        if ( list_length(c->u.semi_comma.cmd) <= 3 )
+        if ( list_length(c->u.semi_comma.cmd) < 3 )
         {
             for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
             {
@@ -146,7 +146,7 @@ bool TinyForge::check_if_pipeable (act_chp_lang_t *c, int root)
         }
         else
         {
-            return 0;
+            return false;
         }
         break;
 

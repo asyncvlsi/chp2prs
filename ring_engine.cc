@@ -30,6 +30,7 @@
 #include "decomp/breakpoint.h"
 #include "decomp/chopping_block.h"
 #include "decomp/pretty_print.h"
+#include "decomp/multichan.h"
 
 #include "opt/chp-opt.h"
 
@@ -97,7 +98,7 @@ class RingSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     bundled = dp->getIntParam ("bundled_dpath");
 
-    if (0) { //opt
+    if (1) { //opt
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
@@ -134,6 +135,16 @@ class RingSynth : public ActSynthesize {
       fprintf (stdout, "\n\noriginal chp-----\n\n");
 
 
+      MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
+      mc->process_multichans();
+      auto vs = mc->get_auxiliary_procs();
+
+      l = chp_graph_to_act (g, newnames, p->CurScope());
+      fprintf (_pp->fp, "\n\n");
+      chp_pretty_print(_pp->fp, l);
+      fprintf (_pp->fp, "\n\n");
+
+#if 1
 #if 0
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
@@ -143,8 +154,8 @@ class RingSynth : public ActSynthesize {
                                 bkp->get_decomp_info_map(), p->CurScope());
       cb->chop_graph();
       // cb->excise_internal_loops();
-
       auto vs = cb->get_chopped_seqs();
+#endif
       // fprintf (stdout, "\n\ndecomposed processes ----------- \n");
       act_chp_lang_t *decomp;
       NEW (decomp, act_chp_lang_t);
@@ -193,7 +204,7 @@ class RingSynth : public ActSynthesize {
     // chp_print (stdout, c);
     // fprintf (stdout, "\n\n");
     // core synthesis functions here
-    bool synthesize = true;
+    bool synthesize = false;
     if (synthesize)
     {
       Assert (c, "hmm c");
@@ -222,6 +233,7 @@ class RingSynth : public ActSynthesize {
     act_dataflow *newd = dataflow_to_act (d, cg, res, p->CurScope());
     dflow_print (stdout, newd);
     */
+    fprintf (_pp->fp, "\n\n");
     fprintf (_pp->fp, "/* end rsyn */\n");
     
     pp_forced (_pp, 0);
