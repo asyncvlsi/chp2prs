@@ -372,6 +372,15 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
   auto varToId = [&] (const VarId &v) { return map.varMap (v); };
   
   Block *curr = seq.startseq->child();
+  if (curr && (curr->type() == BlockType::EndSequence))
+  {
+    act_chp_lang_t *skip;
+    NEW (skip, act_chp_lang_t);
+    skip->type = ACT_CHP_SKIP;
+    skip->space = NULL;
+    skip->label = NULL;
+    list_append (ret->u.semi_comma.cmd, skip);
+  }
   while (curr->type() != BlockType::EndSequence) {
     act_chp_lang_t *item;
     int idx;

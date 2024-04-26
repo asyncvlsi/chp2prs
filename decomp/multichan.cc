@@ -381,11 +381,11 @@ int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
     break;
       
     case BlockType::Par: {
-        fprintf (fp, "\n\nSTILL WORKING ON THIS\n\n");
-        // fatal_error ("wip");
-        // for (auto &branch : curr->u_par().branches) {
-        //     _build_state_table (branch, id, curr_state);
-        // }
+        // Note: Only zero/one of the branches must contain a channel 
+        // access. If not, there's a possible write conflict
+        for (auto &branch : curr->u_par().branches) {
+            curr_state = _build_state_table (branch, id, curr_state);
+        }
     }
     break;
       
@@ -553,7 +553,6 @@ void MultiChan::_re_encode_state (int old_st, int new_st)
 // ^ implementing this is a nightmare, gonna do state transition table
 
 // Build up the auxiliary multichan handler process
-// W.I.P...
 Sequence MultiChan::_build_aux_process_new (StateTable s, ChanId id)
 {
     auto alias_var_bw = log_2_round_up(s.size());
@@ -568,6 +567,9 @@ Sequence MultiChan::_build_aux_process_new (StateTable s, ChanId id)
     Assert (init_alias, "huh");
 
     Block *sm_sel = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
+
+    // Channel access type : receive or send
+    bool send_type = ((mc_info.find(id)->second).begin()->first->u_basic().stmt.type() == StatementType::Send);
 
     // iterate and build state machine ------------------------------
     for ( auto sr : s )
@@ -588,7 +590,7 @@ Sequence MultiChan::_build_aux_process_new (StateTable s, ChanId id)
                             )));
 
         Block *blk = NULL;
-        Block *recv_alias = NULL;
+        Block *access_alias = NULL;
         Block *recv_g = NULL;
         Block *update_next_alias_var = NULL;
         Sequence br1;
@@ -598,8 +600,15 @@ Sequence MultiChan::_build_aux_process_new (StateTable s, ChanId id)
             blk = _find_alias_block (id, sr.curr);
             auto alias_chan = (mc_info.find(id)->second).find(blk)->second.first;
             _replace_with_alias (blk, alias_chan);
-            recv_alias = g->graph.blockAllocator().newBlock(
-                        Block::makeBasicBlock(Statement::makeReceive(alias_chan, data_var)));
+            if (send_type) {
+                access_alias = g->graph.blockAllocator().newBlock(
+                            Block::makeBasicBlock(Statement::makeReceive(alias_chan, data_var)));
+            }
+            else {
+                access_alias = g->graph.blockAllocator().newBlock(
+                            Block::makeBasicBlock(Statement::makeSend(alias_chan, 
+                            ChpExprSingleRootDag::makeVariableAccess(data_var, g->graph.id_pool().getBitwidth(alias_chan)) )));
+            }
         }
         if (conditional) // conditional case
         {
@@ -615,14 +624,14 @@ Sequence MultiChan::_build_aux_process_new (StateTable s, ChanId id)
         {
             update_next_alias_var = g->graph.blockAllocator().newBlock(
                                     Block::makeBasicBlock(Statement::makeAssignment(
-                                    next_alias_var,ChpExprSingleRootDag::makeConstant(BigInt(sr.nexts.front()),1))));
+                                    next_alias_var,ChpExprSingleRootDag::makeConstant(BigInt(sr.nexts.front()),alias_var_bw))));
         }
 
         if ( conditional &&  valid_alias) {
-            br1 = g->graph.blockAllocator().newSequence({recv_alias, recv_g, update_next_alias_var});
+            br1 = g->graph.blockAllocator().newSequence({access_alias, recv_g, update_next_alias_var});
         }
         if (!conditional &&  valid_alias) {
-            br1 = g->graph.blockAllocator().newSequence({recv_alias, update_next_alias_var});
+            br1 = g->graph.blockAllocator().newSequence({access_alias, update_next_alias_var});
         }
         if ( conditional && !valid_alias) {
             br1 = g->graph.blockAllocator().newSequence({recv_g, update_next_alias_var});
@@ -635,14 +644,20 @@ Sequence MultiChan::_build_aux_process_new (StateTable s, ChanId id)
     // iterate and build state machine ------------------------------
 
     // [ OR(alias==receiving_state) -> Orig!x [] else -> skip ] -----
-    auto send_guard = _build_send_guard (alias_var, alias_var_bw, alias_number);
+    auto chan_access_guard = _build_send_guard (alias_var, alias_var_bw, alias_number);
 
-    Block *send = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
-                    id, ChpExprSingleRootDag::makeVariableAccess(data_var, g->graph.id_pool().getBitwidth(id)) )));
+    Block *chan_access;
+    if (send_type) {
+        chan_access = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
+                        id, ChpExprSingleRootDag::makeVariableAccess(data_var, g->graph.id_pool().getBitwidth(id)) )));
+    }
+    else {
+        chan_access = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeReceive(id, data_var)));
+    }
 
-    Block *conditional_send = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
-    conditional_send->u_select().branches.emplace_back(g->graph.blockAllocator().newSequence({send}), std::move(send_guard));
-    conditional_send->u_select().branches.emplace_back(g->graph.blockAllocator().newSequence({}), IRGuard::makeElse());
+    Block *cond_chan_access = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
+    cond_chan_access->u_select().branches.emplace_back(g->graph.blockAllocator().newSequence({chan_access}), std::move(chan_access_guard));
+    cond_chan_access->u_select().branches.emplace_back(g->graph.blockAllocator().newSequence({}), IRGuard::makeElse());
     // [ OR(alias==receiving_state) -> Orig!x [] else -> skip ] -----
 
     // alias := next_alias ------------------------------------------
@@ -651,7 +666,13 @@ Sequence MultiChan::_build_aux_process_new (StateTable s, ChanId id)
                         ChpExprSingleRootDag::makeVariableAccess(next_alias_var, alias_var_bw))));
     // alias := next_alias ------------------------------------------
 
-    Sequence aux_core = g->graph.newSequence({sm_sel, conditional_send, alias_update});
+    Sequence aux_core;
+    if (send_type) {
+        aux_core = g->graph.newSequence({sm_sel, cond_chan_access, alias_update});
+    }
+    else {
+        aux_core = g->graph.newSequence({cond_chan_access, sm_sel, alias_update});
+    }
     Sequence aux = g->graph.newSequence({init_alias, _wrap_in_do_loop (aux_core)});
     return aux;
 }
