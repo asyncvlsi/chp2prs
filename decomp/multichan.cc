@@ -553,9 +553,9 @@ void MultiChan::_re_encode_state (int old_st, int new_st)
 // ^ implementing this is a nightmare, gonna do state transition table
 
 // Build up the auxiliary multichan handler process
-Sequence MultiChan::_build_aux_process_new (StateTable s, ChanId id)
+Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
 {
-    auto alias_var_bw = log_2_round_up(s.size());
+    auto alias_var_bw = log_2_round_up(st.size());
     auto alias_var = g->graph.id_pool().makeUniqueVar(alias_var_bw);
 
     auto next_alias_var = g->graph.id_pool().makeUniqueVar(alias_var_bw);
@@ -572,7 +572,7 @@ Sequence MultiChan::_build_aux_process_new (StateTable s, ChanId id)
     bool send_type = ((mc_info.find(id)->second).begin()->first->u_basic().stmt.type() == StatementType::Send);
 
     // iterate and build state machine ------------------------------
-    for ( auto sr : s )
+    for ( auto sr : st )
     {
         bool valid_alias = false; 
         bool conditional = false;
@@ -614,6 +614,9 @@ Sequence MultiChan::_build_aux_process_new (StateTable s, ChanId id)
         {
             auto Gbw = log_2_round_up(sr.nexts.size());
             auto Gchan = g->graph.id_pool().makeUniqueChan(Gbw);
+            var_to_actvar vtoa(s, &g->graph.id_pool());
+            ActId *id = vtoa.chanMap(Gchan);
+            g->name_from_chan.insert({Gchan, id});
             auto Gvar  = g->graph.id_pool().makeUniqueVar (Gbw);
             recv_g = g->graph.blockAllocator().newBlock(
                         Block::makeBasicBlock(Statement::makeReceive(Gchan, Gvar)));
