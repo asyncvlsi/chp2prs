@@ -23,7 +23,8 @@
 #include "ring_forge.h"
 
 RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
-            ActBooleanizePass *bp,      
+            ActBooleanizePass *bp,
+            int delay_margin,       
             const char *circuit_library,
             const char *exprfile )
     : RingEngine ( fp, p, c, bp, circuit_library, exprfile )
@@ -46,6 +47,7 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     // invx1_delay_ps = 21;
     // capture_delay = 5; // 2*n = 10 inverters in delay-line
     // pulse_width = 6; // 2*n+1 = 13 inverters in pulse generator
+    _delay_margin = delay_margin;
 
     // Instance counters
     _block_id = 0;
@@ -550,7 +552,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
         // double typ_delay_ps = (ebi->getDelay().typ_val);
         if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %dps", typ_delay_ps); }
 
-        delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
+        delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps))*(float(_delay_margin)/100) + 1 ); 
         if (delay_line_n <= 0) { delay_line_n = 1; }
 
         fprintf(_fp, "\n// typical delay: %gps\n",typ_delay_ps);
@@ -563,7 +565,18 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 
     eeo->~ExternalExprOpt();
     ebi->~ExprBlockInfo();
+    eeo = NULL;
+    ebi = NULL;
 
+    // free all temporary data structures 
+    ihash_free (_inexprmap);
+    _inexprmap = NULL;
+    ihash_free (_inwidthmap);
+    _inwidthmap = NULL;
+    list_free (all_leaves);
+
+    // force write output file
+    fflush(_fp);
     return xid;
 }
 
@@ -611,7 +624,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     // double typ_delay_ps = (ebi->getDelay().typ_val);
     if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %dps", typ_delay_ps); }
 
-    int delay_line_n = int((typ_delay_ps/(2*invx1_delay_ps)) + 1); 
+    int delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps))*(float(_delay_margin)/100) + 1 ); 
     if (delay_line_n <= 0) { delay_line_n = 1; }
 
     fprintf(_fp, "\n// typical delay: %gps\n",typ_delay_ps);
@@ -619,7 +632,18 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
 
     eeo->~ExternalExprOpt();
     ebi->~ExprBlockInfo();
+    eeo = NULL;
+    ebi = NULL;
 
+    // free all temporary data structures 
+    ihash_free (_inexprmap);
+    _inexprmap = NULL;
+    ihash_free (_inwidthmap);
+    _inwidthmap = NULL;
+    list_free (all_leaves);
+
+    // force write output file
+    fflush(_fp);
     return delay_line_n;
 }
 

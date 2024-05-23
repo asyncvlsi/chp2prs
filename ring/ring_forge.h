@@ -31,6 +31,7 @@ class RingForge : public RingEngine {
 
     RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp, 
+            int delay_margin,
             const char *circuit_library,
             const char *exprfile);
 
@@ -105,6 +106,8 @@ class RingForge : public RingEngine {
 
         // Pulse-width for the pulse-generator for the latch as fn. (2n+1)*d of invx1_delay_ps
         static const unsigned int pulse_width = 6;
+
+        int _delay_margin;
 
         // Temp: Lookup table for mux delays
         static const int max_mux_size = 4;

@@ -40,6 +40,7 @@ static void usage(char *name)
   fprintf (stderr, " -d : generate dataflow output [deprecated, use -F dataflow]\n");
   fprintf (stderr, " -R : synthesize with ring approach [deprecated, use -F ring]\n");
   fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI)\n");
+  fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   fprintf (stderr, "-E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
@@ -56,6 +57,7 @@ int main(int argc, char **argv)
   char *exprfile = NULL;
   char *syntesistool = NULL;
   int external_opt = 0;
+  int delay_margin = 100;
   bool dflow = false;
 
   /* initialize ACT library */
@@ -67,7 +69,7 @@ int main(int argc, char **argv)
   bool use_ring = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "RhdObe:E:o:p:F:")) != -1) {
+  while ((ch = getopt (argc, argv, "RhdObe:E:o:p:F:m:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -131,6 +133,10 @@ int main(int argc, char **argv)
     case 'E':
       external_opt = 1;
       syntesistool = Strdup (optarg);
+      break;
+
+    case 'm':
+      delay_margin = std::atoi(Strdup (optarg));
       break;
       
     default:
@@ -197,6 +203,7 @@ int main(int argc, char **argv)
     if (use_ring) {
       c2p->setParam ("engine", (void *) gen_ring_engine);
       c2p->setParam ("prefix", (void *)Strdup ("ring"));
+      c2p->setParam ("delay_margin", delay_margin);
     }
     else {
       c2p->setParam ("engine", (void *) gen_sdt_engine);
