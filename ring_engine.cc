@@ -98,7 +98,7 @@ class RingSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     bundled = dp->getIntParam ("bundled_dpath");
 
-    if (1) { //opt
+    if (0) { //opt + decomp
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
@@ -144,7 +144,7 @@ class RingSynth : public ActSynthesize {
       chp_pretty_print(_pp->fp, l);
       fprintf (_pp->fp, "\n\n");
 
-#if 1
+#if 0
 #if 0
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
@@ -161,6 +161,8 @@ class RingSynth : public ActSynthesize {
       NEW (decomp, act_chp_lang_t);
       decomp->type = ACT_CHP_COMMA;
       list_t *decomp_procs = list_new();
+      list_append(decomp_procs, l);
+
       for (auto v : vs)
       {
         GraphWithChanNames gc;
@@ -189,8 +191,11 @@ class RingSynth : public ActSynthesize {
       }
       decomp->u.semi_comma.cmd = decomp_procs;
       p->getlang()->getchp()->c = decomp;
-      // fprintf (stdout, "\n\ndecomposed processes ----------- \n\n");
+
+      // fprintf (stdout, "\n\nfull print ----------- \n\n");
       // p->Print(stdout);
+      // fprintf (stdout, "\n\nfull print ----------- \n\n");
+      
       /*
       */
 #endif
@@ -204,7 +209,7 @@ class RingSynth : public ActSynthesize {
     // chp_print (stdout, c);
     // fprintf (stdout, "\n\n");
     // core synthesis functions here
-    bool synthesize = false;
+    bool synthesize = true;
     if (synthesize)
     {
       Assert (c, "hmm c");
