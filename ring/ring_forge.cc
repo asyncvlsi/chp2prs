@@ -516,8 +516,8 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 
     // no dots
     config_set_int("expropt.verbose", 0);
-    // config_set_int ("expropt.clean_tmp_files", 0);
-    // config_set_int("expropt.abc_use_constraints", 1);
+    config_set_int("expropt.abc_use_constraints", 1);
+    config_set_int("expropt.vectorize_all_ports", 1);
 
     // output bitwidth and block id for name
     int xid = _gen_expr_block_id();
@@ -611,7 +611,9 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     }
     // no dots
     config_set_int("expropt.verbose", 0);
-
+    config_set_int("expropt.abc_use_constraints", 1);
+    config_set_int("expropt.vectorize_all_ports", 1);
+    
     int out_expr_width = 1;
 
     fprintf(stdout, "\n");
