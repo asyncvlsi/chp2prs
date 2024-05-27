@@ -6,6 +6,11 @@ echo "*                       Testing ring synthesis                         *"
 echo "************************************************************************"
 echo
 
+if [ "x$ACT_HOME_SANDBOX" = x ]
+then
+	ACT_HOME_SANDBOX=$ACT_HOME
+fi
+
 ARCH=`$ACT_HOME_SANDBOX/scripts/getarch`
 OS=`$ACT_HOME_SANDBOX/scripts/getos`
 EXT=${ARCH}_${OS}
