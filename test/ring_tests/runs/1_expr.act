@@ -1,0 +1,74 @@
+namespace syn {
+
+export namespace expr {
+
+/* -- declarations -- */
+export defproc blk_1tmp (bool! out_50_6; bool! out_51_6; bool! out_52_6; bool! out_53_6);
+export defproc blk_1 (bool! out[4]);
+
+export defproc blk_1tmp (bool! out_50_6; bool! out_51_6; bool! out_52_6; bool! out_53_6)
+{
+  spec { hazard(*) }
+
+   /*--- types ---*/
+   /*--- connections ---*/
+   out_50_6=Vdd;
+   out_51_6=GND;
+   out_52_6=Vdd;
+   out_53_6=GND;
+}
+
+export defproc blk_1 (bool! out[4])
+{
+  spec { hazard(*) }
+
+   /*--- types ---*/
+   blk_1tmp _passthru_;
+   bool out_50_6;
+   bool out_53_6;
+   bool out_51_6;
+   bool out_52_6;
+   /*--- connections ---*/
+   _passthru_(.out_50_6=out[0], .out_51_6=out[1], .out_52_6=out[2], .out_53_6=out[3]);
+}
+
+/* -- declarations -- */
+export defproc blk_2tmp (bool? in__1_50_6; bool? in__1_51_6; bool? in__1_52_6; bool? in__1_53_6; bool! out_50_6; bool! out_51_6; bool! out_52_6; bool! out_53_6);
+export defproc blk_2 (bool? in_1[4]; bool! out[4]);
+
+export defproc blk_2tmp (bool? in__1_50_6; bool? in__1_51_6; bool? in__1_52_6; bool? in__1_53_6; bool! out_50_6; bool! out_51_6; bool! out_52_6; bool! out_53_6)
+{
+  spec { hazard(*) }
+
+   /*--- types ---*/
+   syn::INVX8 g2;
+   syn::INVX8 g0;
+   syn::INVX8 g3;
+   syn::INVX8 g1;
+   /*--- connections ---*/
+   g0(.A=in__1_50_6, .Y=out_50_6);
+   g1(.A=in__1_51_6, .Y=out_51_6);
+   g2(.A=in__1_52_6, .Y=out_52_6);
+   g3(.A=in__1_53_6, .Y=out_53_6);
+}
+
+export defproc blk_2 (bool? in_1[4]; bool! out[4])
+{
+  spec { hazard(*) }
+
+   /*--- types ---*/
+   bool in__1_51_6;
+   blk_2tmp _passthru_;
+   bool in__1_52_6;
+   bool in__1_50_6;
+   bool out_50_6;
+   bool out_53_6;
+   bool out_51_6;
+   bool in__1_53_6;
+   bool out_52_6;
+   /*--- connections ---*/
+   _passthru_(.in__1_50_6=in_1[0], .in__1_51_6=in_1[1], .in__1_52_6=in_1[2], .in__1_53_6=in_1[3], .out_50_6=out[0], .out_51_6=out[1], .out_52_6=out[2], .out_53_6=out[3]);
+}
+
+}
+}

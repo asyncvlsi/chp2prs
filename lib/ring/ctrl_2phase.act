@@ -495,8 +495,11 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
   // nands
   syn::NAND2X1 stage_1[N][W];
   
+  sigbuf<W> fanout_tree[N];
+  ( i : N : fanout_tree[i].in = c[i]; )
+  
   ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
-  ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
+  ( i : N : ( j : W : stage_1[i][j].B = fanout_tree[i].out[j]; ) )
 
   // nands
   std::gates::andtree<N, true> stage_2[W]; 

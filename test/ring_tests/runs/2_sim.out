@@ -1,0 +1,38 @@
+WARNING: test<>: substituting chp model (requested prs, not found)
+[                 240] <>  WARNING: Boolean variable `a[0]' is X
+[                 240] <>  WARNING: Boolean variable `a[1]' is X
+[                 240] <>  WARNING: Boolean variable `a[2]' is X
+[                 240] <>  WARNING: Boolean variable `a[3]' is X
+[                 350] <t.a.inst_2._passthru_.g01>  WARNING: weak-interference on `Y'
+[                 350] <t.a.inst_2._passthru_.g00>  WARNING: weak-interference on `Y'
+[                 350] <t.a.inst_2._passthru_.g07>  WARNING: weak-interference on `_Y'
+[                 350] <t.a.inst_2._passthru_.g08>  WARNING: weak-interference on `Y'
+[                 360] <t.a.inst_2._passthru_.g01>  WARNING: weak-interference on `Y'
+[                 360] <t.a.inst_2._passthru_.g03>  WARNING: weak-interference on `Y'
+[                 360] <t.a.inst_2._passthru_.g04>  WARNING: weak-interference on `Y'
+[                 360] <t.a.inst_2._passthru_.g13>  WARNING: weak-interference on `Y'
+[                 370] <t.a.inst_2._passthru_.g04>  WARNING: weak-interference on `Y'
+[                 370] <t.a.inst_2._passthru_.g13>  WARNING: weak-interference on `Y'
+[                 370] <t.a.inst_2._passthru_.g06>  WARNING: weak-interference on `Y'
+[                 370] <t.a.inst_2._passthru_.g10>  WARNING: weak-interference on `Y'
+[                 370] <t.a.inst_2._passthru_.g12>  WARNING: weak-interference on `Y'
+[                 480] <t.a.inst_2._passthru_.g13>  WARNING: weak-interference on `Y'
+[                 480] <t.o.latch_x_0.x[0]>  WARNING: weak-interference on `_q'
+[                 480] <>  WARNING: Boolean variable `a[1]' is X
+[                 480] <>  WARNING: Boolean variable `a[2]' is X
+[                 480] <>  WARNING: Boolean variable `a[3]' is X
+[                 480] <t.a.inst_2._passthru_.g04>  WARNING: weak-interference on `Y'
+[                 480] <t.a.inst_2._passthru_.g05>  WARNING: weak-interference on `Y'
+[                 480] <t.a.inst_2._passthru_.g06>  WARNING: weak-interference on `Y'
+[                 490] <t.a.inst_2._passthru_.g05>  WARNING: weak-interference on `Y'
+[                 490] <t.a.inst_2._passthru_.g11>  WARNING: weak-interference on `Y'
+[                 500] <t.a.inst_2._passthru_.g11>  WARNING: weak-interference on `Y'
+[                 500] <t.a.inst_2._passthru_.g14>  WARNING: weak-interference on `Y'
+[                 500] <t.a.inst_2._passthru_.g11>  WARNING: weak-interference on `Y'
+[                 510] <t.o.latch_x_0.x[1]>  WARNING: weak-interference on `_q'
+[                 510] <>  WARNING: Boolean variable `a[2]' is X
+[                 510] <>  WARNING: Boolean variable `a[3]' is X
+[                 510] <t.o.latch_x_0.x[3]>  WARNING: weak-interference on `_q'
+[                 510] <>  WARNING: Boolean variable `a[2]' is X
+[                 510] <>  SUCCESS
+[                 520] <t.o.latch_x_0.x[2]>  WARNING: weak-interference on `_q'

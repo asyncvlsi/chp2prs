@@ -28,6 +28,12 @@
 #include "reqs.h"
 
 /*
+    Revert the mangling settings back to 
+    the main Act object's defaults.
+*/
+void revert_mangle ();
+
+/*
  * Initialize the Act object that is used for 
  * string mangling functionality.
  * Needs to be called only once in the entire

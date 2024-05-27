@@ -1,0 +1,39 @@
+WARNING: test<>: substituting chp model (requested prs, not found)
+[                 290] <>  WARNING: Boolean variable `a[0]' is X
+[                 290] <>  WARNING: Boolean variable `a[1]' is X
+[                 290] <>  WARNING: Boolean variable `a[2]' is X
+[                 290] <>  WARNING: Boolean variable `a[3]' is X
+[                 290] <>  WARNING: Boolean variable `a[4]' is X
+[                 290] <>  WARNING: Boolean variable `a[5]' is X
+[                 290] <>  WARNING: Boolean variable `a[6]' is X
+[                 290] <>  WARNING: Boolean variable `a[7]' is X
+[                 510] <t.o2.latch_x_0.x[0]>  WARNING: weak-interference on `_q'
+[                 510] <t.o1.latch_x_0.x[0]>  WARNING: weak-interference on `_q'
+[                 510] <>  WARNING: Boolean variable `a[1]' is X
+[                 510] <>  WARNING: Boolean variable `a[2]' is X
+[                 510] <>  WARNING: Boolean variable `a[3]' is X
+[                 510] <>  WARNING: Boolean variable `a[4]' is X
+[                 510] <>  WARNING: Boolean variable `a[5]' is X
+[                 510] <>  WARNING: Boolean variable `a[6]' is X
+[                 510] <>  WARNING: Boolean variable `a[7]' is X
+[                 510] <t.o2.latch_x_0.x[2]>  WARNING: weak-interference on `_q'
+[                 510] <t.o1.latch_x_0.x[2]>  WARNING: weak-interference on `_q'
+[                 510] <>  WARNING: Boolean variable `a[1]' is X
+[                 510] <>  WARNING: Boolean variable `a[3]' is X
+[                 510] <>  WARNING: Boolean variable `a[4]' is X
+[                 510] <>  WARNING: Boolean variable `a[5]' is X
+[                 510] <>  WARNING: Boolean variable `a[6]' is X
+[                 510] <>  WARNING: Boolean variable `a[7]' is X
+[                 510] <>  SUCCESS
+[                 520] <t.o2.latch_x_0.x[1]>  WARNING: weak-interference on `_q'
+[                 520] <t.o1.latch_x_0.x[1]>  WARNING: weak-interference on `_q'
+[                 520] <t.o2.latch_x_0.x[6]>  WARNING: weak-interference on `_q'
+[                 520] <t.o1.latch_x_0.x[6]>  WARNING: weak-interference on `_q'
+[                 520] <t.o2.latch_x_0.x[5]>  WARNING: weak-interference on `_q'
+[                 520] <t.o1.latch_x_0.x[5]>  WARNING: weak-interference on `_q'
+[                 520] <t.o2.latch_x_0.x[4]>  WARNING: weak-interference on `_q'
+[                 520] <t.o1.latch_x_0.x[4]>  WARNING: weak-interference on `_q'
+[                 520] <t.o2.latch_x_0.x[7]>  WARNING: weak-interference on `_q'
+[                 520] <t.o1.latch_x_0.x[7]>  WARNING: weak-interference on `_q'
+[                 520] <t.o2.latch_x_0.x[3]>  WARNING: weak-interference on `_q'
+[                 520] <t.o1.latch_x_0.x[3]>  WARNING: weak-interference on `_q'

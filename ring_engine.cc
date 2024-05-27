@@ -232,6 +232,7 @@ class RingSynth : public ActSynthesize {
       // rf->run_forge();
     }
     
+    revert_mangle();
     /*
     ChpOptimize::putIntoNewStaticTokenForm (cg.graph);
     auto d = ChpOptimize::chp_to_dataflow(cg.graph);
