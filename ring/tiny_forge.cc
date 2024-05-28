@@ -275,7 +275,7 @@ void TinyForge::_generate_pipe (act_chp_lang_t *c, int root)
                     fprintf(_fp,"%s%d.out = %s.d;\n",expr_block_instance_prefix,expr_inst_id,chan_name);
                     // connect to delay_line
                     fprintf(_fp,"delay_expr_%d.m1 = %s%d.p1;\n",expr_inst_id,ring_block_prefix,block_id);
-                    fprintf(_fp,"delay_expr_%d.p1 = %s%d.ctrl;\n",expr_inst_id,conn_block_prefix,block_id);
+                    fprintf(_fp,"delay_expr_%d.p1 = %s%d.ctrl;\n",expr_inst_id,conn_block_prefix,block_id+1);
                 }
             }
             break;
