@@ -171,8 +171,9 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action)
     hash_iter_init (H_live, &itr);
     while ((b = hash_iter_next(H_live, &itr))) 
     {
-        s = new char;
-        strcpy(s, b->key);
+        // s = new char;
+        // strcpy(s, b->key);
+        s = Strdup(b->key);
         list_append (req_vars, s);
     }
     // for (i=0; i<H_live->size; i++) 
@@ -208,18 +209,20 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
     hash_iter_init (H_lcd, &itr);
     while ((b = hash_iter_next(H_lcd, &itr))) 
     {
-        s = new char;
+        // s = new char;
         if (!hash_lookup(H_live, b->key))
         {
-            strcpy(s, b->key);
+            // strcpy(s, b->key);
+            s = Strdup(b->key);
             list_append (req_vars, s);
         }
     }
     hash_iter_init (H_live, &itr2);
     while ((b2 = hash_iter_next(H_live, &itr2))) 
     {
-        s = new char;
-        strcpy(s, b2->key);
+        // s = new char;
+        // strcpy(s, b2->key);
+        s = Strdup(b2->key);
         list_append (req_vars, s);
     }	     
     action->space = list_dup(req_vars);
