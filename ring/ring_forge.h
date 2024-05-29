@@ -108,6 +108,7 @@ class RingForge : public RingEngine {
         static const unsigned int pulse_width = 6;
 
         int _delay_margin;
+        float delay_multiplier;
 
         // Temp: Lookup table for mux delays
         static const int max_mux_size = 4;
