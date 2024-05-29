@@ -21,6 +21,7 @@
  */
 
 #include "ring_forge.h"
+#include <cmath>
 
 RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp,
