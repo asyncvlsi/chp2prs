@@ -103,12 +103,12 @@ int RingForge::_generate_single_latch (var_info *v, int init_val=-1)
     {
         if (init_val == -1)
         {
-            fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", int(ceil(capture_delay*delay_multiplier)), int(ceil(pulse_width*delay_multiplier)), 
+            fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", int(std::ceil(capture_delay*delay_multiplier)), int(std::ceil(pulse_width*delay_multiplier)), 
                                                     v->width, capture_block_prefix, v->name,v->iwrite);
         }
         else
         {
-            fprintf(_fp, "capture_init<%d,%d,%d,%d> %s%s_%d;\n", int(ceil(capture_delay*delay_multiplier)), int(ceil(pulse_width*delay_multiplier)), 
+            fprintf(_fp, "capture_init<%d,%d,%d,%d> %s%s_%d;\n", int(std::ceil(capture_delay*delay_multiplier)), int(std::ceil(pulse_width*delay_multiplier)), 
                                                     v->width, init_val, capture_block_prefix, v->name,v->iwrite);
         }
         v->iwrite++;
@@ -424,7 +424,7 @@ int RingForge::_generate_init_cond_itb(int value, int width, int chan_id_out, in
 {
     fprintf(_fp,"\n// Initial token buffer for initial condition transmission\n");
     int id = _gen_itb_wrapper_id();
-    fprintf(_fp,"itb_wrapper<%d,%d,%d,%d> itb_w_%d(%s%d,%s%d);\n",int(ceil(capture_delay*delay_multiplier)),int(ceil(pulse_width*delay_multiplier)),
+    fprintf(_fp,"itb_wrapper<%d,%d,%d,%d> itb_w_%d(%s%d,%s%d);\n",int(std::ceil(capture_delay*delay_multiplier)),int(std::ceil(pulse_width*delay_multiplier)),
                             width,value, id, init_cond_chan_prefix,chan_id_out,init_cond_chan_prefix,chan_id_in);
     return id;
 }
@@ -561,7 +561,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 
     _instantiate_expr_block (xid, all_leaves);
 
-    fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",int(ceil(delay_line_n*delay_multiplier)),xid);
+    fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",int(std::ceil(delay_line_n*delay_multiplier)),xid);
     // fprintf (stdout, "\n// bye from expropt\n");
 
     eeo->~ExternalExprOpt();
@@ -647,7 +647,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
 
     // force write output file
     fflush(_fp);
-    return int(ceil(delay_line_n*delay_multiplier));
+    return int(std::ceil(delay_line_n*delay_multiplier));
 }
 
 /*
@@ -1463,7 +1463,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         // generate delay line for max guard evaluator delay (split)
         Assert (max_delay_n_sel>0, "negative delay?");
         fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
-        fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",int(ceil(max_delay_n_sel*delay_multiplier)),sel_split_block_id);
+        fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",int(std::ceil(max_delay_n_sel*delay_multiplier)),sel_split_block_id);
         // connect prev. block p1 to delay_line then connect to select block from the output
         fprintf(_fp,"delay_select_%d.m1 = %s%d.p1;\n",sel_split_block_id,ring_block_prefix,prev_block_id);
         fprintf(_fp,"delay_select_%d.p1 = %s%d.m1;\n",sel_split_block_id,ring_block_prefix,sel_split_block_id);
@@ -1472,7 +1472,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         {
             delay_merge_block_id = _gen_block_id();
             fprintf(_fp,"\n// Delaying post-merge-block sync. by max. delay of all merge muxes\n");
-            fprintf(_fp,"delay_line_chan<%d> %s%d;\n",int(ceil(delay_n_merge*delay_multiplier)),ring_block_prefix, delay_merge_block_id);
+            fprintf(_fp,"delay_line_chan<%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),ring_block_prefix, delay_merge_block_id);
             fprintf(_fp,"%s%d.m1 = %s%d.p1;\n",ring_block_prefix,delay_merge_block_id,
                                                 ring_block_prefix,sel_merge_block_id);
             // tail is the delay_merge block

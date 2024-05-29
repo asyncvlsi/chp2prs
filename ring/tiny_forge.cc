@@ -354,16 +354,16 @@ void TinyForge::_generate_pipe (act_chp_lang_t *c, int root)
 int TinyForge::_terminate_port (int block_id, int port, int mode)
 {   
     int term_inst;
-    const char *port_name;
-    const char *term_block_name;
+    const char *ti_prefix = "term_inst_";
+    term_inst = _gen_term_inst_id();
 
     switch (mode)
     {
     case TERM_SRC:
-        term_block_name = "source_brs";
+        fprintf (_fp, "source_brs %s%d;\n", ti_prefix, term_inst);
         break;
     case TERM_SINK:
-        term_block_name = "sink_brs";
+        fprintf (_fp, "sink_brs %s%d;\n", ti_prefix, term_inst);
         break;
     default:
         fatal_error ("brr (terminate_port)");
@@ -373,22 +373,18 @@ int TinyForge::_terminate_port (int block_id, int port, int mode)
     switch (port)
     {
     case PORT_M1:
-        port_name = "m1";
+        fprintf (_fp, "%s%d.c = %s%d.m1;\n", ti_prefix, term_inst, ring_block_prefix, block_id);
         break;
     case PORT_P1:
-        port_name = "p1";
+        fprintf (_fp, "%s%d.c = %s%d.p1;\n", ti_prefix, term_inst, ring_block_prefix, block_id);
         break;
     case PORT_Z:
-        port_name = "zero";
+        fprintf (_fp, "%s%d.c = %s%d.zero;\n", ti_prefix, term_inst, ring_block_prefix, block_id);
         break;
     default:
         fatal_error ("brr (terminate_port)");
         break;
     }
-
-    term_inst = _gen_term_inst_id();
-    fprintf (_fp, "%s %s%d;\n", term_block_name, term_inst_prefix, term_inst);
-    fprintf (_fp, "%s%d.c = %s%d.%s;\n", term_inst_prefix, term_inst, ring_block_prefix, block_id, port_name);
 
     return 0;
 }

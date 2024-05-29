@@ -224,12 +224,12 @@ class RingSynth : public ActSynthesize {
       RingForge *rf = new RingForge (_pp->fp, p, c, b, dm, "", _ename);
       TinyForge *tf = new TinyForge (_pp->fp, p, c, b, dm, "", _ename);
 
-      if (tf->check_if_pipeable(c,1))
-        tf->run_forge();
-      else
-        rf->run_forge();
+      // if (tf->check_if_pipeable(c,1))
+      //   tf->run_forge();
+      // else
+      //   rf->run_forge();
 
-      // rf->run_forge();
+      rf->run_forge();
     }
     
     revert_mangle();
