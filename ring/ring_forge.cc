@@ -97,7 +97,7 @@ void RingForge::_run_forge_helper ()
     If provided with an initial value, generate a data capture
     element that initializes to that value on reset.
 */
-int RingForge::_generate_single_latch (var_info *v, int init_val=-1)
+int RingForge::_generate_single_latch (var_info *v, long long init_val=-1)
 {
     list_iappend_head (v->latest_latch_branches, _branch_id);
     if (v->iwrite < v->nwrite)
@@ -109,7 +109,7 @@ int RingForge::_generate_single_latch (var_info *v, int init_val=-1)
         }
         else
         {
-            fprintf(_fp, "capture_init<%d,%d,%d,%d> %s%s_%d;\n", int(std::ceil(capture_delay*delay_multiplier)), int(std::ceil(pulse_width*delay_multiplier)), 
+            fprintf(_fp, "capture_init<%d,%d,%d,%lli> %s%s_%d;\n", int(std::ceil(capture_delay*delay_multiplier)), int(std::ceil(pulse_width*delay_multiplier)), 
                                                     v->width, init_val, capture_block_prefix, v->name,v->iwrite);
         }
         v->iwrite++;
@@ -1014,7 +1014,7 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
                     id = stmt1->u.assign.id;
                     Expr *e = stmt1->u.assign.e;
                     Assert (e->type == E_INT, "Constants only in initial conditions");
-                    int ival = e->u.ival.v;
+                    long long ival = e->u.ival.v;
                     char tname[1024];
                     get_true_name(tname, id, _p->CurScope());
                     hash_bucket_t *b = hash_lookup(var_infos, tname);
@@ -1306,7 +1306,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     id = stmt1->u.assign.id;
                     Expr *e = stmt1->u.assign.e;
                     Assert (e->type == E_INT, "Constants only in initial conditions");
-                    int ival = e->u.ival.v;
+                    long long ival = e->u.ival.v;
                     char tname[1024];
                     get_true_name(tname, id, _p->CurScope());
                     hash_bucket_t *b = hash_lookup(var_infos, tname);
