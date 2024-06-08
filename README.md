@@ -19,6 +19,7 @@ The options are:
    * `-d` : generate dataflow output [deprecated, use `-F dataflow`])
    * `-R` : synthesize with ring approach [deprecated, use `-F ring`]
    * `-b` : use bundled data datapath for SDT (default is QDI)
+   * `-m <int>` : matched delay-line multiplier (in percentage) for ring synthesis. Default is 100 (1x).
    * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. The default is `expr.act`
    * `-E abc|yosys|genus` : run expression optimization using the specified logic synthesis engine.
    * `-p <proc>` : the name of the ACT process to be translated (the top-level process). This is required.
