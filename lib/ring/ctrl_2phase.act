@@ -247,6 +247,35 @@ defproc itb_wrapper (bd<W> R_out; bd<W> S_in)
 
 // The Two Main Pipe Elements ---------
 
+defproc asym_c_brs (bool? A, B, C; bool! Y)
+{
+    prs {
+        ~Reset & ( ~A & ~B & ~C ) -> Y+
+         Reset | (       B &  C ) -> Y- 
+    }
+}
+
+export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
+{
+    inverter im1r, izeroa;
+    im1r.in = m1.r;
+    izeroa.in = zero.a;
+
+    asym_c_brs ac;
+    ac.A = im1r.out;
+    ac.B = zero.a;
+    ac.C = m1.a;
+    ac.Y = zero.r;
+
+    m1.a = p1.r;
+
+    prs {
+        ~Reset & ( ~im1r.out & ~izeroa.out & ~p1.a ) -> m1.a+
+         Reset | (  im1r.out &  izeroa.out &  p1.a ) -> m1.a-
+    }
+}
+
+/*
 export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
 {
 
@@ -264,6 +293,7 @@ export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
       zero.r{-1} 
   }
 }
+*/
 
 export defproc elem_c_ppa_brs_bd (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 {
