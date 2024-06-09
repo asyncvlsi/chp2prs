@@ -86,6 +86,7 @@ void RingForge::_run_forge_helper ()
     // {
         LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, _c);
         lva->generate_live_var_info();
+        // lva->print_live_var_info();
         fprintf (_fp, "// Branched Ring ----------------\n");
         generate_branched_ring (_c,1,0,0);
     // }
@@ -1365,6 +1366,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             }
             if (!list_isempty(ic_list)) {
                 warning ("Some variables were uninitialized in the program. Initializing them to zero.");
+                _print_list_of_vars (stderr, ic_list);
                 for (lj = list_first (ic_list); lj; lj = list_next (lj)) 
                 {   
                     hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(lj));
@@ -1434,6 +1436,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             list_t *iclist  = list_dup((list_t *)(c->space));
             if (!list_isempty(iclist)) {                
                 warning ("Some variables were uninitialized in the program. Initializing them to zero.");
+                _print_list_of_vars (stderr, iclist);
                 for (listitem_t *lj = list_first (iclist); lj; lj = list_next (lj)) 
                 {   
                     hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(lj));

@@ -99,7 +99,7 @@ class RingSynth : public ActSynthesize {
     bundled = dp->getIntParam ("bundled_dpath");
     dm = dp->getIntParam ("delay_margin");
 
-    if (0) { //opt + decomp
+    if (0) { // opt + decomp
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());

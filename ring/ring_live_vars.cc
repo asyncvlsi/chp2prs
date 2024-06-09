@@ -22,6 +22,30 @@
 
 #include "ring_live_vars.h"
 
+void deepcopy_hashtable (Hashtable *H_in, Hashtable *H_out)
+{
+    hash_clear (H_out);
+    hash_iter_t itr;
+    hash_bucket_t *b;
+    hash_iter_init (H_in, &itr);
+    while ((b = hash_iter_next(H_in, &itr))) 
+    {
+        hash_add (H_out, Strdup(b->key));
+    }
+}
+
+void union_hashtable (Hashtable *H_acc, Hashtable *H_inc)
+{
+    hash_iter_t itr;
+    hash_bucket_t *b;
+    hash_iter_init (H_inc, &itr);
+    while ((b = hash_iter_next(H_inc, &itr))) 
+    {
+        if (!hash_lookup(H_acc, b->key)) {
+            hash_add (H_acc, Strdup(b->key));
+        }
+    }
+}
 
 void LiveVarAnalysis::_add_to_live_vars (ActId *id, bool mangle = true)
 {
@@ -234,6 +258,7 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
     list_t *copy_list;
     act_chp_lang_t *stmt;
     act_chp_gc_t *gc;
+    Hashtable *H_dup, *H_out;
     
     if (!c_t) return;
 
@@ -255,7 +280,10 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
             for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
             {
                 stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) _generate_live_var_info (stmt, 1);
+                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) {
+                    _generate_live_var_info (stmt, 1);
+                    _tag_action_with_reqd_vars_union_lcd (stmt);
+                }
             }
             break;
         }
@@ -287,14 +315,21 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
         break;
         
     case ACT_CHP_SELECT:
-            // for selections alone, live = live_out of merge
-            _tag_action_with_reqd_vars_union_lcd (c_t);
-            for (gc = c_t->u.gc ; gc ; gc = gc->next)
-            {
-                _add_to_live_vars (gc->g);
-                _generate_live_var_info (gc->s, 0);
-                // reverse...
-            }
+        // for selections alone, live = live_out of merge
+        _tag_action_with_reqd_vars_union_lcd (c_t);
+        H_dup = hash_new (4);
+        H_out = hash_new (4);
+        deepcopy_hashtable (H_live, H_dup);
+        hash_clear (H_out);
+        for (gc = c_t->u.gc ; gc ; gc = gc->next)
+        {
+            _add_to_live_vars (gc->g);
+            _generate_live_var_info (gc->s, 0);
+            // reverse...
+            union_hashtable (H_out, H_live);
+            deepcopy_hashtable (H_dup, H_live);
+        }
+        deepcopy_hashtable (H_out, H_live);
         break;
 
     case ACT_CHP_SELECT_NONDET:
@@ -369,6 +404,8 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
     case ACT_CHP_DOLOOP:
         if (root == 1)
         {
+            chp_print (fp, c_t);
+            _print_var_list((list_t *)c_t->space);
             gc = c_t->u.gc;
             _print_live_var_info (gc->s, 0);
             break;
