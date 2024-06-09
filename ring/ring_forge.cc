@@ -76,20 +76,105 @@ void RingForge::run_forge ()
 
 void RingForge::_run_forge_helper ()
 {
-    int has_branches = chp_has_branches(_c, 1);
-  
-    if (has_branches == 0)
-    {
-        fprintf (_fp, "// One Ring ---------------------\n");
-        generate_one_ring (_c,1,0);
-    }
-    else
-    {
+    // int has_branches = chp_has_branches(_c, 1);
+    // if (has_branches == 0)
+    // {
+    //     fprintf (_fp, "// One Ring ---------------------\n");
+    //     generate_one_ring (_c,1,0);
+    // }
+    // else
+    // {
         LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, _c);
         lva->generate_live_var_info();
         fprintf (_fp, "// Branched Ring ----------------\n");
         generate_branched_ring (_c,1,0,0);
+    // }
+}
+
+unsigned long act_expr_getconst_long (Expr *e)
+{
+  if (!e) return 0;
+  if (e->type == E_INT) {
+    return e->u.ival.v;
+  }
+  else {
+    fatal_error ("ints only in initial condition leaves");
+    return 0;
+  }
+}
+
+unsigned long eval_ic (Expr *);
+
+bool eval_bool_expr (Expr *e)
+{
+    Assert (e, "huh");
+    unsigned long vall, valr;
+    switch (e->type) {
+    case E_AND:
+        return eval_bool_expr (e->u.e.l) && eval_bool_expr (e->u.e.r); break;
+    case E_OR:
+        return eval_bool_expr (e->u.e.l) || eval_bool_expr (e->u.e.r); break;
+    case E_NOT:
+        return !(eval_bool_expr (e->u.e.l)); break;
+    case E_XOR:
+        return (eval_bool_expr (e->u.e.l) ^ eval_bool_expr (e->u.e.r)); break;
+    case E_LT:
+        return (eval_ic(e->u.e.l) < eval_ic(e->u.e.r)); break;
+    case E_GT:
+        return (eval_ic(e->u.e.l) > eval_ic(e->u.e.r)); break;
+    case E_LE:
+        return (eval_ic(e->u.e.l) <= eval_ic(e->u.e.r)); break;
+    case E_GE:
+        return (eval_ic(e->u.e.l) >= eval_ic(e->u.e.r)); break;
+    case E_EQ:
+        return (eval_ic(e->u.e.l) == eval_ic(e->u.e.r)); break;
+    case E_NE:
+        return (eval_ic(e->u.e.l) != eval_ic(e->u.e.r)); break;
+    case E_TRUE:
+        return true; break;
+    case E_FALSE:
+        return false; break;
+    default:
+        print_uexpr (stdout, e);
+        fprintf (stdout, "\ntype: %d\n", e->type);
+        fatal_error ("could not evaluate above boolean expression for initial condition");
+        break;
     }
+    return false;
+}
+
+unsigned long eval_ic (Expr *q)
+{
+    unsigned long val;
+    Assert (q, "huh");
+    switch (q->type) {
+    case E_INT:
+        return act_expr_getconst_long(q); break;
+    case E_QUERY:
+        if (eval_bool_expr(q->u.e.l)) {
+            return eval_ic (q->u.e.r->u.e.l);
+        }
+        else {
+            return eval_ic (q->u.e.r->u.e.r);
+        }
+        break;
+    case E_PLUS:
+        return eval_ic (q->u.e.l) + eval_ic (q->u.e.r); break;
+    case E_MINUS:
+        return eval_ic (q->u.e.l) - eval_ic (q->u.e.r); break;
+    case E_MULT:
+        return eval_ic (q->u.e.l) * eval_ic (q->u.e.r); break;
+    case E_DIV:
+        return eval_ic (q->u.e.l) / eval_ic (q->u.e.r); break;
+    case E_MOD:
+        return eval_ic (q->u.e.l) % eval_ic (q->u.e.r); break;
+    default:
+        print_uexpr (stdout, q);
+        fprintf (stdout, "\ntype: %d\n", q->type);
+        fatal_error ("could not evaluate above expression for initial condition");
+        break;
+    }
+    return 0;
 }
 
 /*
@@ -357,11 +442,8 @@ int RingForge::_generate_pipe_element_custom(int bd_chan_id, int type, int width
 */
 int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
 {
-    Expr *e = NULL;
     int block_id;
-    char chan_name[1024];
     int first_latch_id, last_latch_id;
-    int bw;
     hash_bucket_t *b;
     var_info *vi;
     char tname[1024];
@@ -377,6 +459,42 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
         fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
         char tname[1024];
         get_true_name(tname, var, _p->CurScope());
+        b = hash_lookup(var_infos, tname);
+        Assert (b, "variable not found");
+        vi = (var_info *)b->v;
+        first_latch_id = 0;
+        last_latch_id = vi->latest_for_read;
+        // connect last latch output to first latch input
+        fprintf(_fp,"%s%s_%d.dout = %s%s_%d.din;\n",capture_block_prefix,vi->name,last_latch_id,
+                                            capture_block_prefix,
+                                            vi->name,first_latch_id);
+        // connect pipe block action port to latch go port
+        fprintf(_fp,"%s%d.zero = %s%s_%d.go;\n",ring_block_prefix,block_id,capture_block_prefix,
+                                            vi->name,first_latch_id);
+        break;
+
+    default:
+        fatal_error("Shouldn't be here... (generate_pipe_element_lcd)");
+        break;
+    }
+    return block_id;
+}
+
+int RingForge::_generate_pipe_element_lcd(int type, const char *tname)
+{
+    int block_id;
+    int first_latch_id, last_latch_id;
+    hash_bucket_t *b;
+    var_info *vi;
+
+    block_id = _gen_block_id();
+
+    switch(type)
+    {
+    case ACT_CHP_ASSIGN:
+        fprintf(_fp,"\n// Pipe block for lcd. transmission.");
+        fprintf(_fp,"\n");
+        fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
         b = hash_lookup(var_infos, tname);
         Assert (b, "variable not found");
         vi = (var_info *)b->v;
@@ -955,6 +1073,7 @@ int RingForge::_generate_sync_chan()
 }
 
 /*
+    Deprecated.
     Synthesis of linear programs. Generates a sequence of pipeline
     elements, according to the actions in the CHP program, and ties 
     them up into a ring using an initial token buffer. If initial 
@@ -1013,8 +1132,9 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;
                     Expr *e = stmt1->u.assign.e;
-                    Assert (e->type == E_INT, "Constants only in initial conditions");
-                    long long ival = e->u.ival.v;
+                    // Assert (e->type == E_INT, "Constants only in initial conditions");
+                    // long long ival = e->u.ival.v;
+                    unsigned long ival = eval_ic (e);
                     char tname[1024];
                     get_true_name(tname, id, _p->CurScope());
                     hash_bucket_t *b = hash_lookup(var_infos, tname);
@@ -1027,67 +1147,10 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
 #endif
             // new --------------------------
 
-#if 0
-            // old ---------
-            lcd_chan_list = list_new();
-            // loop through initial condition assignments to create ITBs and receives
-            for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
-            {   
-                act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
-                {
-                    Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
-                    id = stmt1->u.assign.id;
-                    Expr *e = stmt1->u.assign.e;
-                    Assert (e->type == E_INT, "Constants only in initial conditions");
-                    int ival = e->u.ival.v;
-                    char tname[1024];
-                    get_true_name(tname, id, _p->CurScope());
-                    hash_bucket_t *b = hash_lookup(var_infos, tname);
-                    // hash_bucket_t *b = hash_lookup(var_infos, id->rootVx(p->CurScope())->getName());
-                    vi = (var_info *)b->v;
-                    init_chan = _generate_bd_chan (vi->width);
-                    lcd_chan = _generate_bd_chan (vi->width);
-                    list_iappend(lcd_chan_list, lcd_chan);
-                    int itb_block_id = _generate_init_cond_itb (ival, vi->width, init_chan, lcd_chan);
-
-                    block_id = _generate_pipe_element_custom (init_chan, ACT_CHP_RECV, vi->width, id);
-                    _connect_pipe_elements (prev_block_id, block_id);
-                    prev_block_id = block_id;
-                }
-            }
-            // old ---------
-#endif
-
             // main program synthesis
             gc = main_loop->u.gc;
             block_id = generate_one_ring(gc->s, 0, prev_block_id);
             prev_block_id = block_id;
-
-#if 0
-            // old ---------
-            lk = list_first(lcd_chan_list);
-            // loop through initial condition assignments again to create loop-carried dependency sends
-            for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
-            {   
-                act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
-                {
-                    Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
-                    id = stmt1->u.assign.id;
-                    char tname[1024];
-                    get_true_name(tname, id, _p->CurScope());
-                    hash_bucket_t *b = hash_lookup(var_infos, tname);
-                    vi = (var_info *)b->v;
-                    lcd_chan = list_ivalue(lk);
-                    block_id = _generate_pipe_element_custom (lcd_chan, ACT_CHP_SEND, vi->width, id);
-                    _connect_pipe_elements (prev_block_id, block_id);
-                    prev_block_id = block_id;
-                    lk = list_next(lk);
-                }
-            }
-            // old ---------
-#endif
 
 #if 1
             // new I.C. handling method -----
@@ -1109,7 +1172,6 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
 
             _connect_pipe_elements(block_id, first_block_id);
             break;
-
         }
         // regular synthesis
         else {
@@ -1266,54 +1328,51 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             first_block_id = _generate_itb();
             prev_block_id = first_block_id;
 
-#if 0
-            // loop through initial condition assignments to create ITBs and receives
-            lcd_chan_list = list_new();
-            for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
-            {   
-                act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
-                {
-                    Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
-                    id = stmt1->u.assign.id;
-                    Expr *e = stmt1->u.assign.e;
-                    Assert (e->type == E_INT, "Constants only in initial conditions");
-                    int ival = e->u.ival.v;
-                    char tname[1024];
-                    get_true_name(tname, id, _p->CurScope());
-                    hash_bucket_t *b = hash_lookup(var_infos, tname);
-                    vi = (var_info *)b->v;
-                    init_chan = _generate_bd_chan (vi->width);
-                    lcd_chan = _generate_bd_chan (vi->width);
-                    list_iappend(lcd_chan_list, lcd_chan);
-                    int itb_block_id = _generate_init_cond_itb (ival, vi->width, init_chan, lcd_chan);
-
-                    block_id = _generate_pipe_element_custom (init_chan, ACT_CHP_RECV, vi->width, id);
-                    _connect_pipe_elements (prev_block_id, block_id);
-                    prev_block_id = block_id;
-                }
-            }
-#endif
             // new I.C. handling method -----
 #if 1
             // loop through initial condition assignments to create latches with correct initial values
+            list_t *ic_list  = list_dup((list_t *)(main_loop->space));
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
-            {
+            {   
+                list_t *tmp = list_new();
                 act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
                 if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
                 {
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;
                     Expr *e = stmt1->u.assign.e;
-                    Assert (e->type == E_INT, "Constants only in initial conditions");
-                    long long ival = e->u.ival.v;
+                    // Assert (e->type == E_INT, "Constants only in initial conditions");
+                    // long long ival = e->u.ival.v;
+                    unsigned long ival = eval_ic(e);
                     char tname[1024];
                     get_true_name(tname, id, _p->CurScope());
                     hash_bucket_t *b = hash_lookup(var_infos, tname);
+                    for (listitem_t *lk = list_first(ic_list); lk; lk = list_next (lk))
+                    {
+                        // copy over all vars except the one being initialized
+                        if (strcmp(tname, (const char *)list_value(lk))) { 
+                            list_append (tmp, list_value(lk));
+                        }
+                    }
                     vi = (var_info *)b->v;
                     int latch_id = _generate_single_latch (vi, ival);
                     Assert (latch_id == 0, "Same variable has more than one initial condition?");
-                    // list_iappend(latch_id_list, latch_id);
+
+                    ic_list = list_new();
+                    ic_list = list_dup(tmp);
+                    list_free(tmp);
+                }
+            }
+            if (!list_isempty(ic_list)) {
+                warning ("Some variables were uninitialized in the program. Initializing them to zero.");
+                for (lj = list_first (ic_list); lj; lj = list_next (lj)) 
+                {   
+                    hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(lj));
+                    vi = (var_info *)b->v;
+                    // new latching generated that was not in the program => gotta update info. 
+                    vi->nwrite++; 
+                    int latch_id = _generate_single_latch (vi, 0);
+                    Assert (latch_id == 0, "Same variable has more than one initial condition?");
                 }
             }
 #endif
@@ -1323,7 +1382,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             gc = main_loop->u.gc;
             block_id = generate_branched_ring(gc->s, 0, prev_block_id, 0);
             prev_block_id = block_id;
-
 
 #if 1
             // new I.C. handling method -----
@@ -1341,27 +1399,13 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     prev_block_id = block_id;
                 }
             }
-#endif
-
-#if 0
-            // loop through initial condition assignments again to create loop-carried dependency sends
-            lk = list_first(lcd_chan_list);
-            for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
-            {   
-                act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
+            if (!list_isempty(ic_list))
+            {
+                for (lj = list_first (ic_list); lj; lj = list_next (lj)) 
                 {
-                    Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
-                    id = stmt1->u.assign.id;
-                    char tname[1024];
-                    get_true_name(tname, id, _p->CurScope());
-                    hash_bucket_t *b = hash_lookup(var_infos, tname);
-                    vi = (var_info *)b->v;
-                    lcd_chan = list_ivalue(lk);
-                    block_id = _generate_pipe_element_custom (lcd_chan, ACT_CHP_SEND, vi->width, id);
-                    _connect_pipe_elements (prev_block_id, block_id);
-                    prev_block_id = block_id;
-                    lk = list_next(lk);
+                        block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, (const char *)list_value(lj));
+                        _connect_pipe_elements (prev_block_id, block_id);
+                        prev_block_id = block_id;
                 }
             }
 #endif
@@ -1386,22 +1430,37 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     case ACT_CHP_LOOP:
     case ACT_CHP_DOLOOP:
         if (root == 1)
-        {
+        {   
+            list_t *iclist  = list_dup((list_t *)(c->space));
+            if (!list_isempty(iclist)) {                
+                warning ("Some variables were uninitialized in the program. Initializing them to zero.");
+                for (listitem_t *lj = list_first (iclist); lj; lj = list_next (lj)) 
+                {   
+                    hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(lj));
+                    vi = (var_info *)b->v;
+                    // new latching generated that was not in the program => gotta update info. 
+                    vi->nwrite++; 
+                    int latch_id = _generate_single_latch (vi, 0);
+                    Assert (latch_id == 0, "Same variable has more than one initial condition?");
+                }
+            }
+
             first_block_id = _generate_itb();
             gc = c->u.gc;
             block_id = generate_branched_ring(gc->s, 0, first_block_id, 0);
+
+            if (!list_isempty(iclist)) {
+                for (lj = list_first (iclist); lj; lj = list_next (lj)) 
+                {
+                        block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, (const char *)list_value(lj));
+                        _connect_pipe_elements (prev_block_id, block_id);
+                        prev_block_id = block_id;
+                }
+            }
             _connect_pipe_elements(block_id, first_block_id);
             break;
         }
         else { fatal_error ("bleh"); }
-        // else if (c->type == ACT_CHP_LOOP)
-        // {
-        //     block_id = _generate_loop_wrapper ();
-        // }
-        // else if (c->type == ACT_CHP_DOLOOP)
-        // {
-        //     block_id = _generate_doloop_wrapper ();
-        // }
         break;
         
     case ACT_CHP_SELECT:

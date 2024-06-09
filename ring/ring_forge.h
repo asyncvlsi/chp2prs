@@ -57,6 +57,7 @@ class RingForge : public RingEngine {
         int _generate_init_cond_itb(int, int, int, int);
         int _generate_pipe_element_custom(int, int, int, ActId *);
         int _generate_pipe_element_lcd(int, ActId *);
+        int _generate_pipe_element_lcd(int, const char *);
         int _generate_pause_element();
         int _generate_loop_wrapper();
         int _generate_doloop_wrapper();
