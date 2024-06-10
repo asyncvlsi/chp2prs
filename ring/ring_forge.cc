@@ -1215,12 +1215,12 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
     case ACT_CHP_SEND:
     case ACT_CHP_RECV:
         // only for the new I.C. handling method
-        if (c->space) 
-        {
-            tag_list = (list_t *)c->space;
-            init_latch = list_ivalue(list_first(tag_list));
-            Assert (init_latch>-1, "wut");
-        }// if (tag_list) 
+        // if (c->space) 
+        // {
+        //     tag_list = (list_t *)c->space;
+        //     init_latch = list_ivalue(list_first(tag_list));
+        //     Assert (init_latch>-1, "wut");
+        // }
         if (c->label && !strcmp(c->label,"pause"))
         {
             // fprintf (stdout, "\n found a matching label: %s \n", c->label);
@@ -1383,7 +1383,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
 
             // main program synthesis
             gc = main_loop->u.gc;
-            block_id = generate_branched_ring(gc->s, 0, prev_block_id, 0);
+            block_id = generate_branched_ring(gc->s, 0, prev_block_id, 1);
             prev_block_id = block_id;
 
 #if 1
@@ -1451,7 +1451,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
 
             first_block_id = _generate_itb();
             gc = c->u.gc;
-            block_id = generate_branched_ring(gc->s, 0, first_block_id, 0);
+            block_id = generate_branched_ring(gc->s, 0, first_block_id, 1);
             prev_block_id = block_id;
 
             if (!list_isempty(iclist)) {
