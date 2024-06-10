@@ -1356,6 +1356,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                         }
                     }
                     vi = (var_info *)b->v;
+                    // fprintf (_fp, "\ngot here: %s\n", tname);
                     int latch_id = _generate_single_latch (vi, ival);
                     Assert (latch_id == 0, "Same variable has more than one initial condition?");
 
@@ -1420,7 +1421,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
             {
                 block_id = generate_branched_ring ((act_chp_lang_t *)list_value(li), 0, prev_block_id, 0);
-                if (is_elementary_action((act_chp_lang_t *)list_value(li)) == 1)
+                if (is_elementary_action((act_chp_lang_t *)list_value(li)))
                 {
                     _connect_pipe_elements(prev_block_id, block_id);
                 }
@@ -1451,6 +1452,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             first_block_id = _generate_itb();
             gc = c->u.gc;
             block_id = generate_branched_ring(gc->s, 0, first_block_id, 0);
+            prev_block_id = block_id;
 
             if (!list_isempty(iclist)) {
                 for (lj = list_first (iclist); lj; lj = list_next (lj)) 
