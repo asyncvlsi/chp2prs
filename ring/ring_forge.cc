@@ -276,7 +276,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"\n// Pipe block for action: ");
         chp_print(_fp,c);
         fprintf(_fp,"\n");
-        fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        fprintf(_fp,"elem_c_paa_brs_send %s%d;\n",ring_block_prefix,block_id);
         if (e) {
             it = _p->CurScope()->Lookup(chan);
             bw = TypeFactory::bitWidth(it);
@@ -371,6 +371,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
     return block_id;
 }
 
+#if 0
 /*
     Similar to the previous, but used to receive and send
     initial conditions / loop-carried dependencies from 
@@ -396,7 +397,7 @@ int RingForge::_generate_pipe_element_custom(int bd_chan_id, int type, int width
         snprintf(chan_name, 1024, "%s%d",init_cond_chan_prefix,bd_chan_id);
         fprintf(_fp,"\n// Pipe block for init cond. send.");
         fprintf(_fp,"\n");
-        fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        fprintf(_fp,"elem_c_paa_brs_send %s%d;\n",ring_block_prefix,block_id);
         bw = width;
         fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
         fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
@@ -435,6 +436,7 @@ int RingForge::_generate_pipe_element_custom(int bd_chan_id, int type, int width
     }
     return block_id;
 }
+#endif
 
 /*
     Similar to the previous, but used to pulse latch for
@@ -767,7 +769,8 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
 
     // force write output file
     fflush(_fp);
-    return int(std::ceil(delay_line_n*delay_multiplier));
+    // return int(std::ceil(delay_line_n*delay_multiplier));
+    return delay_line_n;
 }
 
 /*

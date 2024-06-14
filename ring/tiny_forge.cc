@@ -167,7 +167,6 @@ bool TinyForge::check_if_pipeable (act_chp_lang_t *c, int root)
         break;
         
     case ACT_CHP_SELECT:
-        // check if
         fatal_error ("TODO - selection handling");
         return 0; // TODO
         for (gc = c->u.gc ; gc ; gc = gc->next)

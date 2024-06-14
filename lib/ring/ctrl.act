@@ -257,7 +257,7 @@ defproc asym_c_brs (bool? A, B, C; bool! Y)
     }
 }
 
-export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
+export defproc elem_c_paa_brs_send (a1of1 m1; a1of1 zero; a1of1 p1)
 {
     inverter im1r, izeroa;
     im1r.in = m1.r;
@@ -277,7 +277,6 @@ export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
     }
 }
 
-/*
 export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
 {
 
@@ -295,7 +294,6 @@ export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
       zero.r{-1} 
   }
 }
-*/
 
 export defproc elem_c_ppa_brs_bd (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 {
