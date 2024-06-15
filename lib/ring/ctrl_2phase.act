@@ -62,6 +62,7 @@ export defproc source_brs (a1of1 c)
   }
   sizing { c.r{-1} }
 }
+
 // --------------------------------------------------------
 
 
@@ -150,6 +151,7 @@ defproc pulse(bool? in; bool! out)
     // its actual value depends on the delay of LATCH
   }
 }
+
 
 export template <pint CD, PW, W>
 defproc capture(a1of1 go; bool? din[W]; bool! dout[W])
@@ -351,6 +353,17 @@ export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
 
 export defproc elem_c_itb (a1of1 m1; a1of1 p1)
 {
+    prs {
+        ~Reset & (~m1.r & ~p1.a) -> p1.r+
+         Reset | ( m1.r &  p1.a) -> p1.r-
+    }
+
+    inverter m1_inv(p1.r,m1.a);
+}
+
+/*
+export defproc elem_c_itb (a1of1 m1; a1of1 p1)
+{
   std::gates::ctree<2,false> c_itb;
   syn::NOR2X1 nor_reset;
 
@@ -362,6 +375,8 @@ export defproc elem_c_itb (a1of1 m1; a1of1 p1)
   nor_reset.B = c_itb.out;
   nor_reset.Y = p1.r;
 }
+*/
+
 // ------------------------------------
 
 
@@ -458,10 +473,6 @@ defproc loop_wrapper (bool? gs[N+1]; a1of1? m1;
   p1.a = m1.a;
 }
 
-defproc testloop ()
-{
-  loop_wrapper<4> x;
-}
 // ------------------------------------
 
 // Do-loop construct ------------------
@@ -540,7 +551,6 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
 // --------------------------------------------------------
 
 
-
 // Variables ----------------------------------------------
 
 export template <pint M>
@@ -552,3 +562,4 @@ deftype bd_int <: int<M> (bool d[M])
   }
 
 }
+
