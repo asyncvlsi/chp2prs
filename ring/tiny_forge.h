@@ -22,6 +22,20 @@
 
 #include "ring_forge.h"
 
+
+enum class Action { None, Receive, Send, Assign };
+
+enum class Port { M1, Zero, P1 };
+
+enum class Term { Sink, Source };
+
+static const std::set<std::vector<Action>> valid_signatures = 
+    {   
+        {Action::Send},
+        {Action::Receive},
+        // {Action::Receive, Action::Send} : gotta figure out if need half/full buffer..
+    };
+
 class TinyForge : public RingForge {
     public: 
 
@@ -32,20 +46,22 @@ class TinyForge : public RingForge {
             const char *exprfile = "expr.act" );
 
         void run_forge ();
-        bool check_if_pipeable (act_chp_lang_t *, int);
+        bool check_if_pipeable (act_chp_lang_t *);
 
     protected:
 
         unsigned int term_inst_id;
 
+        std::vector<Action> prog_signature;
+
         int _gen_term_inst_id();
 
         const char *term_inst_prefix;
 
-        int _action_type(act_chp_lang_t *);
+        bool _build_prog_signature (act_chp_lang_t *, int);
 
-        int _terminate_port (int, int, int);
+        void _terminate_port (int, Port, Term);
 
-        void _generate_pipe (act_chp_lang_t *, int);
+        void _run_forge (act_chp_lang_t *, int);
 
 };

@@ -24,16 +24,8 @@
 
 // TODO: Handling last action selection
 
-#define ACTION_NONE 0
-#define ACTION_PASSIVE 1
-#define ACTION_ACTIVE 2
-
 #define TERM_SINK 0
 #define TERM_SRC 1
-
-#define PORT_M1 -1
-#define PORT_Z 0
-#define PORT_P1 1
 
 // Name prefixes
 
@@ -50,7 +42,7 @@ TinyForge::TinyForge ( FILE *fp, Process *p, act_chp_lang_t *c,
 void TinyForge::run_forge ()
 {
     construct_var_infos ();
-    _generate_pipe (_c, 1);
+    _run_forge (_c, 1);
 }
 
 int TinyForge::_gen_term_inst_id()
@@ -59,51 +51,13 @@ int TinyForge::_gen_term_inst_id()
     return term_inst_id;
 }
 
-/*
-    Returns the type of a given action statement. Receives
-    are passive, while sends and assignments are active.
-*/
-int TinyForge::_action_type(act_chp_lang_t *c)
+bool TinyForge::check_if_pipeable (act_chp_lang_t *c)
 {
-    if (!c) return ACTION_NONE;
-
-    switch (c->type) {
-    case ACT_CHP_COMMALOOP:
-    case ACT_CHP_SEMILOOP:
-        fatal_error ("Replication loops should've been removed..");
-    case ACT_CHP_COMMA:
-    case ACT_CHP_SEMI:
-    case ACT_CHP_LOOP:
-    case ACT_CHP_DOLOOP:
-    case ACT_CHP_SELECT:
-        return ACTION_NONE;
-        break;
-
-    case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS");
-        return ACTION_NONE;
-        
-    case ACT_CHP_SKIP:
-    case ACT_CHP_ASSIGN:
-    case ACT_CHP_ASSIGNSELF:
-    case ACT_CHP_SEND:
-        return ACTION_ACTIVE;
-    case ACT_CHP_RECV:
-        return ACTION_PASSIVE;
-        break;
-
-    case ACT_CHP_FUNC:
-    case ACT_CHP_HOLE: /* to support verification */
-    case ACT_CHP_MACRO:
-    case ACT_HSE_FRAGMENTS:
-        return ACTION_NONE;
-        break;
-
-    default:
-        fatal_error ("Unknown type");
-        return ACTION_NONE;
-        break;
+    prog_signature.clear();
+    if (_build_prog_signature (c, 1)) {
+        return valid_signatures.contains(prog_signature);
     }
+    return false;
 }
 
 /* 
@@ -114,41 +68,44 @@ int TinyForge::_action_type(act_chp_lang_t *c)
     whether the CHP has 3 or fewer actions in every path.
     (not a sufficient condition, merges break this, for example)
 */
-bool TinyForge::check_if_pipeable (act_chp_lang_t *c, int root)
+bool TinyForge::_build_prog_signature (act_chp_lang_t *c, int root)
 {
-    int i_action_type;
-    bool is_pipeable;
     listitem_t *li;
     act_chp_lang_t *stmt;
     act_chp_gc_t *gc;
-    if (!c) return 0;
+    if (!c) return false;
 
     switch (c->type) {
     case ACT_CHP_COMMALOOP:
     case ACT_CHP_SEMILOOP:
         fatal_error ("Replication loops should've been removed..");
+        return false;
         break;
         
     case ACT_CHP_COMMA:
-        fatal_error ("TODO: parallellizers");
+        return false;
         break;
 
     case ACT_CHP_SEMI:
-
-        if ( list_length(c->u.semi_comma.cmd) < 3 )
-        {
-            for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
-            {
-                i_action_type = _action_type ( (act_chp_lang_t *)(list_value(li)) );
-                if ( i_action_type != ACTION_PASSIVE && i_action_type != ACTION_ACTIVE )
-                    return false;
-            }
-            return true;
-        }
-        else
+        if ( list_length(c->u.semi_comma.cmd) > 2 )
         {
             return false;
         }
+        for (li = list_first(c->u.semi_comma.cmd) ; li ; li = li->next)
+        {
+            stmt = (act_chp_lang_t *) list_value(li);
+            switch (stmt->type) {
+            case ACT_CHP_SEND:
+                prog_signature.push_back(Action::Send); break;
+            case ACT_CHP_RECV:
+                prog_signature.push_back(Action::Receive); break;
+            case ACT_CHP_ASSIGN:
+                prog_signature.push_back(Action::Assign); break;
+            default:
+                return false;
+            }
+        }
+        return true;
         break;
 
     case ACT_CHP_LOOP:
@@ -156,36 +113,27 @@ bool TinyForge::check_if_pipeable (act_chp_lang_t *c, int root)
         if (root == 1)
         {
             gc = c->u.gc;
-            is_pipeable = check_if_pipeable (gc->s, 0);
-            return is_pipeable;
+            return _build_prog_signature (gc->s, 0); 
             break;
         }
-        else
-        {
-            fatal_error ("should've excised internal loops...");
-        }
+        fatal_error ("should've excised internal loops...");
         break;
         
     case ACT_CHP_SELECT:
-        fatal_error ("TODO - selection handling");
-        return 0; // TODO
-        for (gc = c->u.gc ; gc ; gc = gc->next)
-        {
-            is_pipeable = check_if_pipeable (gc->s, 0);
-        }
-        break;
+        return false; break;
 
     case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS");
+        fatal_error ("Can't handle NDS"); break;
         
+    // should only get here for single action programs..
     case ACT_CHP_SKIP:
     case ACT_CHP_ASSIGN:
+            prog_signature.push_back(Action::Assign); return true; break;
     case ACT_CHP_ASSIGNSELF:
     case ACT_CHP_RECV:
+            prog_signature.push_back(Action::Receive); return true; break;
     case ACT_CHP_SEND:
-        // should only get here for single action programs..
-        return true;
-        break;
+            prog_signature.push_back(Action::Send); return true; break;
         
     case ACT_CHP_FUNC:
     case ACT_CHP_HOLE: /* to support verification */
@@ -207,89 +155,67 @@ bool TinyForge::check_if_pipeable (act_chp_lang_t *c, int root)
     Can be extended to work with branched programs with the correct 
     (action signature on each branch is the same) structure.  
 */
-// TODO: Fix get true names
-void TinyForge::_generate_pipe (act_chp_lang_t *c, int root)
+void TinyForge::_run_forge (act_chp_lang_t *c, int root)
 {   
     listitem_t *li;
-    act_chp_lang_t *stmt;
+    act_chp_lang_t *stmt1, *stmt2;
     act_chp_gc_t *gc;
     int block_id, bw, latch_id, expr_inst_id;
+    hash_bucket_t *b;
     InstType *it;
-    Expr *e;
+    var_info *vi;
+    Expr *e = NULL;
     ActId *chan, *var;
-    const char* chan_name;
+    char chan_name[1024];
+    char var_name[1024];
     
     if (!c) return;
 
     switch (c->type) {
     case ACT_CHP_COMMALOOP:
     case ACT_CHP_SEMILOOP:
-        fatal_error ("Replication loops should've been removed..");
-        break;
+        fatal_error ("Replication loops should've been removed.."); break;
         
     case ACT_CHP_COMMA:
+        fatal_error ("Shouldn't have gotten here.."); break; 
+
     case ACT_CHP_SEMI:
+        fatal_error ("Shouldn't have gotten here.."); break; 
+#if 0
+        Assert ((list_length(c->u.semi_comma.cmd) == 2), "hmm, pipe check failed?"); 
+        li = (list_first (c->u.semi_comma.cmd));
+        stmt1 = (act_chp_lang_t *)list_value (li);
+        stmt2 = (act_chp_lang_t *)list_value (list_next(li));
 
-        switch (list_length(c->u.semi_comma.cmd)) {
-        case 2:
-            li = (list_first (c->u.semi_comma.cmd));
-            stmt = (act_chp_lang_t *)list_value (li);
-            block_id = _generate_pipe_element (stmt, -1);
-
-            _terminate_port (block_id, PORT_M1, TERM_SRC);
-            li = list_next(li);
-            stmt = (act_chp_lang_t *)list_value (li);
-            Assert ((_action_type(stmt)==ACTION_ACTIVE), "2nd action active only (for now)");
-
-            if (stmt->type == ACT_CHP_ASSIGN)
-            {
-                e = stmt->u.assign.e;
-            }
-            else if (stmt->type == ACT_CHP_SEND)
-            {
-                e = stmt->u.comm.e;
-                chan = stmt->u.comm.chan;
-                chan_name = chan->rootVx(_p->CurScope())->getName();
-            }
-            if (e) {
-
-                it = _p->CurScope()->Lookup(chan);
-                bw = TypeFactory::bitWidth(it);
-                fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id+1);
-                fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id+1,chan_name);
-
-                fprintf(_fp,"\n// Data for action: ");
-                chp_print(_fp,stmt);
-                fprintf(_fp,"\n");
-                if (e->type == E_VAR) { // pure variable send
-                    fprintf(_fp,"%s%d.ctrl = %s%d.p1;\n",conn_block_prefix,block_id+1,ring_block_prefix,block_id);
-                    var = (ActId *)e->u.e.l;
-                    latch_id = 0;
-                    fprintf(_fp, "\n%s%s_%d.dout = %s.d;\n",capture_block_prefix,
-                                        var->rootVx(_p->CurScope())->getName(),latch_id,chan_name);
-                }
-                else { // function of variable(s) send
-                    expr_inst_id = _generate_expr_block(e,bw);
-                    // connect output of math block to channel data
-                    fprintf(_fp,"%s%d.out = %s.d;\n",expr_block_instance_prefix,expr_inst_id,chan_name);
-                    // connect to delay_line
-                    fprintf(_fp,"delay_expr_%d.m1 = %s%d.p1;\n",expr_inst_id,ring_block_prefix,block_id);
-                    fprintf(_fp,"delay_expr_%d.p1 = %s%d.ctrl;\n",expr_inst_id,conn_block_prefix,block_id+1);
-                }
-            }
-            break;
-
-        case 3:
-            fatal_error ("not working yet..");
-            li = list_next (list_first (c->u.semi_comma.cmd));
-            stmt = (act_chp_lang_t *)list_value (li);
-            block_id = _generate_pipe_element (stmt, -1);
-            break;
-
-        default:
-            fatal_error ("shouldn't be here, pipe check must've failed (generate_pipe)");
-            break;
+        Assert (stmt1->type == ACT_CHP_RECV, "hmm");
+        var = stmt1->u.comm.var;
+        chan = stmt1->u.comm.chan;
+        get_true_name (chan_name, chan, _p->CurScope());
+        it = _p->CurScope()->Lookup(chan);
+        bw = TypeFactory::bitWidth(it);
+        if (var) {
+            get_true_name (var_name, var, _p->CurScope());
+            b = hash_lookup (var_infos, var_name);
+            Assert (b, "No var info?");
+            vi = (var_info *)b->v;
+            latch_id = _generate_single_latch (vi, -1);
         }
+
+        // generate pipe element according to second action
+        block_id = _generate_pipe_element (stmt2, -1);
+        _terminate_port (block_id, Port::P1, Term::Sink);
+
+        fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n", bw, conn_block_prefix,block_id+1);
+        fprintf(_fp,"%s%d.ctrl = %s%d.m1;\n",conn_block_prefix,block_id+1,ring_block_prefix,block_id);
+        fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id+1,chan_name);
+
+        if (var) {
+        fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
+                        vi->name,latch_id,ring_block_prefix,block_id);
+        fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
+                                        vi->name,latch_id,chan_name);
+        }
+#endif
         break;
 
     case ACT_CHP_LOOP:
@@ -297,39 +223,29 @@ void TinyForge::_generate_pipe (act_chp_lang_t *c, int root)
         if (root == 1)
         {
             gc = c->u.gc;
-            _generate_pipe (gc->s, 0);
+            _run_forge (gc->s, 0);
             break;
         }
-        else
-        {
-            fatal_error ("should've excised internal loops...");
-        }
-        break;
+        fatal_error ("Shouldn't have gotten here.."); break;
         
     case ACT_CHP_SELECT:
-
-        return; // TODO - need to build the checker correctly first
-        for (gc = c->u.gc ; gc ; gc = gc->next)
-        {
-        }
-        break;
-
     case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS");
+        fatal_error ("Shouldn't have gotten here..");
         
     case ACT_CHP_SKIP:
     case ACT_CHP_ASSIGN:
     case ACT_CHP_ASSIGNSELF:
     case ACT_CHP_SEND:
             block_id = _generate_pipe_element (c, -1);
-            _terminate_port (block_id, PORT_M1, TERM_SRC);
-            _terminate_port (block_id, PORT_P1, TERM_SINK);
+            _terminate_port (block_id, Port::M1, Term::Source);
+            _terminate_port (block_id, Port::P1, Term::Sink);
             break;
+
     case ACT_CHP_RECV:
             block_id = _generate_pipe_element (c, -1);
-            _terminate_port (block_id, PORT_M1, TERM_SRC);
-            _terminate_port (block_id, PORT_P1, TERM_SINK);
-            _terminate_port (block_id, PORT_Z, TERM_SINK);
+            _terminate_port (block_id, Port::M1, Term::Source);
+            _terminate_port (block_id, Port::P1, Term::Sink);
+            _terminate_port (block_id, Port::Zero, Term::Sink);
             break;
         
     case ACT_CHP_FUNC:
@@ -350,7 +266,7 @@ void TinyForge::_generate_pipe (act_chp_lang_t *c, int root)
     terminate that port with the correct element. This is used for 
     tying off unused ports in the pipeline element. 
 */
-int TinyForge::_terminate_port (int block_id, int port, int mode)
+void TinyForge::_terminate_port (int block_id, Port port, Term mode)
 {   
     int term_inst;
     const char *ti_prefix = "term_inst_";
@@ -358,32 +274,25 @@ int TinyForge::_terminate_port (int block_id, int port, int mode)
 
     switch (mode)
     {
-    case TERM_SRC:
-        fprintf (_fp, "source_brs %s%d;\n", ti_prefix, term_inst);
-        break;
-    case TERM_SINK:
-        fprintf (_fp, "sink_brs %s%d;\n", ti_prefix, term_inst);
-        break;
+    case Term::Source:
+        fprintf (_fp, "source_brs %s%d;\n", ti_prefix, term_inst); break;
+    case Term::Sink:
+        fprintf (_fp, "sink_brs %s%d;\n", ti_prefix, term_inst); break;
     default:
-        fatal_error ("brr (terminate_port)");
-        break;
+        fatal_error ("brr (terminate_port)"); break;
     }
 
     switch (port)
     {
-    case PORT_M1:
-        fprintf (_fp, "%s%d.c = %s%d.m1;\n", ti_prefix, term_inst, ring_block_prefix, block_id);
-        break;
-    case PORT_P1:
-        fprintf (_fp, "%s%d.c = %s%d.p1;\n", ti_prefix, term_inst, ring_block_prefix, block_id);
-        break;
-    case PORT_Z:
-        fprintf (_fp, "%s%d.c = %s%d.zero;\n", ti_prefix, term_inst, ring_block_prefix, block_id);
-        break;
+    case Port::M1:
+        fprintf (_fp, "%s%d.c = %s%d.m1;\n", ti_prefix, term_inst, ring_block_prefix, block_id); break;
+    case Port::P1:
+        fprintf (_fp, "%s%d.c = %s%d.p1;\n", ti_prefix, term_inst, ring_block_prefix, block_id); break;
+    case Port::Zero:
+        fprintf (_fp, "%s%d.c = %s%d.zero;\n", ti_prefix, term_inst, ring_block_prefix, block_id); break;
     default:
-        fatal_error ("brr (terminate_port)");
-        break;
+        fatal_error ("brr (terminate_port)"); break;
     }
 
-    return 0;
+    return;
 }
