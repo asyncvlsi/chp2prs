@@ -137,6 +137,9 @@ int main(int argc, char **argv)
 
     case 'm':
       delay_margin = std::atoi(Strdup (optarg));
+      if (delay_margin < 100) {
+        warning ("Delay multiplier < 1.0, this is not recommended!");
+      }
       break;
       
     default:
