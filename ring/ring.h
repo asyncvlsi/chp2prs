@@ -58,10 +58,26 @@ class RingEngine {
         void _construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v);
         void _print_var_info (FILE *fp, var_info *v);
         bool _var_appears_in_expr (Expr *e, ActId *id);
+        int _var_in_list (const char *name, list_t *l);
 
         // Save and restore state of var_infos 
         void save_var_infos ();
         void restore_var_infos ();
+
+        // Merge mux info builder functions ---------
+        void _construct_merge_latch_info (act_chp_lang_t *, int);
+        bool _var_assigned_in_subtree (act_chp_lang_t *, const char *);
+
+        void compute_mergemux_info ();
+        int _compute_mergemux_info (act_chp_lang_t *, var_info *, int);
+        int _get_latest_assign_in_branch (act_chp_lang_t *, var_info *, int);
+        
+        void print_merge_mux_infos (FILE *fp, act_chp_lang_t *);
+        void _print_latch_info_struct (FILE *fp, latch_info_t *);
+
+        void flow_assignments ();
+        int _flow_assignments (act_chp_lang_t *, var_info *, int);
+        // Merge mux info builder functions ---------
 
         // Internal helper functions
         void _save_read_ids ();

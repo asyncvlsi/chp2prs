@@ -59,18 +59,39 @@ struct var_info {
 };
 
 /*
-    Not used yet. Will be used to determine if a given CHP
-    program is of the form that can be sequenced with a
-    single pipeline element.
+  Structure that is tagged to space pointers of chp_t's 
+  that contains latch assignment info, merge_mux info
+  and live_var info.
 */
-struct chp_form_info {
 
-  int valid_dag;
-  
-  int dag_length;
+enum class LatchType { Latch, Mux, ICs };
 
-  int dag_form;
+typedef struct latch_info {
+  // type of the struct
+  LatchType type;
   
-};
+  // ID for normal latches
+  int latch_number; 
+
+  // live vars at this point (in for actions, out for selections)
+  // Length: (No. of live vars out of merge)
+  list_t *live_vars;
+
+  // Used at merge-points.
+  // ID for merge muxes, one per var in live_vars.
+  // -1 if mux is not needed at this merge-point for this var.
+  // Dimensions: (No. of live vars out of merge)
+  std::vector<int> merge_mux_latch_number; 
+
+  // Input mapping for merge_muxes.
+  // Each vector contains the latch IDs of the 
+  // latch/mux that needs to be connected to 
+  // the input of this mux.
+  // One per merge mux that is needed.
+  // -1 if mux not needed.
+  // Dimensions: (No. of live vars out of merge)*(No. of branches in selection)
+  std::vector<std::vector<int>> merge_mux_inputs;
+  
+} latch_info_t;
 
 #endif

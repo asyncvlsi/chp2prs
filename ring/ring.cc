@@ -60,8 +60,9 @@ RingEngine::RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
 
 //    construct_var_infos ();
 //    _run_forge_helper ();
-
 // }
+#define NOT_FOUND -2
+#define NO_ASSIGN -1
 
 void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
 {
@@ -79,6 +80,10 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     // }
     if (id->isEqual(c->u.assign.id))
     { 
+      if((latch_info_t *)(c->space))
+      {
+        (((latch_info_t *)(c->space))->latch_number) = v->nwrite;
+      }
       v->nwrite++;
     }
     if ( _var_appears_in_expr (c->u.assign.e, id) )
@@ -103,6 +108,8 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     // v = _var_getinfo (c->u.comm.chan);
     if (id->isEqual(c->u.comm.var))
     { 
+      Assert ((latch_info_t *)(c->space), "hmm2");
+      (((latch_info_t *)(c->space))->latch_number) = v->nwrite;
       v->nwrite++;
     }
     break;
@@ -115,9 +122,10 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     }
     break;
 
+  case ACT_CHP_SELECT_NONDET:
+    fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_LOOP:
   case ACT_CHP_SELECT:
-  case ACT_CHP_SELECT_NONDET:
   case ACT_CHP_DOLOOP:
     {
       act_chp_gc_t *gc = c->u.gc;
@@ -146,6 +154,515 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     fatal_error ("What?");
     break;
   }
+}
+
+/*
+  Mark IDs for merge muxes
+*/
+void RingEngine::_construct_merge_latch_info (act_chp_lang_t *c, int root)
+{
+  Scope *s = _p->CurScope();
+  act_chp_lang_t *stmt;
+
+  switch (c->type) {
+
+  case ACT_CHP_SKIP:
+    break;
+
+  case ACT_CHP_ASSIGN:
+  case ACT_CHP_SEND:
+  case ACT_CHP_RECV:
+    break;
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {   
+      stmt = (act_chp_lang_t *)list_value(li);
+      if (root == 1 && (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP)) {
+        _construct_merge_latch_info ((act_chp_lang_t *) list_value (li), 1);
+      }
+      else if (root == 0 && (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP))
+      {
+        fatal_error ("should've excised internal loops...");
+      }
+      else {
+        _construct_merge_latch_info ((act_chp_lang_t *) list_value (li), 0);
+      }
+    }
+    break;
+
+  case ACT_CHP_SELECT_NONDET:
+    fatal_error ("NDS not supported yet"); break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+    if (root == 1) {
+      act_chp_gc_t *gc = c->u.gc;
+      _construct_merge_latch_info (gc->s, 0);
+      break;
+    }
+  case ACT_CHP_SELECT:
+    {
+      int gc_len = length_of_guard_set (c);
+      ((latch_info_t *)(c->space))->merge_mux_latch_number.clear();
+      list_t *ll = ((latch_info_t *)(c->space))->live_vars;
+      for (listitem_t *li = list_first(ll); li ; li = li->next)
+      {
+        hash_bucket_t *b = hash_lookup(var_infos, (char *)list_value(li));
+        Assert (b, "variable not found");
+        if (_var_assigned_in_subtree (c, (char *)list_value(li))) {
+          // latch id for mux
+          ((latch_info_t *)(c->space))->merge_mux_latch_number.push_back(((var_info *)(b->v))->nwrite);
+          ((var_info *)(b->v))->nwrite++;
+        }
+        else {
+          // mux not needed, insert -1
+          ((latch_info_t *)(c->space))->merge_mux_latch_number.push_back(-1);
+        }
+        // fill -1's to initialize
+        std::vector<int> m1s(gc_len, -1);
+        ((latch_info_t *)(c->space))->merge_mux_inputs.push_back(m1s);
+      }
+      act_chp_gc_t *gc = c->u.gc;
+      while (gc) {
+        _construct_merge_latch_info (gc->s, 0);
+        gc = gc->next;
+      }
+    }
+    break;
+
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+}
+
+bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
+{
+  Scope *s = _p->CurScope();
+  act_chp_lang_t *stmt;
+  char tname[1024];
+  bool ret = false;
+
+  switch (c->type) {
+  case ACT_CHP_SKIP:
+  return false; break;
+
+  case ACT_CHP_SEND:
+  return false; break;
+  case ACT_CHP_ASSIGN:
+    get_true_name (tname, c->u.assign.id, s, true);
+    return (!strcmp(tname, name));
+    break;
+  case ACT_CHP_RECV:
+    get_true_name (tname, c->u.comm.var, s, true);
+    return (!strcmp(tname, name));
+    break;
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {   
+      ret = ret || _var_assigned_in_subtree ((act_chp_lang_t *)list_value(li), name);
+    }
+    break;
+
+  case ACT_CHP_SELECT_NONDET:
+    fatal_error ("NDS not supported yet"); break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+    fatal_error ("shouldn't have gotten here"); break;
+  case ACT_CHP_SELECT:
+    {
+      act_chp_gc_t *gc = c->u.gc;
+      while (gc) {
+      ret = ret || _var_assigned_in_subtree (gc->s, name);
+      gc = gc->next;
+      }
+    }
+    break;
+
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+  return ret;
+}
+
+void RingEngine::compute_mergemux_info ()
+{
+  hash_iter_t it;
+  hash_bucket_t *b;
+  hash_iter_init (var_infos, &it);
+  // one pass per variable
+  while ((b = hash_iter_next (var_infos, &it))) 
+  {
+    _compute_mergemux_info (_c, (var_info *)b->v, -1);
+  }	     
+}
+
+int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux_number)
+{
+  Scope *s = _p->CurScope();
+
+  switch (c->type) {
+
+  case ACT_CHP_SKIP:
+  case ACT_CHP_ASSIGN:
+  case ACT_CHP_SEND:
+  case ACT_CHP_RECV:
+    break;
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {   
+      mux_number = _compute_mergemux_info ((act_chp_lang_t *) list_value (li), vi, mux_number);
+    }
+    break;
+
+  case ACT_CHP_SELECT_NONDET:
+    fatal_error ("NDS not supported yet"); break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    mux_number = _compute_mergemux_info (gc->s, vi, mux_number);
+    Assert (!(gc->next), "more than one loop branch at top-level?");
+  }
+    break;
+  case ACT_CHP_SELECT:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    // process internals recursively first
+    while (gc) {
+      mux_number = _compute_mergemux_info (gc->s, vi, mux_number);
+      gc = gc->next;
+    }
+    gc = c->u.gc;
+    list_t *ll = ((latch_info_t *)(c->space))->live_vars;
+    std::vector<int> latches_in_branches;
+    latches_in_branches.clear();
+    int vpos = _var_in_list (vi->name, ll);
+    std::vector<int> mln = ((latch_info_t *)(c->space))->merge_mux_latch_number;
+    if ((vpos != NOT_FOUND) && (mln.at(vpos) != -1))
+    {
+      (((latch_info_t *)(c->space))->merge_mux_inputs).at(vpos).clear();
+      while (gc) {
+        int lid = _get_latest_assign_in_branch (gc->s, vi, -1);
+        (((latch_info_t *)(c->space))->merge_mux_inputs).at(vpos).push_back(lid);
+        gc = gc->next;
+      }
+      mux_number = mln.at(vpos);
+    }
+  }
+  break;
+
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+  return mux_number;
+}
+
+int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *vi, int latch_number)
+{
+  Scope *s = _p->CurScope();
+  act_chp_lang_t *stmt;
+
+  switch (branch->type) {
+
+  case ACT_CHP_SKIP:
+  case ACT_CHP_SEND:
+    break;
+  case ACT_CHP_ASSIGN:
+  {
+    ActId *id = branch->u.assign.id;
+    char tname[1024];
+    get_true_name (tname, id, s, true);
+    if (!strcmp(tname, vi->name)) {
+      return ((latch_info_t *)(branch->space))->latch_number;
+    }
+  }
+  break;
+  case ACT_CHP_RECV:
+  {
+    ActId *id = branch->u.comm.var;
+    char tname[1024];
+    get_true_name (tname, id, s, true);
+    if (!strcmp(tname, vi->name)) {
+      return ((latch_info_t *)(branch->space))->latch_number;
+    }
+  }
+  break;
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    for (listitem_t *li = list_first (branch->u.semi_comma.cmd); li; li = list_next (li)) 
+    {   
+      latch_number = _get_latest_assign_in_branch ((act_chp_lang_t *) list_value (li), vi, latch_number);
+    }
+    break;
+
+  case ACT_CHP_SELECT_NONDET:
+    fatal_error ("NDS not supported yet"); break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+  {
+    act_chp_gc_t *gc = branch->u.gc;
+    latch_number = _get_latest_assign_in_branch (gc->s, vi, latch_number);
+    Assert (!(gc->next), "more than one loop branch at top-level?");
+  }
+    break;
+  case ACT_CHP_SELECT:
+  {
+    latch_number = _compute_mergemux_info (branch, vi, latch_number);
+  }
+  break;
+
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+  return latch_number;
+}
+
+void RingEngine::print_merge_mux_infos (FILE *fp, act_chp_lang_t *c)
+{
+  Scope *s = _p->CurScope();
+
+  switch (c->type) {
+
+  case ACT_CHP_SKIP:
+  case ACT_CHP_SEND:
+  case ACT_CHP_ASSIGN:
+  case ACT_CHP_RECV:
+    if (c->space) {
+      fprintf (fp, "\n----\n");
+      chp_print (fp, c);
+      _print_latch_info_struct (fp, (latch_info_t *)(c->space));
+      fprintf (fp, "----\n\n");
+    }
+  break;
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    if (c->space) {
+        fprintf (fp, "\n----\n");
+        chp_print (fp, c);
+        _print_latch_info_struct (fp, (latch_info_t *)(c->space));
+        fprintf (fp, "----\n\n");
+      }
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {   
+      print_merge_mux_infos (fp, (act_chp_lang_t *) list_value (li));
+    }
+    break;
+
+  case ACT_CHP_SELECT_NONDET:
+    fatal_error ("NDS not supported yet"); break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+  {
+    if (c->space) {
+        fprintf (fp, "\n----\n");
+        chp_print (fp, c);
+        _print_latch_info_struct (fp, (latch_info_t *)(c->space));
+        fprintf (fp, "----\n\n");
+    }
+    act_chp_gc_t *gc = c->u.gc;
+    print_merge_mux_infos (fp, gc->s);
+    Assert (!(gc->next), "more than one loop branch at top-level?");
+  }
+    break;
+  case ACT_CHP_SELECT:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    while (gc) {
+      print_merge_mux_infos (fp, gc->s);
+      gc = gc->next;
+    }
+    if (c->space) {
+        fprintf (fp, "\n----\n");
+        chp_print (fp, c);
+        _print_latch_info_struct (fp, (latch_info_t *)(c->space));
+        fprintf (fp, "----\n\n");
+    }
+  }
+  break;
+
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+}
+
+void RingEngine::_print_latch_info_struct (FILE *fp, latch_info_t *l)
+{
+  fprintf (fp, "\n --------- \n");
+  switch (l->type) {
+  case LatchType::Latch: 
+  {
+    fprintf (fp, "type: latch \n");
+    fprintf (fp, "latch ID: %d\n", l->latch_number);
+    break;
+  }
+  case LatchType::Mux: 
+  {
+    fprintf (fp, "type: mux \n");
+    int ctr = 0;
+    for (listitem_t *li = list_first (l->live_vars) ; li ; li = li->next) 
+    {
+      fprintf (fp, "variable: %s\n", (char *)(list_value(li)));
+      fprintf (fp, "mux ID: %d\n", l->merge_mux_latch_number.at(ctr));
+      fprintf (fp, "inputs: ");
+      for ( auto x : l->merge_mux_inputs.at(ctr) )
+      {
+        fprintf (fp, "%d, ", x);
+      }
+      ctr++;
+      fprintf (fp, "\n\n");
+    }  
+    break;
+  }
+  case LatchType::ICs: 
+  {
+    fprintf (fp, "type: initial conditions / loop-carried dependencies \n");
+    fprintf (fp, "variables: ");
+    for (listitem_t *li = list_first (l->live_vars) ; li ; li = li->next) 
+    {
+      fprintf (fp, "%s, ", (char *)(list_value(li)));
+    }
+    fprintf (fp, "\n\n");
+    break;
+  }
+  default:
+    fatal_error ("huh"); break;
+  }
+}
+
+/*
+  Flow assignments of variables down the 
+  graph so that mux inputs can be mapped.
+*/
+void RingEngine::flow_assignments ()
+{
+  hash_iter_t it;
+  hash_bucket_t *b;
+  hash_iter_init (var_infos, &it);
+  // one pass per variable per assignment
+  while ((b = hash_iter_next (var_infos, &it))) 
+  {
+    var_info *vi = (var_info *)b->v;
+    _flow_assignments (_c, (var_info *)b->v, -1);
+  }
+}
+
+int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
+{
+  Scope *s = _p->CurScope();
+  char tname[1024];
+
+  switch (c->type) {
+
+  case ACT_CHP_SKIP:
+    break;
+  case ACT_CHP_ASSIGN:
+    if (c->space) {
+      get_true_name (tname, c->u.assign.id, s, true);
+      if (!strcmp(tname, vi->name)) {
+        latest = ((latch_info_t *)(c->space))->latch_number;
+      }
+    }
+    else {
+      fatal_error ("huh");
+    }
+    break;
+  case ACT_CHP_SEND:
+    break;
+  case ACT_CHP_RECV:
+    if (c->space) {
+      get_true_name (tname, c->u.comm.var, s, true);
+      if (!strcmp(tname, vi->name)) {
+        latest = ((latch_info_t *)(c->space))->latch_number;
+      }
+    }
+    else {
+      fatal_error ("huh");
+    }
+    break;
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    for (listitem_t *li = list_first(c->u.semi_comma.cmd) ; li ; li=li->next)
+    {
+      latest = _flow_assignments ((act_chp_lang_t *)list_value(li), vi, latest);
+    }
+    break;
+
+  case ACT_CHP_SELECT_NONDET:
+    fatal_error ("NDS not supported yet"); 
+    break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    latest = _flow_assignments (gc->s, vi, latest);
+    Assert (!(gc->next), "more than one loop branch at top-level?");
+  }
+    break;
+  case ACT_CHP_SELECT:
+  {
+    std::vector<int> latests;
+    latests.clear();
+    act_chp_gc_t *gc = c->u.gc;
+    // gather info
+    while (gc) {
+      int tmp = _flow_assignments (gc->s, vi, latest);
+      latests.push_back(tmp);
+      gc = gc->next;
+    }
+    // actually fill in the info
+    int vpos = _var_in_list (vi->name, ((latch_info_t *)(c->space))->live_vars);
+    if (vpos != NOT_FOUND) {
+      ((latch_info_t *)(c->space))->merge_mux_inputs.at(vpos) = latests;
+      // latest is now the merge mux (if it is needed)
+      if (((latch_info_t *)(c->space))->merge_mux_latch_number.at(vpos) != -1) {
+        latest = ((latch_info_t *)(c->space))->merge_mux_latch_number.at(vpos);
+      }
+    }
+  }
+  break;
+
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+  return latest;
 }
 
 bool RingEngine::_var_appears_in_expr (Expr *e, ActId *id)
@@ -585,6 +1102,19 @@ bool RingEngine::chp_has_branches (act_chp_lang_t *c, int root)
     }
 
     return has_branches;
+}
+
+int RingEngine::_var_in_list (const char *name, list_t *l)
+{
+  int ctr = 0;
+  for (listitem_t *li = list_first(l) ; li ; li = li->next)
+  {
+    if (!strcmp(name, (char *)list_value(li))) {
+      return ctr;
+    }
+    ctr++;
+  }
+  return NOT_FOUND;
 }
 
 int RingEngine::get_expr_width(Expr *ex)

@@ -68,28 +68,38 @@ void RingForge::run_forge ()
      * 'everything else besides the chp body'
      * needs to be added here
     */
-
-   construct_var_infos ();
    _run_forge_helper ();
-
 }
 
 void RingForge::_run_forge_helper ()
 {
-    // int has_branches = chp_has_branches(_c, 1);
-    // if (has_branches == 0)
-    // {
-    //     fprintf (_fp, "// One Ring ---------------------\n");
-    //     generate_one_ring (_c,1,0);
-    // }
-    // else
-    // {
-        LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, _c);
-        lva->generate_live_var_info();
-        // lva->print_live_var_info();
-        fprintf (_fp, "// Branched Ring ----------------\n");
-        generate_branched_ring (_c,1,0,0);
-    // }
+    LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, _c);
+    // yes, run twice :)
+    lva->generate_live_var_info();
+    lva->generate_live_var_info();
+    lva->print_live_var_info();
+
+    construct_var_infos ();
+    print_var_infos (stdout);
+
+    _construct_merge_latch_info (_c, 1);
+    print_var_infos (stdout);
+
+    compute_mergemux_info ();
+    fprintf (_fp, "// Merge Mux Infos 1 --------------\n");
+    print_merge_mux_infos(stdout, _c);
+    fprintf (_fp, "// --------------------------------\n");
+    
+    fprintf (_fp, "// Merge Mux Infos 2 --------------\n");
+    flow_assignments ();
+    fprintf (_fp, "// --------------------------------\n");
+
+    fprintf (_fp, "// Merge Mux Infos 3 --------------\n");
+    print_merge_mux_infos(stdout, _c);
+    fprintf (_fp, "// --------------------------------\n");
+
+    fprintf (_fp, "// Branched Ring ------------------\n");
+    generate_branched_ring (_c,1,0,0);
 }
 
 unsigned long act_expr_getconst_long (Expr *e)
@@ -151,6 +161,9 @@ unsigned long eval_ic (Expr *q)
     switch (q->type) {
     case E_INT:
         return act_expr_getconst_long(q); break;
+    case E_BUILTIN_INT:
+        warning ("Assuming your bitwidths are ok in expressions of the form int(x,v)");
+        return eval_ic (q->u.e.l); break;
     case E_QUERY:
         if (eval_bool_expr(q->u.e.l)) {
             return eval_ic (q->u.e.r->u.e.l);
@@ -1085,6 +1098,7 @@ int RingForge::_generate_sync_chan()
     handling method, where the last assignment actions connect to 
     latches that are initialized to the initial value.
 */
+#if 0
 int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
 {
     int block_id;
@@ -1251,6 +1265,7 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
 
     return block_id;
 }
+#endif
 
 /*
     General synthesis for branched programs. Generates a branched ring

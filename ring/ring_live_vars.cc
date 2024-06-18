@@ -185,33 +185,6 @@ void LiveVarAnalysis::_remove_from_live_vars (ActId *id)
     return;
 }
 
-void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action)
-{
-    // int i;
-    hash_bucket_t *b;
-    hash_iter_t itr;
-    char *s;
-    list_t *req_vars = list_new();
-    hash_iter_init (H_live, &itr);
-    while ((b = hash_iter_next(H_live, &itr))) 
-    {
-        // s = new char;
-        // strcpy(s, b->key);
-        s = Strdup(b->key);
-        list_append (req_vars, s);
-    }
-    // for (i=0; i<H_live->size; i++) 
-    // {
-    //     for (b = H_live->head[i]; b; b = b->next) 
-    //     {
-    //         s = new char;
-    //         strcpy(s, b->key);
-    //         list_append (req_vars, s);
-    //     }	     
-    // }
-    action->space = list_dup(req_vars);
-}
-
 void LiveVarAnalysis::_add_to_live_vars_lcd (ActId *id)
 {
     char tname[1024];
@@ -224,32 +197,67 @@ void LiveVarAnalysis::_add_to_live_vars_lcd (ActId *id)
     } 
 }
 
+void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action)
+{
+    if (!action) return;
+    Assert (((action->type == ACT_CHP_ASSIGN)||
+             (action->type == ACT_CHP_SEND)||
+             (action->type == ACT_CHP_RECV)),"not action");
+
+    hash_bucket_t *b;
+    hash_iter_t itr;
+    list_t *req_vars = list_new();
+    hash_iter_init (H_live, &itr);
+    while ((b = hash_iter_next(H_live, &itr))) 
+    {
+        list_append (req_vars, Strdup(b->key));
+    }
+    latch_info_t *l_info;
+    NEW (l_info, latch_info_t);
+    l_info->type = LatchType::Latch;
+    l_info->live_vars = list_dup(req_vars);
+
+    action->space = l_info;
+    // action->space = list_dup(req_vars);
+}
+
 void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *action)
 {
+    if (!action) return;
+    Assert (((action->type == ACT_CHP_LOOP)||
+             (action->type == ACT_CHP_DOLOOP)||
+             (action->type == ACT_CHP_SELECT)),"not selection");
+
     hash_bucket_t *b, *b2;
-    char *s;
     list_t *req_vars = list_new();
     hash_iter_t itr, itr2;
     hash_iter_init (H_lcd, &itr);
     while ((b = hash_iter_next(H_lcd, &itr))) 
     {
-        // s = new char;
         if (!hash_lookup(H_live, b->key))
         {
-            // strcpy(s, b->key);
-            s = Strdup(b->key);
-            list_append (req_vars, s);
+            list_append (req_vars, Strdup(b->key));
         }
     }
     hash_iter_init (H_live, &itr2);
     while ((b2 = hash_iter_next(H_live, &itr2))) 
     {
-        // s = new char;
-        // strcpy(s, b2->key);
-        s = Strdup(b2->key);
-        list_append (req_vars, s);
+        list_append (req_vars, Strdup(b2->key));
     }	     
-    action->space = list_dup(req_vars);
+
+    latch_info_t *l_info;
+    NEW (l_info, latch_info_t);
+    if (action->type != ACT_CHP_SELECT)
+    {
+        l_info->type = LatchType::ICs;
+    }
+    else {
+        l_info->type = LatchType::Mux;
+    }
+    l_info->live_vars = list_dup(req_vars);
+
+    action->space = l_info;
+    // action->space = list_dup(req_vars);
 }
 
 void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
@@ -275,7 +283,10 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
             for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
             {
                 stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_ASSIGN) _add_to_live_vars_lcd (stmt->u.assign.id);
+                if (stmt->type == ACT_CHP_ASSIGN) {
+                    _add_to_live_vars_lcd (stmt->u.assign.id);
+                    _tag_action_with_reqd_vars (stmt);
+                }
             }
             for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
             {
@@ -405,7 +416,8 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
         if (root == 1)
         {
             chp_print (fp, c_t);
-            _print_var_list((list_t *)c_t->space);
+            _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
+            // _print_var_list((list_t *)c_t->space);
             gc = c_t->u.gc;
             _print_live_var_info (gc->s, 0);
             break;
@@ -418,7 +430,8 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
         
     case ACT_CHP_SELECT:
         chp_print (fp, c_t);
-        _print_var_list((list_t *)c_t->space);
+        _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
+        // _print_var_list((list_t *)c_t->space);
         for (gc = c_t->u.gc ; gc ; gc = gc->next)
         {
             _print_live_var_info (gc->s, 0);
@@ -435,17 +448,19 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
     case ACT_CHP_ASSIGN:
     case ACT_CHP_ASSIGNSELF:
         chp_print (fp, c_t);
-        _print_var_list((list_t *)c_t->space);
+        _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
         break;
         
     case ACT_CHP_RECV:
         chp_print (fp, c_t);
-        _print_var_list((list_t *)c_t->space);
+        _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
+        // _print_var_list((list_t *)c_t->space);
         break;
 
     case ACT_CHP_SEND:
         chp_print (fp, c_t);
-        _print_var_list((list_t *)c_t->space);
+        _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
+        // _print_var_list((list_t *)c_t->space);
         break;
 
     case ACT_CHP_FUNC:
