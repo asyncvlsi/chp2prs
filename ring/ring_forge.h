@@ -63,11 +63,12 @@ class RingForge : public RingEngine {
         int _generate_doloop_wrapper();
 
         // Datapath generation functions
-        int _generate_single_latch (var_info *, long long);
+        int _generate_single_latch (var_info *, latch_info *, long long);
         int _generate_expr_block(Expr *, int);
         int _generate_expr_block_for_sel(Expr *, int);
-        int _compute_merge_mux_info(list_t *, int, int);
+        int _compute_merge_mux_info(latch_info_t *, int);
         float _lookup_mux_delays (int, int);
+        std::pair<int,int> _get_pre_sel_latch_and_size (std::vector<int>);
 
         void _expr_collect_vars (Expr *, int);
         void _instantiate_expr_block (int, list_t *);

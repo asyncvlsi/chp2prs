@@ -73,30 +73,33 @@ void RingForge::run_forge ()
 
 void RingForge::_run_forge_helper ()
 {
+    bool printt = false;
     LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, _c);
     // yes, run twice :)
     lva->generate_live_var_info();
     lva->generate_live_var_info();
-    lva->print_live_var_info();
+    if (printt) lva->print_live_var_info();
 
     construct_var_infos ();
-    print_var_infos (stdout);
+    if (printt) print_var_infos (stdout);
 
     _construct_merge_latch_info (_c, 1);
-    print_var_infos (stdout);
+    if (printt) print_var_infos (stdout);
 
     compute_mergemux_info ();
-    fprintf (_fp, "// Merge Mux Infos 1 --------------\n");
-    print_merge_mux_infos(stdout, _c);
-    fprintf (_fp, "// --------------------------------\n");
+    if (printt) fprintf (_fp, "// Merge Mux Infos 1 --------------\n");
+    if (printt) print_merge_mux_infos(stdout, _c);
+    if (printt) fprintf (_fp, "// --------------------------------\n");
     
-    fprintf (_fp, "// Merge Mux Infos 2 --------------\n");
+    if (printt) fprintf (_fp, "// Merge Mux Infos 2 --------------\n");
     flow_assignments ();
-    fprintf (_fp, "// --------------------------------\n");
+    if (printt) fprintf (_fp, "// --------------------------------\n");
 
-    fprintf (_fp, "// Merge Mux Infos 3 --------------\n");
-    print_merge_mux_infos(stdout, _c);
-    fprintf (_fp, "// --------------------------------\n");
+    if (printt) fprintf (_fp, "// Merge Mux Infos 3 --------------\n");
+    if (printt) print_merge_mux_infos(stdout, _c);
+    if (printt) fprintf (_fp, "// --------------------------------\n");
+
+    if ( _check_all_muxes_mapped(_c, false) ) { fatal_error("muxes not mapped fully"); }
 
     fprintf (_fp, "// Branched Ring ------------------\n");
     generate_branched_ring (_c,1,0,0);
@@ -196,24 +199,28 @@ unsigned long eval_ic (Expr *q)
     If provided with an initial value, generate a data capture
     element that initializes to that value on reset.
 */
-int RingForge::_generate_single_latch (var_info *v, long long init_val=-1)
+int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long init_val=-1)
 {
-    list_iappend_head (v->latest_latch_branches, _branch_id);
+    Assert (l->type == LatchType::Latch, "generate latch for non-assignment?");
+    int latch_id = l->latch_number;
+    // list_iappend_head (v->latest_latch_branches, _branch_id);
     if (v->iwrite < v->nwrite)
     {
         if (init_val == -1)
         {
-            fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", int(std::ceil(capture_delay*delay_multiplier)), int(std::ceil(pulse_width*delay_multiplier)), 
-                                                    v->width, capture_block_prefix, v->name,v->iwrite);
+            fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", int(std::ceil(capture_delay*delay_multiplier)), 
+                                                         int(std::ceil(pulse_width*delay_multiplier)), 
+                                                    v->width, capture_block_prefix, v->name,latch_id);
         }
         else
         {
-            fprintf(_fp, "capture_init<%d,%d,%d,%lli> %s%s_%d;\n", int(std::ceil(capture_delay*delay_multiplier)), int(std::ceil(pulse_width*delay_multiplier)), 
-                                                    v->width, init_val, capture_block_prefix, v->name,v->iwrite);
+            fprintf(_fp, "capture_init<%d,%d,%d,%lli> %s%s_%d;\n", int(std::ceil(capture_delay*delay_multiplier)), 
+                                                                   int(std::ceil(pulse_width*delay_multiplier)), 
+                                                    v->width, init_val, capture_block_prefix, v->name,latch_id);
         }
         v->iwrite++;
-        v->latest_for_read = v->iwrite-1;
-        return (v->iwrite)-1;
+        v->latest_for_read = latch_id;
+        return latch_id;
     }
     fatal_error("shouldn't have reached here (generate_single_latch)");
     return -1;
@@ -262,9 +269,10 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         vi = (var_info *)b->v;
         bw = vi->width;
         expr_inst_id = _generate_expr_block(e,bw);
+        Assert ((c->space), "No latch info? (_generate_pipe_element)");
         if (init_latch == -1)
         {
-            latch_id = _generate_single_latch(vi);  
+            latch_id = _generate_single_latch(vi, (latch_info_t *)(c->space));  
         }
         else 
         {
@@ -352,9 +360,10 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             b = hash_lookup(var_infos, tname);
             Assert (b, "No var info?");
             vi = (var_info *)b->v;
+            Assert ((c->space), "No latch info? (_generate_pipe_element)");
             if (init_latch == -1)
             {
-                latch_id = _generate_single_latch(vi);
+                latch_id = _generate_single_latch(vi, (latch_info_t *)(c->space));
             }
             else 
             {
@@ -1350,7 +1359,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             // new I.C. handling method -----
 #if 1
             // loop through initial condition assignments to create latches with correct initial values
-            list_t *ic_list  = list_dup((list_t *)(main_loop->space));
+            list_t *ic_list  = list_dup((list_t *)(((latch_info_t *)(main_loop->space))->live_vars));
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
             {   
                 list_t *tmp = list_new();
@@ -1375,7 +1384,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     }
                     vi = (var_info *)b->v;
                     // fprintf (_fp, "\ngot here: %s\n", tname);
-                    int latch_id = _generate_single_latch (vi, ival);
+                    Assert ((stmt1->space), "No latch info? (_generate_branched_ring, initial condition handling)");
+                    int latch_id = _generate_single_latch (vi, (latch_info_t *)(stmt1->space), ival);
                     Assert (latch_id == 0, "Same variable has more than one initial condition?");
 
                     ic_list = list_new();
@@ -1384,17 +1394,17 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                 }
             }
             if (!list_isempty(ic_list)) {
-                warning ("Some variables were uninitialized in the program. Initializing them to zero.");
                 _print_list_of_vars (stderr, ic_list);
-                for (lj = list_first (ic_list); lj; lj = list_next (lj)) 
-                {   
-                    hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(lj));
-                    vi = (var_info *)b->v;
-                    // new latching generated that was not in the program => gotta update info. 
-                    vi->nwrite++; 
-                    int latch_id = _generate_single_latch (vi, 0);
-                    Assert (latch_id == 0, "Same variable has more than one initial condition?");
-                }
+                fatal_error ("The above variables were uninitialized in the program. Initialize them please.");
+                // for (lj = list_first (ic_list); lj; lj = list_next (lj)) 
+                // {   
+                //     hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(lj));
+                //     vi = (var_info *)b->v;
+                //     // new latching generated that was not in the program => gotta update info. 
+                //     vi->nwrite++; 
+                //     int latch_id = _generate_single_latch (vi, 0);
+                //     Assert (latch_id == 0, "Same variable has more than one initial condition?");
+                // }
             }
 #endif
             // new --------------------------
@@ -1422,12 +1432,14 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             }
             if (!list_isempty(ic_list))
             {
-                for (lj = list_first (ic_list); lj; lj = list_next (lj)) 
-                {
-                        block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, (const char *)list_value(lj));
-                        _connect_pipe_elements (prev_block_id, block_id);
-                        prev_block_id = block_id;
-                }
+                _print_list_of_vars (stderr, ic_list);
+                fatal_error ("The above variables were uninitialized in the program. Initialize them please.");
+                // for (lj = list_first (ic_list); lj; lj = list_next (lj)) 
+                // {
+                //         block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, (const char *)list_value(lj));
+                //         _connect_pipe_elements (prev_block_id, block_id);
+                //         prev_block_id = block_id;
+                // }
             }
 #endif
 
@@ -1452,34 +1464,35 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     case ACT_CHP_DOLOOP:
         if (root == 1)
         {   
-            list_t *iclist  = list_dup((list_t *)(c->space));
+            list_t *iclist  = list_dup((list_t *)(((latch_info_t *)(c->space))->live_vars));
             if (!list_isempty(iclist)) {                
-                warning ("Some variables were uninitialized in the program. Initializing them to zero.");
                 _print_list_of_vars (stderr, iclist);
-                for (listitem_t *lj = list_first (iclist); lj; lj = list_next (lj)) 
-                {   
-                    hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(lj));
-                    vi = (var_info *)b->v;
-                    // new latching generated that was not in the program => gotta update info. 
-                    vi->nwrite++; 
-                    int latch_id = _generate_single_latch (vi, 0);
-                    Assert (latch_id == 0, "Same variable has more than one initial condition?");
-                }
+                fatal_error ("The above variables were uninitialized in the program. Initialize them please. (Should only be here for non-LCD programs)");
             }
+                // for (listitem_t *lj = list_first (iclist); lj; lj = list_next (lj)) 
+                // {   
+                //     hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(lj));
+                //     vi = (var_info *)b->v;
+                //     // new latching generated that was not in the program => gotta update info. 
+                //     vi->nwrite++; 
+                //     int latch_id = _generate_single_latch (vi, 0);
+                //     Assert (latch_id == 0, "Same variable has more than one initial condition?");
+                // }
+            // }
 
             first_block_id = _generate_itb();
             gc = c->u.gc;
             block_id = generate_branched_ring(gc->s, 0, first_block_id, 1);
             prev_block_id = block_id;
 
-            if (!list_isempty(iclist)) {
-                for (lj = list_first (iclist); lj; lj = list_next (lj)) 
-                {
-                        block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, (const char *)list_value(lj));
-                        _connect_pipe_elements (prev_block_id, block_id);
-                        prev_block_id = block_id;
-                }
-            }
+            // if (!list_isempty(iclist)) {
+            //     for (lj = list_first (iclist); lj; lj = list_next (lj)) 
+            //     {
+            //             block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, (const char *)list_value(lj));
+            //             _connect_pipe_elements (prev_block_id, block_id);
+            //             prev_block_id = block_id;
+            //     }
+            // }
             _connect_pipe_elements(block_id, first_block_id);
             break;
         }
@@ -1499,7 +1512,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         sel_split_block_id = _generate_selection_split(gc_len);
         sel_merge_block_id = _generate_selection_merge(gc_len);
 
-        live_vars = (list_t *)c->space;
+        // live_vars = ((latch_info_t *)(c->space))->live_vars;
         // fprintf (stdout, "\n\nlive vars at merge:");
         // _print_list_of_vars(stdout, live_vars);
         // fprintf (stdout, "\n\n");
@@ -1530,17 +1543,17 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         gc = c->u.gc;
         for (int i = 0; gc; gc = gc->next)
         {   
-            _branch_id++;
+            // _branch_id++;
             _save_read_ids();
             block_id = generate_branched_ring (gc->s, 0, list_ivalue(lj), 1);
             _connect_pipe_to_sel_merge_inputs (sel_merge_block_id, block_id, i);
             _restore_read_ids();
             i++; lj = list_next(lj);
         }
-        _branch_id = _branch_id - gc_len;
+        // _branch_id = _branch_id - gc_len;
 
         // muxing variables live-out of merge so downstream can access correctly
-        delay_n_merge = _compute_merge_mux_info(live_vars, gc_len, sel_split_block_id);
+        delay_n_merge = _compute_merge_mux_info((latch_info_t *)(c->space), sel_split_block_id);
         // delay_n_merge = 0;
 
         // generate delay line for max guard evaluator delay (split)
@@ -1614,13 +1627,33 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     return block_id;
 }
 
+std::pair<int,int> RingForge::_get_pre_sel_latch_and_size (std::vector<int> in)
+{
+    int pre_sel_latch = -1;
+    int size = 0;
+    std::set<int> seen;
+    seen.clear();
+    //  assumption: only 1 duplicate exists
+    for ( auto x : in )
+    {
+        if (!seen.contains(x)) {
+            seen.insert(x);
+            size++; // size goes up by 1 for every new element
+        }
+        else {
+            pre_sel_latch = x; // already exists, so it's the duplicate
+        }
+    }
+    return {pre_sel_latch, size}; 
+}
+
 /*
     Generate merging muxes to be placed when exiting selections,
     so that variables that are assigned in one/many branches inside
     a selection can be addressed correctly when exiting the selection, 
     based on which branch was taken in this iteration of the loop.
 */
-int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int split_block_id)
+int RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id)
 {
     var_info *vi, *vi_pre;
     hash_bucket_t *b, *b_pre;
@@ -1628,184 +1661,116 @@ int RingForge::_compute_merge_mux_info (list_t *live_vars, int n_branches, int s
     list_t *latch_branches;
     int iwrite, iwrite_pre;
     int latest_branch_id;
-    int latest_branch_id_prev = -1;
-    int branch_ctr = 0;
     int max_mux_size = 0;
     int max_or_size = 0;
 
-    if ( list_isempty(live_vars) ) return 0;
+    if ( list_isempty(l->live_vars) ) return 0;
+    Assert (l->type == LatchType::Mux, "wth");
 
-    // fprintf (stdout, "\ngot here\n");
-
-    for ( li = list_first(live_vars) ; li ; li = list_next(li) )
+    int ctr = 0;
+    for ( li = list_first(l->live_vars) ; li ; li = list_next(li) )
     {
         b = hash_lookup (var_infos, (const char *)list_value(li));
         if (!b) fatal_error ("variable not found - whatt");
-        b_pre = hash_lookup (var_infos_copy, (const char *)list_value(li));
-        if (!b_pre) fatal_error ("variable not found - whatt");
-    // fprintf (stdout, "\ngot here 2\n");
-
         vi = (var_info *)b->v;
-        vi_pre = (var_info *)b_pre->v;
-        latch_branches = vi->latest_latch_branches;
-        iwrite = (vi->iwrite)-1;
-        iwrite_pre = (vi_pre->iwrite)-1;
-    // fprintf (stdout, "\ngot here 3 : %d, %d\n", iwrite, iwrite_pre);
 
-        Assert ((iwrite>=0), "hmmst");
         fprintf (_fp, "\n// variable: %s\n", vi->name);
-        // fprintf (_fp, "// %d, %d\n", iwrite, iwrite_pre);
-        lj = list_first (latch_branches);
-        list_t *branch_map = list_new();
-
-        for ( int i=0 ; i < (iwrite-iwrite_pre) ; i++ )
+        if (l->merge_mux_latch_number.at(ctr) == -1) 
         {
-            latest_branch_id = int(list_ivalue(lj));
-            // fprintf (_fp, "// %d, %d\n", latest_branch_id, latest_branch_id_prev);
-            // all branch check
-            if (latest_branch_id != latest_branch_id_prev) 
-            {
-                list_iappend_head (branch_map, iwrite-i);
-                list_iappend_head (branch_map, latest_branch_id-_branch_id-1);
-                branch_ctr++;
-                fprintf (_fp, "// absolute latch branch id %d, parent branch id %d, latch id %d\n", 
-                                    latest_branch_id, _branch_id, iwrite-i);
-            }
-            lj = list_next (lj);
-            latest_branch_id_prev = latest_branch_id;
-            // match latches to branches
+            fprintf (_fp, "// mux not needed\n");
+            ctr++;
+            continue;
         }
 
-    // fprintf (stdout, "\ngot here 4\n");
-        int need_mux, need_or, mux_size, or_size;
+        auto tmp = _get_pre_sel_latch_and_size (l->merge_mux_inputs.at(ctr));
+        int pre_sel_latch = tmp.first;
+        int mux_size = tmp.second;
+        int or_size = (l->merge_mux_inputs.at(ctr).size()) - mux_size + 1;
 
-        // compare with n_branches, see if OR-gate is needed
-        if (branch_ctr == n_branches)
+        // see if OR-gate is needed
+        if (or_size == 1)
         {
+            Assert ((pre_sel_latch==-1), "check that there were no duplicates");
             fprintf(_fp, "// assigned in all branches\n"); 
-            need_mux = 1; need_or = 0; mux_size = branch_ctr; or_size = 0;
-        }
-        else if (branch_ctr == 0)
-        { 
-            fprintf(_fp, "// not assigned in any branch\n"); 
-            need_mux = 0; need_or = 0; mux_size = 0; or_size = 0;
         }
         else
         { 
             fprintf(_fp, "// not assigned in all branches\n"); 
-            need_mux = 1; need_or = 1; mux_size = branch_ctr+1; or_size = n_branches-branch_ctr;
         }
         // find the variable with the biggest mux+or combo (lookup TODO)
-        {
-            if (max_mux_size < mux_size) max_mux_size = mux_size;
-            if (max_or_size < or_size) max_or_size = or_size;
-        }
+        if (max_mux_size < mux_size) max_mux_size = mux_size;
+        if (max_or_size < or_size) max_or_size = or_size;
 
-    // fprintf (stdout, "\ngot here 5\n");
-        list_t *unassigned_branches = list_new();
-        // collect unassigned branch ids for OR-gate
-        if ( need_or )
+        // generate the mux (looks like latch to downstream) and connect latch outputs correctly
+        int mux_id = l->merge_mux_latch_number.at(ctr);
+        fprintf (_fp, "merge_mux_ohc_opt<%d,%d> %s%s_%d;\n", mux_size, vi->width, 
+                                                capture_block_prefix, vi->name, mux_id);
+
+        // increase latest_for_read for the variable so it can be connected to correctly downstream
+        vi->iwrite++;
+        vi->latest_for_read = mux_id;
+
+        // generate OR-gate
+        fprintf (_fp, "std::gates::ortree<%d, false> or_%s_%d;\n", or_size, vi->name, mux_id);
+
+        // connect OR-gate inputs (split outputs)
+        int ctr2 = 0; int ctr3 = 0;
+        for ( auto z : l->merge_mux_inputs.at(ctr) )
         {
-            for ( int i=_branch_id ; i<n_branches+_branch_id ; i++ )
-            {
-                int flag=0;
-                for ( lj = list_first(branch_map) ; lj ; lj = list_next(list_next(lj)) )
-                {
-                    int mux_port = list_ivalue(lj)+_branch_id;
-                    // fprintf(_fp, "\n// mux port: %d, parent branch id: %d\n", mux_port, _branch_id);
-                    if (mux_port == i)
-                    { flag=1; break; }
-                }
-                if (flag==0)
-                {
-                    list_iappend(unassigned_branches, i);
-                    fprintf(_fp, "// unassigned in branch %d\n", i);
-                }
+            if (z == pre_sel_latch) {
+                fprintf (_fp, "or_%s_%d.in[%d] = %s%d.co[%d].r;\n", vi->name, mux_id, ctr2, 
+                                    ring_block_prefix, split_block_id, ctr3);
+                ctr2++;
             }
+            ctr3++;
         }
-        Assert ((list_length(unassigned_branches) == or_size), "what the..");
-
-    // fprintf (stdout, "\ngot here 6: %d\n", need_mux);
-        // generate the mux if needed (looks like latch to downstream) and connect latch outputs correctly
-        int mux_id, i;
-        int j = 0;
-        if (need_mux) 
-        {   
-            mux_id = _gen_mux_block_id();
-            fprintf (_fp, "merge_mux_ohc_opt<%d,%d> %s%s_%d;\n", mux_size, vi->width, 
-                                                    capture_block_prefix, vi->name, iwrite+1);
-
-            // increase nwrite and iwrite for the variable so it can be connected to correctly downstream
-            vi->iwrite++; vi->nwrite++;
-            vi->latest_for_read = (vi->iwrite)-1;
-
-    // fprintf (stdout, "\ngot here 7: %d, %d\n", list_ivalue(list_first(vi->latest_latch_branches)), _branch_id);
-
-            while (!(list_isempty(vi->latest_latch_branches)) && (list_ivalue(list_first(vi->latest_latch_branches)) > _branch_id) )
+        Assert ((ctr2 == or_size || or_size == 1), "or size mismatch");
+        fprintf (_fp, "\n");
+        int ctr_mux_port = 0; bool once = false;
+        int ctr_sel_br = 0;
+        /*
+            map from selection branches to mux ports:
+            start at zero (mux port) and first branch (selection) and keep incrementing
+        */
+        for ( auto zz : l->merge_mux_inputs.at(ctr) )
+        {
+            // pre-split connection - do once
+            if ((zz == pre_sel_latch) && !once)
             {
-                list_delete_ihead(vi->latest_latch_branches);
-            } 
-            list_iappend_head (vi->latest_latch_branches, _branch_id-1);
-
-    // fprintf (stdout, "\ngot here 8\n");
-
-            lj = list_first(branch_map);
-            for ( int i=0 ; i<mux_size ; i++ )
+                // connect pre-split data to mux last data input
+                fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n", capture_block_prefix, vi->name, 
+                                                    mux_id, ctr_mux_port, (vi->width)-1,
+                                        capture_block_prefix, vi->name, pre_sel_latch);
+                // connect OR-gate output to mux input control
+                fprintf (_fp, "or_%s_%d.out = %s%s_%d.c[%d];\n\n", vi->name, mux_id,
+                                        capture_block_prefix, vi->name, mux_id, ctr_mux_port);
+                once = true;
+                ctr_mux_port++;
+                ctr_sel_br++;
+                continue;
+            }
+            else if (zz != pre_sel_latch) 
             {
-                // generate OR-gate if needed and connect to last input of mux, on last iteration
-                if (need_or && i == mux_size-1)
-                {   
-                    // generate OR-gate
-                    fprintf (_fp, "std::gates::ortree<%d, false> or_%s_%d;\n", or_size, vi->name, mux_id);
-                    // connect OR-gate inputs (merge_block inputs)
-                    for (listitem_t *lk = list_first(unassigned_branches) ; lk ; lk = list_next(lk))
-                    {
-                        // fprintf (_fp, "or_%s_%d.in[%d] = %s%d.ci[%d].r;\n", vi->name, mux_id, j, 
-                        //                     ring_block_prefix, merge_block_id, list_ivalue(lk)-_branch_id);
-                        fprintf (_fp, "or_%s_%d.in[%d] = %s%d.co[%d].r;\n", vi->name, mux_id, j, 
-                                            ring_block_prefix, split_block_id, list_ivalue(lk)-_branch_id);
-                        j++;
-                    }
-                    // connect pre-split data to mux last data input
-                    fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n", capture_block_prefix, vi->name, 
-                                                        iwrite+1, i, (vi->width)-1,
-                                            capture_block_prefix, vi->name, iwrite_pre);
-                    Assert ((iwrite_pre>=0), "latch id negative?");
-                    Assert ((iwrite+1)>=0, "latch id negative?");
-                    // connect OR-gate output to mux input
-                    fprintf (_fp, "or_%s_%d.out = %s%s_%d.c[%d];\n", vi->name, mux_id,
-                                            capture_block_prefix, vi->name, iwrite+1, i);
-                    break;
-                }
-
-                // connect mux input control and data
-                fprintf (_fp, "\n// BRANCH ID: %d\n", _branch_id);
-                // fprintf (_fp, "%s%s_%d.c[%d] = %s%d.ci[%d].r;\n", capture_block_prefix, vi->name, 
-                //                                     iwrite+1, i, ring_block_prefix, 
-                //                                         merge_block_id, list_ivalue(lj));
+                // connect mux input control
                 fprintf (_fp, "%s%s_%d.c[%d] = %s%d.co[%d].r;\n", capture_block_prefix, vi->name, 
-                                                    iwrite+1, i, ring_block_prefix, 
-                                                        split_block_id, list_ivalue(lj));
-                fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n",capture_block_prefix, vi->name, 
-                                                    iwrite+1, i, (vi->width)-1,
-                                        capture_block_prefix, vi->name, list_ivalue(list_next(lj)));
-                Assert ((iwrite+1)>=0, "latch id negative?");
-                Assert ((list_ivalue(list_next(lj)))>=0, "latch id negative?");
-                lj = list_next(list_next(lj));
+                                                        mux_id, ctr_mux_port, ring_block_prefix, 
+                                                    split_block_id, ctr_sel_br);
+                // connect mux input data
+                fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n\n",capture_block_prefix, vi->name, 
+                                                        mux_id, ctr_mux_port, (vi->width)-1,
+                                                    capture_block_prefix, vi->name, zz);
+                ctr_mux_port++;
             }
+            ctr_sel_br++;
         }
-        branch_ctr = 0;
-        latest_branch_id_prev = -1;
+        Assert (ctr_mux_port == mux_size, "mux size mismatch");
+        ctr++; 
     }
 
-    // fprintf (stdout, "\ngot here 10\n");
     if ( max_mux_size>0 ) {
         float max_delay = _lookup_mux_delays (max_mux_size, max_or_size);
-        // fprintf (_fp, "\nmax mux delay: %f", max_delay);
-        // fprintf (_fp, "\nmax mux size: %d", max_mux_size);
-        // fprintf (_fp, "\nmax or size: %d", max_or_size);
-        // Assert ((max_delay != -1), "mux lookup out of range" );
         if (max_delay == -1) {
+            // TODO: temporary large value for large muxes, gotta fix 
             max_delay = 2000;
         }
         return int(max_delay/(2*invx1_delay_ps)) + 1;

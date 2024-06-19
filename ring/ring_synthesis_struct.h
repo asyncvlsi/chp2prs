@@ -73,23 +73,29 @@ typedef struct latch_info {
   // ID for normal latches
   int latch_number; 
 
-  // live vars at this point (in for actions, out for selections)
-  // Length: (No. of live vars out of merge)
+  /*
+    Live vars at this point (in for actions, out for selections)
+    Length: (No. of live vars out of merge)
+  */
   list_t *live_vars;
 
-  // Used at merge-points.
-  // ID for merge muxes, one per var in live_vars.
-  // -1 if mux is not needed at this merge-point for this var.
-  // Dimensions: (No. of live vars out of merge)
+  /*
+    Used at merge-points.
+    ID for merge muxes, one per var in live_vars.
+    -1 if mux is not needed at this merge-point for this var.
+    Dimensions: (No. of live vars out of merge)
+  */
   std::vector<int> merge_mux_latch_number; 
 
-  // Input mapping for merge_muxes.
-  // Each vector contains the latch IDs of the 
-  // latch/mux that needs to be connected to 
-  // the input of this mux.
-  // One per merge mux that is needed.
-  // -1 if mux not needed.
-  // Dimensions: (No. of live vars out of merge)*(No. of branches in selection)
+  /*
+    Input mapping for merge_muxes.
+    Each vector contains the latch IDs of the 
+    latch/mux that needs to be connected to 
+    the input of this mux.
+    One per merge mux that is needed.
+    -1 if mux not needed.
+    Dimensions: (No. of live vars out of merge)*(No. of branches in selection)
+  */
   std::vector<std::vector<int>> merge_mux_inputs;
   
 } latch_info_t;

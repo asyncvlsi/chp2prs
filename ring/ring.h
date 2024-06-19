@@ -77,6 +77,8 @@ class RingEngine {
 
         void flow_assignments ();
         int _flow_assignments (act_chp_lang_t *, var_info *, int);
+
+        bool _check_all_muxes_mapped (act_chp_lang_t *, bool);
         // Merge mux info builder functions ---------
 
         // Internal helper functions
