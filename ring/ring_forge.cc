@@ -78,26 +78,36 @@ void RingForge::_run_forge_helper ()
     // yes, run twice :)
     lva->generate_live_var_info();
     lva->generate_live_var_info();
+
+    if (printt) fprintf (_fp, "\n/* \n");
+    if (printt) fprintf (_fp, "// Live Vars Info -----------------\n");
     if (printt) lva->print_live_var_info();
+    if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
     construct_var_infos ();
-    if (printt) print_var_infos (stdout);
+
+    if (printt) fprintf (_fp, "// Read/Write Info pre-mux gen ----\n");
+    if (printt) print_var_infos (_fp);
+    if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
     _construct_merge_latch_info (_c, 1);
-    if (printt) print_var_infos (stdout);
+    
+    if (printt) fprintf (_fp, "// Read/Write Info post-mux gen ---\n");
+    if (printt) print_var_infos (_fp);
+    if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
     compute_mergemux_info ();
-    if (printt) fprintf (_fp, "// Merge Mux Infos 1 --------------\n");
-    if (printt) print_merge_mux_infos(stdout, _c);
-    if (printt) fprintf (_fp, "// --------------------------------\n");
-    
-    if (printt) fprintf (_fp, "// Merge Mux Infos 2 --------------\n");
-    flow_assignments ();
-    if (printt) fprintf (_fp, "// --------------------------------\n");
 
-    if (printt) fprintf (_fp, "// Merge Mux Infos 3 --------------\n");
-    if (printt) print_merge_mux_infos(stdout, _c);
-    if (printt) fprintf (_fp, "// --------------------------------\n");
+    if (printt) fprintf (_fp, "// Merge Mux Info pre-mapping -----\n");
+    if (printt) print_merge_mux_infos(_fp, _c);
+    if (printt) fprintf (_fp, "// --------------------------------\n\n");
+    
+    flow_assignments ();
+
+    if (printt) fprintf (_fp, "// Merge Mux Info post-mapping ----\n");
+    if (printt) print_merge_mux_infos(_fp, _c);
+    if (printt) fprintf (_fp, "// --------------------------------\n\n");
+    if (printt) fprintf (_fp, "\n*/ \n");
 
     if ( _check_all_muxes_mapped(_c, false) ) { fatal_error("muxes not mapped fully"); }
 
