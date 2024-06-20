@@ -213,7 +213,6 @@ int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long ini
 {
     Assert (l->type == LatchType::Latch, "generate latch for non-assignment?");
     int latch_id = l->latch_number;
-    // list_iappend_head (v->latest_latch_branches, _branch_id);
     if (v->iwrite < v->nwrite)
     {
         if (init_val == -1)

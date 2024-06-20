@@ -881,7 +881,6 @@ void RingEngine::construct_var_infos ()
         v->nwrite = 0;
         v->iwrite = 0;
         v->latest_for_read = 0;
-        v->latest_latch_branches = list_new();
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
         
@@ -985,7 +984,6 @@ var_info *RingEngine::_deepcopy_var_info (var_info *v, int only_read_id)
     v_copy->nwrite = v->nwrite;
     v_copy->iread = v->iread;
     v_copy->iwrite = v->iwrite;
-    v_copy->latest_latch_branches = list_dup(v->latest_latch_branches);
   }
   return v_copy;
 }

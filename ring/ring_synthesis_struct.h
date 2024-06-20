@@ -52,10 +52,7 @@ struct var_info {
   
   int iread, iwrite;		// running counter used for muxing ( aka choosing the latch :) )
 
-  list_t *latest_latch_branches;
-
   int array_size;
-
 };
 
 /*
@@ -76,6 +73,7 @@ typedef struct latch_info {
   /*
     Live vars at this point (in for actions, out for selections)
     Length: (No. of live vars out of merge)
+    Not really used for actions
   */
   list_t *live_vars;
 
@@ -93,7 +91,8 @@ typedef struct latch_info {
     latch/mux that needs to be connected to 
     the input of this mux.
     One per merge mux that is needed.
-    -1 if mux not needed.
+    -1 if input is ID is not known yet.
+    All input IDs must be known before synthesis.
     Dimensions: (No. of live vars out of merge)*(No. of branches in selection)
   */
   std::vector<std::vector<int>> merge_mux_inputs;
