@@ -1,0 +1,17 @@
+import "5decomp.act";
+
+defproc test ()
+{
+    chan(int) X1, Y1, Y2;
+    mc5 m(X1, Y1, Y2);
+
+    int y1,y2,y3;
+
+    chp {
+        (X1!0 ; X1!5 ; X1!7) , (Y1?y1) , (Y2?y2 ; Y2?y3) ;
+        [ y1=7 & y2=5 & y3=6 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+

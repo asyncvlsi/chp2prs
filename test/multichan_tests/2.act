@@ -1,0 +1,7 @@
+defproc mc2 (chan?(int) A; chan!(int) B)
+{
+    int x, y;
+    chp {
+        *[ A?x ;  y:=2,B!x ; B!(x+y) ]
+    }
+}

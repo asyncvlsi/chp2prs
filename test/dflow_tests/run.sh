@@ -64,7 +64,7 @@ do
            myecho ".[$bname]"
         fi
         ok=1
-        for opt in "-d" "-dO"
+        for opt in "-F dataflow" "-O -F dataflow"
 	do
         if [ $ok -eq 1 ]
         then

@@ -32,7 +32,7 @@ void MultiChan::process_multichans()
 {
     _build_multichan_info (g->graph.m_seq);
     _delete_singles ();
-    _print_multichan_info ();
+    // _print_multichan_info ();
 
     for ( auto cbp : mc_info )
     {
@@ -46,17 +46,17 @@ void MultiChan::process_multichans()
         Assert(alias_number == cbp.second.size(), "hmm");
         auto final_state = _build_state_table (g->graph.m_seq, cbp.first, 0);
         _st.push_back (StateRow(final_state, 0));
-        _print_state_table (_st);
+        // _print_state_table (_st);
 
         alias_number = tmp;
         Assert(alias_number == cbp.second.size(), "hmm");
 
         _optimize_state_table();
-        _print_state_table (_st);
+        // _print_state_table (_st);
         Assert(alias_number == cbp.second.size(), "hmm");
         
         _re_encode_states ();
-        _print_state_table (_st);
+        // _print_state_table (_st);
 
         alias_number = tmp;
         Assert(alias_number == cbp.second.size(), "hmm");
@@ -65,7 +65,7 @@ void MultiChan::process_multichans()
         v_aux.push_back(aux);
         _st.clear();
     }
-    _print_multichan_info ();
+    // _print_multichan_info ();
 }
 
 int MultiChan::_gen_alias_number ()
@@ -255,7 +255,7 @@ void MultiChan::_update_with_aliases (Sequence seq, ChanId id)
 
 void MultiChan::_replace_with_alias (Block *b, ChanId alias_chan)
 {
-    fprintf (fp, "\nreplacing with alias..\n");
+    // fprintf (fp, "\nreplacing with alias..\n");
     Assert (b->type() == BlockType::Basic, "non-basic block");
     Assert ((b->u_basic().stmt.type() == StatementType::Receive) 
         || (b->u_basic().stmt.type() == StatementType::Send), "non-comm. action");
@@ -401,7 +401,7 @@ int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
             ns_i.clear();
             ns_o.clear();
             auto merge_state = _gen_alias_number();
-            fprintf (fp, "\n merge state : %d \n", merge_state);
+            // fprintf (fp, "\n merge state : %d \n", merge_state);
             for (auto &branch : curr->u_select().branches) {
                 auto next_state = _gen_alias_number();
                 ns_i.push_back(next_state);
@@ -482,7 +482,7 @@ void MultiChan::_optimize_state_table ()
         {
             if (sr.c == Cond::True) // and if unconditional state update
             {
-                fprintf (fp, "\nremoving row with curr = %d\n", sr.curr);
+                // fprintf (fp, "\nremoving row with curr = %d\n", sr.curr);
                 _replace_next_states (sr.curr, sr.nexts.front()); 
                 sr.c = Cond::Dead; // mark for removal
             }

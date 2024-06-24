@@ -81,6 +81,87 @@ class RingSynth : public ActSynthesize {
     fatal_error ("bool chans not supported, use chan(int<1>) instead");
   }
 
+  void runPreSynth (ActPass *ap, Process *p) {
+    int chpopt, bundled, dm, decomp;
+    ActDynamicPass *dp;
+
+    dp = dynamic_cast <ActDynamicPass *> (ap);
+    Assert (dp, "What?");
+
+    chpopt = dp->getIntParam ("chp_optimize");
+    decomp = dp->getIntParam ("decomp");
+    bundled = dp->getIntParam ("bundled_dpath");
+    dm = dp->getIntParam ("delay_margin");
+
+    char *dfile = (char *)(dp->getPtrParam ("decompfile"));
+    FILE *dfp = fopen (dfile, "a");
+
+    if (decomp) { // opt + decomp
+    if (p->getlang() && p->getlang()->getchp()) {
+      auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
+						p->CurScope ());
+
+      if (chpopt) {
+        ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
+      }
+      else {
+        ChpOptimize::optimize_chp_O0 (g.graph, p->getName(), false);
+        ChpOptimize::eliminateDeadCode (g.graph);
+      }
+      uninlineBitfieldExprsHack (g.graph);
+
+      std::vector<ActId *> newnames;
+      act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
+      p->getlang()->getchp()->c = l;
+    
+      MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
+      mc->process_multichans();
+      auto vs = mc->get_auxiliary_procs();
+
+      l = chp_graph_to_act (g, newnames, p->CurScope());
+
+#if 0
+      BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
+      bkp->mark_breakpoints();
+      // bkp->print_decomp_info();
+
+      ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
+                                bkp->get_decomp_info_map(), p->CurScope());
+      cb->chop_graph();
+      // cb->excise_internal_loops();
+      auto vs = cb->get_chopped_seqs();
+#endif
+
+      act_chp_lang_t *decomp;
+      NEW (decomp, act_chp_lang_t);
+      decomp->type = ACT_CHP_COMMA;
+      list_t *decomp_procs = list_new();
+
+      if (vs.empty()) {
+        p->getlang()->getchp()->c = l;
+      }
+      else {
+        list_append(decomp_procs, l);
+
+        for (auto v : vs)
+        {
+          GraphWithChanNames gc;
+          gc.graph.id_pool() = g.graph.id_pool();
+          gc.graph.m_seq = v;
+          gc.name_from_chan = g.name_from_chan;  
+          // std::vector<ActId *> newnames;
+          act_chp_lang_t *l1 = chp_graph_to_act (gc, newnames, p->CurScope());
+          list_append(decomp_procs, l1);
+          fprintf (_pp->fp, "\n\n");
+        }
+        decomp->u.semi_comma.cmd = decomp_procs;
+        p->getlang()->getchp()->c = decomp;
+      }
+    }
+      p->Print(dfp);
+    }
+  }
+
   void runSynth (ActPass *ap, Process *p) {
     pp_printf (_pp, "/* synthesis output */");
     pp_forced (_pp, 0);
@@ -99,121 +180,15 @@ class RingSynth : public ActSynthesize {
     bundled = dp->getIntParam ("bundled_dpath");
     dm = dp->getIntParam ("delay_margin");
 
-    if (0) { // opt + decomp
-    if (p->getlang() && p->getlang()->getchp()) {
-      auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
-						p->CurScope ());
+    act_chp_lang_t *c = p->getlang()->getchp()->c;
 
-      if (chpopt) {
-        ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
-      }
-      else {
-        ChpOptimize::optimize_chp_O0 (g.graph, p->getName(), false);
-        ChpOptimize::eliminateDeadCode (g.graph);
-        // ChpOptimize::propagateConstants (g.graph);
-      }
-      uninlineBitfieldExprsHack (g.graph);
-
-      std::vector<ActId *> newnames;
-      act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
-      p->getlang()->getchp()->c = l;
-    
-      for (auto id : newnames) {
-        InstType *it = p->CurScope()->Lookup (id->getName());
-        if (TypeFactory::isBoolType (it)) {
-          fatal_error ("no bools");
-        }
-        else {
-          pp_printf (_pp, "bd_int<%d> %s;",
-              TypeFactory::bitWidth (it), id->getName());
-          pp_forced (_pp, 0);
-          // p->CurScope()->Add (id->getName(), it);
-        }
-      }
-      fprintf (stdout, "\n\noriginal chp-----");
-      fprintf (stdout, "\n\n");
-      chp_print(stdout, l);
-      fprintf (stdout, "\n\noriginal chp-----\n\n");
-
-
-      MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
-      mc->process_multichans();
-      auto vs = mc->get_auxiliary_procs();
-
-      l = chp_graph_to_act (g, newnames, p->CurScope());
-      fprintf (_pp->fp, "\n\n");
-      chp_pretty_print(_pp->fp, l);
-      fprintf (_pp->fp, "\n\n");
-
-#if 0
-#if 0
-      BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
-      bkp->mark_breakpoints();
-      // bkp->print_decomp_info();
-
-      ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
-                                bkp->get_decomp_info_map(), p->CurScope());
-      cb->chop_graph();
-      // cb->excise_internal_loops();
-      auto vs = cb->get_chopped_seqs();
-#endif
-      // fprintf (stdout, "\n\ndecomposed processes ----------- \n");
-      act_chp_lang_t *decomp;
-      NEW (decomp, act_chp_lang_t);
-      decomp->type = ACT_CHP_COMMA;
-      list_t *decomp_procs = list_new();
-      list_append(decomp_procs, l);
-
-      for (auto v : vs)
-      {
-        GraphWithChanNames gc;
-        gc.graph.id_pool() = g.graph.id_pool();
-        gc.graph.m_seq = v;
-        gc.name_from_chan = g.name_from_chan;  
-        // std::vector<ActId *> newnames;
-        act_chp_lang_t *l = chp_graph_to_act (gc, newnames, p->CurScope());
-        list_append(decomp_procs, l);
-        fprintf (_pp->fp, "\n\n");
-        chp_pretty_print(_pp->fp, l);
-        // for (auto id : newnames) {
-        //   InstType *it = p->CurScope()->Lookup (id->getName());
-        //   if (TypeFactory::isBoolType (it)) {
-        //     // pp_printf (_pp, "syn::sdtboolvar %s;", id->getName());
-        //     // pp_forced (_pp, 0);
-        //     fatal_error ("no bools");
-        //   }
-        //   else {
-        //     pp_printf (_pp, "bd_int<%d> %s;",
-        //         TypeFactory::bitWidth (it), id->getName());
-        //     pp_forced (_pp, 0);
-        //     // p->CurScope()->Add (id->getName(), it);
-        //   }
-        // }
-      }
-      decomp->u.semi_comma.cmd = decomp_procs;
-      p->getlang()->getchp()->c = decomp;
-
-      // fprintf (stdout, "\n\nfull print ----------- \n\n");
-      // p->Print(stdout);
-      // fprintf (stdout, "\n\nfull print ----------- \n\n");
-      
-      /*
-      */
-#endif
-
-    }
-    }
-
-    act_chp_lang_t *c = p->getlang()->getchp()->c;  
-    // fprintf (stdout, "\n\noriginal chp");
-    // fprintf (stdout, "\n\n");
-    // chp_print (stdout, c);
-    // fprintf (stdout, "\n\n");
     // core synthesis functions here
-    bool synthesize = true;
+    int synthesize;
+    synthesize = dp->getIntParam ("synthesize");
+
     if (synthesize)
     {
-      Assert (c, "hmm c");
+      Assert (c, "hmm no chp lol - something went wrong");
       mangle_init();
       fill_in_else_explicit (c, p, 1);
 
@@ -230,16 +205,10 @@ class RingSynth : public ActSynthesize {
       //   rf->run_forge();
 
       rf->run_forge();
+
+      revert_mangle();
     }
     
-    revert_mangle();
-    /*
-    ChpOptimize::putIntoNewStaticTokenForm (cg.graph);
-    auto d = ChpOptimize::chp_to_dataflow(cg.graph);
-    std::vector<ActId *> res;
-    act_dataflow *newd = dataflow_to_act (d, cg, res, p->CurScope());
-    dflow_print (stdout, newd);
-    */
     fprintf (_pp->fp, "\n\n");
     fprintf (_pp->fp, "/* end rsyn */\n");
     

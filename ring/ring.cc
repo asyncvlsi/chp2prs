@@ -106,7 +106,7 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
 
   case ACT_CHP_RECV:
     // v = _var_getinfo (c->u.comm.chan);
-    if (id->isEqual(c->u.comm.var))
+    if ((c->u.comm.var) && id->isEqual(c->u.comm.var))
     { 
       Assert ((latch_info_t *)(c->space), "hmm2");
       (((latch_info_t *)(c->space))->latch_number) = v->nwrite;
@@ -259,6 +259,9 @@ bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
     return (!strcmp(tname, name));
     break;
   case ACT_CHP_RECV:
+    if (!c->u.comm.var) {
+      return false;
+    }
     get_true_name (tname, c->u.comm.var, s, true);
     return (!strcmp(tname, name));
     break;
@@ -400,6 +403,7 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
   case ACT_CHP_RECV:
   {
     ActId *id = branch->u.comm.var;
+    if (!id) return latch_number;
     char tname[1024];
     get_true_name (tname, id, s, true);
     if (!strcmp(tname, vi->name)) {
@@ -602,6 +606,7 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
     break;
   case ACT_CHP_RECV:
     if (c->space) {
+      if (!(c->u.comm.var)) break;
       get_true_name (tname, c->u.comm.var, s, true);
       if (!strcmp(tname, vi->name)) {
         latest = ((latch_info_t *)(c->space))->latch_number;

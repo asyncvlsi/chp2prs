@@ -2,7 +2,7 @@
 
 echo
 echo "************************************************************************"
-echo "*                       Testing ring synthesis                         *"
+echo "*                 Testing multi-channel decomposition                  *"
 echo "************************************************************************"
 echo
 
@@ -55,7 +55,7 @@ myecho " "
 num=0
 count=0
 lim=10
-while [ -f ${count}.act ]
+while [ -f ${count}tst.act ]
 do
 	orig=${count}
         i=${count}.act
@@ -73,11 +73,11 @@ do
 	do
         if [ $ok -eq 1 ]
         then
-	$ACTTOOL $opt -E abc -e runs/${orig}_expr.act -d runs/${orig}decomp.act  -p testproc $i > runs/${orig}_ring.act  2>runs/$i.t.stderr
+	$ACTTOOL $opt -E abc -X -e runs/${orig}_expr.act -d runs/${orig}decomp.act -p mc${orig} $i > runs/${orig}_ring.act  2>runs/$i.t.stderr
         if test -s runs/$i.t.stderr 
         then
                 echo 
-                myecho "** FAILED SYNTHESIS, $opt TEST $i: stderr"
+                myecho "** FAILED MULTICHANNEL DECOMPOSITION, $opt TEST $i: stderr"
                 fail=`expr $fail + 1`
                 ok=0
                 if [ ! x$ACT_TEST_VERBOSE = x ]; then
@@ -92,9 +92,9 @@ do
 		then
 			if [ $code -eq 2 ]
 			then
-				myecho "** FAILED RING, TEST $i"
+				myecho "** FAILED MULTICHANNEL DECOMPOSITION, TEST $i"
 			else
-				myecho "** FAILED SIMULATION, $opt TEST $i"
+				myecho "** FAILED MULTICHANNEL SIMULATION, $opt TEST $i"
 			fi
 			fail=`expr $fail + 1`
 			ok=0

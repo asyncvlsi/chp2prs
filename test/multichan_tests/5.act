@@ -1,0 +1,16 @@
+defproc mc5 (chan?(int) A; chan!(int) B, C)
+{
+    int x, y;
+    chp {
+        *[ 
+            A?x ; 
+            [ x=0 -> A?y ; C!y ; 
+                            [ x=0 -> A?x
+                            []x=1 -> y:=0
+                            ]
+            []x=1 -> y:=1 
+            ];
+            B!x ; C!(y+1)
+        ]
+    }
+}

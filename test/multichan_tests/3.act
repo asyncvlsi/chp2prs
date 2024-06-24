@@ -1,0 +1,7 @@
+defproc mc3 (chan?(int) A; chan!(int) B, C)
+{
+    int x, y;
+    chp {
+        *[ A?x ; B!(x+1) ; B!(x+2) ; C!(x+3) ; C!(x+4) ]
+    }
+}
