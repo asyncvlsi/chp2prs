@@ -12,19 +12,20 @@ The options are:
 
    * `-h` : show this message
    * `-O` : run CHP optimizations. Requires the chp-opt package.
-   * `-F dataflow|sdt|ring` : select synthesis output format
-      * `dataflow` : dataflow output generation
-      * `sdt` : syntax-directed translation for prs generation
-      * `ring` : ring-based synthesis for prs generation; implies bundled data output
-   * `-d` : generate dataflow output [deprecated, use `-F dataflow`])
-   * `-R` : synthesize with ring approach [deprecated, use `-F ring`]
-   * `-b` : use bundled data datapath for SDT (default is QDI)
+   * `-X` : decompose CHP and stop.
+   * `-F dataflow|sdt|ring` : select synthesis output format.
+      * `dataflow` : dataflow output generation.
+      * `sdt` : syntax-directed translation for prs generation.
+      * `ring` : ring-based synthesis for prs generation; implies bundled data output.
+   * `-R` : synthesize with ring approach. [deprecated, use `-F ring`]
+   * `-b` : use bundled data datapath for SDT. Default is QDI.
    * `-m <int>` : matched delay-line multiplier (in percentage) for ring synthesis. Default is 100 (1x).
-   * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. The default is `expr.act`
+   * `-d <dfile>` : save decomposed CHP into `<dfile>`. Default is `decomp.act`. [for ring synthesis only]
+   * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. Default is `expr.act`
    * `-E abc|yosys|genus` : run expression optimization using the specified logic synthesis engine.
    * `-p <proc>` : the name of the ACT process to be translated (the top-level process). This is required.
    * `-o <file>` : where the result should be saved. Default is stdout.
-   * `<actfile>` : the input ACT file that contains the design
+   * `<actfile>` : the input ACT file that contains the design.
 
 
 ### Installation
