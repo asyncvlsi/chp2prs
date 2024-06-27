@@ -38,10 +38,11 @@ static void usage(char *name)
   fprintf (stderr, "        * dataflow : dataflow output\n");
   fprintf (stderr, "        * sdt : syntax-directed translation prs output\n");
   fprintf (stderr, "        * ring : ring-based synthesis prs output [implies bundled data]\n");
+  fprintf (stderr, "        * decomp : decomposition - CHP-to-CHP\n");
   fprintf (stderr, " -R : synthesize with ring approach [deprecated, use -F ring]\n");
   fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI)\n");
+  fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
-  fprintf (stderr, " -d <file> : save decomposed CHP into <file> [for ring synthesis only] [default: decomp.act]\n");
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   fprintf (stderr, "-E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
@@ -55,10 +56,8 @@ int main(int argc, char **argv)
   char *proc;
   bool chpopt = false;
   bool decompose = false;
-  bool synthesize = true;
   bool bundled = false;
   char *exprfile = NULL;
-  char *decompfile = NULL;
   FILE *dfile;
   char *syntesistool = NULL;
   int external_opt = 0;
@@ -74,7 +73,7 @@ int main(int argc, char **argv)
   bool use_ring = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "RhXObd:e:E:o:p:F:m:")) != -1) {
+  while ((ch = getopt (argc, argv, "RhObde:E:o:p:F:m:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -86,6 +85,9 @@ int main(int argc, char **argv)
       else if (!strcmp (optarg, "sdt")) {
 	use_ring = false;
 	dflow = false;
+      }
+      else if (!strcmp (optarg, "decomp")) {
+	decompose = true;
       }
       else {
 	fprintf (stderr, "Unknown synthesis output format: %s\n", optarg);
@@ -109,9 +111,9 @@ int main(int argc, char **argv)
       procname = Strdup (optarg);
       break;
       
-    // case 'd':
-    //   dflow = true;
-    //   break;
+    case 'd':
+      dflow = true;
+      break;
       
     case 'o':
       if (outfile) {
@@ -122,11 +124,6 @@ int main(int argc, char **argv)
 
     case 'O':
       chpopt = true;
-      break;
-
-    case 'X':
-      decompose = true;
-      synthesize = false;
       break;
       
     case 'b':
@@ -140,12 +137,12 @@ int main(int argc, char **argv)
       exprfile = Strdup (optarg);
       break;
       
-    case 'd':
-      if (decompfile) {
-        FREE (decompfile);
-      }
-      decompfile = Strdup (optarg);
-      break;
+    // case 'd':
+    //   if (decompfile) {
+    //     FREE (decompfile);
+    //   }
+    //   decompfile = Strdup (optarg);
+    //   break;
       
     case 'E':
       external_opt = 1;
@@ -215,10 +212,6 @@ int main(int argc, char **argv)
     exprfile = Strdup ("expr.act");
   }
 
-  if (!decompfile && use_ring) {
-    decompfile = Strdup ("decomp.act");
-  }
-
   if (dflow) {
     c2p->setParam ("engine", (void *) gen_df_engine);
     c2p->setParam ("prefix", (void *)Strdup ("df"));
@@ -228,11 +221,10 @@ int main(int argc, char **argv)
       c2p->setParam ("engine", (void *) gen_ring_engine);
       c2p->setParam ("prefix", (void *)Strdup ("ring"));
       c2p->setParam ("delay_margin", delay_margin);
-      c2p->setParam ("decomp", decompose);
-      c2p->setParam ("synthesize", synthesize);
-      c2p->setParam ("decompfile", (void *) decompfile);
-      dfile = fopen(decompfile, "w");
-      fclose (dfile);
+    }
+    else if (decompose) {
+      c2p->setParam ("engine", (void *) gen_decomp_engine);
+      c2p->setParam ("prefix", (void *)Strdup ("decomp"));
     }
     else {
       c2p->setParam ("engine", (void *) gen_sdt_engine);

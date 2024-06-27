@@ -27,7 +27,7 @@ CPPSTD=c++20
 
 OBJS1=main.o
 
-OBJS2=main2.o sdt_engine.o df_engine.o ring_engine.o
+OBJS2=main2.o sdt_engine.o df_engine.o ring_engine.o decomp_engine.o
 
 OBJS=$(OBJS1) $(OBJS2)
 

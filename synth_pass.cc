@@ -401,7 +401,7 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
       pp_forced (pp, 0);
     }
     else {
-      syn->runPreSynth (ap, p);
+      // syn->runPreSynth (ap, p);
       int v = emit_refinement_header (syn, p);
     }
     pp_endb (pp);

@@ -35,6 +35,12 @@ ActSynthesize *gen_ring_engine (const char *prefix,  char *infile,
 				char *outfile, char *exprfile);
 
 /**
+ * CHP decomposition engine generator
+ */
+ActSynthesize *gen_decomp_engine (const char *prefix,  char *infile,
+				char *outfile, char *exprfile);
+
+/**
  * Dataflow synthesis engine generator
  */
 ActSynthesize *gen_df_engine (const char *prefix,  char *infile,
