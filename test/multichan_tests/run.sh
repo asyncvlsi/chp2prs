@@ -69,11 +69,11 @@ do
            myecho ".[$bname]"
         fi
         ok=1
-        for opt in "-F ring"
+        for opt in "-F decomp"
 	do
         if [ $ok -eq 1 ]
         then
-	$ACTTOOL $opt -E abc -X -e runs/${orig}_expr.act -d runs/${orig}decomp.act -p mc${orig} $i > runs/${orig}_ring.act  2>runs/$i.t.stderr
+	$ACTTOOL $opt -E abc -e runs/${orig}_expr.act -p mc${orig} $i > runs/${orig}decomp.act  2>runs/$i.t.stderr
         if test -s runs/$i.t.stderr 
         then
                 echo 

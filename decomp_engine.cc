@@ -91,7 +91,34 @@ class Decomp : public ActSynthesize {
       auto vs = mc->get_auxiliary_procs();
 
       l = chp_graph_to_act (g, newnames, p->CurScope());
-
+      for (auto id : newnames) {
+        InstType *it = p->CurScope()->Lookup (id->getName());
+        if (TypeFactory::isBoolType (it)) {
+          pp_printf (_pp, "bool %s;", id->getName());
+          pp_forced (_pp, 0);
+        }
+        else {
+          pp_printf (_pp, "int<%d> %s;",
+              TypeFactory::bitWidth (it), id->getName());
+          pp_forced (_pp, 0);
+        }
+      }
+      for ( auto x : g.name_from_chan ) {
+        const char *channame = (x.second)->getName();
+        InstType *it = p->CurScope()->Lookup (channame);
+        // TODO: there may be a better way to check for new channels..
+        if (strncmp(channame, "_ch", 3) == 0) {
+          if (TypeFactory::isBoolType (it)) {
+            pp_printf (_pp, "chan(bool) %s;", channame);
+            pp_forced (_pp, 0);
+          }
+          else {
+            pp_printf (_pp, "chan(int<%d>) %s;",
+                TypeFactory::bitWidth (it), channame);
+            pp_forced (_pp, 0);
+          }
+        }
+      }
 #if 0
       BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
       bkp->mark_breakpoints();
@@ -121,8 +148,22 @@ class Decomp : public ActSynthesize {
           gc.graph.id_pool() = g.graph.id_pool();
           gc.graph.m_seq = v;
           gc.name_from_chan = g.name_from_chan;  
-          // std::vector<ActId *> newnames;
+          std::vector<ActId *> newnames;
+
           act_chp_lang_t *l1 = chp_graph_to_act (gc, newnames, p->CurScope());
+          for (auto id : newnames) {
+            InstType *it = p->CurScope()->Lookup (id->getName());
+            if (TypeFactory::isBoolType (it)) {
+              pp_printf (_pp, "bool %s;", id->getName());
+              pp_forced (_pp, 0);
+            }
+            else {
+              pp_printf (_pp, "int<%d> %s;",
+                  TypeFactory::bitWidth (it), id->getName());
+              pp_forced (_pp, 0);
+            }
+          }
+
           list_append(decomp_procs, l1);
           fprintf (_pp->fp, "\n\n");
         }
