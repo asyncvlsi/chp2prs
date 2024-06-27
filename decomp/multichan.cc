@@ -157,7 +157,7 @@ void MultiChan::_print_multichan_info ()
             switch (itr2.first->u_basic().stmt.type()) 
             {
                 case StatementType::Receive:
-                fprintf (fp, "%s?(varid:%d)  ", chname2, itr2.first->u_basic().stmt.u_receive().var);
+                fprintf (fp, "%s?(varid:%llu)  ", chname2, itr2.first->u_basic().stmt.u_receive().var._getId());
                 break;
 
                 case StatementType::Send:

@@ -34,11 +34,15 @@ void chp_pretty_print (FILE *fp, act_chp_lang_t *c)
 static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec = 0, int indent = 1)
 {
   int lprec;
+  char *ib;
   
   if (!c) return;
-
-  char ib[indent];
+  if (indent < 0) {
+    indent = 0;
+  }
+  MALLOC (ib, char, indent+1);
   memset(ib, ' ', indent);
+  ib[indent] = '\0';
 
   if (c->label) {
     fprintf (fp, "%s:", c->label);
@@ -314,4 +318,5 @@ static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec = 0, int in
     fatal_error ("Unknown type");
     break;
   }
+  FREE (ib);
 }
