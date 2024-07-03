@@ -198,7 +198,8 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
             b = hash_lookup (var_infos, var_name);
             Assert (b, "No var info?");
             vi = (var_info *)b->v;
-            latch_id = _generate_single_latch (vi, -1);
+            Assert ((stmt1->space), "No latch info? (_run_forge)");
+            latch_id = _generate_single_latch (vi, (latch_info_t *)(stmt1->space), -1);
         }
 
         // generate pipe element according to second action
@@ -236,17 +237,17 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
     case ACT_CHP_ASSIGN:
     case ACT_CHP_ASSIGNSELF:
     case ACT_CHP_SEND:
-            block_id = _generate_pipe_element (c, -1);
-            _terminate_port (block_id, Port::M1, Term::Source);
-            _terminate_port (block_id, Port::P1, Term::Sink);
-            break;
+        block_id = _generate_pipe_element (c, -1);
+        _terminate_port (block_id, Port::M1, Term::Source);
+        _terminate_port (block_id, Port::P1, Term::Sink);
+        break;
 
     case ACT_CHP_RECV:
-            block_id = _generate_pipe_element (c, -1);
-            _terminate_port (block_id, Port::M1, Term::Source);
-            _terminate_port (block_id, Port::P1, Term::Sink);
-            _terminate_port (block_id, Port::Zero, Term::Sink);
-            break;
+        block_id = _generate_pipe_element (c, -1);
+        _terminate_port (block_id, Port::M1, Term::Source);
+        _terminate_port (block_id, Port::P1, Term::Sink);
+        _terminate_port (block_id, Port::Zero, Term::Sink);
+        break;
         
     case ACT_CHP_FUNC:
     case ACT_CHP_HOLE: /* to support verification */

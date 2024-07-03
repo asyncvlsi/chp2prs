@@ -30,11 +30,11 @@ enum class Port { M1, Zero, P1 };
 enum class Term { Sink, Source };
 
 static const std::set<std::vector<Action>> valid_signatures = 
-    {   
-        {Action::Send},
-        {Action::Receive},
-        // {Action::Receive, Action::Send} : gotta figure out if need half/full buffer..
-    };
+{   
+    {Action::Send},
+    {Action::Receive},
+    // {Action::Receive, Action::Send} // gotta figure out if need half/full buffer..
+};
 
 class TinyForge : public RingForge {
     public: 
