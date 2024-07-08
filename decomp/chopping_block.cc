@@ -540,17 +540,17 @@ void ChoppingBlock::_excise_internal_loops(Sequence seq, int root)
         if (root != 1) 
         {
             _excise_internal_loops (curr->u_doloop().branch, 0);
-            fprintf(stdout, "\nexcising internal loop \n");
+            // fprintf(stdout, "\nexcising internal loop \n");
             tmp = curr->child();
             _excise_loop(curr);
             tmp = tmp->parent();
         }
         else {
             _excise_internal_loops (curr->u_doloop().branch, 0); 
-            if (!seq.empty())
-            {   
-                v_seqs.push_back (seq);
-            }
+            // if (!seq.empty())
+            // {   
+            //     v_seqs.push_back (seq);
+            // }
             return;
         }
         break;
@@ -601,7 +601,7 @@ Block *ChoppingBlock::_excise_loop (Block *curr)
 
     send_from_loop = _generate_send_to_be_sent_from (curr);
     if (send_from_loop) {
-        recv_from_loop = _generate_recv_and_maybe_assigns (send_from_loop, LIVE_IN);
+        recv_from_loop = _generate_recv_and_maybe_assigns (send_from_loop, LIVE_OUT);
         switch(recv_from_loop.first)
         {
             case 0:

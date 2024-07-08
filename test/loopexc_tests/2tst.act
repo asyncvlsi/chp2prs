@@ -1,0 +1,17 @@
+import "2decomp.act";
+
+defproc test ()
+{
+    chan(int) X1, X2, Y;
+    decomp_le2 m(X1,X2,Y);
+
+    int y1,y2;
+
+    chp {
+        (X1!100 ; X1!45) , (X2!15 ; X2!18) , (Y?y1 ; Y?y2) ;
+        [ y1=5 & y2=9 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+

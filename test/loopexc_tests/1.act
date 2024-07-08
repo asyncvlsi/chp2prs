@@ -1,0 +1,11 @@
+defproc le1 (chan?(int) A, C; chan!(int) D)
+{
+	int x, y;
+	chp {
+		x:=0;
+		*[
+			*[x=0 -> C?x;D!x];
+			A?y
+		 ] 
+	}
+}

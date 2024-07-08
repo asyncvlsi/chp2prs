@@ -1,0 +1,23 @@
+defproc le3 (chan?(int<8>) X0; chan?(int<8>) X1; chan?(int<8>) Y0; chan?(int<8>) Y1; chan!(int<8>) Px; chan!(int<8>) Py)
+{
+	int<8> x0, x1, y0, y1;
+	int<8> D, dy, dx;
+	int<8> x, y;
+
+	chp {
+		*[
+			X0?x0; X1?x1; Y0?y0; Y1?y1; 
+			dy := y1-y0;
+			dx := x1-x0;
+			D := 2*dy - dx;
+			y := y0; x:= x0;
+			*[ x<=x1 -> Px!x, Py!y ; 
+					   [ D>0 -> y := y+1; D := D-(2*dx) 
+					  [] else-> skip 
+					   ]; 
+					   D := D + 2*dy ; 
+					   x := x+1
+			 ]
+		]
+	}
+}

@@ -86,9 +86,21 @@ class Decomp : public ActSynthesize {
       act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
       p->getlang()->getchp()->c = l;
     
+      std::vector<Sequence> vs, vs1;
+#if 0
       MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
       mc->process_multichans();
-      auto vs = mc->get_auxiliary_procs();
+      vs = mc->get_auxiliary_procs();
+
+      BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
+      bkp->mark_breakpoints();
+
+      ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
+                                bkp->get_decomp_info_map(), p->CurScope());
+      // cb->chop_graph();
+      cb->excise_internal_loops();
+      vs1 = cb->get_chopped_seqs();
+#endif
 
       l = chp_graph_to_act (g, newnames, p->CurScope());
       for (auto id : newnames) {
@@ -119,56 +131,48 @@ class Decomp : public ActSynthesize {
           }
         }
       }
-#if 0
-      BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
-      bkp->mark_breakpoints();
-      // bkp->print_decomp_info();
-
-      ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
-                                bkp->get_decomp_info_map(), p->CurScope());
-      // cb->chop_graph();
-      cb->excise_internal_loops();
-      auto vs = cb->get_chopped_seqs();
-#endif
 
       act_chp_lang_t *decomp;
       NEW (decomp, act_chp_lang_t);
       decomp->type = ACT_CHP_COMMA;
       list_t *decomp_procs = list_new();
 
-      if (vs.empty()) {
+      if (vs.empty() && vs1.empty()) {
         p->getlang()->getchp()->c = l;
       }
       else {
         list_append(decomp_procs, l);
 
-        for (auto v : vs)
+        for ( auto vv : {vs,vs1} ) 
         {
-          GraphWithChanNames gc;
-          gc.graph.id_pool() = g.graph.id_pool();
-          gc.graph.m_seq = v;
-          gc.name_from_chan = g.name_from_chan;  
-          std::vector<ActId *> newnames;
+          for (auto v : vv)
+          {
+            GraphWithChanNames gc;
+            gc.graph.id_pool() = g.graph.id_pool();
+            gc.graph.m_seq = v;
+            gc.name_from_chan = g.name_from_chan;  
+            std::vector<ActId *> newnames;
 
-          act_chp_lang_t *l1 = chp_graph_to_act (gc, newnames, p->CurScope());
-          for (auto id : newnames) {
-            InstType *it = p->CurScope()->Lookup (id->getName());
-            if (TypeFactory::isBoolType (it)) {
-              pp_printf (_pp, "bool %s;", id->getName());
-              pp_forced (_pp, 0);
+            act_chp_lang_t *l1 = chp_graph_to_act (gc, newnames, p->CurScope());
+            for (auto id : newnames) {
+              InstType *it = p->CurScope()->Lookup (id->getName());
+              if (TypeFactory::isBoolType (it)) {
+                pp_printf (_pp, "bool %s;", id->getName());
+                pp_forced (_pp, 0);
+              }
+              else {
+                pp_printf (_pp, "int<%d> %s;",
+                    TypeFactory::bitWidth (it), id->getName());
+                pp_forced (_pp, 0);
+              }
             }
-            else {
-              pp_printf (_pp, "int<%d> %s;",
-                  TypeFactory::bitWidth (it), id->getName());
-              pp_forced (_pp, 0);
-            }
+
+            list_append(decomp_procs, l1);
+            fprintf (_pp->fp, "\n\n");
           }
-
-          list_append(decomp_procs, l1);
-          fprintf (_pp->fp, "\n\n");
         }
-        decomp->u.semi_comma.cmd = decomp_procs;
-        p->getlang()->getchp()->c = decomp;
+          decomp->u.semi_comma.cmd = decomp_procs;
+          p->getlang()->getchp()->c = decomp;
       }
     }
 

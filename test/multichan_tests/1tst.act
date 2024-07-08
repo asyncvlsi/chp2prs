@@ -3,7 +3,7 @@ import "1decomp.act";
 defproc test ()
 {
     chan(int) X, Y;
-    mc1 m(X,Y);
+    decomp_mc1 m(X,Y);
 
     int y1,y2;
 
