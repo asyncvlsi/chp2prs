@@ -695,7 +695,13 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
     select_1->u_select().branches.push_back({line_1,std::move(c_eqs_0)});
     select_1->u_select().branches.push_back({line_2,std::move(c_eqs_1)});
 
-    Sequence line_3 = g->graph.blockAllocator().newSequence({c_0,send});
+    Sequence line_3;
+    if (send) {
+        line_3 = g->graph.blockAllocator().newSequence({c_0,send});
+    }
+    else {
+        line_3 = g->graph.blockAllocator().newSequence({c_0});
+    }
 
     ChpExprSingleRootDag e;
     e = ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard);
@@ -706,6 +712,7 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
     _splice_out_block (predoloop_assigns);
 
     Block *doloop_select = curr->u_doloop().branch.startseq->child();
+    // Block *doloop_select = curr->u_doloop().branch.startseq->child()->child();
     hassert (doloop_select->type() == BlockType::Select);
 
     for ( auto &branch : doloop_select->u_select().branches )
@@ -719,6 +726,7 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
     select_2->u_select().branches.push_back({line_3, IRGuard::makeElse()});
 
     Sequence func = _wrap_in_do_loop(g->graph.blockAllocator().newSequence({select_1,predoloop_assigns,select_2}));
+    // Sequence func = _wrap_in_do_loop(g->graph.blockAllocator().newSequence({select_1,select_2}));
     _splice_in_block_between (func.startseq, func.startseq->child(),init_c);
 
     return func;
