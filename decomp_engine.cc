@@ -83,11 +83,9 @@ class Decomp : public ActSynthesize {
       uninlineBitfieldExprsHack (g.graph);
 
       std::vector<ActId *> newnames;
-      act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
-      p->getlang()->getchp()->c = l;
     
       std::vector<Sequence> vs, vs1;
-#if 0
+#if 1
       MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
       mc->process_multichans();
       vs = mc->get_auxiliary_procs();
@@ -102,7 +100,19 @@ class Decomp : public ActSynthesize {
       vs1 = cb->get_chopped_seqs();
 #endif
 
-      l = chp_graph_to_act (g, newnames, p->CurScope());
+      Block *top = g.graph.blockAllocator().newBlock(Block::makeParBlock());
+      top->u_par().branches.push_back(g.graph.m_seq);
+      for ( auto vv : {vs,vs1} ) 
+      {
+        for (auto v : vv)
+        {
+          top->u_par().branches.push_back(v);
+        }
+      }
+      g.graph.m_seq = g.graph.blockAllocator().newSequence({top});
+
+      act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
+      p->getlang()->getchp()->c = l;
       for (auto id : newnames) {
         InstType *it = p->CurScope()->Lookup (id->getName());
         if (TypeFactory::isBoolType (it)) {
@@ -132,53 +142,12 @@ class Decomp : public ActSynthesize {
         }
       }
 
-      act_chp_lang_t *decomp;
-      NEW (decomp, act_chp_lang_t);
-      decomp->type = ACT_CHP_COMMA;
-      list_t *decomp_procs = list_new();
-
-      if (vs.empty() && vs1.empty()) {
-        p->getlang()->getchp()->c = l;
-      }
-      else {
-        list_append(decomp_procs, l);
-
-        for ( auto vv : {vs,vs1} ) 
-        {
-          for (auto v : vv)
-          {
-            GraphWithChanNames gc;
-            gc.graph.id_pool() = g.graph.id_pool();
-            gc.graph.m_seq = v;
-            gc.name_from_chan = g.name_from_chan;  
-            std::vector<ActId *> newnames;
-
-            act_chp_lang_t *l1 = chp_graph_to_act (gc, newnames, p->CurScope());
-            for (auto id : newnames) {
-              InstType *it = p->CurScope()->Lookup (id->getName());
-              if (TypeFactory::isBoolType (it)) {
-                pp_printf (_pp, "bool %s;", id->getName());
-                pp_forced (_pp, 0);
-              }
-              else {
-                pp_printf (_pp, "int<%d> %s;",
-                    TypeFactory::bitWidth (it), id->getName());
-                pp_forced (_pp, 0);
-              }
-            }
-
-            list_append(decomp_procs, l1);
-            fprintf (_pp->fp, "\n\n");
-          }
-        }
-          decomp->u.semi_comma.cmd = decomp_procs;
-          p->getlang()->getchp()->c = decomp;
-      }
     }
 
     // print out new chp
     fprintf (_pp->fp, "chp {\n");
-    chp_print (_pp->fp, p->getlang()->getchp()->c);
+    chp_pretty_print (_pp->fp, p->getlang()->getchp()->c);
+    // chp_print (_pp->fp, p->getlang()->getchp()->c);
     fprintf (_pp->fp, "\n}\n");
 
     fprintf (_pp->fp, "\n\n");
