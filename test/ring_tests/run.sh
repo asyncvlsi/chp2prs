@@ -73,7 +73,7 @@ do
 	do
         if [ $ok -eq 1 ]
         then
-	$ACTTOOL $opt -E abc -e runs/${orig}_expr.act -d runs/${orig}decomp.act  -p testproc $i > runs/${orig}_ring.act  2>runs/$i.t.stderr
+	$ACTTOOL $opt -E abc -e runs/${orig}_expr.act -p testproc $i > runs/${orig}_ring.act  2>runs/$i.t.stderr
         if test -s runs/$i.t.stderr 
         then
                 echo 
