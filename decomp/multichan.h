@@ -43,7 +43,7 @@ class StateRow {
         int curr;
         Cond c;
         std::vector<int> nexts;
-        Block *sel;
+        Block *sel; // select or doloop
 
         StateRow (int curr_st, int next_st)
         {
@@ -55,7 +55,7 @@ class StateRow {
         }
         StateRow (int curr_st, std::vector<int> next_sts, Block *sel_blk)
         {
-            Assert ((sel_blk->type() == BlockType::Select), "hmm");
+            Assert ((sel_blk->type() == BlockType::Select || sel_blk->type() == BlockType::DoLoop), "hmm");
             curr = curr_st;
             c = Cond::Guard;
             nexts = next_sts;
@@ -98,6 +98,7 @@ class MultiChan : public DecompAnalysis {
         void _add_chan_blk_pair (Block *, ChanId);
 
         void _insert_guard_comm (Block *, ChanId, int);
+        void _insert_guard_comm_loop (Block *, ChanId, int);
 
         void _replace_with_alias (Block *, ChanId);
 

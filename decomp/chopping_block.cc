@@ -711,8 +711,11 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
     hassert (predoloop_assigns->u_basic().stmt.type() == StatementType::Assign);
     _splice_out_block (predoloop_assigns);
 
-    Block *doloop_select = curr->u_doloop().branch.startseq->child();
+    Block *doloop_select = curr->u_doloop().branch.startseq;
     // Block *doloop_select = curr->u_doloop().branch.startseq->child()->child();
+    while (doloop_select->type() != BlockType::Select) {
+        doloop_select = doloop_select->child();
+    }
     hassert (doloop_select->type() == BlockType::Select);
 
     for ( auto &branch : doloop_select->u_select().branches )

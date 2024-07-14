@@ -32,7 +32,8 @@ void MultiChan::process_multichans()
 {
     _build_multichan_info (g->graph.m_seq);
     _delete_singles ();
-    // _print_multichan_info ();
+    bool printt = false;
+    if (printt) _print_multichan_info ();
 
     for ( auto cbp : mc_info )
     {
@@ -46,17 +47,17 @@ void MultiChan::process_multichans()
         Assert(alias_number == cbp.second.size(), "hmm");
         auto final_state = _build_state_table (g->graph.m_seq, cbp.first, 0);
         _st.push_back (StateRow(final_state, 0));
-        // _print_state_table (_st);
+        if (printt) _print_state_table (_st);
 
         alias_number = tmp;
         Assert(alias_number == cbp.second.size(), "hmm");
 
         _optimize_state_table();
-        // _print_state_table (_st);
+        if (printt) _print_state_table (_st);
         Assert(alias_number == cbp.second.size(), "hmm");
         
         _re_encode_states ();
-        // _print_state_table (_st);
+        if (printt) _print_state_table (_st);
 
         alias_number = tmp;
         Assert(alias_number == cbp.second.size(), "hmm");
@@ -65,7 +66,7 @@ void MultiChan::process_multichans()
         v_aux.push_back(aux);
         _st.clear();
     }
-    // _print_multichan_info ();
+    if (printt) _print_multichan_info ();
 }
 
 int MultiChan::_gen_alias_number ()
@@ -350,7 +351,7 @@ int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
 {
     Block *curr = seq.startseq->child();
     bool alias_hit = false;
-    std::vector<int> ns_i, ns_o; 
+    std::vector<int> ns_i; 
 
     while (curr->type() != BlockType::EndSequence) {
     switch (curr->type()) {
@@ -399,7 +400,6 @@ int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
 
         if (process) {
             ns_i.clear();
-            ns_o.clear();
             auto merge_state = _gen_alias_number();
             // fprintf (fp, "\n merge state : %d \n", merge_state);
             for (auto &branch : curr->u_select().branches) {
@@ -416,9 +416,28 @@ int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
     }
     break;
       
-    case BlockType::DoLoop:
-        curr_state = _build_state_table (curr->u_doloop().branch, id, curr_state);
-        break;
+    case BlockType::DoLoop: {
+        // curr_state = _build_state_table (curr->u_doloop().branch, id, curr_state);
+
+        bool process = false;
+        process |= _contains_chan_access(curr->u_doloop().branch, id);
+        if (process) {
+            ns_i.clear();
+            // need additional state to jump back to in case loop re-executes
+            auto jump_back_state = _gen_alias_number();
+            _st.push_back(StateRow(curr_state, jump_back_state));
+            ns_i.push_back(jump_back_state);
+
+            curr_state = jump_back_state; 
+            auto loop_state = _build_state_table (curr->u_doloop().branch, id, curr_state);
+            auto exit_loop_state = _gen_alias_number();
+            ns_i.push_back(exit_loop_state);
+
+            _st.push_back(StateRow(loop_state, ns_i, curr));
+            curr_state = exit_loop_state;
+        }
+    }
+    break;
     
     case BlockType::StartSequence:
     case BlockType::EndSequence:
@@ -620,7 +639,15 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
             auto Gvar  = g->graph.id_pool().makeUniqueVar (Gbw);
             recv_g = g->graph.blockAllocator().newBlock(
                         Block::makeBasicBlock(Statement::makeReceive(Gchan, Gvar)));
-            _insert_guard_comm (sr.sel, Gchan, Gbw);
+            if (sr.sel->type() == BlockType::Select) {
+                _insert_guard_comm (sr.sel, Gchan, Gbw);
+            }
+            else if (sr.sel->type() == BlockType::DoLoop) {
+                _insert_guard_comm_loop (sr.sel, Gchan, Gbw);
+            }
+            else {
+                fatal_error ("conditional state update not select or doloop?");
+            }
             update_next_alias_var = _build_next_assign (next_alias_var, alias_var_bw, sr.nexts, Gvar, Gbw);
         }
         else
@@ -830,19 +857,56 @@ void MultiChan::_insert_guard_comm (Block *sel, ChanId G_chan, int G_bw)
     Assert (sel->type() == BlockType::Select, "hmmst");
     auto tmp = ChpExprSingleRootDag::makeConstant(BigInt{0}, G_bw);
     int i = 0;
+    // false expr
+    auto not_all = ChpExprSingleRootDag::makeConstant(BigInt(0),1);
+
     for ( auto &branch : sel->u_select().branches )
     {
-        Assert ((branch.g.type() == IRGuardType::Expression), "Should've been fixed in fill_in_else_explicit");
-        tmp =   ChpExprSingleRootDag::makeQuery(
-                std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(branch.g.u_e().e)),
+        // Assert ((branch.g.type() == IRGuardType::Expression), "Should've been fixed in fill_in_else_explicit");
+        if (branch.g.type() == IRGuardType::Expression) {
+            tmp =   ChpExprSingleRootDag::makeQuery(
+                    std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(branch.g.u_e().e)),
+                    std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::makeConstant(BigInt(i),G_bw)),
+                    std::make_unique<ChpExprSingleRootDag>(std::move(tmp))
+                    );
+            not_all = ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::Or,
+                            std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(branch.g.u_e().e)),
+                            std::make_unique<ChpExprSingleRootDag>(std::move(not_all))
+                            );
+        }
+        // handling an else guard
+        else {
+            not_all = ChpExprSingleRootDag::makeUnaryOp(IRUnaryOpType::Not,
+                            std::make_unique<ChpExprSingleRootDag>(std::move(not_all))
+                            );
+            tmp =   ChpExprSingleRootDag::makeQuery(
+                std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(not_all)),
                 std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::makeConstant(BigInt(i),G_bw)),
                 std::make_unique<ChpExprSingleRootDag>(std::move(tmp))
                 );
+        }
         i++;
     }
     Block *send_g = g->graph.blockAllocator().newBlock(
                 Block::makeBasicBlock(Statement::makeSend(G_chan, std::move(tmp))));
     _splice_in_block_between(sel->parent(), sel, send_g);
+}
+
+void MultiChan::_insert_guard_comm_loop (Block *doloop, ChanId G_chan, int G_bw)
+{
+    Assert (doloop->type() == BlockType::DoLoop, "hmmst");
+    Assert (G_bw == 1, "Doloop guard not 1-bit?");
+    auto tmp = ChpExprSingleRootDag::makeQuery(
+        std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(doloop->u_doloop().guard)),
+        std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::makeConstant(BigInt(0),G_bw)),
+        std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::makeConstant(BigInt(1),G_bw))
+        );
+
+    Block *send_g = g->graph.blockAllocator().newBlock(
+                Block::makeBasicBlock(Statement::makeSend(G_chan, std::move(tmp))));
+    // put guard comm just before end of doloop
+    _splice_in_block_between(doloop->u_doloop().branch.endseq->parent(),
+                            doloop->u_doloop().branch.endseq,send_g);
 }
 
 Block *MultiChan::_splice_in_block_between (Block *before, Block *after, Block *bb)

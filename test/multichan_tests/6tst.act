@@ -1,0 +1,19 @@
+import "6d.act";
+
+defproc test ()
+{
+    chan(int) X1, Y1, Y2;
+    decomp_mc6 m(X1, Y1, Y2);
+
+    int y1,y2,y3;
+
+    chp {
+        (X1!3 ; log("sent one") ; X1!3 ; log("sent two") ;X1!7) , 
+        (Y1?y1; log("got third") ; log (y1) ) , 
+        (Y2?y2 ; log("got first"); log(y2) ; Y2?y3; log("got second") ; log(y3) ) ;
+        [ y1=7 & y2=4 & y3=8 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+
