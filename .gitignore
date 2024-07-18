@@ -21,3 +21,4 @@ config.mk
 *.so
 .idea
 cmake-build-debug
+.actsim_history
