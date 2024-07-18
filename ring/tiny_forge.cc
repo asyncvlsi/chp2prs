@@ -41,6 +41,11 @@ TinyForge::TinyForge ( FILE *fp, Process *p, act_chp_lang_t *c,
 
 void TinyForge::run_forge ()
 {
+    LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, _c);
+    // yes, run twice :)
+    lva->generate_live_var_info();
+    lva->generate_live_var_info();
+
     construct_var_infos ();
     _run_forge (_c, 1);
 }
@@ -246,7 +251,6 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
         block_id = _generate_pipe_element (c, -1);
         _terminate_port (block_id, Port::M1, Term::Source);
         _terminate_port (block_id, Port::P1, Term::Sink);
-        _terminate_port (block_id, Port::Zero, Term::Sink);
         break;
         
     case ACT_CHP_FUNC:

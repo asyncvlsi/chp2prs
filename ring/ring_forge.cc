@@ -354,13 +354,13 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         chp_print(_fp,c);
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_ppa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        it = _p->CurScope()->Lookup(chan);
+        bw = TypeFactory::bitWidth(it);
+        fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
+        fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
+        fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
+        
         if (var) {
-            it = _p->CurScope()->Lookup(chan);
-            bw = TypeFactory::bitWidth(it);
-            fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
-            fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
-            fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
-
             fprintf(_fp,"\n// Data for action: ");
             chp_print(_fp,c);
             fprintf(_fp,"\n");
@@ -384,7 +384,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                                             vi->name,latch_id,chan_name);
         }
         else { // dataless action
-            fprintf(_fp,"%s%d.zero = %s;\n",ring_block_prefix,block_id, chan_name);
+            fprintf(_fp,"%s%d.data.r = %s%d.data.a;\n",ring_block_prefix,block_id,ring_block_prefix,block_id);
         }
         break;
 
