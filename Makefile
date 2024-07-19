@@ -31,6 +31,7 @@ OBJS2=main2.o sdt_engine.o df_engine.o ring_engine.o decomp_engine.o
 
 OBJS=$(OBJS1) $(OBJS2)
 
+
 SHOBJS=chp2prs_pass.os synth.os synth_pass.os
 
 SRCS=$(OBJS:.o=.cc) $(SHOBJS:.os=.cc)
