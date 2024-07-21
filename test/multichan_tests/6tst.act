@@ -1,4 +1,4 @@
-import "6d.act";
+import "6decomp.act";
 
 defproc test ()
 {
