@@ -12,7 +12,7 @@ The options are:
 
    * `-h` : show this message
    * `-O` : run CHP optimizations. Requires the chp-opt package.
-   * `-F dataflow|sdt|ring` : select synthesis output format.
+   * `-F dataflow|sdt|ring|decomp` : select synthesis output format.
       * `dataflow` : dataflow output generation.
       * `sdt` : syntax-directed translation for prs generation.
       * `ring` : ring-based synthesis for prs generation; implies bundled data output.
