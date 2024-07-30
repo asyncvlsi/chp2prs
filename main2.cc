@@ -33,7 +33,6 @@ static void usage(char *name)
   fprintf (stderr, "Options:\n");
   fprintf (stderr, " -h : help; display this message\n");
   fprintf (stderr, " -O : optimize CHP\n");
-  fprintf (stderr, " -X : decompose CHP and stop [for now]\n");
   fprintf (stderr, " -F dataflow|sdt|ring : synthesis output format\n");
   fprintf (stderr, "        * dataflow : dataflow output\n");
   fprintf (stderr, "        * sdt : syntax-directed translation prs output\n");
