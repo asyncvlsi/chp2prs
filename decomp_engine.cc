@@ -53,12 +53,24 @@ class Decomp : public ActSynthesize {
 
   bool overrideTypes() { return false; }
 
-  void runSynth (ActPass *ap, Process *p) {
-    pp_printf (_pp, "/* decomposition output */");
+  void typeInt (char *buf, int sz, int bitwidth) {
+    snprintf (buf, sz, "int<%d>", bitwidth);
+  }
+  void typeBool (char *buf, int sz) {
+    snprintf (buf, sz, "bool");
+  }
+  void typeIntChan (char *buf, int sz, int bitwidth) {
+    snprintf (buf, sz, "chan(int<%d>)", bitwidth);
+  }
+  void typeBoolChan (char *buf, int sz) {
+    fatal_error ("chan(bool)");
+  }
+  void runPreSynth (ActPass *ap, Process *p) {
+    pp_printf (_pp, "/* decomposition output - fresh instances */");
     pp_forced (_pp, 0);
 
     pp_flush (_pp);
-    fprintf (_pp->fp, "/* start decomp */\n");
+    // fprintf (_pp->fp, "/* start decomp */\n");
     fflush (_pp->fp);
 
     int chpopt;
@@ -113,6 +125,27 @@ class Decomp : public ActSynthesize {
 
       act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
       p->getlang()->getchp()->c = l;
+
+      if (!_decomp_vx) {
+        _decomp_vx = list_new();
+      }
+      for (auto id : newnames) {
+        ValueIdx *vx = p->CurScope()->LookupVal (id->getName());
+        Assert (vx, "can't find ValueIdx in scope?");
+        list_append(_decomp_vx, vx);
+      }
+      for (auto id : g.name_from_chan) {
+        const char *channame = (id.second)->getName();
+        ValueIdx *vx = p->CurScope()->LookupVal (channame);
+        Assert (vx, "can't find ValueIdx in scope?");
+        // TODO: there may be a better way to check for new channels..
+        // Using first 3 chars for now
+        if (strncmp(channame, "_ch", 3) == 0) {
+          list_append(_decomp_vx, vx);
+        }
+      }
+      
+#if 0
       for (auto id : newnames) {
         InstType *it = p->CurScope()->Lookup (id->getName());
         if (TypeFactory::isBoolType (it)) {
@@ -141,19 +174,19 @@ class Decomp : public ActSynthesize {
           }
         }
       }
-
+#endif
     }
+    pp_forced (_pp, 0);
+  }
 
-    // print out new chp
+  void runSynth (ActPass *ap, Process *p) {
+
     fprintf (_pp->fp, "chp {\n");
     chp_pretty_print (_pp->fp, p->getlang()->getchp()->c);
-    // chp_print (_pp->fp, p->getlang()->getchp()->c);
     fprintf (_pp->fp, "\n}\n");
 
     fprintf (_pp->fp, "\n\n");
     fprintf (_pp->fp, "/* end decomp */\n");
-    
-    pp_forced (_pp, 0);
   }
 };
 

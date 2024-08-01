@@ -133,6 +133,11 @@ class ActSynthesize {
   const char *getPrefix () { return _prefix; }
 
   /**
+   * Return list of types freshly introduced by decomposition
+   */
+  list_t *getDecompVx() { return _decomp_vx; }
+
+  /**
    * Run logic synthesis locally on a single process. This should
    * print the results of the synthesis via the pretty-printer. Note
    * that all boilerplate (type overrides, implementation headers,
@@ -167,6 +172,8 @@ protected:
   const char *_prefix;		///< synthesis prefix
   
   Process *_top;
+
+  list_t *_decomp_vx; ///< for new instances introduced during decomposition
 
   void Close (); ///< close output files
 };

@@ -89,6 +89,7 @@ ActSynthesize::ActSynthesize (const char *prefix,
   pp_forced (_pp, 0);
 
   _top = NULL;
+  _decomp_vx = NULL;
   _prefix = prefix;
 }
 

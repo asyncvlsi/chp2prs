@@ -121,16 +121,18 @@ static int emit_refinement_header (ActSynthesize *syn,
 {
   int has_overrides = 0;
   char buf[10240];
-  list_t *special_vx;
+  list_t *special_vx, *decomp_vx;
   pp_t *pp = syn->getPP ();
   const char *prefix = syn->getPrefix ();
   Process *p = dynamic_cast <Process *> (u);
 
   if (p) {
     special_vx = ActNamespace::Act()->getDecomp (p);
+    decomp_vx = syn->getDecompVx(); 
   }
   else {
     special_vx = NULL;
+    decomp_vx = NULL;
   }
 
   if (TypeFactory::isProcessType (u)) {
@@ -246,6 +248,85 @@ static int emit_refinement_header (ActSynthesize *syn,
   }
   pp_forced (pp, 2);
   pp_setb (pp);
+
+  if (decomp_vx) {
+    /* these are fresh instances introduced during decomposition;
+       we need to declare them, not refine them!
+    */
+    for (listitem_t *si = list_first (decomp_vx); si; si = list_next (si)) {
+	ValueIdx *vx = (ValueIdx *) list_value (si);
+
+	if (TypeFactory::isChanType (vx->t)) {
+	    bw = TypeFactory::bitWidth(vx->t);
+	    if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
+	      syn->typeBoolChan (buf, 10240);
+	    }
+	    else {
+	      syn->typeIntChan (buf, 10240, bw);
+	    }
+	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+	}
+	else if (TypeFactory::isIntType (vx->t)) {
+	    bw = TypeFactory::bitWidth(vx->t);
+	    syn->typeInt (buf, 10240, bw);
+	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+	}
+	else if (TypeFactory::isBoolType (vx->t)) {
+	    syn->typeBool (buf, 10240);
+	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+	}
+	else if (TypeFactory::isProcessType (vx->t)) {
+	  /*
+	    These are specially inserted processes during process
+	    decomposition, and hence they should have pre-defined
+	    translations in the library
+	  */
+	  Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
+	  Assert (proc, "Why am I here?");
+	  char buf[1024];
+	  int pos;
+	  int found = 0;
+	  ActNamespace::Act()->unmangle_string (proc->getName(), buf, 1024);
+	  for (pos=0; buf[pos]; pos++) {
+	    if (buf[pos] == '<') {
+	      buf[pos] = '\0';
+	      found = 1;
+	      break;
+	    }
+	  }
+	  pp_printf (pp, "%s::%s_builtin", syn->getLibNamespace(), buf);
+	  if (found) {
+	    buf[pos] = '<';
+	    pp_printf (pp, "%s", buf+pos);
+	  }
+	  pp_printf_raw (pp, " %s;\n", vx->getName());
+	}
+	else if (TypeFactory::isStructure (vx->t)) {
+	    pp_printf (pp, "%s_", prefix);
+	    Data *d = dynamic_cast <Data *> (vx->t->BaseType());
+	    Assert (d, "Why am I here?");
+	    ActNamespace::Act()->msnprintfproc (buf, 10240, d);
+	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+	}
+      
+    }
+    pp_flush (pp);
+    pp_printf (pp, "/* raw output */");
+    pp_forced (pp, 0);
+    for (listitem_t *si = list_first (decomp_vx); si; si = list_next (si)) {
+	ValueIdx *vx = (ValueIdx *) list_value (si);
+	if (vx->hasConnection()) {
+	  Scope::printConnections (pp->fp, vx->connection(), true);
+	}
+    }
+    fflush (pp->fp);
+    pp_printf (pp, "/* end raw output */");
+    pp_forced (pp, 0);
+  }
+
+  if (decomp_vx) {
+    list_free (decomp_vx);
+  }
 
   if (u->getlang() && u->getlang()->getchp()) {
     if (config_get_int ("act.refine_steps")  > 0) {
