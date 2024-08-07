@@ -39,36 +39,17 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
         
     case ACT_CHP_COMMA:
     case ACT_CHP_SEMI:
-        if (root == 1)
+        for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
         {
-            for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
-            {
-                stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) 
-                    fill_in_else_explicit (stmt, p, 1);
-            }
-        }
-        else {
-            for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
-            {
-                stmt = (act_chp_lang_t *)(list_value(li));
-                fill_in_else_explicit (stmt, p, 0);
-            }
+            stmt = (act_chp_lang_t *)(list_value(li));
+            fill_in_else_explicit (stmt, p, 0);
         }
         break;
 
     case ACT_CHP_LOOP:
     case ACT_CHP_DOLOOP:
-        if (root == 1)
-        {
-            gc = c->u.gc;
-            fill_in_else_explicit (gc->s, p, 0);
-            break;
-        }
-        else
-        {
-            fatal_error ("should've excised internal loops...");
-        }
+        gc = c->u.gc;
+        fill_in_else_explicit (gc->s, p, 0);
         break;
         
     case ACT_CHP_SELECT:

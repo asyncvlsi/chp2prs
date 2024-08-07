@@ -181,9 +181,9 @@ class Decomp : public ActSynthesize {
 
   void runSynth (ActPass *ap, Process *p) {
 
-    fprintf (_pp->fp, "chp {\n");
+    fprintf (_pp->fp, "chp {top_decomp:(\n");
     chp_pretty_print (_pp->fp, p->getlang()->getchp()->c);
-    fprintf (_pp->fp, "\n}\n");
+    fprintf (_pp->fp, "\n)}\n");
 
     fprintf (_pp->fp, "\n\n");
     fprintf (_pp->fp, "/* end decomp */\n");

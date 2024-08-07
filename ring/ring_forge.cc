@@ -68,13 +68,22 @@ void RingForge::run_forge ()
      * 'everything else besides the chp body'
      * needs to be added here
     */
-   _run_forge_helper ();
+    if (_c->label && (strcmp(_c->label,"top_decomp")==0)) {
+        Assert (_c->type == ACT_CHP_COMMA, "top-level not parallel loops?");
+        for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li))
+        {
+            _run_forge_helper ((act_chp_lang_t *)(list_value(li)));
+        }
+    }
+    else {
+        _run_forge_helper (_c);
+    }
 }
 
-void RingForge::_run_forge_helper ()
+void RingForge::_run_forge_helper (act_chp_lang_t *c)
 {
     bool printt = false;
-    LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, _c);
+    LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, c);
     // yes, run twice :)
     lva->generate_live_var_info();
     lva->generate_live_var_info();
@@ -84,35 +93,35 @@ void RingForge::_run_forge_helper ()
     if (printt) lva->print_live_var_info();
     if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
-    construct_var_infos ();
+    construct_var_infos (c);
 
     if (printt) fprintf (_fp, "// Read/Write Info pre-mux gen ----\n");
     if (printt) print_var_infos (_fp);
     if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
-    _construct_merge_latch_info (_c, 1);
+    _construct_merge_latch_info (c, 1);
     
     if (printt) fprintf (_fp, "// Read/Write Info post-mux gen ---\n");
     if (printt) print_var_infos (_fp);
     if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
-    compute_mergemux_info ();
+    compute_mergemux_info (c);
 
     if (printt) fprintf (_fp, "// Merge Mux Info pre-mapping -----\n");
-    if (printt) print_merge_mux_infos(_fp, _c);
+    if (printt) print_merge_mux_infos(_fp, c);
     if (printt) fprintf (_fp, "// --------------------------------\n\n");
     
-    flow_assignments ();
+    flow_assignments (c);
 
     if (printt) fprintf (_fp, "// Merge Mux Info post-mapping ----\n");
-    if (printt) print_merge_mux_infos(_fp, _c);
+    if (printt) print_merge_mux_infos(_fp, c);
     if (printt) fprintf (_fp, "// --------------------------------\n\n");
     if (printt) fprintf (_fp, "\n*/ \n");
 
-    if ( _check_all_muxes_mapped(_c, false) ) { fatal_error("muxes not mapped fully"); }
+    if ( _check_all_muxes_mapped(c, false) ) { fatal_error("muxes not mapped fully"); }
 
     fprintf (_fp, "// Branched Ring ------------------\n");
-    generate_branched_ring (_c,1,0,0);
+    generate_branched_ring (c,1,0,0);
 }
 
 unsigned long act_expr_getconst_long (Expr *e)

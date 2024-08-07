@@ -585,6 +585,16 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
         Block::makeBasicBlock(Statement::makeAssignment(alias_var,ChpExprSingleRootDag::makeConstant(BigInt(0),alias_var_bw))));
     Assert (init_alias, "huh");
 
+    // make init. cond. next := 0 assignment
+    Block *init_next = g->graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeAssignment(next_alias_var,ChpExprSingleRootDag::makeConstant(BigInt(0),alias_var_bw))));
+    Assert (init_next, "huh");
+
+    // make init. cond. datavar := 0 assignment
+    Block *init_data = g->graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeAssignment(data_var,ChpExprSingleRootDag::makeConstant(BigInt(0),g->graph.id_pool().getBitwidth(id)))));
+    Assert (init_data, "huh");
+
     Block *sm_sel = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
 
     // Channel access type : receive or send
@@ -703,7 +713,7 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
     else {
         aux_core = g->graph.newSequence({cond_chan_access, sm_sel, alias_update});
     }
-    Sequence aux = g->graph.newSequence({init_alias, _wrap_in_do_loop (aux_core)});
+    Sequence aux = g->graph.newSequence({init_alias, init_next, init_data, _wrap_in_do_loop (aux_core)});
     return aux;
 }
 

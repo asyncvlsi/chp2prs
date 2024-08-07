@@ -47,7 +47,7 @@ class RingEngine {
         // virtual void _run_forge_helper ();
 
         // Info collection
-        void construct_var_infos ();
+        void construct_var_infos (act_chp_lang_t *c);
         void print_var_infos (FILE *fp);
         int length_of_guard_set (act_chp_lang_t *c);
         bool is_elementary_action(act_chp_lang_t *c);
@@ -68,14 +68,14 @@ class RingEngine {
         void _construct_merge_latch_info (act_chp_lang_t *, int);
         bool _var_assigned_in_subtree (act_chp_lang_t *, const char *);
 
-        void compute_mergemux_info ();
+        void compute_mergemux_info (act_chp_lang_t *c);
         int _compute_mergemux_info (act_chp_lang_t *, var_info *, int);
         int _get_latest_assign_in_branch (act_chp_lang_t *, var_info *, int);
         
         void print_merge_mux_infos (FILE *fp, act_chp_lang_t *);
         void _print_latch_info_struct (FILE *fp, latch_info_t *);
 
-        void flow_assignments ();
+        void flow_assignments (act_chp_lang_t *c);
         int _flow_assignments (act_chp_lang_t *, var_info *, int);
 
         bool _check_all_muxes_mapped (act_chp_lang_t *, bool);

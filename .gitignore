@@ -24,3 +24,4 @@ cmake-build-debug
 .actsim_history
 /.vscode
 z_*.act
+expr.act

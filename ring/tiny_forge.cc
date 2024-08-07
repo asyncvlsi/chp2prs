@@ -46,7 +46,7 @@ void TinyForge::run_forge ()
     lva->generate_live_var_info();
     lva->generate_live_var_info();
 
-    construct_var_infos ();
+    construct_var_infos (_c);
     _run_forge (_c, 1);
 }
 

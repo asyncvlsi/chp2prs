@@ -300,7 +300,7 @@ bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
   return ret;
 }
 
-void RingEngine::compute_mergemux_info ()
+void RingEngine::compute_mergemux_info (act_chp_lang_t *c)
 {
   hash_iter_t it;
   hash_bucket_t *b;
@@ -308,7 +308,7 @@ void RingEngine::compute_mergemux_info ()
   // one pass per variable
   while ((b = hash_iter_next (var_infos, &it))) 
   {
-    _compute_mergemux_info (_c, (var_info *)b->v, -1);
+    _compute_mergemux_info (c, (var_info *)b->v, -1);
   }	     
 }
 
@@ -569,7 +569,7 @@ void RingEngine::_print_latch_info_struct (FILE *fp, latch_info_t *l)
   Flow assignments of variables down the 
   graph so that mux inputs can be mapped.
 */
-void RingEngine::flow_assignments ()
+void RingEngine::flow_assignments (act_chp_lang_t *c)
 {
   hash_iter_t it;
   hash_bucket_t *b;
@@ -578,7 +578,7 @@ void RingEngine::flow_assignments ()
   while ((b = hash_iter_next (var_infos, &it))) 
   {
     var_info *vi = (var_info *)b->v;
-    _flow_assignments (_c, (var_info *)b->v, -1);
+    _flow_assignments (c, (var_info *)b->v, -1);
   }
 }
 
@@ -854,7 +854,7 @@ bool RingEngine::_var_appears_in_expr (Expr *e, ActId *id)
   }
 }
 
-void RingEngine::construct_var_infos ()
+void RingEngine::construct_var_infos (act_chp_lang_t *c)
 {
   var_infos = hash_new(4);
   hash_bucket_t *b;
@@ -889,7 +889,7 @@ void RingEngine::construct_var_infos ()
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
         
-        _construct_var_info (_c, id, v);
+        _construct_var_info (c, id, v);
         b = hash_add (var_infos, v->name);
         b->v = v;
       }
