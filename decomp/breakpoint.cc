@@ -188,9 +188,9 @@ void BreakPoints::_mark_breakpoints_v3(Sequence seq, int mark_next)
     break;
       
     case BlockType::Select: {
-        di = (decomp_info_map.find(curr))->second;
-            di->break_before = true;
-            di->break_after = true;
+        // di = (decomp_info_map.find(curr))->second;
+        //     di->break_before = true;
+        //     di->break_after = true;
         for (auto &branch : curr->u_select().branches) {
             _mark_breakpoints_v3 (branch.seq, 0);
         }

@@ -721,8 +721,9 @@ bool RingEngine::_check_all_muxes_mapped (act_chp_lang_t *c, bool fail)
         {
           if ( y == -1 )
           {
-            chp_print (_fp, c);
-            fprintf (_fp, "\n\nunmapped mux for variable: %s", (char *)(list_value(li)));
+            fprintf (stderr, "Unmapped mux at selection:\n");
+            chp_print (stderr, c);
+            fprintf (stderr, "\n\nUnmapped mux for variable: %s\n\n\n", (char *)(list_value(li)));
             fail = true;
           }
         }

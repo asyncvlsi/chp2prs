@@ -118,7 +118,12 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
     if (printt) fprintf (_fp, "// --------------------------------\n\n");
     if (printt) fprintf (_fp, "\n*/ \n");
 
-    if ( _check_all_muxes_mapped(c, false) ) { fatal_error("muxes not mapped fully"); }
+    if ( _check_all_muxes_mapped(c, false) ) { 
+        fprintf (stderr, "Merge muxes were not fully mapped.\n");
+        fprintf (stderr, "This is most likely due to uninitialized \nvariables outside your main loop.\n");
+        fprintf (stderr, "Please add initial conditions to requisite variables.\n\n");
+        fatal_error("Mux input mapping incomplete."); 
+    }
 
     fprintf (_fp, "// Branched Ring ------------------\n");
     generate_branched_ring (c,1,0,0);

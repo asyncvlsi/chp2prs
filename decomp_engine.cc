@@ -66,7 +66,7 @@ class Decomp : public ActSynthesize {
     fatal_error ("chan(bool)");
   }
   void runPreSynth (ActPass *ap, Process *p) {
-    pp_printf (_pp, "/* decomposition output - fresh instances */");
+    pp_printf (_pp, "/* decomposition output - might have fresh instances */");
     pp_forced (_pp, 0);
 
     pp_flush (_pp);
@@ -95,7 +95,8 @@ class Decomp : public ActSynthesize {
       }
       uninlineBitfieldExprsHack (g.graph);
 
-      std::vector<ActId *> newnames;
+      std::vector<ActId *> tmp_names;
+      std::unordered_set<ActId *> newnames;
     
       std::vector<Sequence> vs, vs1;
 
@@ -112,23 +113,34 @@ class Decomp : public ActSynthesize {
 
       Block *top = g.graph.blockAllocator().newBlock(Block::makeParBlock());
       top->u_par().branches.push_back(g.graph.m_seq);
+
+      act_chp_lang_t *main = chp_graph_to_act (g, tmp_names, p->CurScope());
+      for ( auto x : tmp_names ) { newnames.insert(x); }
+      act_chp_lang_t *top_chp;
+      NEW (top_chp, act_chp_lang_t);
+      top_chp->type = ACT_CHP_COMMA;
+      top_chp->u.semi_comma.cmd = list_new();
+      list_append(top_chp->u.semi_comma.cmd, main);
+
       for ( auto vv : {vs,vs1} ) 
       {
         for (auto v : vv)
         {
-          top->u_par().branches.push_back(v);
+          g.graph.m_seq = v;
+          act_chp_lang_t *tmp = chp_graph_to_act (g, tmp_names, p->CurScope());
+          for ( auto x : tmp_names ) { newnames.insert(x); }
+          list_append(top_chp->u.semi_comma.cmd, tmp);
         }
       }
-      g.graph.m_seq = g.graph.blockAllocator().newSequence({top});
       // ----------------------------------------------------------------------
 
-#if 1
+#if 0
       // concurrent decomposition for slack elastic programs ------------------
       std::vector<Sequence> vs2;
       Block *top2 = g.graph.blockAllocator().newBlock(Block::makeParBlock());
-      for ( auto seqs : top->u_par().branches )
+      for ( auto d_seq : top->u_par().branches )
       {
-        g.graph.m_seq = seqs;
+        g.graph.m_seq = d_seq;
 
         BreakPoints *bkp2 = new BreakPoints (_pp->fp, g, p->CurScope(), pll);
         bkp2->mark_breakpoints();
@@ -146,7 +158,8 @@ class Decomp : public ActSynthesize {
       // ----------------------------------------------------------------------
 #endif
 
-      act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
+      // act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
+      act_chp_lang_t *l = top_chp;
       p->getlang()->getchp()->c = l;
 
       if (!_decomp_vx) {
@@ -168,36 +181,6 @@ class Decomp : public ActSynthesize {
         }
       }
       
-#if 0
-      for (auto id : newnames) {
-        InstType *it = p->CurScope()->Lookup (id->getName());
-        if (TypeFactory::isBoolType (it)) {
-          pp_printf (_pp, "bool %s;", id->getName());
-          pp_forced (_pp, 0);
-        }
-        else {
-          pp_printf (_pp, "int<%d> %s;",
-              TypeFactory::bitWidth (it), id->getName());
-          pp_forced (_pp, 0);
-        }
-      }
-      for ( auto x : g.name_from_chan ) {
-        const char *channame = (x.second)->getName();
-        InstType *it = p->CurScope()->Lookup (channame);
-        // TODO: there may be a better way to check for new channels..
-        if (strncmp(channame, "_ch", 3) == 0) {
-          if (TypeFactory::isBoolType (it)) {
-            pp_printf (_pp, "chan(bool) %s;", channame);
-            pp_forced (_pp, 0);
-          }
-          else {
-            pp_printf (_pp, "chan(int<%d>) %s;",
-                TypeFactory::bitWidth (it), channame);
-            pp_forced (_pp, 0);
-          }
-        }
-      }
-#endif
     }
     pp_forced (_pp, 0);
   }
