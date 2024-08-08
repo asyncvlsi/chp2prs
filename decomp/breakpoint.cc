@@ -24,14 +24,28 @@
 
 void BreakPoints::mark_breakpoints()
 {
-    // _mark_breakpoints_v0 (g->graph.m_seq, 0);
-    // _mark_breakpoints_v1 (g->graph.m_seq, 0);
-    // _mark_breakpoints_v2 (g->graph.m_seq, 0);
-    _compute_min_and_max();
-    _mark_breakpoints_v3 (g->graph.m_seq, 0);
+    switch (parallelism) {
+    case 0:
+        break;
+    case 1:
+        _mark_breakpoints_v1 (g->graph.m_seq, 0);
+        break;
+    case 2:
+        _mark_breakpoints_v2 (g->graph.m_seq, 0);
+        break;
+    case 3:
+        _mark_breakpoints_v3 (g->graph.m_seq, 0);
+        break;
+    case 4:
+        _compute_min_and_max();
+        _mark_breakpoints_v4 (g->graph.m_seq, 0);
+        break;
+    default:
+        break;
+    }
 }
 
-void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
+void BreakPoints::_mark_breakpoints_v1(Sequence seq, int mark_next)
 {
     Block *curr = seq.startseq->child();
     decomp_info *di;
@@ -58,7 +72,7 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
     case BlockType::Par: {
         // fatal_error ("working on par...");
         for (auto &branch : curr->u_par().branches) {
-            _mark_breakpoints_v0 (branch, 0);
+            _mark_breakpoints_v1 (branch, 0);
         }
     }
     break;
@@ -71,14 +85,14 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
         di->break_after = true;
 
         for (auto &branch : curr->u_select().branches) {
-            _mark_breakpoints_v0 (branch.seq, 0);
+            _mark_breakpoints_v1 (branch.seq, 0);
         }
         // fprintf (stdout, "reached select end\n");
     break;
       
     case BlockType::DoLoop:
         // fprintf (stdout, "\n\nreached do-loop\n");
-        _mark_breakpoints_v0 (curr->u_doloop().branch, 0);
+        _mark_breakpoints_v1 (curr->u_doloop().branch, 0);
         break;
     
     case BlockType::StartSequence:
@@ -91,7 +105,7 @@ void BreakPoints::_mark_breakpoints_v0(Sequence seq, int mark_next)
 
 }
 
-void BreakPoints::_mark_breakpoints_v1(Sequence seq, int mark_next)
+void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
 {
     Block *curr = seq.startseq->child();
     decomp_info *di;
@@ -110,7 +124,7 @@ void BreakPoints::_mark_breakpoints_v1(Sequence seq, int mark_next)
       
     case BlockType::Par: {
         for (auto &branch : curr->u_par().branches) {
-            _mark_breakpoints_v1 (branch, 0);
+            _mark_breakpoints_v2 (branch, 0);
         }
     }
     break;
@@ -122,12 +136,12 @@ void BreakPoints::_mark_breakpoints_v1(Sequence seq, int mark_next)
         di->break_after = true;
 
         for (auto &branch : curr->u_select().branches) {
-            _mark_breakpoints_v1 (branch.seq, 0);
+            _mark_breakpoints_v2 (branch.seq, 0);
         }
     break;
       
     case BlockType::DoLoop:
-        _mark_breakpoints_v1 (curr->u_doloop().branch, 0);
+        _mark_breakpoints_v2 (curr->u_doloop().branch, 0);
         break;
     
     case BlockType::StartSequence:
@@ -139,7 +153,7 @@ void BreakPoints::_mark_breakpoints_v1(Sequence seq, int mark_next)
     }
 }
 
-void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
+void BreakPoints::_mark_breakpoints_v3(Sequence seq, int mark_next)
 {
     Block *curr = seq.startseq->child();
     decomp_info *di;
@@ -168,7 +182,7 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
             di->break_after = true;
         }
         for (auto &branch : curr->u_par().branches) {
-            _mark_breakpoints_v2 (branch, 0);
+            _mark_breakpoints_v3 (branch, 0);
         }
     }
     break;
@@ -178,13 +192,13 @@ void BreakPoints::_mark_breakpoints_v2(Sequence seq, int mark_next)
             di->break_before = true;
             di->break_after = true;
         for (auto &branch : curr->u_select().branches) {
-            _mark_breakpoints_v2 (branch.seq, 0);
+            _mark_breakpoints_v3 (branch.seq, 0);
         }
     }
     break;
       
     case BlockType::DoLoop:
-        _mark_breakpoints_v2 (curr->u_doloop().branch, 0);
+        _mark_breakpoints_v3 (curr->u_doloop().branch, 0);
         break;
     
     case BlockType::StartSequence:
@@ -210,7 +224,7 @@ void BreakPoints::_compute_min_and_max()
     }
 }
 
-void BreakPoints::_mark_breakpoints_v3(Sequence seq, int mark_next)
+void BreakPoints::_mark_breakpoints_v4(Sequence seq, int mark_next)
 {
     // heuristic
     int testval = 0.5*(min_live_var_bw+max_live_var_bw);
@@ -245,7 +259,7 @@ void BreakPoints::_mark_breakpoints_v3(Sequence seq, int mark_next)
     case BlockType::Par: {
         // fatal_error ("working on par...");
         for (auto &branch : curr->u_par().branches) {
-            _mark_breakpoints_v3 (branch, 0);
+            _mark_breakpoints_v4 (branch, 0);
         }
     }
     break;
@@ -260,14 +274,14 @@ void BreakPoints::_mark_breakpoints_v3(Sequence seq, int mark_next)
             di->break_after = true;
         }
         for (auto &branch : curr->u_select().branches) {
-            _mark_breakpoints_v3 (branch.seq, 0);
+            _mark_breakpoints_v4 (branch.seq, 0);
         }
         // fprintf (stdout, "reached select end\n");
     break;
       
     case BlockType::DoLoop:
         // fprintf (stdout, "\n\nreached do-loop\n");
-        _mark_breakpoints_v3 (curr->u_doloop().branch, 0);
+        _mark_breakpoints_v4 (curr->u_doloop().branch, 0);
         break;
     
     case BlockType::StartSequence:

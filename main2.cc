@@ -42,6 +42,7 @@ static void usage(char *name)
   fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI)\n");
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
+  fprintf (stderr, " -P <int> : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3  (default 0) \n");
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   fprintf (stderr, "-E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
@@ -61,6 +62,7 @@ int main(int argc, char **argv)
   char *syntesistool = NULL;
   int external_opt = 0;
   int delay_margin = 100;
+  int parallelism = 0;
   bool dflow = false;
 
   /* initialize ACT library */
@@ -72,7 +74,7 @@ int main(int argc, char **argv)
   bool use_ring = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "RhObde:E:o:p:F:m:")) != -1) {
+  while ((ch = getopt (argc, argv, "RhObde:E:o:p:F:P:m:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -154,6 +156,14 @@ int main(int argc, char **argv)
         warning ("Delay multiplier < 1.0, this is not recommended!");
       }
       break;
+
+    case 'P':
+      parallelism = std::atoi(Strdup (optarg));
+      if (!(parallelism>=0 && parallelism <=4)) {
+        fprintf (stderr, "Parallelism level: 0 (or) 1 (or) 2 (or) 3 [4 for testing]");
+        usage (argv[0]);
+      }
+      break;
       
     default:
       usage (argv[0]);
@@ -224,6 +234,7 @@ int main(int argc, char **argv)
     else if (decompose) {
       c2p->setParam ("engine", (void *) gen_decomp_engine);
       c2p->setParam ("prefix", (void *)Strdup ("decomp"));
+      c2p->setParam ("parallelism", parallelism);
     }
     else {
       c2p->setParam ("engine", (void *) gen_sdt_engine);

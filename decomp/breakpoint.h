@@ -36,9 +36,10 @@ class BreakPoints : public DecompAnalysis {
     public:
 
         BreakPoints ( FILE *fp_out, GraphWithChanNames &g_in, 
-                Scope *s_in)
+                Scope *s_in, int parallelism_level)
             : DecompAnalysis (fp_out, g_in, s_in)
             {
+                parallelism = parallelism_level;
                 analyze();
             }
         
@@ -51,25 +52,25 @@ class BreakPoints : public DecompAnalysis {
          * every receive/assignment. Also breaks just before
          * and just after every selection.
          */ 
-        void _mark_breakpoints_v0(Sequence seq, int root);
+        void _mark_breakpoints_v1(Sequence seq, int root);
         /*
          * Breaks out selections only - for testing
-        */
-        void _mark_breakpoints_v1(Sequence seq, int root);
-
-        /*
-         * Receives only, ignores selections - for testing
         */
         void _mark_breakpoints_v2(Sequence seq, int root);
 
         /*
-         * Breakpoints at minimum live var. points
+         * Receives only, ignores selections - for testing
         */
         void _mark_breakpoints_v3(Sequence seq, int root);
+
+        /*
+         * Breakpoints at minimum live var. points
+        */
+        void _mark_breakpoints_v4(Sequence seq, int root);
 
         void _compute_min_and_max();
 
         int min_live_var_bw;
         int max_live_var_bw;
-        
+        int parallelism;
 };

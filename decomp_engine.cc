@@ -73,13 +73,14 @@ class Decomp : public ActSynthesize {
     // fprintf (_pp->fp, "/* start decomp */\n");
     fflush (_pp->fp);
 
-    int chpopt;
+    int chpopt, pll;
     ActDynamicPass *dp;
 
     dp = dynamic_cast <ActDynamicPass *> (ap);
     Assert (dp, "What?");
 
     chpopt = dp->getIntParam ("chp_optimize");
+    pll = dp->getIntParam ("parallelism");
 
     if (p->getlang() && p->getlang()->getchp()) {
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
@@ -97,20 +98,17 @@ class Decomp : public ActSynthesize {
       std::vector<ActId *> newnames;
     
       std::vector<Sequence> vs, vs1;
-#if 1
+
+      // necessary decompositions for synthesis -------------------------------
       MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
       mc->process_multichans();
       vs = mc->get_auxiliary_procs();
 
-      BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope());
-      bkp->mark_breakpoints();
-
+      BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope(), 0);
       ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
                                 bkp->get_decomp_info_map(), p->CurScope());
-      // cb->chop_graph();
       cb->excise_internal_loops();
       vs1 = cb->get_chopped_seqs();
-#endif
 
       Block *top = g.graph.blockAllocator().newBlock(Block::makeParBlock());
       top->u_par().branches.push_back(g.graph.m_seq);
@@ -122,6 +120,31 @@ class Decomp : public ActSynthesize {
         }
       }
       g.graph.m_seq = g.graph.blockAllocator().newSequence({top});
+      // ----------------------------------------------------------------------
+
+#if 1
+      // concurrent decomposition for slack elastic programs ------------------
+      std::vector<Sequence> vs2;
+      Block *top2 = g.graph.blockAllocator().newBlock(Block::makeParBlock());
+      for ( auto seqs : top->u_par().branches )
+      {
+        g.graph.m_seq = seqs;
+
+        BreakPoints *bkp2 = new BreakPoints (_pp->fp, g, p->CurScope(), pll);
+        bkp2->mark_breakpoints();
+
+        ChoppingBlock *cb2 = new ChoppingBlock (_pp->fp, g, 
+                                  bkp2->get_decomp_info_map(), p->CurScope());
+        cb2->chop_graph();
+        vs2 = cb2->get_chopped_seqs();
+        for (auto v : vs2)
+        {
+          top2->u_par().branches.push_back(v);
+        }
+      }
+      g.graph.m_seq = g.graph.blockAllocator().newSequence({top2});
+      // ----------------------------------------------------------------------
+#endif
 
       act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
       p->getlang()->getchp()->c = l;
