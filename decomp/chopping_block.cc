@@ -413,13 +413,6 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     break;
       
     case BlockType::Par: {
-        // fatal_error ("working on par");
-        // if break_before 
-        // just break the head out
-        // if also break_after
-        // parallel send to all the branches
-        // process branches
-        // parallel receive from all branches and send back to main
 
         hassert (vmap.contains(curr));
         di = (vmap.find(curr))->second;

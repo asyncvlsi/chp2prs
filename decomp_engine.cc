@@ -114,13 +114,12 @@ class Decomp : public ActSynthesize {
       Block *top = g.graph.blockAllocator().newBlock(Block::makeParBlock());
       top->u_par().branches.push_back(g.graph.m_seq);
 
-      act_chp_lang_t *main = chp_graph_to_act (g, tmp_names, p->CurScope());
+      chp_graph_to_act (g, tmp_names, p->CurScope());
       for ( auto x : tmp_names ) { newnames.insert(x); }
       act_chp_lang_t *top_chp;
       NEW (top_chp, act_chp_lang_t);
       top_chp->type = ACT_CHP_COMMA;
       top_chp->u.semi_comma.cmd = list_new();
-      list_append(top_chp->u.semi_comma.cmd, main);
 
       for ( auto vv : {vs,vs1} ) 
       {
@@ -134,31 +133,34 @@ class Decomp : public ActSynthesize {
       }
       // ----------------------------------------------------------------------
 
-#if 0
+#if 1
       // concurrent decomposition for slack elastic programs ------------------
       std::vector<Sequence> vs2;
       Block *top2 = g.graph.blockAllocator().newBlock(Block::makeParBlock());
+      
+      // only decomposing main program for now
       for ( auto d_seq : top->u_par().branches )
       {
         g.graph.m_seq = d_seq;
 
         BreakPoints *bkp2 = new BreakPoints (_pp->fp, g, p->CurScope(), pll);
         bkp2->mark_breakpoints();
-
         ChoppingBlock *cb2 = new ChoppingBlock (_pp->fp, g, 
                                   bkp2->get_decomp_info_map(), p->CurScope());
         cb2->chop_graph();
         vs2 = cb2->get_chopped_seqs();
+
         for (auto v : vs2)
         {
-          top2->u_par().branches.push_back(v);
+          g.graph.m_seq = v;
+          act_chp_lang_t *tmp2 = chp_graph_to_act (g, tmp_names, p->CurScope());
+          list_append(top_chp->u.semi_comma.cmd, tmp2);
+          for ( auto x : tmp_names ) { newnames.insert(x); }
         }
       }
-      g.graph.m_seq = g.graph.blockAllocator().newSequence({top2});
       // ----------------------------------------------------------------------
 #endif
 
-      // act_chp_lang_t *l = chp_graph_to_act (g, newnames, p->CurScope());
       act_chp_lang_t *l = top_chp;
       p->getlang()->getchp()->c = l;
 
