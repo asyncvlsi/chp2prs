@@ -1,6 +1,6 @@
 import globals;
 import "0.act";
-import "0_ring.act";
+import "runs/0_ring.act";
 
 defproc test()
 {

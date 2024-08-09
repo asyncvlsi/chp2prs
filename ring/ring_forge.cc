@@ -38,12 +38,12 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     expr_block_prefix = "blk_";
     expr_block_instance_prefix = "inst_";
     expr_block_input_prefix = "in_";
+    expr_block_output_prefix = "conn_out_";
     var_access_prefix = "va_blk_";
 
     bundled = bdpath;
     // Channel name prefixes
     sync_chan_name_prefix = "sync_";
-    parallel_chan_name_prefix = "sync_";
     init_cond_chan_prefix = "C_init_";
 
     // Bundled datapath parameters
@@ -348,7 +348,11 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             else { // function of variable(s) send
                 expr_inst_id = _generate_expr_block(e,bw);
                 // connect output of math block to channel data
-                fprintf(_fp,"%s%d.out = %s.d;\n",expr_block_instance_prefix,expr_inst_id,chan_name);
+                // fprintf (_fp,"\n");
+                // fprintf(_fp,"%s%d.out = %s.d;\n",expr_block_instance_prefix,expr_inst_id,chan_name);
+                fprintf(_fp,"connect_exprblk_dout<%d> %s%d(%s%d.out,%s%d.e);\n",bw,expr_block_output_prefix, expr_inst_id,
+                                                        expr_block_instance_prefix,expr_inst_id,
+                                                        conn_block_prefix,block_id);
 
                 // connect to delay_line
                 fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);

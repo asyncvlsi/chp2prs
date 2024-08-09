@@ -96,10 +96,10 @@ class RingForge : public RingEngine {
         const char *expr_block_instance_prefix;
         const char *expr_block_input_prefix;
         const char *var_access_prefix;
+        const char *expr_block_output_prefix;
 
         // Channel name prefixes
         const char *sync_chan_name_prefix; 
-        const char *parallel_chan_name_prefix;
         const char *init_cond_chan_prefix;
 
         static const unsigned int invx1_delay_ps = 21;

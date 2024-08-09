@@ -70,6 +70,15 @@ defproc connect_outchan_to_ctrl (sdtchan<W> ch; a1of1 ctrl; sdtexprchan<W> e)
   e.d = ch.d;
   ch.a = ctrl.a;
 }
+
+export template<pint W>
+defproc connect_exprblk_dout (sdtexprchan<1> d[W]; sdtexprchan<W> ch)
+{
+  syn::expr::wrap_from_array<W> conv;
+  conv.in = d;
+  conv.out = ch;
+}
+
 // --------------------------------------------------------
 
 
@@ -109,14 +118,6 @@ defproc var_access(sdtvar<W> din; sdtexprchan<1> dout[W])
   syn::expr::wrap_to_array<W> conv;
   conv.in = read.out;
   conv.out = dout;
-}
-
-export template<pint W>
-defproc connect_exprblk_dout (sdtexprchan<1> d[W]; sdtexprchan<W> ch)
-{
-  syn::expr::wrap_from_array<W> conv;
-  conv.in = d;
-  conv.out = ch;
 }
 
 export template <pint CD, PW, W, INIT_VAL>
