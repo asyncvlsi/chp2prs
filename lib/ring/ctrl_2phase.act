@@ -257,7 +257,7 @@ defproc asym_c_brs (bool? A, B, C; bool! Y)
     }
 }
 
-export defproc elem_c_paa_brs_send (a1of1 m1; a1of1 zero; a1of1 p1)
+export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
 {
     inverter im1r, izeroa;
     im1r.in = m1.r;
@@ -277,7 +277,7 @@ export defproc elem_c_paa_brs_send (a1of1 m1; a1of1 zero; a1of1 p1)
     }
 }
 
-export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
+export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
 {
 
   bool _m1_r;
@@ -295,7 +295,7 @@ export defproc elem_c_paa_brs_bd (a1of1 m1; a1of1 zero; a1of1 p1)
   }
 }
 
-export defproc elem_c_ppa_brs_bd (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
+export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 {
 
   bool _zero_r, _m1_r;
@@ -551,12 +551,12 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
 // --------------------------------------------------------
 
 
-// Variables ----------------------------------------------
+// Variables and Channels ---------------------------------
 
 export template <pint M>
-deftype bd_int <: int<M> (bool d[M])
-{
-} 
+deftype ring_int <: int<M> (bool d[M]) {} 
+
+export defchan ring_chan <: bd () {}
 // --------------------------------------------------------
 
   }

@@ -280,7 +280,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"\n// Pipe block for action: ");
         chp_print(_fp,c);
         fprintf(_fp,"\n");
-        fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        fprintf(_fp,"elem_c_paa %s%d;\n",ring_block_prefix,block_id);
 
         fprintf(_fp,"\n// Data for action: ");
         chp_print(_fp,c);
@@ -321,7 +321,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"\n// Pipe block for action: ");
         chp_print(_fp,c);
         fprintf(_fp,"\n");
-        fprintf(_fp,"elem_c_paa_brs_send %s%d;\n",ring_block_prefix,block_id);
+        fprintf(_fp,"elem_c_paa_send %s%d;\n",ring_block_prefix,block_id);
         if (e) {
             it = _p->CurScope()->Lookup(chan);
             bw = TypeFactory::bitWidth(it);
@@ -368,7 +368,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"\n// Pipe block for action: ");
         chp_print(_fp,c);
         fprintf(_fp,"\n");
-        fprintf(_fp,"elem_c_ppa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        fprintf(_fp,"elem_c_ppa %s%d;\n",ring_block_prefix,block_id);
         it = _p->CurScope()->Lookup(chan);
         bw = TypeFactory::bitWidth(it);
         fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
@@ -505,7 +505,7 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
     case ACT_CHP_ASSIGN:
         fprintf(_fp,"\n// Pipe block for lcd. transmission.");
         fprintf(_fp,"\n");
-        fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        fprintf(_fp,"elem_c_paa %s%d;\n",ring_block_prefix,block_id);
         char tname[1024];
         get_true_name(tname, var, _p->CurScope());
         b = hash_lookup(var_infos, tname);
@@ -543,7 +543,7 @@ int RingForge::_generate_pipe_element_lcd(int type, const char *tname)
     case ACT_CHP_ASSIGN:
         fprintf(_fp,"\n// Pipe block for lcd. transmission.");
         fprintf(_fp,"\n");
-        fprintf(_fp,"elem_c_paa_brs_bd %s%d;\n",ring_block_prefix,block_id);
+        fprintf(_fp,"elem_c_paa %s%d;\n",ring_block_prefix,block_id);
         b = hash_lookup(var_infos, tname);
         Assert (b, "variable not found");
         vi = (var_info *)b->v;
