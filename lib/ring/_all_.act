@@ -20,7 +20,7 @@
  **************************************************************************
  */
 
-import std::cells -> syn;
+import std::cells;
 
 import "syn/ring/ctrl.act";
 

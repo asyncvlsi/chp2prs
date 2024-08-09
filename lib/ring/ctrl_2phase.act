@@ -113,7 +113,7 @@ defproc connect_fblock_dout (bd<W> ch; bool d[W])
 export template <pint N>
 defproc delay_line(bool? in; bool! out)
 {
-  syn::INVX1 invs[2*N];
+  std::cells::INVX1 invs[2*N];
   invs[0].A = in;
   (i:2*N-1 : 
     invs[i].Y = invs[i+1].A;
@@ -133,13 +133,13 @@ defproc delay_line_chan(a1of1 m1; a1of1 p1)
 export template <pint PW>
 defproc pulse(bool? in; bool! out)
 {
-  syn::INVX1 invs[2*PW];
+  std::cells::INVX1 invs[2*PW];
   invs[0].A = in;
   (i:(2*PW)-1: 
     invs[i].Y = invs[i+1].A;
   )
 
-  syn::XOR2X1 xor;
+  std::cells::XOR2X1 xor;
   xor.A = in;
   xor.B = invs[(2*PW)-1].Y;
 
@@ -166,8 +166,8 @@ defproc capture(a1of1 go; bool? din[W]; bool! dout[W])
   sigbuf<W> fanout_tree;
   pulse_generator.out = fanout_tree.in;
 
-  syn::LATCH x[W];
-  // syn::LATCHLO x[W];
+  std::cells::LATCH x[W];
+  // std::cells::LATCHLO x[W];
   (i:W:
     x[i].CLK = fanout_tree.out[i];
     x[i].D = din[i];
@@ -198,13 +198,13 @@ defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])
   pint ival = INIT_VAL;
   pint j = 0;
 
-  *[ j < W -> [ (ival%2) = 0 -> syn::LATCHLO x_lo[j..j];                         
+  *[ j < W -> [ (ival%2) = 0 -> std::cells::LATCHLO x_lo[j..j];                         
                                 x_lo[j].CLK = fanout_tree.out[j];
                                 x_lo[j].D = din[j];
                                 x_lo[j].Q = dout[j];
                                 x_lo[j].R = Reset;
 
-             [] (ival%2) = 1 -> syn::LATCHHI x_hi[j..j];
+             [] (ival%2) = 1 -> std::cells::LATCHHI x_hi[j..j];
                                 x_hi[j].CLK = fanout_tree.out[j];
                                 x_hi[j].D = din[j];
                                 x_hi[j].Q = dout[j];
@@ -224,7 +224,7 @@ defproc itb_wrapper (bd<W> R_out; bd<W> S_in)
   a1of1 m1, p1;
   capture_init<CD, PW, W, INIT_VAL> x_init;
   std::gates::ctree<2,false> c_itb;
-  syn::NOR2X1 nor_reset;
+  std::cells::NOR2X1 nor_reset;
 
   c_itb.in[0] = m1.r;
   c_itb.in[1] = p1.a;
@@ -336,7 +336,7 @@ export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
   std::ideal_arbiter ia(pause.r, m1.a, u, p1.r);
   inverter pause_inv(u,_u);
 
-  syn::NOR2X1 and(_m1_r, _u, pause.a);
+  std::cells::NOR2X1 and(_m1_r, _u, pause.a);
 
   prs {
       ~Reset & (~_m1_r & ~p1.r & ~p1.a) -> m1.a+ 
@@ -365,7 +365,7 @@ export defproc elem_c_itb (a1of1 m1; a1of1 p1)
 export defproc elem_c_itb (a1of1 m1; a1of1 p1)
 {
   std::gates::ctree<2,false> c_itb;
-  syn::NOR2X1 nor_reset;
+  std::cells::NOR2X1 nor_reset;
 
   c_itb.in[0] = m1.r;
   c_itb.in[1] = p1.a;
@@ -412,7 +412,7 @@ export template<pint N>
 defproc selection_split(bool? gs[N]; a1of1? m1; a1of1 co[N]) 
 {
     capture_init<5, 6, N, 0> capt;
-    syn::XOR2X1 xors[N];
+    std::cells::XOR2X1 xors[N];
 
     capt.go.r = m1.r;
     ( i : N: xors[i].A = co[i].a; )
@@ -447,14 +447,14 @@ defproc loop_wrapper (bool? gs[N+1]; a1of1? m1;
                       bool! delay_o; bool? delay_i; a1of1 p1)
 {
 
-  syn::AND2X1 ctrl_and; 
+  std::cells::AND2X1 ctrl_and; 
   std::gates::ctree<2, true> c;
 
   ctrl_and.A = m1.r;
   ctrl_and.B = c.out;
   ctrl_and.Y = delay_o;
 
-  syn::AND2X1 ands[N+1];
+  std::cells::AND2X1 ands[N+1];
   ( i : N+1 : ands[i].A = delay_i; )
   ( i : N+1 : ands[i].B = gs[i]; )
   ( i : N : ands[i].Y = spi[i].r; )
@@ -483,15 +483,15 @@ defproc doloop_wrapper (bool? g; a1of1? m1;
                         bool! delay_o; bool? delay_i; a1of1 p1) 
 {
 
-  syn::AND2X1 ctrl_and; 
+  std::cells::AND2X1 ctrl_and; 
   std::gates::ctree<2, true> c;
 
   ctrl_and.A = m1.r;
   ctrl_and.B = c.out;
   ctrl_and.Y = spi.r;
 
-  syn::AND2X1 ands[2];
-  syn::INVX1 inv_g;
+  std::cells::AND2X1 ands[2];
+  std::cells::INVX1 inv_g;
   inv_g.A = g;
 
   spo.r = delay_o;
@@ -514,7 +514,7 @@ export template<pint N,W>
 defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
 {
   // ands
-  syn::AND2X1 stage_1[N][W];
+  std::cells::AND2X1 stage_1[N][W];
   
   ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
   ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
@@ -532,7 +532,7 @@ export template<pint N,W>
 defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
 {
   // nands
-  syn::NAND2X1 stage_1[N][W];
+  std::cells::NAND2X1 stage_1[N][W];
   
   sigbuf<W> fanout_tree[N];
   ( i : N : fanout_tree[i].in = c[i]; )
