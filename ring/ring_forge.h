@@ -30,7 +30,7 @@ class RingForge : public RingEngine {
     public: 
 
     RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
-            ActBooleanizePass *bp, 
+            ActBooleanizePass *bp, int bdpath,
             int delay_margin,
             const char *circuit_library,
             const char *exprfile);
@@ -111,6 +111,7 @@ class RingForge : public RingEngine {
 
         int _delay_margin;
         float delay_multiplier;
+        int bundled;
 
         // Temp: Lookup table for mux delays
         static const int max_mux_size = 4;

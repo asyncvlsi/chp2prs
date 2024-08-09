@@ -30,11 +30,11 @@
 // Name prefixes
 
 TinyForge::TinyForge ( FILE *fp, Process *p, act_chp_lang_t *c,
-            ActBooleanizePass *bp, 
+            ActBooleanizePass *bp, int bdpath,
             int delay_margin, 
             const char *circuit_library,
             const char *exprfile )
-    : RingForge ( fp, p, c, bp, delay_margin, circuit_library, exprfile )
+    : RingForge ( fp, p, c, bp, bdpath, delay_margin, circuit_library, exprfile )
 {
     term_inst_prefix = "term_inst_";
 }

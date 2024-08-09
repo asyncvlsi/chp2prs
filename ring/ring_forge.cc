@@ -24,7 +24,7 @@
 #include <cmath>
 
 RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
-            ActBooleanizePass *bp,
+            ActBooleanizePass *bp, int bdpath,
             int delay_margin,       
             const char *circuit_library,
             const char *exprfile )
@@ -39,6 +39,7 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     expr_block_instance_prefix = "inst_";
     expr_block_input_prefix = "in_";
 
+    bundled = bdpath;
     // Channel name prefixes
     sync_chan_name_prefix = "sync_";
     parallel_chan_name_prefix = "sync_";
@@ -659,7 +660,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 {
     // fprintf (fp, "// hello from expropt\n");
     // create mapper object
-    ExternalExprOpt *eeo = new ExternalExprOpt("abc", bd, false, _exprfile, 
+    ExternalExprOpt *eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, _exprfile, 
                                                 expr_block_input_prefix,
                                                 expr_block_prefix);
     Assert ((eeo), "Could not create mapper");
@@ -756,7 +757,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
 {
     // create mapper object
-    ExternalExprOpt *eeo = new ExternalExprOpt("abc", bd, false, _exprfile, 
+    ExternalExprOpt *eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, _exprfile, 
                                                 expr_block_input_prefix,
                                                 expr_block_prefix);
     Assert ((eeo), "Could not create mapper");

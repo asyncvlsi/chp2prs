@@ -51,7 +51,12 @@ class RingSynth : public ActSynthesize {
     /* print imports */
     // pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
     pp_printf_raw (_pp, "import syn::ring;\n");
-    pp_printf_raw (_pp, "open syn::ring;\n");
+    if (bundled_data) {
+      pp_printf_raw (_pp, "open syn::ring;\n");
+    }
+    else {
+      pp_printf_raw (_pp, "open syn::ring_qdi_dpath;\n");
+    }
     pp_printf_raw (_pp, "open syn;\n");
 
     pp_printf_raw (_pp, "import \"%s\";\n", _ename);
@@ -111,15 +116,15 @@ class RingSynth : public ActSynthesize {
       b->run(p);
       Assert (b, "hmm b");
 
-      RingForge *rf = new RingForge (_pp->fp, p, c, b, dm, "", _ename);
-      TinyForge *tf = new TinyForge (_pp->fp, p, c, b, dm, "", _ename);
+      RingForge *rf = new RingForge (_pp->fp, p, c, b, bundled, dm, "", _ename);
+      // TinyForge *tf = new TinyForge (_pp->fp, p, c, b, bundled, dm, "", _ename);
 
-      if (tf->check_if_pipeable(c))
-        tf->run_forge();
-      else
-        rf->run_forge();
+      // if (tf->check_if_pipeable(c))
+      //   tf->run_forge();
+      // else
+      //   rf->run_forge();
 
-      // rf->run_forge();
+      rf->run_forge();
 
       revert_mangle();
     }

@@ -25,3 +25,5 @@ import std::cells;
 import "syn/ring/ctrl.act";
 
 import "syn/ring/ctrl_2phase.act";
+
+import "syn/ring/ctrl_qdi_dpath.act";
