@@ -95,6 +95,7 @@ class RingForge : public RingEngine {
         const char *expr_block_prefix;
         const char *expr_block_instance_prefix;
         const char *expr_block_input_prefix;
+        const char *var_access_prefix;
 
         // Channel name prefixes
         const char *sync_chan_name_prefix; 

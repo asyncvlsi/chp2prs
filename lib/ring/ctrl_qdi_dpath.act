@@ -59,7 +59,9 @@ export defproc gp_connect (a1of1 m1; a1of1 p1)
 
 export template<pint W>
 defproc connect_inchan_to_ctrl (sdtchan<W> ch; a1of1 ctrl)
-{}
+{
+  ctrl.a = ch.a;
+}
 
 export template<pint W>
 defproc connect_outchan_to_ctrl (sdtchan<W> ch; a1of1 ctrl; sdtexprchan<W> e)
@@ -73,33 +75,48 @@ defproc connect_outchan_to_ctrl (sdtchan<W> ch; a1of1 ctrl; sdtexprchan<W> e)
 
 // QDI Datapath Elements -------------------------
 
+export template <pint N>
+defproc delay_line_chan(a1of1 m1; a1of1 p1)
+{
+  m1 = p1;
+}
+
 export template <pint CD, PW, W>
-defproc capture(a1of1 go; sdtchan<W> din; sdtvar<W> raw_dout)
+defproc capture(a1of1 go; Mx1of2<W> din; sdtvar<W> dout)
 {
   syn::var_init<W,false> var;
-  var.v = raw_dout;
+  var.v = dout;
   
   syn::expr::writeport<W> wp;
   wp.wt = var.wt;
   wp.wf = var.wf;
-  wp.var = raw_dout;
+  wp.var = dout;
 
-  wp.in.d = din.d;
+  wp.in.d = din;
 
   std::gates::ctree<2,false> write_sync;
   write_sync.in[0] = wp.in.a;
   write_sync.in[1] = go.r;
   write_sync.out = go.a;
-
-  din.a = go.a;
 }
 
 export template <pint W>
-defproc var_access(sdtvar<W> raw_din; sdtexprchan<W> dout)
+defproc var_access(sdtvar<W> din; sdtexprchan<1> dout[W])
 {
   syn::expr::readport<W> read;
-  raw_din = read.var;
-  dout = read.out;
+  din = read.var;
+
+  syn::expr::wrap_to_array<W> conv;
+  conv.in = read.out;
+  conv.out = dout;
+}
+
+export template<pint W>
+defproc connect_exprblk_dout (sdtexprchan<1> d[W]; sdtexprchan<W> ch)
+{
+  syn::expr::wrap_from_array<W> conv;
+  conv.in = d;
+  conv.out = ch;
 }
 
 export template <pint CD, PW, W, INIT_VAL>

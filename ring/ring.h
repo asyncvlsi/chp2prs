@@ -104,6 +104,7 @@ class RingEngine {
         unsigned int _bd_chan_id;
         unsigned int _sync_chan_id;
         unsigned int _expr_id;
+        unsigned int _var_access_id;
         static unsigned int _expr_block_id;
         unsigned int _mux_block_id;
 
@@ -113,6 +114,7 @@ class RingEngine {
         int _gen_sync_chan_id ();
         int _gen_expr_id ();
         int _gen_expr_block_id ();
+        int _gen_var_access_id ();
         int _gen_mux_block_id ();
 
         unsigned int _branch_id;

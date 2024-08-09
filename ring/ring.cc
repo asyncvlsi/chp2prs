@@ -46,6 +46,7 @@ RingEngine::RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
                 _bd_chan_id = 0;
                 _sync_chan_id = 0;
                 _expr_id = 0;
+                _var_access_id = 0;
                 // _expr_block_id = 0;
                 _mux_block_id = 0;
                 _branch_id = 0;
@@ -1022,6 +1023,12 @@ int RingEngine::_gen_expr_id()
 {
     _expr_id++;
     return _expr_id;
+}
+
+int RingEngine::_gen_var_access_id()
+{
+    _var_access_id++;
+    return _var_access_id;
 }
 
 unsigned int RingEngine::_expr_block_id = 0;

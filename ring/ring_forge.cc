@@ -38,6 +38,7 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     expr_block_prefix = "blk_";
     expr_block_instance_prefix = "inst_";
     expr_block_input_prefix = "in_";
+    var_access_prefix = "va_blk_";
 
     bundled = bdpath;
     // Channel name prefixes
@@ -856,11 +857,16 @@ void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves)
 
             Assert ((latch_id>=0),"var. read before being written?");
 
+            int va_id = _gen_var_access_id();
+            fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,%s%d.%s%d);\n",vi->width,var_access_prefix,va_id,
+                                                    capture_block_prefix,vi->name,latch_id,
+                                                    expr_block_instance_prefix,block_id,
+                                                    expr_block_input_prefix, ib->i);
             // connect variable-latch output to expr block input
-            fprintf(_fp,"%s%d.%s%d = %s%s_%d.dout;\n",expr_block_instance_prefix,block_id,
-                                                    expr_block_input_prefix, ib->i, 
-                                                    capture_block_prefix,
-                                                    vi->name,latch_id);
+            // fprintf(_fp,"%s%d.%s%d = %s%s_%d.dout;\n",expr_block_instance_prefix,block_id,
+            //                                         expr_block_input_prefix, ib->i, 
+            //                                         capture_block_prefix,
+            //                                         vi->name,latch_id);
         }
         // connect constants to math block inputs
         else if ( e_var->type == E_INT )
