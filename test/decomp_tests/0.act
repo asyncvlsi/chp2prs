@@ -1,0 +1,7 @@
+defproc dc0 (chan?(int) A, B; chan!(int) C)
+{
+    int x,y;
+    chp {
+        *[ A?x ; B?y; C!(x*y) ]
+    }
+}
