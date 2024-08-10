@@ -332,7 +332,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             fprintf(_fp,"\n// Data for action: ");
             chp_print(_fp,c);
             fprintf(_fp,"\n");
-            if (e->type == E_VAR) { // pure variable send
+            // if (e->type == E_VAR) { // pure variable send
+            if (false) { // pure variable send
             fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
                 var = (ActId *)e->u.e.l;
                 char tname[1024];

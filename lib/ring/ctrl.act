@@ -81,17 +81,17 @@ defproc connect_inchan_to_ctrl (bd<W> ch; a1of1 ctrl)
 }
 
 export template<pint W>
+defproc connect_capture_din (bd<W> ch; bool d[W])
+{
+  ch.d = d;
+}
+
+export template<pint W>
 defproc connect_outchan_to_ctrl (bd<W> ch; a1of1 ctrl; bool e[W])
 {
   ch.r = ctrl.r;
   ch.a = ctrl.a;
   ch.d = e;
-}
-
-export template<pint W>
-defproc connect_capture_din (bd<W> ch; bool d[W])
-{
-  ch.d = d;
 }
 
 export template<pint W>
