@@ -71,10 +71,17 @@ void RingForge::run_forge ()
      * needs to be added here
     */
     if (_c->label && (strcmp(_c->label,"top_decomp")==0)) {
-        Assert (_c->type == ACT_CHP_COMMA, "top-level not parallel loops?");
-        for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li))
-        {
-            _run_forge_helper ((act_chp_lang_t *)(list_value(li)));
+        Assert ((_c->type == ACT_CHP_COMMA)||
+                (_c->type == ACT_CHP_LOOP)||
+                (_c->type == ACT_CHP_DOLOOP), "top-level not loop or parallel loops?");
+        if (_c->type == ACT_CHP_COMMA) {
+            for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li))
+            {
+                _run_forge_helper ((act_chp_lang_t *)(list_value(li)));
+            }
+        }
+        else {
+            _run_forge_helper (_c);
         }
     }
     else {
