@@ -138,6 +138,15 @@ class ActSynthesize {
   list_t *getDecompVx() { return _decomp_vx; }
 
   /**
+   * Reset list of fresh instances
+   */
+  void resetDecompVx() { 
+    list_free(_decomp_vx); 
+    // _decomp_vx = NULL; 
+    _decomp_vx = list_new();
+  }
+
+  /**
    * Run logic synthesis locally on a single process. This should
    * print the results of the synthesis via the pretty-printer. Note
    * that all boilerplate (type overrides, implementation headers,

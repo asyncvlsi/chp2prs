@@ -96,5 +96,10 @@ start_lldb:
 	then \
 		(lldb ./$(BINARY)); \
 	fi
+start_lldb2:
+	@if [ -x synth2.$(EXT) ] ; \
+	then \
+		(lldb ./synth2.$(EXT)); \
+	fi
 
 -include Makefile.deps

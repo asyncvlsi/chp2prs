@@ -324,9 +324,9 @@ static int emit_refinement_header (ActSynthesize *syn,
     pp_forced (pp, 0);
   }
 
-  if (decomp_vx) {
-    list_free (decomp_vx);
-  }
+  // if (decomp_vx) {
+    // syn->resetDecompVx();
+  // }
 
   if (u->getlang() && u->getlang()->getchp()) {
     if (config_get_int ("act.refine_steps")  > 0) {
@@ -485,6 +485,7 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
       // syn->runPreSynth (ap, p);
       int v = emit_refinement_header (syn, p);
     }
+    syn->resetDecompVx();
     pp_endb (pp);
     pp_printf (pp, "/* end process */");
     pp_forced (pp, 0);
