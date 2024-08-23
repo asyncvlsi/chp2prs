@@ -633,6 +633,7 @@ Block *ChoppingBlock::_excise_loop (Block *curr)
 /*
     construct this:
     x:=0;
+    init_vars:=0;
     *[  [ c=0 -> Ls?{vars};{assign all from concat};c:=1 (line 1)
         []c=1 -> skip (line 2)
         ];
@@ -741,10 +742,37 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
 
     // select_1, pre, select_2, post
     Sequence func = _wrap_in_do_loop(g->graph.blockAllocator().newSequence(v_blks));
+
+    auto v_inits = _initialize_ics (curr);
+    for ( auto b : v_inits )
+    {
+        _splice_in_block_between (func.startseq, func.startseq->child(), b);
+    }
     // Sequence func = _wrap_in_do_loop(g->graph.blockAllocator().newSequence({select_1,select_2}));
-    _splice_in_block_between (func.startseq, func.startseq->child(),init_c);
+    _splice_in_block_between (func.startseq, func.startseq->child(), init_c);
 
     return func;
+}
+
+std::vector<Block *> ChoppingBlock::_initialize_ics(Block *curr)
+{
+    std::vector<Block *> v_inits;
+    hassert (vmap.contains(curr));
+    decomp_info_t *di = (vmap.find(curr))->second;
+    
+    if (di->live_in_vars.size() == 0)
+    {
+        return {};
+    }
+
+    for ( auto var : di->live_in_vars )
+    {
+        Block *init_v = g->graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeAssignment(var,ChpExprSingleRootDag::makeConstant(BigInt(0),1))));
+        v_inits.push_back(init_v);
+    }
+
+    return v_inits;
 }
 
 int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send, int type)

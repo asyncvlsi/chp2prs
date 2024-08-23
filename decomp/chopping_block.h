@@ -74,6 +74,8 @@ class ChoppingBlock {
 
         Block *_build_sequence(Block *b_start, Block *b_end, int type);
 
+        std::vector<Block *> _initialize_ics(Block *curr);
+
         std::pair<int, Sequence> _generate_recv_and_maybe_assigns (Block *send, int type);
 
         int _splice_in_recv_before (Block *bb, Block *send, int type);
