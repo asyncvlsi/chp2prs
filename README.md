@@ -12,13 +12,14 @@ The options are:
 
    * `-h` : show this message
    * `-O` : run CHP optimizations. Requires the chp-opt package.
+   * `-P <int>` : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3  (default 0)
    * `-F dataflow|sdt|ring|decomp` : select synthesis output format.
       * `dataflow` : dataflow output generation.
       * `sdt` : syntax-directed translation for prs generation.
-      * `ring` : ring-based synthesis for prs generation; implies bundled data output.
+      * `ring` : ring-based synthesis for prs generation.
       * `decomp` : decompose chp into more concurrent chp; not a prs generation step. 
    * `-R` : synthesize with ring approach. [deprecated, use `-F ring`]
-   * `-b` : use bundled data datapath for SDT. Default is QDI.
+   * `-b` : use bundled data datapath for SDT, ring. Default is QDI.
    * `-m <int>` : matched delay-line multiplier (in percentage) for ring synthesis. Default is 100 (1x).
    * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. Default is `expr.act`
    * `-E abc|yosys|genus` : run expression optimization using the specified logic synthesis engine.
