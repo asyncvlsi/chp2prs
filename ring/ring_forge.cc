@@ -134,8 +134,6 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
         fatal_error("Mux input mapping incomplete."); 
     }
 
-    delete lva;
-    lva = NULL;
     fprintf (_fp, "// Branched Ring ------------------\n");
     generate_branched_ring (c,1,0,0);
 }
