@@ -60,6 +60,7 @@ class DecompAnalysis {
                 fp = fp_out;
                 g = &g_in;
                 s = s_in;
+                decomp_info_map.clear();
             } 
 
         void analyze ();

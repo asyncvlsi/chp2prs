@@ -140,7 +140,7 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
     hassert (vmap.contains(bb));
     decomp_info_t *di = (vmap.find(bb))->second;
 
-    if (di->live_in_vars.size() == 0)
+    if (di->total_bitwidth_in == 0)
     {
         return NULL;
     }
@@ -208,7 +208,7 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
     hassert (vmap.contains(bb));
     decomp_info_t *di = (vmap.find(bb))->second;
 
-    if (di->live_out_vars.size() == 0)
+    if (di->total_bitwidth_out == 0)
     {
         return NULL;
     }
@@ -800,6 +800,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
     decomp_info_t *di = (vmap.find(send))->second;
 
     std::unordered_set<VarId> vars;
+    vars.clear();
     int bitwidth;
     if (type==LIVE_IN) {
         vars = di->live_in_vars;
