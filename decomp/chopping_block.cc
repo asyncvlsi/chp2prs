@@ -268,7 +268,7 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
 
 void ChoppingBlock::chop_graph()
 {
-    _chop_graph(g->graph.m_seq, 1);
+    _chop_graph(g->graph.m_seq, 2);
 }
 
 void ChoppingBlock::excise_internal_loops()
@@ -475,17 +475,13 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     break;
       
     case BlockType::DoLoop:
-        if (root != 1) 
+        if (root != 2) 
         {
             fatal_error ("excise internal loops please");
-            // fprintf(stdout, "\nexcising internal loop \n");
-            // tmp = curr->child();
-            // _excise_loop(curr);
-            // tmp = tmp->parent();
         }
         else {
-            _chop_graph (curr->u_doloop().branch, 0);
-            return;
+            _chop_graph (curr->u_doloop().branch, 1);
+            // return;
         }
         // don't do tail processing for doloop
         break;
@@ -498,11 +494,15 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     curr = curr->child();
     }
     // tear out tail
-    if (!seq.empty())
+    if (!seq.empty() && (root == 0))
     {   
         // incoming and outgoing dependencies handled in _process_selection
         // _build_sequence (seq.startseq, seq.endseq->parent(), END_INC);
         _build_sequence (seq.startseq->child(), seq.endseq, END_EXC);
+    }
+    if (!seq.empty() && (root == 2))
+    {   
+        v_seqs.push_back(seq);
     }
     return;
 }
