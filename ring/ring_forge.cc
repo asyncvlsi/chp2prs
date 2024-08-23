@@ -1335,7 +1335,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     int sel_split_block_id, sel_merge_block_id;
     int delay_merge_block_id;
     int comma_len, gc_len;
-    int pll_port;
+    int pll_port, gp_con_id;
     int delay_n_sel, max_delay_n_sel, delay_n_merge;
     list_t *live_vars;
     list_t *gp_connect_ids;
@@ -1376,9 +1376,10 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         pll_port = 0;
         for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
         {
-            block_id = generate_branched_ring ((act_chp_lang_t *)list_value(li), 0, pll_split_block_id, 0);
-            // BUG TODO : Assuming elementary actions only in parallel
-            _connect_pll_split_outputs_to_pipe (pll_split_block_id, block_id, pll_port);
+            gp_con_id = _generate_gp_connect ();
+            _connect_pll_split_outputs_to_pipe (pll_split_block_id, gp_con_id, pll_port);
+            
+            block_id = generate_branched_ring ((act_chp_lang_t *)list_value(li), 0, gp_con_id, 1);
             _connect_pipe_to_pll_merge_inputs (pll_merge_block_id, block_id, pll_port);
             pll_port++;
         }
