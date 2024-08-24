@@ -213,7 +213,9 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action)
         list_append (req_vars, Strdup(b->key));
     }
     latch_info_t *l_info;
-    NEW (l_info, latch_info_t);
+    l_info = new latch_info_t;
+    l_info->merge_mux_latch_number.clear();
+    l_info->merge_mux_inputs.clear();
     l_info->type = LatchType::Latch;
     l_info->live_vars = list_dup(req_vars);
 
@@ -246,7 +248,9 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
     }	     
 
     latch_info_t *l_info;
-    NEW (l_info, latch_info_t);
+    l_info = new latch_info_t;
+    l_info->merge_mux_latch_number.clear();
+    l_info->merge_mux_inputs.clear();
     if (action->type != ACT_CHP_SELECT)
     {
         l_info->type = LatchType::ICs;
