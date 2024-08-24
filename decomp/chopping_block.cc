@@ -797,7 +797,8 @@ int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send, int type)
 std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block *send, int type)
 {
     hassert (vmap.contains(send));
-    decomp_info_t *di = (vmap.find(send))->second;
+    decomp_info_t *di = new decomp_info_t;
+    di = (vmap.find(send))->second;
 
     std::unordered_set<VarId> vars;
     vars.clear();

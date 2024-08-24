@@ -42,7 +42,7 @@ typedef struct decomp_info {
 static decomp_info_t *_deepcopy_decomp_info(decomp_info_t *di)
 {
     decomp_info_t *di_new;
-    NEW (di_new, decomp_info_t);
+    di_new = new decomp_info_t;
     di_new->live_in_vars = di->live_in_vars;
     di_new->live_out_vars = di->live_out_vars;
     di_new->total_bitwidth_in = di->total_bitwidth_in;
