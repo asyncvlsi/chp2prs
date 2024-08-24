@@ -75,8 +75,7 @@ void DecompAnalysis::_populate_decomp_info_map (
         hassert (lom.contains(x.first)); 
         auto lo_vars = lom.find(x.first)->second;
 
-        decomp_info_t *di;
-        NEW (di, decomp_info_t);
+        decomp_info_t *di = new decomp_info_t;
         di->live_in_vars = li_vars;
         di->live_out_vars = lo_vars;
         di->total_bitwidth_in = _compute_total_bits (li_vars);
