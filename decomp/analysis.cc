@@ -429,7 +429,7 @@ void DecompAnalysis::_restore_live_vars_from_parent ()
 decomp_info_t *DecompAnalysis::_generate_decomp_info()
 {
     decomp_info_t *di;
-    NEW (di, decomp_info_t);
+    di = new decomp_info_t;
     di->live_in_vars = H_live;
     di->live_out_vars = {}; // this should be filled in 
     di->total_bitwidth_in = _compute_total_bits (H_live);
