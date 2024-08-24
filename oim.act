@@ -1,0 +1,97 @@
+template<pint num_osc, bitwidth>
+defproc oscillator_block(chan?(int<num_osc>) fc_chan; chan?(int<bitwidth>) K_val; 
+                            chan?(int<num_osc>) delta_t_chan; chan?(int<num_osc>) f0_chan; chan?(int) go; 
+                            chan!(int<num_osc>) K_idx; chan!(int) update_complete_chan) {
+    int<num_osc> fc_prev;
+    int<num_osc> fc_curr;
+    int<num_osc> fc_delta;
+
+    int<bitwidth> Ri_curr; // Current right hand side of the Kuramoto Equation
+    int<bitwidth> osc_phase;
+    int<bitwidth> f0;
+    int<bitwidth> delta_t;
+
+    int<bitwidth> i;
+    int<num_osc> bitmask; 
+    int<bitwidth> K;
+    int<1> tick;
+    int<1> update_complete;
+    int<1> sign;
+
+    int<1> fc_delta_check;
+    int<1> fc_curr_check;
+
+    chp{
+        Ri_curr := 0;
+        fc_prev := 0;
+
+        *[
+            // Computations to find the current right-hand side of the Kuramoto Eqn. (Ri)
+            fc_chan?fc_curr, delta_t_chan?delta_t, f0_chan?f0, i := 1, bitmask := 0; 
+            fc_delta := fc_curr ^ fc_prev;
+            *[
+                [ i < num_osc -> 
+                    fc_delta_check := fc_delta & bitmask >> i, fc_curr_check := fc_curr & bitmask >> i;
+                    [ fc_delta_check = 1 ->
+                        [fc_curr_check = 1 -> sign := 1 [] fc_curr_check = 0 -> sign := -1], K_idx!i; 
+                        K_val?K; Ri_curr := Ri_curr + K // Ri_curr + 2 * sign * K
+                    [] fc_delta_check = 0 -> 
+                        skip
+                    ] 
+                [] i = num_osc -> skip
+                ];
+                bitmask := 1 << i
+            ]; 
+            go?tick; osc_phase := (Ri_curr << delta_t) + (f0 << delta_t) + osc_phase, fc_prev := fc_curr, update_complete := 1; update_complete_chan!update_complete
+        ]
+    }
+}
+
+// template<pint num_osc, bitwidth>
+// defproc oscillator_block(chan?(int<num_osc>) fc_chan; chan?(int<bitwidth>) K_val; 
+//                             chan?(int<num_osc>) delta_t_chan; chan?(int<num_osc>) f0_chan; chan?(int) go; 
+//                             chan!(int<num_osc>) K_idx; chan!(int) update_complete_chan) {
+//     int<num_osc> fc_prev;
+//     int<num_osc> fc_curr;
+//     int<num_osc> fc_delta;
+
+//     int<bitwidth> Ri_curr; // Current right hand side of the Kuramoto Equation
+//     int<bitwidth> osc_phase;
+//     int<bitwidth> f0;
+//     int<bitwidth> delta_t;
+
+//     int<bitwidth> i; 
+//     int<bitwidth> K;
+//     int<1> tick;
+//     int<1> update_complete;
+//     int<1> sign;
+
+//     chp{
+//         Ri_curr := 0;
+
+//         *[
+//             // Computations to find the current right-hand side of the Kuramoto Eqn. (Ri)
+//             fc_chan?fc_curr, delta_t_chan?delta_t, f0_chan?f0, i := 0; 
+//             fc_delta := fc_curr ^ fc_prev;
+//             *[
+//                 [ fc_delta & 1 = 0 -> skip 
+//                 [] i < num_osc & (fc_delta & 1 != 0) -> 
+//                     [ fc_delta{i} = 1 ->
+//                         [fc_curr{i} = 1 -> sign := 1 [] fc_curr{i} = 0 -> sign := -1], K_idx!i; 
+//                         K_val?K; Ri_curr := Ri_curr + 2 * sign * K
+//                     [] fc_delta{i} = 0 -> 
+//                         skip
+//                     ] 
+//                 [] i = num_osc -> skip
+//                 ];
+//                 i := i + 1
+//             ]; 
+//             go?tick; osc_phase := (Ri_curr * delta_t) + (f0 * delta_t) + osc_phase, fc_prev := fc_curr, update_complete := 1; update_complete_chan!update_complete
+//         ]
+//     }
+// }
+
+defproc osc() {
+    oscillator_block<50, 25> osc_inst;
+
+}
