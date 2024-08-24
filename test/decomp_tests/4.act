@@ -1,0 +1,12 @@
+defproc dc4 (chan?(int) A; chan!(int) Z)
+{
+    int x, z;
+    chp {
+        z:=0;
+        *[ A?x;
+            z:=z+x;
+            Z!z
+        ]
+    }
+}
+
