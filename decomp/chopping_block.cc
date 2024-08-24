@@ -265,6 +265,7 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
 
 void ChoppingBlock::chop_graph()
 {
+    _handle_ic_lcd(g->graph.m_seq);
     _chop_graph(g->graph.m_seq, 2);
 }
 
@@ -378,6 +379,56 @@ Block *ChoppingBlock::_build_sequence (Block *b_start, Block *b_end_plus_1, int 
 
     v_seqs.push_back(_wrap_in_do_loop(seq_out));
     return send;
+}
+
+void ChoppingBlock::_handle_ic_lcd (Sequence seq)
+{
+    Block *curr = seq.startseq->child();
+    if (curr->type() == BlockType::DoLoop) 
+    {
+        return;
+    }
+    while (curr->type() != BlockType::DoLoop && curr->type() != BlockType::EndSequence)
+    {
+        curr = curr->child();
+    }
+    hassert (curr->type() == BlockType::DoLoop);
+    _handle_ic_lcd_helper (curr);
+}
+
+void ChoppingBlock::_handle_ic_lcd_helper (Block *doloop)
+{
+    Block *send_to_main   = _generate_send_to_be_recvd_by(doloop);
+    Block *send_from_main = _generate_send_to_be_recvd_by(doloop);
+    Block *recv_from_main = NULL;
+    Block *new_main_blk = g->graph.blockAllocator().newBlock(Block::makeDoLoopBlock());
+
+    Sequence seq = doloop->u_doloop().branch;
+    Sequence lcd = g->graph.newSequence({});
+
+    if (send_to_main) 
+    {
+        // insert comms in main
+        _splice_in_recv_before (seq.startseq->child(), send_to_main, LIVE_IN);
+        _splice_in_block_between (seq.endseq->parent(), seq.endseq, send_from_main);
+
+        // insert comms in new process
+        _splice_in_block_between (lcd.startseq,lcd.startseq->child(), send_to_main);
+        _splice_in_recv_before (lcd.endseq, send_from_main, LIVE_IN);
+
+        // build lcd handler and add to vec
+        doloop->u_doloop().branch = lcd;
+        doloop->u_doloop().guard = (ChpExprSingleRootDag::of_expr(
+                                        ChpExpr::makeConstant(BigInt{1}, 1)));
+        v_seqs.push_back(g->graph.m_seq);
+
+        // replace main with new one
+        new_main_blk->u_doloop().branch = seq;
+        new_main_blk->u_doloop().guard = (ChpExprSingleRootDag::of_expr(
+                                        ChpExpr::makeConstant(BigInt{1}, 1)));
+        Sequence new_main = g->graph.newSequence({new_main_blk});
+        g->graph.m_seq = new_main;
+    }
 }
 
 void ChoppingBlock::_chop_graph(Sequence seq, int root)
@@ -528,11 +579,7 @@ void ChoppingBlock::_excise_internal_loops(Sequence seq, int root)
             tmp = tmp->parent();
         }
         else {
-            _excise_internal_loops (curr->u_doloop().branch, 0); 
-            // if (!seq.empty())
-            // {   
-            //     v_seqs.push_back (seq);
-            // }
+            _excise_internal_loops (curr->u_doloop().branch, 0);
             return;
         }
         break;

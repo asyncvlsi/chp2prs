@@ -54,6 +54,8 @@ class ChoppingBlock {
 
         void _handle_ic_lcd (Sequence seq);
         
+        void _handle_ic_lcd_helper (Block *doloop);
+        
         void _excise_internal_loops (Sequence seq, int root);
         
         void _split_sequence_before (Block *b, Sequence seq_in, int root);
