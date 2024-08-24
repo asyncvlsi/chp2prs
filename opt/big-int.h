@@ -858,9 +858,17 @@ template <typename W> class BigInt_t {
         }
         if (shift == 0) {
             result.m_wds = offset;
+	    if (result.m_wds != offset) {
+	      // this is A PROBLEM!
+	      result.m_wds = ~0;
+	    }
         } else {
             result.d.buf()[offset] = (~W(0)) >> (64 - shift);
             result.m_wds = offset + 1;
+	    if (result.m_wds != offset+1) {
+	      // this is A PROBLEM!
+	      result.m_wds = ~0;
+	    }
         }
         return result;
     }

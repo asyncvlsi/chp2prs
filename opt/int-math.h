@@ -135,6 +135,22 @@ class BitStateArr {
             result.set(i, default_);
         return result;
     }
+
+  void print(FILE *fp) const {
+    for (size_t i = 0; i < size(); i++) {
+      switch (at(i)) {
+      case BitState::on:
+	fprintf (fp, "1");
+	break;
+      case BitState::off:
+	fprintf (fp, "0");
+	break;
+      case BitState::unknown:
+	fprintf (fp, "?");
+	break;
+      }
+    }
+  }
 };
 
 class IntLattice {
