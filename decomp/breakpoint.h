@@ -48,18 +48,16 @@ class BreakPoints : public DecompAnalysis {
     private:
 
         /* 
-         * Naive breakpoint computation algorithm. Breaks at
-         * every receive/assignment. Also breaks just before
-         * and just after every selection.
+         * Receives only
          */ 
         void _mark_breakpoints_v1(Sequence seq, int root);
         /*
-         * Breaks out selections only - for testing
+         * Selections only - for testing
         */
         void _mark_breakpoints_v2(Sequence seq, int root);
 
         /*
-         * Receives only, ignores selections - for testing
+         * Assignments, receives and parallel
         */
         void _mark_breakpoints_v3(Sequence seq, int root);
 

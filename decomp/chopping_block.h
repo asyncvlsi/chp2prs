@@ -51,6 +51,8 @@ class ChoppingBlock {
         IdPool idpool;
 
         void _chop_graph (Sequence seq, int root);
+
+        void _handle_ic_lcd (Sequence seq);
         
         void _excise_internal_loops (Sequence seq, int root);
         

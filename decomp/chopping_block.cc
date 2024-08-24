@@ -263,9 +263,6 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
     return send;
 }
 
-// new
-// break from the first break_before to the closest break_after
-
 void ChoppingBlock::chop_graph()
 {
     _chop_graph(g->graph.m_seq, 2);
@@ -396,18 +393,12 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     case BlockType::Basic: {
         hassert (vmap.contains(curr));
         di = (vmap.find(curr))->second;
-        // if (di->break_after)
         if (di->break_before && (curr != seq.startseq->child()))
         {   
             Block *send = _build_sequence (seq.startseq->child(), curr, END_EXC);
-            // Block *tmp = curr->child();
-            // Block *send = _build_sequence (seq.startseq, curr, END_INC);
             if (send) {
-                // _splice_in_recv_before (tmp, send, LIVE_OUT);
                 _splice_in_recv_before (curr, send, LIVE_IN);
             }
-            // curr = tmp;
-            // continue;
         }
     }
     break;
@@ -426,7 +417,6 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
             Block *pll_merge_send = _process_parallel (curr, n);
             for (auto &branch : curr->u_par().branches) {
                 _chop_graph (branch, 0);
-                // v_seqs.push_back(branch);
             }
             // tear out the old pll
             curr = curr->child();
@@ -481,7 +471,6 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
         }
         else {
             _chop_graph (curr->u_doloop().branch, 1);
-            // return;
         }
         // don't do tail processing for doloop
         break;

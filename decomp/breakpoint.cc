@@ -58,19 +58,16 @@ void BreakPoints::_mark_breakpoints_v1(Sequence seq, int mark_next)
         case StatementType::Assign:
             break;
         case StatementType::Receive:
-            // break before every new assignment
             di = (decomp_info_map.find(curr))->second;
             di->break_before = true;
             di->break_after = true;
             break;
       }
         di = (decomp_info_map.find(curr))->second;
-        // _print_decomp_info (di);
     }
     break;
       
     case BlockType::Par: {
-        // fatal_error ("working on par...");
         for (auto &branch : curr->u_par().branches) {
             _mark_breakpoints_v1 (branch, 0);
         }
@@ -78,20 +75,12 @@ void BreakPoints::_mark_breakpoints_v1(Sequence seq, int mark_next)
     break;
       
     case BlockType::Select:
-        // fprintf (stdout, "reached select start\n");
-        // break before every selection
-        di = (decomp_info_map.find(curr))->second;
-        di->break_before = true;
-        di->break_after = true;
-
         for (auto &branch : curr->u_select().branches) {
             _mark_breakpoints_v1 (branch.seq, 0);
         }
-        // fprintf (stdout, "reached select end\n");
     break;
       
     case BlockType::DoLoop:
-        // fprintf (stdout, "\n\nreached do-loop\n");
         _mark_breakpoints_v1 (curr->u_doloop().branch, 0);
         break;
     
@@ -188,9 +177,6 @@ void BreakPoints::_mark_breakpoints_v3(Sequence seq, int mark_next)
     break;
       
     case BlockType::Select: {
-        // di = (decomp_info_map.find(curr))->second;
-        //     di->break_before = true;
-        //     di->break_after = true;
         for (auto &branch : curr->u_select().branches) {
             _mark_breakpoints_v3 (branch.seq, 0);
         }
@@ -208,7 +194,6 @@ void BreakPoints::_mark_breakpoints_v3(Sequence seq, int mark_next)
     }
     curr = curr->child();
     }
-    // di = (decomp_info_map.find(curr))->second;
 }
 
 void BreakPoints::_compute_min_and_max()

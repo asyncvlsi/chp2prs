@@ -496,13 +496,13 @@ void DecompAnalysis::_print_decomp_info (Sequence seq, int root)
     case BlockType::Basic: {
         switch (curr->u_basic().stmt.type()) {
         case StatementType::Assign:
-            fprintf (stdout, "reached assign\n");
+            fprintf (fp, "reached assign\n");
             break;
         case StatementType::Send:
-            fprintf (stdout, "reached send\n");
+            fprintf (fp, "reached send\n");
             break;
         case StatementType::Receive:
-            fprintf (stdout, "reached recv\n");
+            fprintf (fp, "reached recv\n");
             break;
       }
         di = (decomp_info_map.find(curr))->second;
@@ -511,7 +511,7 @@ void DecompAnalysis::_print_decomp_info (Sequence seq, int root)
     break;
       
     case BlockType::Par: {
-        fprintf (stdout, "reached parallel start\n");
+        fprintf (fp, "reached parallel start\n");
 
         di = (decomp_info_map.find(curr))->second;
         _print_decomp_info (di);
@@ -519,12 +519,12 @@ void DecompAnalysis::_print_decomp_info (Sequence seq, int root)
         for (auto &branch : curr->u_par().branches) {
             _print_decomp_info (branch, 0);
         }
-        fprintf (stdout, "reached parallel end\n");
+        fprintf (fp, "reached parallel end\n");
     }
     break;
       
     case BlockType::Select:
-        fprintf (stdout, "reached select start\n");
+        fprintf (fp, "reached select start\n");
 
         di = (decomp_info_map.find(curr))->second;
         _print_decomp_info (di);
@@ -533,11 +533,13 @@ void DecompAnalysis::_print_decomp_info (Sequence seq, int root)
             _print_decomp_info (branch.seq, 0);
         }
 
-        fprintf (stdout, "reached select end\n");
+        fprintf (fp, "reached select end\n");
     break;
       
     case BlockType::DoLoop:
-        fprintf (stdout, "\n\nreached do-loop\n");
+        fprintf (fp, "\n\nreached do-loop\n");
+        di = (decomp_info_map.find(curr))->second;
+        _print_decomp_info (di);
         _print_decomp_info (curr->u_doloop().branch, 0);
         break;
     
