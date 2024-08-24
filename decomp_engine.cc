@@ -118,6 +118,7 @@ class Decomp : public ActSynthesize {
       for ( auto x : tmp_names ) { newnames.insert(x); }
       act_chp_lang_t *top_chp;
       NEW (top_chp, act_chp_lang_t);
+      top_chp->label = NULL;
       top_chp->type = ACT_CHP_COMMA;
       top_chp->u.semi_comma.cmd = list_new();
 
