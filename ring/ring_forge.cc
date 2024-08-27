@@ -25,7 +25,7 @@
 
 RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp, int bdpath,
-            int delay_margin,       
+            int delay_margin, int dp_style,
             const char *circuit_library,
             const char *exprfile )
     : RingEngine ( fp, p, c, bp, circuit_library, exprfile )
@@ -42,6 +42,8 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     var_access_prefix = "va_blk_";
 
     bundled = bdpath;
+    datapath_style = dp_style;
+    
     // Channel name prefixes
     sync_chan_name_prefix = "sync_";
     init_cond_chan_prefix = "C_init_";

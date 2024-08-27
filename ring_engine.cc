@@ -91,7 +91,7 @@ class RingSynth : public ActSynthesize {
     fprintf (_pp->fp, "/* start rsyn */\n");
     fflush (_pp->fp);
 
-    int chpopt, bundled, dm;
+    int chpopt, bundled, dm, dpath_style;
     ActDynamicPass *dp;
 
     dp = dynamic_cast <ActDynamicPass *> (ap);
@@ -100,6 +100,7 @@ class RingSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     bundled = dp->getIntParam ("bundled_dpath");
     dm = dp->getIntParam ("delay_margin");
+    dpath_style = dp->getIntParam ("datapath_style");
 
     act_chp_lang_t *c = p->getlang()->getchp()->c;
 
@@ -116,7 +117,7 @@ class RingSynth : public ActSynthesize {
       b->run(p);
       Assert (b, "hmm b");
 
-      RingForge *rf = new RingForge (_pp->fp, p, c, b, bundled, dm, "", _ename);
+      RingForge *rf = new RingForge (_pp->fp, p, c, b, bundled, dm, dpath_style, "", _ename);
       // TinyForge *tf = new TinyForge (_pp->fp, p, c, b, bundled, dm, "", _ename);
 
       // if (tf->check_if_pipeable(c))

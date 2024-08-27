@@ -31,7 +31,7 @@ class RingForge : public RingEngine {
 
     RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp, int bdpath,
-            int delay_margin,
+            int delay_margin, int dp_style,
             const char *circuit_library,
             const char *exprfile);
 
@@ -70,6 +70,7 @@ class RingForge : public RingEngine {
         float _lookup_mux_delays (int, int);
         std::pair<int,int> _get_pre_sel_latch_and_size (std::vector<int>);
 
+        // expr block functions
         void _expr_collect_vars (Expr *, int);
         void _instantiate_expr_block (int, list_t *);
         void _print_list_of_vars (FILE *fp, list_t *);
@@ -113,6 +114,7 @@ class RingForge : public RingEngine {
         int _delay_margin;
         float delay_multiplier;
         int bundled;
+        int datapath_style;
 
         // Temp: Lookup table for mux delays
         static const int max_mux_size = 4;

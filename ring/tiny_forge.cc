@@ -31,10 +31,10 @@
 
 TinyForge::TinyForge ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp, int bdpath,
-            int delay_margin, 
+            int delay_margin, int dp_style, 
             const char *circuit_library,
             const char *exprfile )
-    : RingForge ( fp, p, c, bp, bdpath, delay_margin, circuit_library, exprfile )
+    : RingForge ( fp, p, c, bp, bdpath, delay_margin, dp_style, circuit_library, exprfile )
 {
     term_inst_prefix = "term_inst_";
 }

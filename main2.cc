@@ -38,6 +38,7 @@ static void usage(char *name)
   fprintf (stderr, "        * sdt : syntax-directed translation prs output\n");
   fprintf (stderr, "        * ring : ring-based synthesis prs output [implies bundled data]\n");
   fprintf (stderr, "        * decomp : decomposition - CHP-to-CHP\n");
+  fprintf (stderr, " -G : Non-SSA style datapath, for ring synthesis only (with -b only for now)\n");
   fprintf (stderr, " -R : synthesize with ring approach [deprecated, use -F ring]\n");
   fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI)\n");
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
@@ -57,6 +58,7 @@ int main(int argc, char **argv)
   bool chpopt = false;
   bool decompose = false;
   bool bundled = false;
+  bool non_ssa = false;
   char *exprfile = NULL;
   FILE *dfile;
   char *syntesistool = NULL;
@@ -74,7 +76,7 @@ int main(int argc, char **argv)
   bool use_ring = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "RhObde:E:o:p:F:P:m:")) != -1) {
+  while ((ch = getopt (argc, argv, "RhOGbde:E:o:p:F:P:m:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -99,6 +101,10 @@ int main(int argc, char **argv)
     case 'R':
       use_ring = true;
       bundled = true;
+      break;
+
+    case 'G':
+      non_ssa = true;
       break;
       
     case 'h':
@@ -230,6 +236,7 @@ int main(int argc, char **argv)
       c2p->setParam ("engine", (void *) gen_ring_engine);
       c2p->setParam ("prefix", (void *)Strdup ("ring"));
       c2p->setParam ("delay_margin", delay_margin);
+      c2p->setParam ("datapath_style", non_ssa);
     }
     else if (decompose) {
       c2p->setParam ("engine", (void *) gen_decomp_engine);
