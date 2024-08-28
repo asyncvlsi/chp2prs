@@ -967,7 +967,7 @@ Block *ChoppingBlock::_process_selection (Block *sel, int n)
     Sequence seq_split;
 
     // generate split and merge ------------------------
-    auto [split, merge_send] = _generate_split_merge_and_seed_branches (sel);
+    auto [send_ctrl, split, merge_send] = _generate_split_merge_and_seed_branches (sel);
     // also sends live_vars to head of branches,
     // places receives at the headto get them,
     // places sends at the tails of branches
@@ -977,7 +977,12 @@ Block *ChoppingBlock::_process_selection (Block *sel, int n)
         recv = sel->parent();
         _splice_out_block (recv);
         // seq = g->graph.blockAllocator().newSequence({recv});
-        seq_split = g->graph.blockAllocator().newSequence({recv,split});
+        if (send_ctrl) {
+            seq_split = g->graph.blockAllocator().newSequence({recv,send_ctrl,split});
+        }
+        else {
+            seq_split = g->graph.blockAllocator().newSequence({recv,split});
+        }
     }
     else if (n==2) {
         recv = sel->parent()->parent();
@@ -985,7 +990,12 @@ Block *ChoppingBlock::_process_selection (Block *sel, int n)
         _splice_out_block (recv);
         _splice_out_block (pll_assigns);
         // seq = g->graph.blockAllocator().newSequence({recv, pll_assigns});
-        seq_split = g->graph.blockAllocator().newSequence({recv, pll_assigns, split});
+        if (send_ctrl) {
+            seq_split = g->graph.blockAllocator().newSequence({recv, pll_assigns, send_ctrl, split});
+        }
+        else {
+            seq_split = g->graph.blockAllocator().newSequence({recv, pll_assigns, split});
+        }
     }
     else {
         hassert (false);
@@ -1093,7 +1103,7 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_pll_send_recv_and_seed_bran
         ]
      ]
 */
-std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branches (Block *sel)
+std::tuple<Block *, Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branches (Block *sel)
 {
     Block *split = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
 
@@ -1122,13 +1132,15 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branch
         merge_var = g->graph.id_pool().makeUniqueVar(di_sel->total_bitwidth_out, false);
     }
 
+    auto ctrl_expr = ChpExprSingleRootDag::makeConstant(BigInt(sel->u_select().branches.size()-1), ctrl_bw);
+
     int branch_itr = 0;
     for (auto &branch : sel->u_select().branches) {
 
         // send control value on split<->merge channel 
-        Block *send_ctrl = 
-            g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
-                ctrl_chan_id, ChpExprSingleRootDag::makeConstant(BigInt(branch_itr) ,ctrl_bw))));
+        // Block *send_ctrl = 
+        //     g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
+        //         ctrl_chan_id, ChpExprSingleRootDag::makeConstant(BigInt(branch_itr) ,ctrl_bw))));
         
         // merge branch guard
         auto ctrl_id_access = ChpExprSingleRootDag::makeVariableAccess(ctrl_id, g->graph.id_pool().getBitwidth(ctrl_id));
@@ -1139,11 +1151,21 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branch
                                     ChpExprSingleRootDag::makeConstant(BigInt(branch_itr) ,ctrl_bw)
                                 )));
 
+        auto gcpy = IRGuard::deep_copy(branch.g);
+
+        if (branch.g.type() == IRGuardType::Expression) 
+        {
+            ctrl_expr = ChpExprSingleRootDag::makeQuery(
+                        std::make_unique<ChpExprSingleRootDag>(std::move(gcpy.u_e().e)),
+                        std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::makeConstant(BigInt(branch_itr) ,ctrl_bw)),
+                        std::make_unique<ChpExprSingleRootDag>(std::move(ctrl_expr)));
+        }
+
         Block *pll_sends = g->graph.blockAllocator().newBlock(Block::makeParBlock());
 
         if (merge_needed) {
-            pll_sends->u_par().branches.push_back(
-                g->graph.blockAllocator().newSequence({send_ctrl}));
+            // pll_sends->u_par().branches.push_back(
+            //     g->graph.blockAllocator().newSequence({send_ctrl}));
         }
 
         Block *send_live_vars_to_branch = NULL;
@@ -1208,9 +1230,16 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branch
     } //end loop over branches
 
     Block *merge_send_data = NULL;
-    // generate the send out of the merge
+    Block *send_ctrl = NULL;
+
     if (merge_needed) {
 
+        // send control expression
+        send_ctrl = 
+            g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
+                ctrl_chan_id, std::move(ctrl_expr))));
+
+        // generate the send out of the merge
         ChanId merge_send_chan = g->graph.id_pool().makeUniqueChan(di_sel->total_bitwidth_out, false);
         var_to_actvar vtoa(s, &g->graph.id_pool());
         ActId *id = vtoa.chanMap(merge_send_chan);
@@ -1234,5 +1263,5 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branch
         v_seqs.push_back(_wrap_in_do_loop(merge_proc));
     }
     
-    return {split,merge_send_data};
+    return {send_ctrl,split,merge_send_data};
 }

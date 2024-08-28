@@ -88,7 +88,7 @@ class ChoppingBlock {
 
         Block *_process_parallel (Block *sel, int n);
 
-        std::pair<Block *, Block *> _generate_split_merge_and_seed_branches (Block *sel);
+        std::tuple<Block *, Block *, Block *> _generate_split_merge_and_seed_branches (Block *sel);
 
         std::pair<Block *, Block *> _generate_pll_send_recv_and_seed_branches (Block *pll);
 
