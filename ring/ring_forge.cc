@@ -23,6 +23,9 @@
 #include "ring_forge.h"
 #include <cmath>
 
+#define SSA 0
+#define NON_SSA 1
+
 RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp, int bdpath,
             int delay_margin, int dp_style,
@@ -43,7 +46,7 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
 
     bundled = bdpath;
     datapath_style = dp_style;
-    
+
     // Channel name prefixes
     sync_chan_name_prefix = "sync_";
     init_cond_chan_prefix = "C_init_";
@@ -106,38 +109,53 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
 
     construct_var_infos (c);
 
-    if (printt) fprintf (_fp, "// Read/Write Info pre-mux gen ----\n");
-    if (printt) print_var_infos (_fp);
-    if (printt) fprintf (_fp, "// --------------------------------\n\n");
+    if (datapath_style==SSA) 
+    {
+        if (printt) fprintf (_fp, "// Read/Write Info pre-mux gen ----\n");
+        if (printt) print_var_infos (_fp);
+        if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
-    _construct_merge_latch_info (c, 1);
-    
-    if (printt) fprintf (_fp, "// Read/Write Info post-mux gen ---\n");
-    if (printt) print_var_infos (_fp);
-    if (printt) fprintf (_fp, "// --------------------------------\n\n");
+        _construct_merge_latch_info (c, 1);
+        
+        if (printt) fprintf (_fp, "// Read/Write Info post-mux gen ---\n");
+        if (printt) print_var_infos (_fp);
+        if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
-    compute_mergemux_info (c);
+        compute_mergemux_info (c);
 
-    if (printt) fprintf (_fp, "// Merge Mux Info pre-mapping -----\n");
-    if (printt) print_merge_mux_infos(_fp, c);
-    if (printt) fprintf (_fp, "// --------------------------------\n\n");
-    
-    flow_assignments (c);
+        if (printt) fprintf (_fp, "// Merge Mux Info pre-mapping -----\n");
+        if (printt) print_merge_mux_infos(_fp, c);
+        if (printt) fprintf (_fp, "// --------------------------------\n\n");
+        
+        flow_assignments (c);
 
-    if (printt) fprintf (_fp, "// Merge Mux Info post-mapping ----\n");
-    if (printt) print_merge_mux_infos(_fp, c);
-    if (printt) fprintf (_fp, "// --------------------------------\n\n");
-    if (printt) fprintf (_fp, "\n*/ \n");
+        if (printt) fprintf (_fp, "// Merge Mux Info post-mapping ----\n");
+        if (printt) print_merge_mux_infos(_fp, c);
+        if (printt) fprintf (_fp, "// --------------------------------\n\n");
+        if (printt) fprintf (_fp, "\n*/ \n");
 
-    if ( _check_all_muxes_mapped(c, false) ) { 
-        fprintf (stderr, "Merge muxes were not fully mapped.\n");
-        fprintf (stderr, "This is most likely due to uninitialized \nvariables outside your main loop.\n");
-        fprintf (stderr, "Please add initial conditions to requisite variables.\n\n");
-        fatal_error("Mux input mapping incomplete."); 
+        if ( _check_all_muxes_mapped(c, false) ) { 
+            fprintf (stderr, "Merge muxes were not fully mapped (SSA-style datapath). \n");
+            fprintf (stderr, "This is most likely due to uninitialized \nvariables outside your main loop.\n");
+            fprintf (stderr, "Please add initial conditions to requisite variables.\n\n");
+            fatal_error("Mux input mapping incomplete."); 
+        }
+
+        fprintf (_fp, "// Branched Ring ------------------\n");
+        generate_branched_ring (c,1,0,0);
     }
+    else {
+        if ( _check_no_self_assignments(c, false) ) { 
+            fprintf (stderr, "Self assignments detected (Non SSA-style datapath). \n");
+            fprintf (stderr, "This is not currently supported with this datapath style.\n");
+            fprintf (stderr, "Work in progress.\n\n");
+            fprintf (stderr, "Rewrite x:=f(x) as x1:=f(x);x:=x1 \n\n");
+            fatal_error("Self assignments detected."); 
+        }
 
-    fprintf (_fp, "// Branched Ring ------------------\n");
-    generate_branched_ring (c,1,0,0);
+        fprintf (_fp, "// Branched Ring Non-SSA ----------\n");
+        generate_branched_ring_non_ssa (c,1,0,0);
+    }
 }
 
 unsigned long act_expr_getconst_long (Expr *e)
@@ -261,6 +279,28 @@ int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long ini
 } 
 
 /*
+    Generate a data capture element for a given variable.
+    If provided with an initial value, generate a data capture
+    element that initializes to that value on reset.
+    Non-SSA style datapath.
+    // Note to self: using iread as flag to check against double creation of latch
+*/
+int RingForge::_generate_single_latch_non_ssa (var_info *v, long long init_val=0)
+{
+    int latch_id = 0;
+    Assert (v->iread==0, "Already created latch for this variable?");
+    fprintf(_fp, "capture_init_non_ssa<%d,%d,%d,%lld,%d> %s%s_%d;\n", 
+                        int(std::ceil(capture_delay*delay_multiplier)), 
+                        int(std::ceil(pulse_width*delay_multiplier)), 
+                        v->width, init_val, v->nwrite, 
+                        capture_block_prefix, v->name,latch_id);
+
+    v->iread++;
+    v->latest_for_read = latch_id;
+    return latch_id;
+} 
+
+/*
     Generate a pipeline element for a given action, along
     with the necessary datapath elements. This is the main
     function that generates the circuit for a given action.
@@ -311,16 +351,36 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         else 
         {
             latch_id = init_latch;
+            Assert (datapath_style==NON_SSA, "Hmm");
         }
         // connect output of math block to latch input
-        fprintf(_fp,"%s%d.out = %s%s_%d.din;\n",expr_block_instance_prefix,expr_inst_id,
-                                            capture_block_prefix,
-                                            vi->name,latch_id);
-        // connect pipe block to delay_expr input
-        fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
-        // connect delay_expr output to capture block
-        fprintf(_fp,"delay_expr_%d.p1 = %s%s_%d.go;\n",expr_inst_id,capture_block_prefix,
-                                            vi->name,latch_id);
+        if (datapath_style==SSA)
+        {
+            fprintf(_fp,"%s%d.out = %s%s_%d.din;\n",expr_block_instance_prefix,expr_inst_id,
+                                                capture_block_prefix,
+                                                vi->name,latch_id);
+            // connect pipe block to delay_expr input
+            fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
+            // connect delay_expr output to capture block
+            fprintf(_fp,"delay_expr_%d.p1 = %s%s_%d.go;\n",expr_inst_id,capture_block_prefix,
+                                                vi->name,latch_id);
+        }
+        else 
+        {
+            fprintf(_fp,"%s%d.out = %s%s_%d.din[%d][0..%d];\n",expr_block_instance_prefix,expr_inst_id,
+                                                capture_block_prefix,
+                                                vi->name,latch_id,
+                                                vi->iwrite, (vi->width)-1);
+            // connect pipe block to delay_expr input
+            fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
+            // connect delay_expr output to capture block
+            fprintf(_fp,"delay_expr_%d.p1 = %s%s_%d.go[%d];\n",expr_inst_id,capture_block_prefix,
+                                                vi->name,latch_id,
+                                                vi->iwrite);
+            vi->iwrite++;
+        }
+        
+
         break;
 
     case ACT_CHP_SEND:
@@ -353,7 +413,6 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                 Assert ((latch_id>=0),"variable read but never written? what...");
                 fprintf(_fp, "\n%s%s_%d.dout = %s.d;\n",capture_block_prefix,
                                             vi->name,latch_id,chan_name);
-                vi->iread++;
             }
             else { // function of variable(s) send
                 expr_inst_id = _generate_expr_block(e,bw);
@@ -379,7 +438,6 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         chan = c->u.comm.chan;
         var = c->u.comm.var;
         get_true_name (chan_name, chan, _p->CurScope());
-        // chan_name = chan->rootVx(p->CurScope())->getName();
         fprintf(_fp,"\n// Pipe block for action: ");
         chp_print(_fp,c);
         fprintf(_fp,"\n");
@@ -407,11 +465,26 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             else 
             {
                 latch_id = init_latch;
+                Assert (datapath_style==NON_SSA, "Hmm");
             }
-            fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
-                            vi->name,latch_id,ring_block_prefix,block_id);
-            fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
-                                            vi->name,latch_id,chan_name);
+            if (datapath_style==SSA)
+            {
+                fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
+                                vi->name,latch_id,ring_block_prefix,block_id);
+                fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
+                                                vi->name,latch_id,chan_name);
+            }
+            else 
+            {
+                fprintf(_fp, "%s%s_%d.go[%d] = %s%d.data;\n",capture_block_prefix,
+                                vi->name,latch_id,vi->iwrite,
+                                ring_block_prefix,block_id);
+                fprintf(_fp, "%s%s_%d.din[%d][0..%d] = %s.d;\n",capture_block_prefix,
+                                                vi->name,latch_id,
+                                                vi->iwrite,(vi->width)-1,
+                                                chan_name);
+                vi->iwrite++;
+            }
         }
         else { // dataless action
             fprintf(_fp,"%s%d.data.r = %s%d.data.a;\n",ring_block_prefix,block_id,ring_block_prefix,block_id);
@@ -864,7 +937,6 @@ void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves)
             // hash_bucket_t *b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
             var_info *vi = (var_info *)b->v;
 
-            // int latch_id = (vi->iwrite)-1;
             // TEST ----
             int latch_id = vi->latest_for_read;
             // TEST ----
@@ -1142,44 +1214,68 @@ int RingForge::_generate_sync_chan()
     return id;
 }
 
+
 /*
-    Deprecated.
-    Synthesis of linear programs. Generates a sequence of pipeline
-    elements, according to the actions in the CHP program, and ties 
-    them up into a ring using an initial token buffer. If initial 
-    conditions exist, processes them according to the optimized
-    handling method, where the last assignment actions connect to 
-    latches that are initialized to the initial value.
+    General synthesis for branched programs.
+    Non-SSA style Datapath. 
 */
-#if 0
-int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
+int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int prev_block_id, int connect_prev)
 {
-    int block_id;
-    int first_block_id;
-    int init_chan, lcd_chan;
-    int init_latch = -1;
-    list_t *lcd_chan_list;
-    list_t *tag_list = NULL;
-    var_info *vi;
-    ActId *id;
-    listitem_t *li, *lj, *lk;
+    int block_id, expr_block_id, first_block_id;
+    int pll_split_block_id, pll_merge_block_id;
+    int sel_split_block_id, sel_merge_block_id;
+    int comma_len, gc_len;
+    int pll_port, gp_con_id;
+    int delay_n_sel, max_delay_n_sel;
+    list_t *gp_connect_ids;
+    listitem_t *li, *lj;
     act_chp_gc_t *gc;
     act_chp_lang_t *stmt, *main_loop;
-    
+    var_info *vi;
+    ActId *id;
+
     if (!c) { return prev_block_id; }
 
     switch(c->type)
     {
     case ACT_CHP_COMMALOOP:
     case ACT_CHP_SEMILOOP:
-        fatal_error ("Replication loops should've been removed.. (generate_one_ring)");
+        fatal_error ("Replication loops should've been removed.. (generate_branched_ring_non_ssa)");
         break;
     case ACT_CHP_COMMA:
-        fatal_error ("No commas allowed.. (generate_one_ring)");
+        if (root == 1)
+        { 
+            fatal_error ("Only semi-colon list of initializations... (generate_branched_ring_non_ssa)"); 
+        }
+        else 
+        {
+            comma_len = list_length(c->u.semi_comma.cmd);
+            fprintf (_fp, "// %d-way parallel split for actions: ",comma_len);
+            chp_print(_fp, c);
+            fprintf (_fp, "\n");
+
+            fprintf (_fp, "// %d-way parallel merge \n",comma_len);
+            pll_split_block_id = _generate_parallel_split(comma_len);
+            pll_merge_block_id = _generate_parallel_merge(comma_len);
+            // connect_pipe_to_pll_split_input(fp, pll_split_block_id, prev_block_id);
+            _connect_pipe_elements(prev_block_id, pll_split_block_id);
+
+            pll_port = 0;
+            for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+            {
+                gp_con_id = _generate_gp_connect ();
+                _connect_pll_split_outputs_to_pipe (pll_split_block_id, gp_con_id, pll_port);
+                
+                block_id = generate_branched_ring_non_ssa ((act_chp_lang_t *)list_value(li), 0, gp_con_id, 1);
+                _connect_pipe_to_pll_merge_inputs (pll_merge_block_id, block_id, pll_port);
+                pll_port++;
+            }
+
+            block_id = pll_merge_block_id;
+        }
         break;
 
     case ACT_CHP_SEMI:
-        // initial condition handling
         if (root == 1)
         {              
             // find main loop
@@ -1189,14 +1285,17 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
                 if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP)
                     main_loop = (act_chp_lang_t *)list_value(li);
             }
+
             first_block_id = _generate_itb();
             prev_block_id = first_block_id;
 
             // new I.C. handling method -----
 #if 1
             // loop through initial condition assignments to create latches with correct initial values
+            list_t *ic_list  = list_dup((list_t *)(((latch_info_t *)(main_loop->space))->live_vars));
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
-            {
+            {   
+                list_t *tmp = list_new();
                 act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
                 if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
                 {
@@ -1205,41 +1304,53 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
                     Expr *e = stmt1->u.assign.e;
                     // Assert (e->type == E_INT, "Constants only in initial conditions");
                     // long long ival = e->u.ival.v;
-                    unsigned long ival = eval_ic (e);
+                    unsigned long ival = eval_ic(e);
                     char tname[1024];
                     get_true_name(tname, id, _p->CurScope());
                     hash_bucket_t *b = hash_lookup(var_infos, tname);
+                    for (listitem_t *lk = list_first(ic_list); lk; lk = list_next (lk))
+                    {
+                        // copy over all vars except the one being initialized
+                        if (strcmp(tname, (const char *)list_value(lk))) { 
+                            list_append (tmp, list_value(lk));
+                        }
+                    }
                     vi = (var_info *)b->v;
-                    int latch_id = _generate_single_latch (vi, ival);
-                    Assert (latch_id == 0, "Same variable has more than one initial condition?");
-                    // list_iappend(latch_id_list, latch_id);
+                    // fprintf (_fp, "\ngot here: %s\n", tname);
+                    Assert ((stmt1->space), "No latch info? (_generate_branched_ring_non_ssa, initial condition handling)");
+                    
+                    // initial condition is not a real assignment for this datapath style
+                    vi->nwrite--;
+
+                    _generate_single_latch_non_ssa (vi, ival);
+
+                    ic_list = list_new();
+                    ic_list = list_dup(tmp);
+                    list_free(tmp);
                 }
             }
+            if (!list_isempty(ic_list)) {
+                _print_list_of_vars (stderr, ic_list);
+                fatal_error ("The above variables were uninitialized in the program. Initialize them please.");
+            }
 #endif
+
+            //  latches for remaining variables : init. cond. = 0
+            hash_iter_t it;
+            hash_bucket_t *b;
+            hash_iter_init (var_infos, &it);
+            while ((b = hash_iter_next (var_infos, &it))) 
+            {
+                if (((var_info *)b->v)->iread==0)
+                    _generate_single_latch_non_ssa ((var_info *)b->v, 0);
+            }	 
+
             // new --------------------------
 
             // main program synthesis
             gc = main_loop->u.gc;
-            block_id = generate_one_ring(gc->s, 0, prev_block_id);
+            block_id = generate_branched_ring_non_ssa(gc->s, 0, prev_block_id, 1);
             prev_block_id = block_id;
-
-#if 1
-            // new I.C. handling method -----
-            for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
-            {
-                act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
-                {
-                    Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
-                    id = stmt1->u.assign.id;
-                    char tname[1024];
-                    get_true_name(tname, id, _p->CurScope());
-                    block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id);
-                    _connect_pipe_elements (prev_block_id, block_id);
-                    prev_block_id = block_id;
-                }
-            }
-#endif
 
             _connect_pipe_elements(block_id, first_block_id);
             break;
@@ -1248,7 +1359,11 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
         else {
             for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
             {
-                block_id = generate_one_ring ((act_chp_lang_t *)list_value(li), 0, prev_block_id);
+                block_id = generate_branched_ring_non_ssa ((act_chp_lang_t *)list_value(li), 0, prev_block_id, 0);
+                if (is_elementary_action((act_chp_lang_t *)list_value(li)))
+                {
+                    _connect_pipe_elements(prev_block_id, block_id);
+                }
                 prev_block_id = block_id;
             }
         }
@@ -1258,50 +1373,115 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
     case ACT_CHP_DOLOOP:
         if (root == 1)
         {   
+            list_t *iclist  = list_dup((list_t *)(((latch_info_t *)(c->space))->live_vars));
+            if (!list_isempty(iclist)) {                
+                _print_list_of_vars (stderr, iclist);
+                fatal_error ("The above variables were uninitialized in the program. Initialize them please. (Should only be here for non-LCD programs)");
+            }
+
+        //  latches for all variables : init. cond. = 0
+            hash_iter_t it;
+            hash_bucket_t *b;
+            hash_iter_init (var_infos, &it);
+            while ((b = hash_iter_next (var_infos, &it))) 
+            {
+                _generate_single_latch_non_ssa ((var_info *)b->v, 0);
+            }	 
+
             first_block_id = _generate_itb();
             gc = c->u.gc;
-            block_id = generate_one_ring(gc->s, 0, first_block_id);
+            block_id = generate_branched_ring_non_ssa(gc->s, 0, first_block_id, 1);
+            prev_block_id = block_id;
+
             _connect_pipe_elements(block_id, first_block_id);
             break;
         }
-        else
-        {
-            fatal_error ("should've excised internal loops.. (generate_one_ring)");
-        }
-        break;
+        else { fatal_error ("bleh"); }
+        break; 
         
     case ACT_CHP_SELECT:
-        fprintf(_fp, "\n// WARNING: single guard selection in program - hope you know what you're doing :)\n\n");
+        // fatal_error ("not supported yet");
         gc = c->u.gc;
-        block_id = generate_one_ring (gc->s, 0, prev_block_id);
+        gc_len = length_of_guard_set (c);
+        max_delay_n_sel = 0;
+
+        fprintf (_fp, "\n// %d-way selection split for : ", gc_len);
+        chp_print(_fp, c);
+        fprintf (_fp, "\n");
+        fprintf (_fp, "// %d-way selection merge \n", gc_len);
+        sel_split_block_id = _generate_selection_split(gc_len);
+        sel_merge_block_id = _generate_selection_merge(gc_len);
+
+        gp_connect_ids = list_new();
+        for (int i = 0; gc; gc = gc->next)
+        {
+            // branch_id++;
+            if (gc->g)
+            {   
+                expr_block_id = _gen_expr_block_id();
+                delay_n_sel = _generate_expr_block_for_sel (gc->g, expr_block_id);
+                if (max_delay_n_sel < delay_n_sel) max_delay_n_sel = delay_n_sel;
+            }
+            else
+            {   // compute the else guard .. 
+                fatal_error ("should've been fixed in else generation");
+            }
+            _connect_guards_to_sel_split_input (sel_split_block_id, expr_block_id, i);
+            block_id = _generate_gp_connect ();
+            _connect_sel_split_outputs_to_pipe (sel_split_block_id, block_id, i);
+            list_iappend(gp_connect_ids, block_id);
+            i++;
+        }
+        lj = list_first(gp_connect_ids);
+        gc = c->u.gc;
+        for (int i = 0; gc; gc = gc->next)
+        {   
+            block_id = generate_branched_ring_non_ssa (gc->s, 0, list_ivalue(lj), 1);
+            _connect_pipe_to_sel_merge_inputs (sel_merge_block_id, block_id, i);
+            i++; lj = list_next(lj);
+        }
+
+        // generate delay line for max guard evaluator delay (split)
+        Assert (max_delay_n_sel>0, "negative delay?");
+        fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
+        fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",int(std::ceil(max_delay_n_sel*delay_multiplier)),sel_split_block_id);
+        // connect prev. block p1 to delay_line then connect to select block from the output
+        fprintf(_fp,"delay_select_%d.m1 = %s%d.p1;\n",sel_split_block_id,ring_block_prefix,prev_block_id);
+        fprintf(_fp,"delay_select_%d.p1 = %s%d.m1;\n",sel_split_block_id,ring_block_prefix,sel_split_block_id);
+
+        block_id = sel_merge_block_id;
+
         break;
 
     case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS in generate_one_ring");
+        fatal_error ("Can't handle NDS in generate_branched_ring");
         
     case ACT_CHP_SKIP:
     case ACT_CHP_ASSIGN:
     case ACT_CHP_ASSIGNSELF:
     case ACT_CHP_SEND:
     case ACT_CHP_RECV:
-        // only for the new I.C. handling method
-        // if (c->space) 
-        // {
-        //     tag_list = (list_t *)c->space;
-        //     init_latch = list_ivalue(list_first(tag_list));
-        //     Assert (init_latch>-1, "wut");
-        // }
+        // do stuff
         if (c->label && !strcmp(c->label,"pause"))
         {
-            // fprintf (stdout, "\n found a matching label: %s \n", c->label);
             block_id = _generate_pause_element();
             fprintf (stdout, "\n a1of1 pause port placed here : %s%d.pause \n",ring_block_prefix,block_id);
             fprintf (stdout, "\n pause.r must be grounded for ring execution \n");
-            _connect_pipe_elements(prev_block_id, block_id);
+            if (connect_prev == 1)
+            {
+                _connect_pipe_elements(prev_block_id, block_id);
+            }
             prev_block_id = block_id;
+            block_id = _generate_pipe_element(c, 0);
+            _connect_pipe_elements(prev_block_id, block_id);
         }
-        block_id = _generate_pipe_element(c, init_latch);
-        _connect_pipe_elements(prev_block_id, block_id);
+        else {
+            block_id = _generate_pipe_element(c, 0);
+            if (connect_prev == 1)
+            {
+                _connect_pipe_elements(prev_block_id, block_id);
+            }
+        }
         break;
 
     case ACT_CHP_FUNC:
@@ -1312,13 +1492,12 @@ int RingForge::generate_one_ring(act_chp_lang_t *c, int root, int prev_block_id)
         break;
 
     default:
-        fatal_error ("Unknown type in generate_one_ring");
+        fatal_error ("Unknown type in generate_branched_ring");
         break;
     }
-
     return block_id;
 }
-#endif
+
 
 /*
     General synthesis for branched programs. Generates a branched ring
@@ -1441,15 +1620,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             if (!list_isempty(ic_list)) {
                 _print_list_of_vars (stderr, ic_list);
                 fatal_error ("The above variables were uninitialized in the program. Initialize them please.");
-                // for (lj = list_first (ic_list); lj; lj = list_next (lj)) 
-                // {   
-                //     hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(lj));
-                //     vi = (var_info *)b->v;
-                //     // new latching generated that was not in the program => gotta update info. 
-                //     vi->nwrite++; 
-                //     int latch_id = _generate_single_latch (vi, 0);
-                //     Assert (latch_id == 0, "Same variable has more than one initial condition?");
-                // }
             }
 #endif
             // new --------------------------
@@ -1479,12 +1649,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             {
                 _print_list_of_vars (stderr, ic_list);
                 fatal_error ("The above variables were uninitialized in the program. Initialize them please.");
-                // for (lj = list_first (ic_list); lj; lj = list_next (lj)) 
-                // {
-                //         block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, (const char *)list_value(lj));
-                //         _connect_pipe_elements (prev_block_id, block_id);
-                //         prev_block_id = block_id;
-                // }
             }
 #endif
 

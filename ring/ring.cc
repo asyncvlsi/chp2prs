@@ -746,6 +746,59 @@ bool RingEngine::_check_all_muxes_mapped (act_chp_lang_t *c, bool fail)
   return fail;
 }
 
+bool RingEngine::_check_no_self_assignments (act_chp_lang_t *c, bool fail)
+{
+  Scope *s = _p->CurScope();
+
+  switch (c->type) {
+
+  case ACT_CHP_SKIP:
+  case ACT_CHP_SEND:
+  case ACT_CHP_RECV:
+    break;
+  case ACT_CHP_ASSIGN:
+    fail = fail || _var_appears_in_expr(c->u.assign.e,c->u.assign.id);
+    break;
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {   
+      fail = fail || _check_no_self_assignments ((act_chp_lang_t *) list_value (li), fail);
+    }
+    break;
+
+  case ACT_CHP_SELECT_NONDET:
+    fatal_error ("NDS not supported yet"); break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    fail = fail || _check_no_self_assignments (gc->s, fail);
+    Assert (!(gc->next), "more than one loop branch at top-level?");
+  }
+    break;
+  case ACT_CHP_SELECT:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    while (gc) {
+      fail = fail || _check_no_self_assignments (gc->s, fail);
+      gc = gc->next;
+    }
+  }
+  break;
+
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+  return fail;
+}
+
 bool RingEngine::_var_appears_in_expr (Expr *e, ActId *id)
 {
   act_connection *uid;

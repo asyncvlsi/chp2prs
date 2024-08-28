@@ -45,6 +45,7 @@ class RingForge : public RingEngine {
         void generate_pipe(act_chp_lang_t *, int);
         int generate_one_ring(act_chp_lang_t *, int, int);
         int generate_branched_ring(act_chp_lang_t *, int, int, int);
+        int generate_branched_ring_non_ssa(act_chp_lang_t *, int, int, int);
 
         // Pipeline block generation functions
         int _generate_itb();
@@ -64,6 +65,7 @@ class RingForge : public RingEngine {
 
         // Datapath generation functions
         int _generate_single_latch (var_info *, latch_info *, long long);
+        int _generate_single_latch_non_ssa (var_info *, long long);
         int _generate_expr_block(Expr *, int);
         int _generate_expr_block_for_sel(Expr *, int);
         int _compute_merge_mux_info(latch_info_t *, int);

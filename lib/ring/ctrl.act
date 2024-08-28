@@ -557,6 +557,61 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
 
 // --------------------------------------------------------
 
+// Latch for Non-SSA Style Datapath 
+// N = no. of write ports
+export template <pint CD, PW, W, INIT_VAL, N>
+defproc capture_init_non_ssa(a1of1 go[N]; bool? din[N][W]; bool! dout[W])
+{
+  // This capture delay will be quite a bit larger now
+  delay_line<5*CD> capture_delay[N];
+  ( i : N : go[i].r = capture_delay[i].in;  )
+  ( i : N : go[i].a = capture_delay[i].out; )
+
+  pulse<PW> pulse_generator[N];
+  ( i : N : go[i].r = pulse_generator[i].in; )
+
+  std::gates::ortree<N,false> ot;
+  ( i : N : pulse_generator[i].out = ot.in[i]; )
+
+  // pulse_generator.out = fanout_tree.in;
+  sigbuf<W> fanout_tree;
+  ot.out = fanout_tree.in;
+
+  { INIT_VAL >= 0 : "Only non-negative initial values" };
+  { INIT_VAL <= (1<<W)-1 : "Initial value out of bounds" };
+
+  pint ival = INIT_VAL;
+  pint j = 0;
+
+  // merge the data to go into the latches
+  merge_mux_ohc_opt<N,W> data_mux;
+  bool latch_din[W];
+  ( i : N : data_mux.c[i] = go[i].r; )
+  ( i : N : data_mux.din = din; )
+  data_mux.dout = latch_din; 
+
+  *[ j < W -> [ (ival%2) = 0 -> std::cells::LATCHLO x_lo[j..j];                         
+                                x_lo[j].CLK = fanout_tree.out[j];
+                                x_lo[j].D = latch_din[j];
+                                x_lo[j].Q = dout[j];
+                                x_lo[j].R = Reset;
+
+             [] (ival%2) = 1 -> std::cells::LATCHHI x_hi[j..j];
+                                x_hi[j].CLK = fanout_tree.out[j];
+                                x_hi[j].D = latch_din[j];
+                                x_hi[j].Q = dout[j];
+                                x_hi[j].S = Reset;
+
+              ]; j = j + 1; ival = ival >> 1;
+  ]
+  
+  ( i : N :
+    spec {
+      timing go[i].r+: dout < go[i].a+
+    }
+  )
+}
+
 
 // Variables and Channels ---------------------------------
 

@@ -81,6 +81,9 @@ class RingEngine {
         bool _check_all_muxes_mapped (act_chp_lang_t *, bool);
         // Merge mux info builder functions ---------
 
+        // Self-assignments check for non-SSA style datapath
+        bool _check_no_self_assignments (act_chp_lang_t *, bool);
+
         // Internal helper functions
         void _save_read_ids ();
         void _restore_read_ids ();
