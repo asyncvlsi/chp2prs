@@ -1947,9 +1947,17 @@ int RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id)
             if ((zz == pre_sel_latch) && !once)
             {
                 // connect pre-split data to mux last data input
-                fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n", capture_block_prefix, vi->name, 
-                                                    mux_id, ctr_mux_port, (vi->width)-1,
-                                        capture_block_prefix, vi->name, pre_sel_latch);
+                // fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n", capture_block_prefix, vi->name, 
+                //                                     mux_id, ctr_mux_port, (vi->width)-1,
+                //                         capture_block_prefix, vi->name, pre_sel_latch);
+                int va_id = _gen_var_access_id();
+                fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,%s%s_%d.din[%d][0..%d]);\n",
+                                        vi->width,var_access_prefix,va_id,
+                                        capture_block_prefix,vi->name, pre_sel_latch,
+                                        capture_block_prefix,vi->name, mux_id,
+                                        ctr_mux_port,(vi->width)-1);
+
+
                 // connect OR-gate output to mux input control
                 fprintf (_fp, "or_%s_%d.out = %s%s_%d.c[%d];\n\n", vi->name, mux_id,
                                         capture_block_prefix, vi->name, mux_id, ctr_mux_port);
@@ -1965,9 +1973,16 @@ int RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id)
                                                         mux_id, ctr_mux_port, ring_block_prefix, 
                                                     split_block_id, ctr_sel_br);
                 // connect mux input data
-                fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n\n",capture_block_prefix, vi->name, 
-                                                        mux_id, ctr_mux_port, (vi->width)-1,
-                                                    capture_block_prefix, vi->name, zz);
+                // fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n\n",capture_block_prefix, vi->name, 
+                //                                         mux_id, ctr_mux_port, (vi->width)-1,
+                //                                     capture_block_prefix, vi->name, zz);
+                int va_id = _gen_var_access_id();
+                fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,%s%s_%d.din[%d][0..%d]);\n",
+                                        vi->width,var_access_prefix,va_id,
+                                        capture_block_prefix,vi->name, zz,
+                                        capture_block_prefix,vi->name, mux_id,
+                                        ctr_mux_port,(vi->width)-1);
+
                 ctr_mux_port++;
             }
             ctr_sel_br++;
