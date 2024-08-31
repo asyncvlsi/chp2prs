@@ -288,11 +288,14 @@ int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long ini
 int RingForge::_generate_single_latch_non_ssa (var_info *v, long long init_val=0)
 {
     int latch_id = 0;
+    int write_ports = v->nwrite;
+    if (write_ports==0) write_ports = 1;
+    
     Assert (v->iread==0, "Already created latch for this variable?");
     fprintf(_fp, "capture_init_non_ssa<%d,%d,%d,%lld,%d> %s%s_%d;\n", 
                         int(std::ceil(capture_delay*delay_multiplier)), 
                         int(std::ceil(pulse_width*delay_multiplier)), 
-                        v->width, init_val, v->nwrite, 
+                        v->width, init_val, write_ports, 
                         capture_block_prefix, v->name,latch_id);
 
     v->iread++;
@@ -1497,7 +1500,6 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
     }
     return block_id;
 }
-
 
 /*
     General synthesis for branched programs. Generates a branched ring

@@ -562,8 +562,11 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
 export template <pint CD, PW, W, INIT_VAL, N>
 defproc capture_init_non_ssa(a1of1 go[N]; bool? din[N][W]; bool! dout[W])
 {
+  // TODO: get this from simulation
+  pint scale = 3;
+
   // This capture delay will be quite a bit larger now
-  delay_line<5*CD> capture_delay[N];
+  delay_line<scale*std::ceil_log2(N+1)*CD> capture_delay[N];
   ( i : N : go[i].r = capture_delay[i].in;  )
   ( i : N : go[i].a = capture_delay[i].out; )
 
@@ -584,11 +587,14 @@ defproc capture_init_non_ssa(a1of1 go[N]; bool? din[N][W]; bool! dout[W])
   pint j = 0;
 
   // merge the data to go into the latches
-  merge_mux_ohc_opt<N,W> data_mux;
   bool latch_din[W];
-  ( i : N : data_mux.c[i] = go[i].r; )
-  ( i : N : data_mux.din = din; )
-  data_mux.dout = latch_din; 
+
+  [ N=1 -> din[0][0..(W-1)] = latch_din[0..(W-1)];
+  []else-> merge_mux_ohc_opt<N,W> data_mux;
+          ( i : N : data_mux.c[i] = go[i].r; )
+          ( i : N : data_mux.din = din; )
+          data_mux.dout = latch_din; 
+  ]
 
   *[ j < W -> [ (ival%2) = 0 -> std::cells::LATCHLO x_lo[j..j];                         
                                 x_lo[j].CLK = fanout_tree.out[j];
