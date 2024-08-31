@@ -153,42 +153,121 @@ class BitStateArr {
   }
 };
 
+
+#define INT_LATTICE_MAX_BITS 1024
+
 class IntLattice {
     BigInt m_min, m_max;
     int m_bitwidth = 0;
+    bool max_is_inf = false;
     // track the set of states for each bit. TODO track the set of states for
     // each block of bits
     BitStateArr m_bit_states;
 
   public:
     IntLattice() = default;
-    IntLattice(BigInt min, BigInt max, int bitwidth, BitStateArr bit_states)
+
+  /*
+   * Create an integer lattice element. The lattice point is
+   * represented as an interval [min, max], as well as any information
+   * that is known about individual bits. The max value is saturating,
+   * and if it is larger than 2^(INT_LATTICE_MAX_BITS)-1, it is set to
+   * all 1's and the upper bound is marked as infinity.
+   *
+   * @param min is the minimum integer value
+   * @param max is the maximum integer value
+   * @param bitwidth is the bitwidth
+   * @param bit_states is a vector about what is known about each bit
+   * position
+   *
+   */ 
+   IntLattice(BigInt min, BigInt max, int bitwidth, BitStateArr bit_states)
         : m_min{std::move(min)}
         , m_max{std::move(max)}
         , m_bitwidth{bitwidth}
         , m_bit_states{std::move(bit_states)} {
+        if (bitwidth > INT_LATTICE_MAX_BITS) {
+	  bool is_inf = false;
+	  for (int i=INT_LATTICE_MAX_BITS; i < bitwidth; i++) {
+	    if (bit_states.at(i) != BitState::off) {
+	      is_inf = true;
+	    }
+	  }
+	  if (is_inf) {
+	    // set the max val to all 1's, and mark this as infinity
+	    m_max = BigInt::pow_2_minus_1 (INT_LATTICE_MAX_BITS);
+	    max_is_inf = true;
+
+	    // only track a subset of bits
+	    bitwidth = INT_LATTICE_MAX_BITS;
+	    bit_states = std::move(m_bit_states);
+	    m_bit_states = BitStateArr (bitwidth);
+	    for (int i=0; i < bitwidth; i++) {
+	      m_bit_states.set(i, bit_states.at(i));
+	    }
+
+	    if (m_min > m_max) {
+	      // we may have caused a problem by reducing the value of
+	      // max due to it now representing infinity.
+	      m_min = m_max;
+	    }
+	  }
+        }
         hassert(m_min <= m_max);
         hassert((ssize_t)m_bit_states.size() == bitwidth);
     }
+
+    /*
+     * Creates an integer lattice of the specified bit-width, with
+     * nothiing known about all the bits.
+     */
     [[nodiscard]] static IntLattice of_bitwidth(int bits);
+
+    /*
+     * Creates an integer lattice point corresponding to the specified
+     * constant value
+     */
     [[nodiscard]] static IntLattice of_constant(const BigInt &val, int bits);
+  
+    /*
+     * Creates an integer lattice point corresponding to the specified
+     * [min,max] range. Information about bits is computed from the
+     * interval.
+     */
     [[nodiscard]] static IntLattice of_minmax(const BigInt &min,
                                               const BigInt &max, int bits);
+
+    /*
+     * Creates an integer lattice point corresponding to the specified
+     * information about individual bits. The min value and max value
+     * are computed from the known information about each bit.
+     */
     [[nodiscard]] static IntLattice of_bits(BitStateArr bit_states);
 
+    /*
+     * Take the union of the information for the two lattice points
+     */
     [[nodiscard]] static IntLattice union_(const IntLattice &a,
                                            const IntLattice &b);
+  
+    /*
+     * Take the intersection of the information for the two lattice points
+     */
     [[nodiscard]] static IntLattice intersection(const IntLattice &a,
                                                  const IntLattice &b);
     [[nodiscard]] static IntLattice
     union_(const std::vector<const IntLattice *> &ranges);
+  
     [[nodiscard]] static IntLattice
     intersection(const std::vector<const IntLattice *> &ranges);
 
+    /* Operator syntax for union */
     [[nodiscard]] friend IntLattice operator|(const IntLattice &a,
                                               const IntLattice &b) {
         return union_(a, b);
     }
+  
+    /* Operator syntax for intersection */
     [[nodiscard]] friend IntLattice operator&(const IntLattice &a,
                                               const IntLattice &b) {
         return intersection(a, b);
@@ -197,21 +276,53 @@ class IntLattice {
     friend bool operator==(const IntLattice &a, const IntLattice &b) = default;
     friend bool operator!=(const IntLattice &a, const IntLattice &b) = default;
 
+     /* get ranges */
     [[nodiscard]] BigInt max() const { return m_max; }
     [[nodiscard]] BigInt min() const { return m_min; }
+    [[nodiscard]] bool is_inf() const { return max_is_inf; }
+
+    /* get information about individual bits */
     [[nodiscard]] int bitwidth() const { return m_bitwidth; }
     [[nodiscard]] const BitStateArr &bits() const { return m_bit_states; }
 
-    [[nodiscard]] bool isConstant() const { return min() == max(); }
+    /* if the interval is a single point, then it corresponds to a
+       constant */
+    [[nodiscard]] bool isConstant() const { return min() == max() && (max_is_inf == false); }
+
+    /* for constant intervals, this provides the value of the constant
+     * @return the constant corresponding to the interval
+     */
     [[nodiscard]] BigInt constantValue() const {
         hassert(isConstant());
         return min();
     }
 
+    /*
+     * @param width is the bit-width of the integer to extract
+     * @return the lattice point corresponding to selecting bits
+     * 0...width-1
+     */
     [[nodiscard]] IntLattice withWidth(int width) const {
         return withBitfield(BitSlice{width - 1, 0});
     }
+
+    /*
+     * @param slice is the bit slice to extract {m..n}
+     * @return the lattice point corresponding to the specified
+     * bitslice
+     */
     [[nodiscard]] IntLattice withBitfield(const BitSlice &slice) const;
+
+    /*
+     * Make the "max" value of the interval infinite. Note that this
+     * does not impact the state corresponding to the bits themselves.
+     */
+    void mk_max_inf() {
+      max_is_inf = true;
+      hassert (m_bitwidth == INT_LATTICE_MAX_BITS);
+      m_max = BigInt::pow_2_minus_1 (INT_LATTICE_MAX_BITS);
+    }
+      
 };
 
 IntLattice applyBinaryOp(IRBinaryOpType op, const IntLattice &left,

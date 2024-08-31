@@ -115,14 +115,22 @@ BitStateArr multiplyBitStateVectors(const BitStateArr &vec_a,
 }
 } // namespace
 
+
 IntLattice IntLattice::withBitfield(const BitSlice &slice) const {
     // Compute the bit states
     BitStateArr bit_states(slice.ct());
     for (ssize_t i = 0; i < slice.ct(); ++i) {
         ssize_t j = i + slice.lo();
-        bit_states.set(i, (0 <= j && j < m_bit_states.ssize())
-                              ? m_bit_states.at(j)
-                              : BitState::off);
+	if (is_inf()) {
+	  bit_states.set(i, (0 <= j && j < m_bit_states.ssize())
+			 ? m_bit_states.at(j)
+			 : BitState::unknown);
+	}
+	else {
+	  bit_states.set(i, (0 <= j && j < m_bit_states.ssize())
+			 ? m_bit_states.at(j)
+			 : BitState::off);
+	}
     }
 
     auto bit_lattice = IntLattice::of_bits(bit_states);
@@ -187,8 +195,12 @@ IntLattice IntLattice::withBitfield(const BitSlice &slice) const {
 
     auto new_min = std::min(a.m_min, b.m_min);
     auto new_max = std::max(a.m_max, b.m_max);
-    return IntLattice::of_minmax(new_min, new_max, a.bitwidth()) &
-           IntLattice::of_bits(bits);
+    auto retval = IntLattice::of_minmax(new_min, new_max, a.bitwidth()) &
+      IntLattice::of_bits(bits);
+    if (a.is_inf() || b.is_inf()) {
+      retval.mk_max_inf();
+    }
+    return retval;
 }
 
 /*static*/ IntLattice IntLattice::intersection(const IntLattice &a,
@@ -206,7 +218,11 @@ IntLattice IntLattice::withBitfield(const BitSlice &slice) const {
 
     auto new_min = std::max(a.m_min, b.m_min);
     auto new_max = std::min(a.m_max, b.m_max);
-    return IntLattice(new_min, new_max, a.bitwidth(), bits);
+    auto ret = IntLattice(new_min, new_max, a.bitwidth(), bits);
+    if (a.is_inf() && b.is_inf()) {
+      ret.mk_max_inf();
+    }
+    return ret;
 }
 
 IntLattice applyBinaryOp(IRBinaryOpType op, const IntLattice &left,
@@ -225,7 +241,7 @@ IntLattice applyBinaryOp(IRBinaryOpType op, const IntLattice &left,
             left.bits(), unaryMinus(right.bits().withWidth(num_bits)),
             num_bits);
 
-        if (left.min() >= right.max()) {
+        if (left.min() >= right.max() && !right.is_inf() && !left.is_inf()) {
             auto new_min =
                 BigInt::subtract_assert_no_underflow(left.min(), right.max());
             auto new_max =
@@ -258,33 +274,38 @@ IntLattice applyBinaryOp(IRBinaryOpType op, const IntLattice &left,
                IntLattice::of_bits(multiplyBitStateVectors(
                    left.bits(), right.bits(), num_bits));
     }
-    case IRBinaryOpType::Div:
+    case IRBinaryOpType::Div: {
         // we limit the range to be != 0. It would be undefined behavior to ever
         // divide by 0 in the CHP code
-        return IntLattice::of_minmax(
-            left.min() / std::max(BigInt(1), right.max()),
-            left.max() / std::max(BigInt(1), right.min()), left.bitwidth());
+        auto ret = IntLattice::of_minmax(
+	    (right.is_inf() ? BigInt (0) :
+            left.min() / std::max(BigInt(1), right.max())),
+	    (left.is_inf() ? left.max() : 
+	     left.max() / std::max(BigInt(1), right.min())), left.bitwidth());
+	if (left.is_inf()) { ret.mk_max_inf(); }
+	return ret;
+    }
 
     case IRBinaryOpType::LT:
         if (left.max() < right.min())
             return IntLattice::of_constant(BigInt(true), 1);
-        if (left.min() >= right.max())
+        if (left.min() >= right.max() && !right.is_inf())
             return IntLattice::of_constant(BigInt(false), 1);
         return IntLattice::of_bitwidth(1);
     case IRBinaryOpType::GT:
         if (left.min() > right.max())
             return IntLattice::of_constant(BigInt(true), 1);
-        if (left.max() <= right.min())
+        if (left.max() <= right.min() && !left.is_inf())
             return IntLattice::of_constant(BigInt(false), 1);
         return IntLattice::of_bitwidth(1);
     case IRBinaryOpType::LE:
-        if (left.max() <= right.min())
+        if (left.max() <= right.min() && !left.is_inf())
             return IntLattice::of_constant(BigInt(true), 1);
         if (left.min() > right.max())
             return IntLattice::of_constant(BigInt(false), 1);
         return IntLattice::of_bitwidth(1);
     case IRBinaryOpType::GE:
-        if (left.min() >= right.max())
+        if (left.min() >= right.max() && !right.is_inf())
             return IntLattice::of_constant(BigInt(true), 1);
         if (left.max() < right.min())
             return IntLattice::of_constant(BigInt(false), 1);
@@ -292,6 +313,10 @@ IntLattice applyBinaryOp(IRBinaryOpType op, const IntLattice &left,
     case IRBinaryOpType::NE:
     case IRBinaryOpType::EQ: {
         bool same_val = IRBinaryOpType(op) == IRBinaryOpType::EQ;
+
+	if (left.is_inf() || right.is_inf()) {
+	  return IntLattice::of_bitwidth(1);
+	}
 
         if (left.max() <= right.min() && left.min() >= right.max())
             return IntLattice::of_constant(BigInt(same_val), 1);
@@ -327,8 +352,12 @@ IntLattice applyBinaryOp(IRBinaryOpType op, const IntLattice &left,
         auto new_min = std::max(left.min(), right.min());
         auto new_max =
             std::min(left.max() + right.max(), BigInt::pow_2_minus_1(num_bits));
-        return IntLattice::of_bits(bit_states) &
-               IntLattice::of_minmax(new_min, new_max, num_bits);
+	auto ret = IntLattice::of_bits(bit_states) &
+	  IntLattice::of_minmax(new_min, new_max, num_bits);
+	if (left.is_inf() || right.is_inf()) {
+	  ret.mk_max_inf ();
+	}
+	return ret;
     }
     case IRBinaryOpType::Xor: {
         int num_bits = std::max(left.bitwidth(), right.bitwidth());
@@ -347,7 +376,11 @@ IntLattice applyBinaryOp(IRBinaryOpType op, const IntLattice &left,
                                  : BitState::unknown;
             bit_states.set(i, state);
         }
-        return IntLattice::of_bits(bit_states);
+	auto ret = IntLattice::of_bits(bit_states);
+	if (left.is_inf() || right.is_inf()) {
+	  ret.mk_max_inf();
+	}
+        return ret;
     }
     case IRBinaryOpType::And: {
         int num_bits = std::max(left.bitwidth(), right.bitwidth());
@@ -363,8 +396,12 @@ IntLattice applyBinaryOp(IRBinaryOpType op, const IntLattice &left,
         }
         auto new_min = BigInt{0} /*TODO*/;
         auto new_max = std::min(left.max(), right.max());
-        return IntLattice::of_bits(bit_states) &
+        auto ret = IntLattice::of_bits(bit_states) &
                IntLattice::of_minmax(new_min, new_max, num_bits);
+	if (left.is_inf() || right.is_inf()) {
+	  ret.mk_max_inf();
+	}
+	return ret;
     }
     case IRBinaryOpType::LeftShift: {
         int num_bits = ChpExpr::widthAfterBinaryOp(
