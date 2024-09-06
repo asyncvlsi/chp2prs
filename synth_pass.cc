@@ -583,7 +583,7 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
       // syn->runPreSynth (ap, p);
       int v = emit_refinement_header (syn, p);
       // TODO: fix this hack maybe
-      pp_printf (pp, "pint _=0;");
+      pp_printf (pp, "{ 42=42 : \"placeholder\" };");
       pp_forced (pp, 0);
       pp_printf (pp, "}");
       pp_forced (pp, 0);
