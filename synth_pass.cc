@@ -197,6 +197,8 @@ static int emit_refinement_header (ActSynthesize *syn,
     }
     
     /* chan variable found */
+    if (!TypeFactory::isParamType(vx->t)) {
+    if (u->isPort(vx->getName())) {
     if (TypeFactory::isChanType (vx->t)) {
       if (overrideTypes) {
 	bw = TypeFactory::bitWidth(vx->t);
@@ -236,6 +238,8 @@ static int emit_refinement_header (ActSynthesize *syn,
          pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
       }
     }
+    }
+    }
   }
   
   /* end param declaration */
@@ -252,6 +256,7 @@ static int emit_refinement_header (ActSynthesize *syn,
   if (decomp_vx) {
     /* these are fresh instances introduced during decomposition;
        we need to declare them, not refine them!
+       note: these instances go outside the refine bodies
     */
     for (listitem_t *si = list_first (decomp_vx); si; si = list_next (si)) {
 	ValueIdx *vx = (ValueIdx *) list_value (si);
@@ -324,20 +329,113 @@ static int emit_refinement_header (ActSynthesize *syn,
     pp_forced (pp, 0);
   }
 
-  // if (decomp_vx) {
-    // syn->resetDecompVx();
-  // }
+  has_overrides = 0; // reset 
 
-  if (u->getlang() && u->getlang()->getchp()) {
-    if (config_get_int ("act.refine_steps")  > 0) {
-      pp_printf (pp, "refine <%d> {", config_get_int("act.refine_steps") + 1);
-    }
-    else {
-      pp_printf (pp, "refine {");
-    }
-    pp_forced (pp, 2);
-    pp_setb (pp);
+  if (config_get_int ("act.refine_steps")  > 0) {
+    pp_printf (pp, "refine <%d> ", config_get_int("act.refine_steps") + 1);
   }
+  else {
+    pp_printf (pp, "refine ");
+  }
+  pp_forced (pp, 2);
+  pp_setb (pp);
+
+  // once more
+  for (iter = iter.begin(); iter != iter.end(); iter++) {
+    ValueIdx *vx = *iter;
+
+    if (special_vx) {
+      /* these are fresh instances introduced during decomposition;
+	 we need to declare them, not refine them!
+      */
+      int sp = 0;
+      for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
+	for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
+	     li = list_next (li)) {
+	  if (vx == (ValueIdx *) list_value (li)) {
+	    sp = 1;
+	    break;
+	  }
+	}
+	if (sp) {
+	  break;
+	}
+      }
+      if (sp) {
+	continue;
+      }
+    }
+
+    if (syn->skipOverride (vx)) {
+      continue;
+    }
+    
+    /* chan variable found */
+    if (!TypeFactory::isParamType(vx->t)) {
+    if (!u->isPort(vx->getName())) {
+    if (TypeFactory::isChanType (vx->t)) {
+      if (overrideTypes) {
+	bw = TypeFactory::bitWidth(vx->t);
+	OVERRIDE_OPEN;
+	if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
+	  syn->typeBoolChan (buf, 10240);
+	}
+	else {
+	  syn->typeIntChan (buf, 10240, bw);
+	}
+	pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+      }
+    }
+    else if (TypeFactory::isIntType (vx->t)) {
+      /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
+      if (overrideTypes) {
+	bw = TypeFactory::bitWidth(vx->t);
+	OVERRIDE_OPEN;
+	syn->typeInt (buf, 10240, bw);
+	pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+      }
+    }
+    else if (TypeFactory::isBoolType (vx->t)) {
+      if (overrideTypes) {
+	OVERRIDE_OPEN;
+	syn->typeBool (buf, 10240);
+	pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+      }
+    }
+    else if (TypeFactory::isProcessType (vx->t) || TypeFactory::isStructure (vx->t)) {
+      if (overrideTypes || TypeFactory::isProcessType (vx->t)) {
+         OVERRIDE_OPEN;
+         pp_printf (pp, "%s_", prefix);
+         UserDef *ud = dynamic_cast <UserDef *> (vx->t->BaseType());
+         Assert (ud, "Why am I here?");
+         ActNamespace::Act()->msnprintfproc (buf, 10240, ud);
+         pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+      }
+    }
+    }
+    }
+  }
+
+  if (has_overrides) {
+    pp_endb (pp);
+    pp_printf_raw (pp, "}\n{");
+  }
+  else {
+    pp_printf_raw (pp, "{");
+  }
+  pp_forced (pp, 2);
+  pp_setb (pp);
+
+  // if (u->getlang() && u->getlang()->getchp()) {
+  //   if (config_get_int ("act.refine_steps")  > 0) {
+  //     pp_printf (pp, "refine <%d> {", config_get_int("act.refine_steps") + 1);
+  //   }
+  //   else {
+  //     pp_printf (pp, "refine {");
+  //   }
+  //   pp_forced (pp, 2);
+  //   pp_setb (pp);
+  // }
 
   if (special_vx) {
     /* these are fresh instances introduced during decomposition;
@@ -484,6 +582,11 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
     else {
       // syn->runPreSynth (ap, p);
       int v = emit_refinement_header (syn, p);
+      // TODO: fix this hack maybe
+      pp_printf (pp, "pint _=0;");
+      pp_forced (pp, 0);
+      pp_printf (pp, "}");
+      pp_forced (pp, 0);
     }
     syn->resetDecompVx();
     pp_endb (pp);
