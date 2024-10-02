@@ -93,7 +93,12 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
         break;
 
     case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS");
+        for (gc = c->u.gc ; gc ; gc = gc->next)
+        {
+            fill_in_else_explicit (gc->s, p, 0);
+        }
+
+        break;
         
     case ACT_CHP_SKIP:
     case ACT_CHP_ASSIGN:

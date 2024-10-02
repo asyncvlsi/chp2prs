@@ -125,6 +125,8 @@ class RingSynth : public ActSynthesize {
       // else
       //   rf->run_forge();
 
+      // chp_print(stdout, c);
+      // fprintf(stdout, "\n\n");
       rf->run_forge();
 
       revert_mangle();

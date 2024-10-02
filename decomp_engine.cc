@@ -28,6 +28,7 @@
 #include "decomp/multichan.h"
 
 #include "opt/chp-opt.h"
+#include "opt/static-tokens.h"
 
 class Decomp : public ActSynthesize {
  public:
@@ -100,6 +101,7 @@ class Decomp : public ActSynthesize {
     
       std::vector<Sequence> vs, vs1;
 
+#if 1
       // necessary decompositions for synthesis -------------------------------
       MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
       mc->process_multichans();
@@ -183,6 +185,13 @@ class Decomp : public ActSynthesize {
           list_append(_decomp_vx, vx);
         }
       }
+#else
+    ChpOptimize::putIntoNewStaticTokenForm(g.graph);
+    fprintf (stdout, "\n\n");
+    print_chp(std::cout,g.graph);
+    fprintf (stdout, "\n\n");
+    // p->getlang()->getchp()->c = ChpOptimize::chp_graph_to_act (g, tmp_names, p->CurScope());
+#endif
       
     }
     pp_forced (_pp, 0);
