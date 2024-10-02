@@ -154,46 +154,59 @@ defproc pulse(bool? in; bool! out)
 }
 
 // flip-flop without pulse generator
-// export template <pint CD, PW, W>
-// defproc capture(a1of1 go; bool? din[W]; bool! dout[W]) 
-// {
-//   bool dmid[W];
-//   delay_line<CD+1> capture_delay_1;
-//   delay_line<CD> capture_delay_2;
+export template <pint CD, PW, W>
+defproc capture(a1of1 go; bool? din[W]; bool! dout[W]) 
+{
+  bool dmid[W];
+  delay_line<CD+1> capture_delay_1;
+  delay_line<CD> capture_delay_2;
 
-//   go.r = capture_delay_1.in;
-//   capture_delay_1.out = capture_delay_2.in;
-//   go.a = capture_delay_2.out;
+  // controller 
+  std::cells::OR2X1 or;
+  std::cells::AND2X1 and;
+  std::gates::ctree<2,false> c2;
 
-//   std::cells::INVX1 inv_clk;
-//   inv_clk.A = go.r;
+  or.A = go.r;
+  and.A = go.r;
 
-//   std::cells::LATCH x1[W], x2[W];
-//   sigbuf<W> fanout_tree_1, fanout_tree_2;
+  capture_delay_1.in = or.Y;
+  capture_delay_1.out = and.B;
+  capture_delay_2.in = and.Y;
+  capture_delay_2.out = or.B;
 
-//   inv_clk.Y = fanout_tree_1.in;
-//   capture_delay_1.out = fanout_tree_2.in;
+  or.B = c2.in[0];
+  and.B = c2.in[1];
+  c2.out = go.a;
 
-//   (i:W:
-//     x1[i].CLK = fanout_tree_1.out[i];
-//     x1[i].D = din[i];
-//     x1[i].Q = dmid[i];
-//   )
+  std::cells::INVX1 inv_clk;
+  inv_clk.A = or.Y;
 
-//   (i:W:
-//     x2[i].CLK = fanout_tree_2.out[i];
-//     x2[i].D = dmid[i];
-//     x2[i].Q = dout[i];
-//   )
+  std::cells::LATCH x1[W], x2[W];
+  sigbuf<W> fanout_tree_1, fanout_tree_2;
 
-//   spec {
-//     timing go.r+: dout < go.a+
-//   }
-// }
+  inv_clk.Y = fanout_tree_1.in;
+  and.Y = fanout_tree_2.in;
+
+  (i:W:
+    x1[i].CLK = fanout_tree_1.out[i];
+    x1[i].D = din[i];
+    x1[i].Q = dmid[i];
+  )
+
+  (i:W:
+    x2[i].CLK = fanout_tree_2.out[i];
+    x2[i].D = dmid[i];
+    x2[i].Q = dout[i];
+  )
+
+  spec {
+    timing go.r+: dout < go.a+
+  }
+}
 
 // pulsed latch
 export template <pint CD, PW, W>
-defproc capture(a1of1 go; bool? din[W]; bool! dout[W])
+defproc capture_pulsed(a1of1 go; bool? din[W]; bool! dout[W])
 {
   delay_line<CD> capture_delay;
   go.r = capture_delay.in;
@@ -225,64 +238,77 @@ defproc var_access(bool din[W]; bool dout[W])
 }
 
 // flip-flop without pulse generator - initial value
-// export template <pint CD, PW, W, INIT_VAL>
-// defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])
-// {
-
-//   { INIT_VAL >= 0 : "Only non-negative initial values" };
-//   { INIT_VAL <= (1<<W)-1 : "Initial value out of bounds" };
-
-//   pint ival = INIT_VAL;
-//   pint j = 0;
-
-//   bool dmid[W];
-//   delay_line<CD+1> capture_delay_1;
-//   delay_line<CD> capture_delay_2;
-
-//   go.r = capture_delay_1.in;
-//   capture_delay_1.out = capture_delay_2.in;
-//   go.a = capture_delay_2.out;
-
-//   std::cells::INVX1 inv_clk;
-//   inv_clk.A = go.r;
-
-//   sigbuf<W> fanout_tree_1, fanout_tree_2;
-
-//   inv_clk.Y = fanout_tree_1.in;
-//   capture_delay_1.out = fanout_tree_2.in;
-
-//   *[ j < W -> [ (ival%2) = 0 -> std::cells::LATCHLO x_lo_1[j..j];
-//                                 std::cells::LATCHLO x_lo_2[j..j];
-//                                 x_lo_1[j].CLK = fanout_tree_1.out[j];
-//                                 x_lo_2[j].CLK = fanout_tree_2.out[j];
-//                                 x_lo_1[j].D = din[j];
-//                                 x_lo_2[j].D = dmid[j];
-//                                 x_lo_1[j].Q = dmid[j];
-//                                 x_lo_2[j].Q = dout[j];
-//                                 x_lo_1[j].R = Reset;
-//                                 x_lo_2[j].R = Reset;
-
-//              [] (ival%2) = 1 -> std::cells::LATCHHI x_hi_1[j..j];
-//                                 std::cells::LATCHHI x_hi_2[j..j];
-//                                 x_hi_1[j].CLK = fanout_tree_1.out[j];
-//                                 x_hi_2[j].CLK = fanout_tree_2.out[j];
-//                                 x_hi_1[j].D = din[j];
-//                                 x_hi_2[j].D = dmid[j];
-//                                 x_hi_1[j].Q = dmid[j];
-//                                 x_hi_2[j].Q = dout[j];
-//                                 x_hi_1[j].S = Reset;
-//                                 x_hi_2[j].S = Reset;
-
-//               ]; j = j + 1; ival = ival >> 1;
-//   ]
-
-//   spec {
-//     timing go.r+: dout < go.a+
-//   }
-// }
-
 export template <pint CD, PW, W, INIT_VAL>
 defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])
+{
+
+  { INIT_VAL >= 0 : "Only non-negative initial values" };
+  { INIT_VAL <= (1<<W)-1 : "Initial value out of bounds" };
+
+  pint ival = INIT_VAL;
+  pint j = 0;
+
+  bool dmid[W];
+  delay_line<CD+1> capture_delay_1;
+  delay_line<CD> capture_delay_2;
+
+  // controller 
+  std::cells::OR2X1 or;
+  std::cells::AND2X1 and;
+  std::gates::ctree<2,false> c2;
+
+  or.A = go.r;
+  and.A = go.r;
+
+  capture_delay_1.in = or.Y;
+  capture_delay_1.out = and.B;
+  capture_delay_2.in = and.Y;
+  capture_delay_2.out = or.B;
+
+  or.B = c2.in[0];
+  and.B = c2.in[1];
+  c2.out = go.a;
+
+  std::cells::INVX1 inv_clk;
+  inv_clk.A = or.Y;
+
+  sigbuf<W> fanout_tree_1, fanout_tree_2;
+
+  inv_clk.Y = fanout_tree_1.in;
+  and.Y = fanout_tree_2.in;
+
+  *[ j < W -> [ (ival%2) = 0 -> std::cells::LATCHLO x_lo_1[j..j];
+                                std::cells::LATCHLO x_lo_2[j..j];
+                                x_lo_1[j].CLK = fanout_tree_1.out[j];
+                                x_lo_2[j].CLK = fanout_tree_2.out[j];
+                                x_lo_1[j].D = din[j];
+                                x_lo_2[j].D = dmid[j];
+                                x_lo_1[j].Q = dmid[j];
+                                x_lo_2[j].Q = dout[j];
+                                x_lo_1[j].R = Reset;
+                                x_lo_2[j].R = Reset;
+
+             [] (ival%2) = 1 -> std::cells::LATCHHI x_hi_1[j..j];
+                                std::cells::LATCHHI x_hi_2[j..j];
+                                x_hi_1[j].CLK = fanout_tree_1.out[j];
+                                x_hi_2[j].CLK = fanout_tree_2.out[j];
+                                x_hi_1[j].D = din[j];
+                                x_hi_2[j].D = dmid[j];
+                                x_hi_1[j].Q = dmid[j];
+                                x_hi_2[j].Q = dout[j];
+                                x_hi_1[j].S = Reset;
+                                x_hi_2[j].S = Reset;
+
+              ]; j = j + 1; ival = ival >> 1;
+  ]
+
+  spec {
+    timing go.r+: dout < go.a+
+  }
+}
+
+export template <pint CD, PW, W, INIT_VAL>
+defproc capture_init_pulsed(a1of1 go; bool? din[W]; bool! dout[W])
 {
   delay_line<CD> capture_delay;
   go.r = capture_delay.in;

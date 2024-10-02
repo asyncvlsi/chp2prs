@@ -117,6 +117,7 @@ class RingSynth : public ActSynthesize {
       b->run(p);
       Assert (b, "hmm b");
 
+#if 1
       RingForge *rf = new RingForge (_pp->fp, p, c, b, bundled, dm, dpath_style, "", _ename);
       // TinyForge *tf = new TinyForge (_pp->fp, p, c, b, bundled, dm, "", _ename);
 
@@ -125,10 +126,13 @@ class RingSynth : public ActSynthesize {
       // else
       //   rf->run_forge();
 
-      // chp_print(stdout, c);
-      // fprintf(stdout, "\n\n");
       rf->run_forge();
+#else
 
+      chp_print(stdout, c);
+      fprintf(stdout, "\n\n");
+
+#endif
       revert_mangle();
     }
     
