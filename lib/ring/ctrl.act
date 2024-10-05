@@ -592,18 +592,26 @@ defproc c2 (bool A, B, ack, out)
 defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka) 
 {
   bool _u, _v;
+  bool _Reset;
 
   /* force exclusive low signals for simulation */
   spec {
     mk_excllo(_u,_v)
   }
   
+  std::cells::OR2X1 or_ka;
+  or_ka.A = u;
+  or_ka.B = v;
+  or_ka.Y = _ka;
+
   prs {
+    // inverted Reset to initialize correctly
+    Reset => _Reset-
     /* cross coupled nand gates, with kill tail NMOS */
     [keeper=0] a & _v & _ki -> _u-
-    [keeper=0] ~a | ~_v -> _u+
+    [keeper=0] ~a | ~_v | ~_Reset | ~_ki -> _u+
     [keeper=0] b & _u & _ki -> _v-
-    [keeper=0] ~b & ~_u -> _v+
+    [keeper=0] ~b & ~_u | ~_Reset | ~_ki -> _v+
 
    /* output filter */
     [keeper=0] _u<5> -> u-
@@ -665,13 +673,22 @@ defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N])
   pint M = N;
 
   nds_two_way nds[M];
-  std::cells::INVX1 inv[M];
+  // std::cells::INVX1 inv[M];
+  std::cells::NOR2X1 nors[M];
   std::cells::XOR2X1 xor;
+  std::cells::TIELOX1 tielo;
+  std::cells::INVX1 inv_loop;
+  std::cells::NOR2X1 reset_nor;
+  inv_loop.Y = reset_nor.B;
+  Reset = reset_nor.A;
 
   // connect guards and inverted guards
   ( i : M : nds[i].gs[0] = gs[i]; 
-              inv[i].A = gs[i];
-              inv[i].Y = nds[i].gs[1]; )
+              // inv[i].A = gs[i];
+              nors[i].A = gs[i];
+              nors[i].B = Reset;
+              // inv[i].Y = nds[i].gs[1]; )
+              nors[i].Y = nds[i].gs[1]; )
 
   // first one
   xor.B = m1.r;
@@ -683,8 +700,10 @@ defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N])
 
   // last one
   nds[M-1].co[0] = co[M-1];
-  nds[M-1].co[1].a = GND;
-  nds[M-1].co[1].r = xor.A;
+  nds[M-1].co[1].a = tielo.Y;
+  // nds[M-1].co[1].r = xor.A;
+  xor.A = reset_nor.Y;
+  nds[M-1].co[1].r = inv_loop.A;
 }
 
 // ------------------------------------
