@@ -148,7 +148,7 @@ bool ActSynthesize::prepSynthesis (ActPass *ap)
   mem->run (p);
 
   ActCHPArbiter *arbp = new ActCHPArbiter (ActNamespace::Act());
-  arbp->run (p);
+  // arbp->run (p);
 
   /*-- Emit any additional imports needed --*/
   emitTopImports (ap);

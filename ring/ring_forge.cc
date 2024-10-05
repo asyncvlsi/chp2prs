@@ -721,6 +721,16 @@ int RingForge::_generate_selection_split(int n)
 }
 
 /*
+    Generate a non-deterministic selection split block for branches
+*/
+int RingForge::_generate_nds_split(int n)
+{
+    int block_id = _gen_block_id();
+    fprintf(_fp,"nds_split<%d> %s%d;\n", n, ring_block_prefix, block_id);
+    return block_id;
+}
+
+/*
     Generate a selection merge block for branches
 */
 int RingForge::_generate_selection_merge(int n)
@@ -936,26 +946,41 @@ void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves)
             ActId *var = (ActId *)e_var->u.e.l;
             char tname[1024];
             get_true_name(tname, var, _p->CurScope());
-            hash_bucket_t *b = hash_lookup(var_infos, tname);
-            // hash_bucket_t *b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
-            var_info *vi = (var_info *)b->v;
 
-            // TEST ----
-            int latch_id = vi->latest_for_read;
-            // TEST ----
+            // Should probably have a more disciplined way to do this
+            if (!strncmp(tname, "probe__of__",11))
+            {
+                // printf ("\n found probe to connect\n");
+                char *tname1 = &tname[11];
+                // connect channel request to expr block
+                fprintf(_fp,"%s%d.%s%d[0] = %s.r;\n",expr_block_instance_prefix,block_id,
+                                                        expr_block_input_prefix, ib->i, 
+                                                        tname1);
+            }
+            else 
+            {
+                hash_bucket_t *b = hash_lookup(var_infos, tname);
+                Assert (b, "var not found?");
+                // hash_bucket_t *b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
+                var_info *vi = (var_info *)b->v;
 
-            Assert ((latch_id>=0),"var. read before being written?");
+                // TEST ----
+                int latch_id = vi->latest_for_read;
+                // TEST ----
 
-            int va_id = _gen_var_access_id();
-            fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,%s%d.%s%d);\n",vi->width,var_access_prefix,va_id,
-                                                    capture_block_prefix,vi->name,latch_id,
-                                                    expr_block_instance_prefix,block_id,
-                                                    expr_block_input_prefix, ib->i);
-            // connect variable-latch output to expr block input
-            // fprintf(_fp,"%s%d.%s%d = %s%s_%d.dout;\n",expr_block_instance_prefix,block_id,
-            //                                         expr_block_input_prefix, ib->i, 
-            //                                         capture_block_prefix,
-            //                                         vi->name,latch_id);
+                Assert ((latch_id>=0),"var. read before being written?");
+
+                int va_id = _gen_var_access_id();
+                fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,%s%d.%s%d);\n",vi->width,var_access_prefix,va_id,
+                                                        capture_block_prefix,vi->name,latch_id,
+                                                        expr_block_instance_prefix,block_id,
+                                                        expr_block_input_prefix, ib->i);
+                // connect variable-latch output to expr block input
+                // fprintf(_fp,"%s%d.%s%d = %s%s_%d.dout;\n",expr_block_instance_prefix,block_id,
+                //                                         expr_block_input_prefix, ib->i, 
+                //                                         capture_block_prefix,
+                //                                         vi->name,latch_id);
+            }
         }
         // connect constants to math block inputs
         else if ( e_var->type == E_INT )
@@ -1106,7 +1131,43 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
     break;
 
   case E_PROBE:
-    fatal_error ("fix probes please");
+    // fatal_error ("fix probes please");
+    if (collect_phase) {
+        // make dummy variable to stand in for probe
+        InstType *it = TypeFactory::Factory()->NewInt (_p->CurScope(), Type::NONE, 0, const_expr(1));
+        static char buf[1024];
+        it = it->Expand(NULL, _p->CurScope());
+
+        ActId *chan = (ActId *)e->u.e.l;
+        var_info *vi;
+        hash_bucket_t *b;
+        char tname[1024];
+        get_true_name(tname, chan, _p->CurScope());
+        snprintf(buf, 1024, "probe_of_%s", tname);
+        _p->CurScope()->Add (buf, it);
+
+        // Expr *ee = new Expr;
+        // Replace the probe in the original expression with dummy var
+        e->type = E_VAR;
+        e->u.e.l = (Expr *)(new ActId (buf));
+
+        auto tst = _p->CurScope()->Lookup((ActId *)e->u.e.l);
+        Assert (tst, "hmm new id");
+
+        // auto b = hash_add(var_infos, buf);
+        // b = hash_lookup(var_infos, tname);
+        // vi = (var_info *)b->v;
+        ihash_bucket_t *ib;
+        ihash_bucket_t *b_width;
+        if (!ihash_lookup (_inexprmap, (long)e)) 
+        {
+            ib = ihash_add (_inexprmap, (long)e);
+            ib->i = _gen_expr_id();
+            b_width = ihash_add (_inwidthmap, (long)e);
+            b_width->i = 1;
+        }
+    }
+
     break;
     
   case E_FUNCTION:
@@ -1403,6 +1464,8 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         break; 
         
     case ACT_CHP_SELECT:
+    case ACT_CHP_SELECT_NONDET:
+        // fatal_error ("Can't handle NDS in generate_branched_ring");
         // fatal_error ("not supported yet");
         gc = c->u.gc;
         gc_len = length_of_guard_set (c);
@@ -1455,9 +1518,6 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         block_id = sel_merge_block_id;
 
         break;
-
-    case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS in generate_branched_ring");
         
     case ACT_CHP_SKIP:
     case ACT_CHP_ASSIGN:
@@ -1711,6 +1771,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         break;
         
     case ACT_CHP_SELECT:
+    case ACT_CHP_SELECT_NONDET:
+        // fatal_error ("Can't handle NDS in generate_branched_ring");
         // fatal_error ("not supported yet");
         gc = c->u.gc;
         gc_len = length_of_guard_set (c);
@@ -1720,7 +1782,11 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         chp_print(_fp, c);
         fprintf (_fp, "\n");
         fprintf (_fp, "// %d-way selection merge \n", gc_len);
-        sel_split_block_id = _generate_selection_split(gc_len);
+        if (c->type == ACT_CHP_SELECT_NONDET)
+            sel_split_block_id = _generate_nds_split(gc_len);
+        else
+            sel_split_block_id = _generate_selection_split(gc_len);
+
         sel_merge_block_id = _generate_selection_merge(gc_len);
 
         // live_vars = ((latch_info_t *)(c->space))->live_vars;
@@ -1792,9 +1858,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
 
         _save_read_ids();
         break;
-
-    case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS in generate_branched_ring");
         
     case ACT_CHP_SKIP:
     case ACT_CHP_ASSIGN:

@@ -156,7 +156,7 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e, bool mangle = true)
     break;
 
   case E_PROBE:
-    fatal_error ("fix probes please");
+    // fatal_error ("fix probes please");
     break;
     
   case E_FUNCTION:
@@ -228,7 +228,8 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
     if (!action) return;
     Assert (((action->type == ACT_CHP_LOOP)||
              (action->type == ACT_CHP_DOLOOP)||
-             (action->type == ACT_CHP_SELECT)),"not selection");
+             (action->type == ACT_CHP_SELECT)||
+             (action->type == ACT_CHP_SELECT_NONDET)),"not selection");
 
     hash_bucket_t *b, *b2;
     list_t *req_vars = list_new();
@@ -251,7 +252,7 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
     l_info = new latch_info_t;
     l_info->merge_mux_latch_number.clear();
     l_info->merge_mux_inputs.clear();
-    if (action->type != ACT_CHP_SELECT)
+    if (action->type != ACT_CHP_SELECT && action->type != ACT_CHP_SELECT_NONDET)
     {
         l_info->type = LatchType::ICs;
     }
@@ -330,6 +331,7 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
         break;
         
     case ACT_CHP_SELECT:
+    case ACT_CHP_SELECT_NONDET:
         // for selections alone, live = live_out of merge
         _tag_action_with_reqd_vars_union_lcd (c_t);
         H_dup = hash_new (4);
@@ -347,8 +349,7 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
         deepcopy_hashtable (H_out, H_live);
         break;
 
-    case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS");
+        // fatal_error ("Can't handle NDS");
         
     case ACT_CHP_SKIP:
         break;
@@ -433,6 +434,7 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
         break;
         
     case ACT_CHP_SELECT:
+    case ACT_CHP_SELECT_NONDET:
         chp_print (fp, c_t);
         _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
         // _print_var_list((list_t *)c_t->space);
@@ -442,8 +444,7 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
         }
         break;
 
-    case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS");
+        // fatal_error ("Can't handle NDS");
         break;
 
     case ACT_CHP_SKIP:

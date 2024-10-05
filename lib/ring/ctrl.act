@@ -655,31 +655,36 @@ defproc nds_two_way (bool gs[2]; a1of1 m1; a1of1 co[2])
   arb.v = co[1].r;
 }
 
+// Round-robin non-deterministic split
 export template <pint N>
 defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N]) 
 {
   { N>1 : "At least two-way non-deterministic selection" };
-  nds_two_way nds[N-1];
-  inverter inv[N-1];
 
-  // connect guards and inverted guards to first N-2
-  ( i : N-2 : nds[i].gs[0] = gs[i]; 
-              inv[i].in = gs[i];
-              inv[i].out = nds[i].gs[1]; )
+  // No. of NDS blocks
+  pint M = N;
 
-  // last one has two guards
-  nds[N-2].gs[0] = gs[N-2];
-  nds[N-2].gs[1] = gs[N-1];
+  nds_two_way nds[M];
+  std::cells::INVX1 inv[M];
+  std::cells::XOR2X1 xor;
+
+  // connect guards and inverted guards
+  ( i : M : nds[i].gs[0] = gs[i]; 
+              inv[i].A = gs[i];
+              inv[i].Y = nds[i].gs[1]; )
 
   // first one
-  m1 = nds[0].m1;
+  xor.B = m1.r;
+  xor.Y = nds[0].m1.r;
+  m1.a = nds[0].m1.a;
  
-  ( i : N-2 : nds[i].co[0] = co[i]; 
+  ( i : M-1 : nds[i].co[0] = co[i]; 
               nds[i].co[1] = nds[i+1].m1; )
 
-  // last one has both outputs sent out to branches
-  nds[N-2].co[0] = co[N-2];
-  nds[N-2].co[1] = co[N-1];
+  // last one
+  nds[M-1].co[0] = co[M-1];
+  nds[M-1].co[1].a = GND;
+  nds[M-1].co[1].r = xor.A;
 }
 
 // ------------------------------------
