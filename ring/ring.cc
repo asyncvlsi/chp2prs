@@ -943,6 +943,7 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         v->iread = 0;
         v->nwrite = 0;
         v->iwrite = 0;
+        v->fischan = 0;
         v->latest_for_read = 0;
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
@@ -960,6 +961,7 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         v->iread = 0;
         v->nwrite = 0;
         v->iwrite = 0;
+        v->fischan = 1;
         v->latest_for_read = 0;
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);

@@ -292,14 +292,17 @@ int RingForge::_generate_single_latch_non_ssa (var_info *v, long long init_val=0
     if (write_ports==0) write_ports = 1;
     
     Assert (v->iread==0, "Already created latch for this variable?");
-    fprintf(_fp, "capture_init_non_ssa<%d,%d,%d,%lld,%d> %s%s_%d;\n", 
-                        int(std::ceil(capture_delay*delay_multiplier)), 
-                        int(std::ceil(pulse_width*delay_multiplier)), 
-                        v->width, init_val, write_ports, 
-                        capture_block_prefix, v->name,latch_id);
+    if (!(v->fischan))
+    {
+        fprintf(_fp, "capture_init_non_ssa<%d,%d,%d,%lld,%d> %s%s_%d;\n", 
+                            int(std::ceil(capture_delay*delay_multiplier)), 
+                            int(std::ceil(pulse_width*delay_multiplier)), 
+                            v->width, init_val, write_ports, 
+                            capture_block_prefix, v->name,latch_id);
 
-    v->iread++;
-    v->latest_for_read = latch_id;
+        v->iread++;
+        v->latest_for_read = latch_id;
+    }
     return latch_id;
 } 
 
