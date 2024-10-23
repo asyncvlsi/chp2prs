@@ -125,6 +125,7 @@ static int emit_refinement_header (ActSynthesize *syn,
   pp_t *pp = syn->getPP ();
   const char *prefix = syn->getPrefix ();
   Process *p = dynamic_cast <Process *> (u);
+  bool is_process;
 
   if (p) {
     special_vx = ActNamespace::Act()->getDecomp (p);
@@ -137,9 +138,11 @@ static int emit_refinement_header (ActSynthesize *syn,
 
   if (TypeFactory::isProcessType (u)) {
     pp_printf (pp, "defproc ");
+    is_process = true;
   }
   else {
     pp_printf (pp, "deftype ");
+    is_process = false;
   }
 
   pp_printf (pp, "%s_", prefix);
@@ -329,7 +332,9 @@ static int emit_refinement_header (ActSynthesize *syn,
     pp_forced (pp, 0);
   }
 
-  has_overrides = 0; // reset 
+  has_overrides = 0; // reset
+
+  if (is_process) {
 
   if (config_get_int ("act.refine_steps")  > 0) {
     pp_printf (pp, "refine <%d> ", config_get_int("act.refine_steps") + 1);
@@ -425,6 +430,8 @@ static int emit_refinement_header (ActSynthesize *syn,
   }
   pp_forced (pp, 2);
   pp_setb (pp);
+
+  }
 
   // if (u->getlang() && u->getlang()->getchp()) {
   //   if (config_get_int ("act.refine_steps")  > 0) {
@@ -618,6 +625,7 @@ void *synthesis_data (ActPass *ap, Data *d, int mode)
       int v = emit_refinement_header (syn, d);
 
       pp_endb (pp);
+      pp_forced (pp, 0);
       pp_printf (pp, "}");
       pp_forced (pp, 0);
     }

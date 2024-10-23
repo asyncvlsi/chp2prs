@@ -161,7 +161,7 @@ class ActSynthesize {
   virtual void runSynth (ActPass *ap, Process *p) { }
 
   /**
-   * Run anything ou'd like before the heart of logic synthesis. This
+   * Run anything you'd like before the heart of logic synthesis. This
    * should delete variables from the scope if needed so that they are
    * omitted from the override header.
    *
