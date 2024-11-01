@@ -53,6 +53,7 @@ void MultiChan::process_multichans()
         Assert(alias_number == cbp.second.size(), "hmm");
 
         _optimize_state_table();
+        _optimize_state_table_1();
         if (printt) _print_state_table (_st);
         Assert(alias_number == cbp.second.size(), "hmm");
         
@@ -61,6 +62,11 @@ void MultiChan::process_multichans()
 
         alias_number = tmp;
         Assert(alias_number == cbp.second.size(), "hmm");
+
+        if (_is_relatively_unconditional()) {
+            _optimize_state_table_2();
+        }
+        if (printt) _print_state_table (_st);
 
         auto aux = _build_aux_process_new (_st, cbp.first);
         v_aux.push_back(aux);
@@ -521,6 +527,78 @@ void MultiChan::_optimize_state_table ()
     _st = temp;
 }
 
+/*
+    If guard case but the guard just evaluates to true,
+    we take that into account to simplify
+*/ 
+void MultiChan::_optimize_state_table_1 ()
+{
+    for ( auto &sr : _st )
+    {
+        Block *b;
+        if (sr.c == Cond::Guard)
+        {
+            b = sr.sel;
+            if (b->type() == BlockType::DoLoop)
+            {
+                auto g = ChpExprSingleRootDag::deep_copy(b->u_doloop().guard);
+                if (g.root()->type() == IRExprTypeKind::Const)
+                {
+                    if(g.root()->u_cons().v.getI32() == 1) 
+                    {
+                        sr.c = Cond::True;
+                        Assert (sr.nexts.size() == 2, "hmm");
+                        sr.nexts.erase(sr.nexts.begin()+1);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*
+    If alias accesses are all relatively unconditional, 
+    we only need those state rows, rest are irrelevant
+*/ 
+void MultiChan::_optimize_state_table_2 ()
+{
+    StateTable temp;
+    for ( auto &sr : _st )
+    {
+        if (sr.curr > 0 && sr.c == Cond::True && sr.nexts[0] == sr.curr+1)
+        {
+            temp.push_back(sr);
+        }
+    }
+    StateRow loop_back (alias_number, 1);
+    temp.push_back(loop_back);
+    _st.clear();
+    _st = temp;
+}
+
+/*
+    Checking this:
+    All alias accesses are within the same branch, 
+    i.e. are relatively unconditional
+*/
+bool MultiChan::_is_relatively_unconditional()
+{
+    std::vector<bool> ret (alias_number-1, false);
+    for ( auto &sr : _st )
+    {
+        if (sr.curr > 0 && sr.c == Cond::True && sr.nexts[0] == sr.curr+1)
+        {
+            ret[sr.curr-1] = true;
+        }
+    }
+    bool retval = true;
+    for ( auto x : ret )
+    {
+        retval &= x;
+    }
+    return retval;
+}
+
 void MultiChan::_replace_next_states (int old_st, int new_st)
 {
     for ( auto &sr : _st )
@@ -580,9 +658,9 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
     auto next_alias_var = g->graph.id_pool().makeUniqueVar(alias_var_bw);
     auto data_var = g->graph.id_pool().makeUniqueVar( g->graph.id_pool().getBitwidth(id) );
 
-    // make init. cond. alias := 0 assignment
+    // make init. cond. alias := initval assignment
     Block *init_alias = g->graph.blockAllocator().newBlock(
-        Block::makeBasicBlock(Statement::makeAssignment(alias_var,ChpExprSingleRootDag::makeConstant(BigInt(0),alias_var_bw))));
+        Block::makeBasicBlock(Statement::makeAssignment(alias_var,ChpExprSingleRootDag::makeConstant(BigInt(st[0].curr),alias_var_bw))));
     Assert (init_alias, "huh");
 
     // make init. cond. next := 0 assignment

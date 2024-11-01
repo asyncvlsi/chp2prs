@@ -27,3 +27,4 @@ cmake-build-debug
 z_*.act
 expr*.act
 zz_*
+*.v

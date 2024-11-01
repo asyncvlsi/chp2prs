@@ -123,9 +123,13 @@ class MultiChan : public DecompAnalysis {
         int _build_state_table (Sequence, ChanId, int);
 
         void _optimize_state_table ();
+        void _optimize_state_table_1 ();
+        void _optimize_state_table_2 ();
         void _replace_next_states (int, int);
         void _re_encode_states ();
         void _re_encode_state (int, int);
+
+        bool _is_relatively_unconditional ();
 
         void _print_state_table (StateTable);
 
