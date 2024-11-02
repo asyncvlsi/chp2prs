@@ -74,6 +74,7 @@ int main(int argc, char **argv)
   char *procname = NULL;
 
   bool use_ring = false;
+  bool arb = true;
 
   int ch;
   while ((ch = getopt (argc, argv, "RhOGbde:E:o:p:F:P:m:")) != -1) {
@@ -84,6 +85,7 @@ int main(int argc, char **argv)
       }
       else if (!strcmp (optarg, "ring")) {
 	use_ring = true;
+  arb = false;
       }
       else if (!strcmp (optarg, "sdt")) {
 	use_ring = false;
@@ -259,6 +261,9 @@ int main(int argc, char **argv)
 
   /* optimization options */
   c2p->setParam ("chp_optimize", chpopt);
+
+  /* arbiter pass switch */
+  c2p->setParam ("run_arb_pass", arb);
   
   if (external_opt) {
     int param = 0;

@@ -80,9 +80,10 @@ class ActSynthesize {
    * design.
    *
    * @param ap is the pass
+   * @param run_arb - run arbiter decomposition or not
    * @return true on success, false if there was some error
    */
-  bool prepSynthesis (ActPass *ap);
+  bool prepSynthesis (ActPass *ap, bool run_arb);
 
   /**
    * Run any final steps at the end of the entire synthesis process.

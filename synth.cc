@@ -122,7 +122,7 @@ ActSynthesize::~ActSynthesize ()
 }
 
 
-bool ActSynthesize::prepSynthesis (ActPass *ap)
+bool ActSynthesize::prepSynthesis (ActPass *ap, bool run_arb)
 {
   Process *p = ap->getRoot ();
   
@@ -148,7 +148,7 @@ bool ActSynthesize::prepSynthesis (ActPass *ap)
   mem->run (p);
 
   ActCHPArbiter *arbp = new ActCHPArbiter (ActNamespace::Act());
-  arbp->run (p);
+  if (run_arb) arbp->run (p);
 
   /*-- Emit any additional imports needed --*/
   emitTopImports (ap);
