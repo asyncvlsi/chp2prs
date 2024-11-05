@@ -956,7 +956,7 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
       else if (TypeFactory::isChanType (conn->getvx()->t))
       {
         NEW(v, var_info);
-        v->width = 1;
+        v->width = bv->width;
         v->nread = 0;
         v->iread = 0;
         v->nwrite = 0;

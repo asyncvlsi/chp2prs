@@ -247,6 +247,38 @@ unsigned long eval_ic (Expr *q)
     return 0;
 }
 
+static bool _expr_has_probe (Expr *e)
+{
+  auto is_basic_probe =
+    [] (const Expr *e) {
+      return e->type == E_PROBE
+	|| (e->type == E_AND && e->u.e.l->type == E_PROBE);
+    };
+
+  if (!e) return false;
+
+  if (is_basic_probe (e)) {
+    return true;
+  }
+  if (e->type == E_OR && is_basic_probe (e->u.e.l)) {
+    return true;
+  }
+  return false;
+}
+
+static bool _guards_have_probes (act_chp_gc_t *gc)
+{
+  while (gc) {
+    if (gc->g) {
+      if (_expr_has_probe (gc->g)) {
+	return true;
+      }
+    }
+    gc = gc->next;
+  }
+  return false;
+}
+
 /*
     Generate a data capture element for a given variable.
     If provided with an initial value, generate a data capture
@@ -1281,6 +1313,22 @@ int RingForge::_generate_sync_chan()
     return id;
 }
 
+list_t *RingForge::_create_channel_accesses(list_t *ics)
+{
+    list_t *ret = list_new();
+    for (listitem_t *li = list_first(ics); li; li = list_next (li))
+    {
+        hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(li));
+        var_info *vi = (var_info *)b->v;
+        if (!(vi->fischan)) {
+            list_append(ret, (const char *)list_value(li));
+        }
+        else {
+            fprintf(_fp, "chan_access<%d> %s%s_%d;\n", vi->width, capture_block_prefix, vi->name,0);
+        }
+    }
+    return ret;
+}
 
 /*
     General synthesis for branched programs.
@@ -1649,6 +1697,10 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
 #if 1
             // loop through initial condition assignments to create latches with correct initial values
             list_t *ic_list  = list_dup((list_t *)(((latch_info_t *)(main_loop->space))->live_vars));
+
+            // handle channel variables - i.e. value probes
+            ic_list = _create_channel_accesses(ic_list);
+
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
             {   
                 list_t *tmp = list_new();
@@ -1785,7 +1837,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         chp_print(_fp, c);
         fprintf (_fp, "\n");
         fprintf (_fp, "// %d-way selection merge \n", gc_len);
-        if (c->type == ACT_CHP_SELECT_NONDET)
+        if (_guards_have_probes(gc))
             sel_split_block_id = _generate_nds_split(gc_len);
         else
             sel_split_block_id = _generate_selection_split(gc_len);

@@ -237,6 +237,12 @@ defproc var_access(bool din[W]; bool dout[W])
   din = dout;
 }
 
+export template<pint W>
+defproc chan_access(bd<W> C; bool dout[W])
+{
+  C.d = dout;
+}
+
 // flip-flop without pulse generator - initial value
 export template <pint CD, PW, W, INIT_VAL>
 defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])

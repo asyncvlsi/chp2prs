@@ -73,6 +73,8 @@ class RingForge : public RingEngine {
         float _lookup_mux_delays (int, int);
         std::pair<int,int> _get_pre_sel_latch_and_size (std::vector<int>);
 
+        list_t *_create_channel_accesses (list_t *ics);
+
         // expr block functions
         void _expr_collect_vars (Expr *, int);
         void _instantiate_expr_block (int, list_t *);
