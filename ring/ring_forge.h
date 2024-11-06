@@ -63,6 +63,7 @@ class RingForge : public RingEngine {
         int _generate_pause_element();
         int _generate_loop_wrapper();
         int _generate_doloop_wrapper();
+        int _generate_probe_access(ActId *);
 
         // Datapath generation functions
         int _generate_single_latch (var_info *, latch_info *, long long);
@@ -70,6 +71,8 @@ class RingForge : public RingEngine {
         int _generate_expr_block(Expr *, int);
         int _generate_expr_block_for_sel(Expr *, int);
         int _compute_merge_mux_info(latch_info_t *, int);
+        int _generate_probe_clause(list_t *, list_t *);
+        int _generate_probe_circuit(Expr *, int);
         float _lookup_mux_delays (int, int);
         std::pair<int,int> _get_pre_sel_latch_and_size (std::vector<int>);
 

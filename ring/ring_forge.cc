@@ -929,7 +929,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
     // double typ_delay_ps = (ebi->getDelay().typ_val);
-    if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %dps", typ_delay_ps); }
+    // if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %dps", typ_delay_ps); }
 
     int delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
     if (delay_line_n <= 0) { delay_line_n = 1; }
@@ -985,12 +985,13 @@ void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves)
             // Should probably have a more disciplined way to do this
             if (!strncmp(tname, "probe__of__",11))
             {
+                Assert (false, "Probe synthesis failure");
                 // printf ("\n found probe to connect\n");
-                char *tname1 = &tname[11];
+                // char *tname1 = &tname[11];
                 // connect channel request to expr block
-                fprintf(_fp,"%s%d.%s%d[0] = %s.r;\n",expr_block_instance_prefix,block_id,
-                                                        expr_block_input_prefix, ib->i, 
-                                                        tname1);
+                // fprintf(_fp,"%s%d.%s%d[0] = %s.r;\n",expr_block_instance_prefix,block_id,
+                //                                         expr_block_input_prefix, ib->i, 
+                //                                         tname1);
             }
             else 
             {
@@ -1026,6 +1027,159 @@ void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves)
             fprintf (stdout, "e_var type: %d \n", e_var->type);
             fatal_error ("leaf (primary input) is neither variable nor constant int?? (instantiate_expr_block)"); }
     }
+}
+
+int RingForge::_generate_probe_circuit (Expr *g, int xid)
+{
+    list_t *data_gl = list_new ();
+    list_t *m, *p;
+    Expr *tmp, *egc;
+    /*
+        (#A & ... ) | (#B & ... ) | ... 
+        m = list of guard expressions (non-probed pieces)
+    */
+    m = list_new ();
+    egc = g;
+    while (egc) {
+        if (egc->type == E_OR) {
+            tmp = egc->u.e.l;
+        }
+        else {
+            tmp = egc;
+        }
+        while (tmp && tmp->type == E_AND && tmp->u.e.l->type == E_PROBE) {
+            tmp = tmp->u.e.r;
+        }
+        if (tmp->type == E_PROBE) {
+            int eid = _gen_expr_block_id ();
+            Expr *e1 = new Expr;
+            e1->type = E_INT;
+            e1->u.ival.v = 1;
+            // _emit_expr_const (eid, 1, 1, true);
+            _generate_expr_block_for_sel (e1,eid);
+            list_iappend (m, eid);
+            list_iappend (data_gl, eid);
+        }
+        else {
+            // _emit_one_guard_expr (tmp, m);
+            int eid = _gen_expr_block_id ();
+            _generate_expr_block_for_sel (tmp,eid);
+            // list_iappend (data_gl,
+            //             list_ivalue (list_tail (m)));
+            list_iappend (m, eid);
+            list_iappend (data_gl,eid);
+        }
+        if (egc->type == E_OR) {
+            egc = egc->u.e.r;
+        }
+        else {
+            break;
+        }
+    }
+    /* 
+        p = list of list of probes
+    */
+    p = list_new ();
+    egc = g;
+    while (egc) {
+        list_t *pl = list_new ();
+        if (egc->type == E_OR) {
+            tmp = egc->u.e.l;
+        }
+        else {
+            tmp = egc;
+        }
+        while (tmp && tmp->type == E_AND && tmp->u.e.l->type == E_PROBE) {
+            int pid = _generate_probe_access ((ActId *)tmp->u.e.l->u.e.l);
+            list_iappend (pl, pid);
+            tmp = tmp->u.e.r;
+        }
+        if (tmp->type == E_PROBE) {
+            int pid = _generate_probe_access ((ActId *)tmp->u.e.l);
+            list_iappend (pl, pid);
+        }
+
+        list_append (p, pl);
+        if (egc->type == E_OR) {
+            egc = egc->u.e.r;
+        }
+        else {
+            break;
+        }
+    }
+
+    /* now emit probed clause */
+    int pc = _generate_probe_clause (m, p);
+    list_free (m);
+    for (listitem_t *li = list_first (p); li; li = list_next (li)) {
+        list_free ((list_t *) list_value (li));
+    }
+    list_free (p);
+    return pc;
+}
+
+int RingForge::_generate_probe_clause (list_t *guards, list_t *probe_list)
+{
+  int count = 0;
+  listitem_t *pi;
+  int idx;
+
+  idx = _gen_expr_block_id ();
+  for (pi = list_first (probe_list); pi; pi = list_next (pi)) {
+    count += list_length ((list_t *)list_value (pi));
+  }
+  if (count == 0) {
+    Assert (list_length (guards) == 1, "What?");
+    fprintf (_fp, "dummy_probe_clause pc_%d(%s%d.out);\n",
+	     idx, expr_block_instance_prefix, list_ivalue (list_first (guards)));
+  }
+  else {
+    fprintf (_fp, "probe_clause<%d,{", list_length (guards));
+    for (pi = list_first (probe_list); pi; pi = list_next (pi)) {
+      if (pi != list_first (probe_list)) {
+	fprintf (_fp, ",");
+      }
+      fprintf (_fp, "%d", list_length ((list_t *)list_value (pi)));
+    }
+    fprintf (_fp, "},%d> %s%d({", count, expr_block_instance_prefix, idx);
+    
+    for (listitem_t *li = list_first (guards); li; li = list_next (li)) {
+      if (li != list_first (guards)) {
+	fprintf (_fp, ",");
+    }
+      fprintf (_fp, "%s%d.out[0]", expr_block_instance_prefix, list_ivalue (li));
+    }
+    fprintf (_fp, "},{");
+
+    int emit_comma = 0;
+    for (pi = list_first (probe_list); pi; pi = list_next (pi)) {
+      for (listitem_t *qi = list_first ((list_t *)list_value (pi));
+	   qi; qi = list_next (qi)) {
+	if (emit_comma) {
+	  fprintf (_fp, ",");
+	}
+	fprintf (_fp, "probe_%d.dout[0]", list_ivalue (qi));
+	emit_comma = 1;
+      }
+    }
+    fprintf (_fp, "});\n");
+  }
+  return idx;
+}
+
+int RingForge::_generate_probe_access (ActId *chan)
+{
+    char tname[1024];
+    get_true_name(tname, chan, _p->CurScope());
+    hash_bucket_t *b = hash_lookup(var_infos, tname);
+    Assert (b, "var not found?");
+    var_info *vi = (var_info *)b->v;
+    int w = vi->width;
+    int pid = _gen_var_access_id();
+    fprintf (_fp, "probe_access<%d> probe_%d(",w,pid);
+    chan->Print(_fp);
+    fprintf (_fp, ");\n");
+    return pid;
 }
 
 /*
@@ -1634,6 +1788,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     act_chp_gc_t *gc;
     act_chp_lang_t *stmt, *main_loop;
     int init_chan, lcd_chan;
+    bool have_probes = false;
     list_t *lcd_chan_list;
     var_info *vi;
     ActId *id;
@@ -1837,10 +1992,13 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         chp_print(_fp, c);
         fprintf (_fp, "\n");
         fprintf (_fp, "// %d-way selection merge \n", gc_len);
-        if (_guards_have_probes(gc))
+        if (_guards_have_probes(gc)) {
+            have_probes = true;
             sel_split_block_id = _generate_nds_split(gc_len);
-        else
+        }
+        else {
             sel_split_block_id = _generate_selection_split(gc_len);
+        }
 
         sel_merge_block_id = _generate_selection_merge(gc_len);
 
@@ -1855,15 +2013,16 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         for (int i = 0; gc; gc = gc->next)
         {
             // branch_id++;
-            if (gc->g)
+            Assert ((gc->g) , "should've been fixed in else generation");
+            if (have_probes)
+            {   
+                expr_block_id = _generate_probe_circuit (gc->g, expr_block_id);
+            }
+            else
             {   
                 expr_block_id = _gen_expr_block_id();
                 delay_n_sel = _generate_expr_block_for_sel (gc->g, expr_block_id);
                 if (max_delay_n_sel < delay_n_sel) max_delay_n_sel = delay_n_sel;
-            }
-            else
-            {   // compute the else guard .. 
-                fatal_error ("should've been fixed in else generation");
             }
             _connect_guards_to_sel_split_input (sel_split_block_id, expr_block_id, i);
             block_id = _generate_gp_connect ();
@@ -1889,12 +2048,20 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         // delay_n_merge = 0;
 
         // generate delay line for max guard evaluator delay (split)
-        Assert (max_delay_n_sel>0, "negative delay?");
-        fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
-        fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",int(std::ceil(max_delay_n_sel*delay_multiplier)),sel_split_block_id);
-        // connect prev. block p1 to delay_line then connect to select block from the output
-        fprintf(_fp,"delay_select_%d.m1 = %s%d.p1;\n",sel_split_block_id,ring_block_prefix,prev_block_id);
-        fprintf(_fp,"delay_select_%d.p1 = %s%d.m1;\n",sel_split_block_id,ring_block_prefix,sel_split_block_id);
+        Assert (max_delay_n_sel>=0, "negative delay?");
+
+        if (!have_probes) {
+            Assert (max_delay_n_sel>0, "non-positive delay for non-probed guard evaluators?");
+            fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
+            fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",int(std::ceil(max_delay_n_sel*delay_multiplier)),sel_split_block_id);
+            // connect prev. block p1 to delay_line then connect to select block from the output
+            fprintf(_fp,"delay_select_%d.m1 = %s%d.p1;\n",sel_split_block_id,ring_block_prefix,prev_block_id);
+            fprintf(_fp,"delay_select_%d.p1 = %s%d.m1;\n",sel_split_block_id,ring_block_prefix,sel_split_block_id);
+        }
+        else {
+            fprintf(_fp,"\n// Probed selection - no need to insert guard evaluator delay \n");
+            fprintf(_fp,"%s%d.p1 = %s%d.m1;\n",ring_block_prefix,prev_block_id,ring_block_prefix,sel_split_block_id);
+        }
 
         if (delay_n_merge > 0)
         {

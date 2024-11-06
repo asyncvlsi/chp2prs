@@ -243,6 +243,45 @@ defproc chan_access(bd<W> C; bool dout[W])
   C.d = dout;
 }
 
+export template<pint W>
+defproc probe_access(bd<W> C; bool dout[1])
+{
+  C.r = dout[0];
+}
+
+export
+defproc dummy_probe_clause(bool? g[1]; bool! out[1]) {
+  out = g;
+}
+
+export template<pint N; pint idx[N]; pint T>
+defproc probe_clause(bool? g[N]; bool? probe[T]; bool! out[1]) {
+  pint tstval, tmp;
+  pint lo_idx[N];
+  tstval = 0;
+  tmp = 0;
+  *[ tmp < N ->
+    lo_idx[tmp] = tstval;
+    tstval = tstval + idx[tmp];
+    tmp = tmp + 1; ]
+  { T = tstval : "Inconsistent template parameters" };
+  bool _out, _Reset;
+  prs {
+    // inverted Reset to initialize correctly
+    Reset => _Reset-
+
+     _Reset & (| i: N: g[i] & (& j: idx[i]: probe[j + lo_idx[i]])) -> _out-
+    ~_Reset | (& i: N: ~g[i]) -> _out+
+    _out => out[0]-
+  }
+  sizing{
+    leak_adjust <- 1;
+    p_n_mode <- 1;
+    _out{- 1};
+    out[0]{- 1}
+  }
+}
+
 // flip-flop without pulse generator - initial value
 export template <pint CD, PW, W, INIT_VAL>
 defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])
