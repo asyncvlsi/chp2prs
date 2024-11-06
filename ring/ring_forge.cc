@@ -1478,7 +1478,9 @@ list_t *RingForge::_create_channel_accesses(list_t *ics)
             list_append(ret, (const char *)list_value(li));
         }
         else {
-            fprintf(_fp, "chan_access<%d> %s%s_%d;\n", vi->width, capture_block_prefix, vi->name,0);
+            fprintf(_fp, "chan_access<%d> %s%s_%d(", vi->width, capture_block_prefix, vi->name,0);
+            vi->id->Print(_fp);
+            fprintf(_fp,");\n");
         }
     }
     return ret;
@@ -1644,6 +1646,8 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         if (root == 1)
         {   
             list_t *iclist  = list_dup((list_t *)(((latch_info_t *)(c->space))->live_vars));
+            // handle channel variables - i.e. value probes
+            iclist = _create_channel_accesses(iclist);
             if (!list_isempty(iclist)) {                
                 _print_list_of_vars (stderr, iclist);
                 fatal_error ("The above variables were uninitialized in the program. Initialize them please. (Should only be here for non-LCD programs)");
@@ -1954,6 +1958,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         if (root == 1)
         {   
             list_t *iclist  = list_dup((list_t *)(((latch_info_t *)(c->space))->live_vars));
+            // handle channel variables - i.e. value probes
+            iclist = _create_channel_accesses(iclist);
             if (!list_isempty(iclist)) {                
                 _print_list_of_vars (stderr, iclist);
                 fatal_error ("The above variables were uninitialized in the program. Initialize them please. (Should only be here for non-LCD programs)");

@@ -28,7 +28,7 @@
     use in the CHP body. Fields are quite self-explanatory.
 */
 struct var_info {
-  // ActId *id;
+  ActId *id;
   const char *name;
 
   /*-- flags --*/

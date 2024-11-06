@@ -937,7 +937,8 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
       id = conn->toid();
       if (TypeFactory::isDataType (conn->getvx()->t)) 
       {
-        NEW(v, var_info);
+        v = new var_info;
+        v->id = id;
         v->width = bv->width;
         v->nread = 0;
         v->iread = 0;
@@ -955,7 +956,8 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
       // for probes
       else if (TypeFactory::isChanType (conn->getvx()->t))
       {
-        NEW(v, var_info);
+        v = new var_info;
+        v->id = id;
         v->width = bv->width;
         v->nread = 0;
         v->iread = 0;
