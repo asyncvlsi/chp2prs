@@ -1782,14 +1782,11 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     int comma_len, gc_len;
     int pll_port, gp_con_id;
     int delay_n_sel, max_delay_n_sel, delay_n_merge;
-    list_t *live_vars;
     list_t *gp_connect_ids;
-    listitem_t *li, *lj, *lk;
+    listitem_t *li, *lj;
     act_chp_gc_t *gc;
     act_chp_lang_t *stmt, *main_loop;
-    int init_chan, lcd_chan;
     bool have_probes = false;
-    list_t *lcd_chan_list;
     var_info *vi;
     ActId *id;
 
@@ -1808,29 +1805,29 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         }
         else 
         {
-        comma_len = list_length(c->u.semi_comma.cmd);
-        fprintf (_fp, "// %d-way parallel split for actions: ",comma_len);
-        chp_print(_fp, c);
-        fprintf (_fp, "\n");
+            comma_len = list_length(c->u.semi_comma.cmd);
+            fprintf (_fp, "// %d-way parallel split for actions: ",comma_len);
+            chp_print(_fp, c);
+            fprintf (_fp, "\n");
 
-        fprintf (_fp, "// %d-way parallel merge \n",comma_len);
-        pll_split_block_id = _generate_parallel_split(comma_len);
-        pll_merge_block_id = _generate_parallel_merge(comma_len);
-        // connect_pipe_to_pll_split_input(fp, pll_split_block_id, prev_block_id);
-        _connect_pipe_elements(prev_block_id, pll_split_block_id);
+            fprintf (_fp, "// %d-way parallel merge \n",comma_len);
+            pll_split_block_id = _generate_parallel_split(comma_len);
+            pll_merge_block_id = _generate_parallel_merge(comma_len);
+            // connect_pipe_to_pll_split_input(fp, pll_split_block_id, prev_block_id);
+            _connect_pipe_elements(prev_block_id, pll_split_block_id);
 
-        pll_port = 0;
-        for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
-        {
-            gp_con_id = _generate_gp_connect ();
-            _connect_pll_split_outputs_to_pipe (pll_split_block_id, gp_con_id, pll_port);
-            
-            block_id = generate_branched_ring ((act_chp_lang_t *)list_value(li), 0, gp_con_id, 1);
-            _connect_pipe_to_pll_merge_inputs (pll_merge_block_id, block_id, pll_port);
-            pll_port++;
-        }
+            pll_port = 0;
+            for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+            {
+                gp_con_id = _generate_gp_connect ();
+                _connect_pll_split_outputs_to_pipe (pll_split_block_id, gp_con_id, pll_port);
+                
+                block_id = generate_branched_ring ((act_chp_lang_t *)list_value(li), 0, gp_con_id, 1);
+                _connect_pipe_to_pll_merge_inputs (pll_merge_block_id, block_id, pll_port);
+                pll_port++;
+            }
 
-        block_id = pll_merge_block_id;
+            block_id = pll_merge_block_id;
         }
         break;
 
@@ -1879,7 +1876,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                         }
                     }
                     vi = (var_info *)b->v;
-                    // fprintf (_fp, "\ngot here: %s\n", tname);
                     Assert ((stmt1->space), "No latch info? (_generate_branched_ring, initial condition handling)");
                     int latch_id = _generate_single_latch (vi, (latch_info_t *)(stmt1->space), ival);
                     Assert (latch_id == 0, "Same variable has more than one initial condition?");
@@ -1950,40 +1946,23 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                 _print_list_of_vars (stderr, iclist);
                 fatal_error ("The above variables were uninitialized in the program. Initialize them please. (Should only be here for non-LCD programs)");
             }
-                // for (listitem_t *lj = list_first (iclist); lj; lj = list_next (lj)) 
-                // {   
-                //     hash_bucket_t *b = hash_lookup(var_infos, (const char *)list_value(lj));
-                //     vi = (var_info *)b->v;
-                //     // new latching generated that was not in the program => gotta update info. 
-                //     vi->nwrite++; 
-                //     int latch_id = _generate_single_latch (vi, 0);
-                //     Assert (latch_id == 0, "Same variable has more than one initial condition?");
-                // }
-            // }
 
             first_block_id = _generate_itb();
             gc = c->u.gc;
             block_id = generate_branched_ring(gc->s, 0, first_block_id, 1);
             prev_block_id = block_id;
 
-            // if (!list_isempty(iclist)) {
-            //     for (lj = list_first (iclist); lj; lj = list_next (lj)) 
-            //     {
-            //             block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, (const char *)list_value(lj));
-            //             _connect_pipe_elements (prev_block_id, block_id);
-            //             prev_block_id = block_id;
-            //     }
-            // }
             _connect_pipe_elements(block_id, first_block_id);
             break;
         }
-        else { fatal_error ("bleh"); }
+        else 
+        { 
+            fatal_error ("Should've run loop excision first"); 
+        }
         break;
         
     case ACT_CHP_SELECT:
     case ACT_CHP_SELECT_NONDET:
-        // fatal_error ("Can't handle NDS in generate_branched_ring");
-        // fatal_error ("not supported yet");
         gc = c->u.gc;
         gc_len = length_of_guard_set (c);
         max_delay_n_sel = 0;
@@ -2001,12 +1980,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         }
 
         sel_merge_block_id = _generate_selection_merge(gc_len);
-
-        // live_vars = ((latch_info_t *)(c->space))->live_vars;
-        // fprintf (stdout, "\n\nlive vars at merge:");
-        // _print_list_of_vars(stdout, live_vars);
-        // fprintf (stdout, "\n\n");
-
         save_var_infos();
 
         gp_connect_ids = list_new();
@@ -2041,7 +2014,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             _restore_read_ids();
             i++; lj = list_next(lj);
         }
-        // _branch_id = _branch_id - gc_len;
 
         // muxing variables live-out of merge so downstream can access correctly
         delay_n_merge = _compute_merge_mux_info((latch_info_t *)(c->space), sel_split_block_id);
