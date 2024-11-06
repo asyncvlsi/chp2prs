@@ -1502,6 +1502,7 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
     act_chp_lang_t *stmt, *main_loop;
     var_info *vi;
     ActId *id;
+    bool have_probes = false;
 
     if (!c) { return prev_block_id; }
 
@@ -1670,8 +1671,6 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         
     case ACT_CHP_SELECT:
     case ACT_CHP_SELECT_NONDET:
-        // fatal_error ("Can't handle NDS in generate_branched_ring");
-        // fatal_error ("not supported yet");
         gc = c->u.gc;
         gc_len = length_of_guard_set (c);
         max_delay_n_sel = 0;
@@ -1680,22 +1679,29 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         chp_print(_fp, c);
         fprintf (_fp, "\n");
         fprintf (_fp, "// %d-way selection merge \n", gc_len);
-        sel_split_block_id = _generate_selection_split(gc_len);
+        if (_guards_have_probes(gc)) {
+            have_probes = true;
+            sel_split_block_id = _generate_nds_split(gc_len);
+        }
+        else {
+            sel_split_block_id = _generate_selection_split(gc_len);
+        }
         sel_merge_block_id = _generate_selection_merge(gc_len);
 
         gp_connect_ids = list_new();
         for (int i = 0; gc; gc = gc->next)
         {
             // branch_id++;
-            if (gc->g)
+            Assert ((gc->g) , "should've been fixed in else generation");
+            if (have_probes)
             {   
+                expr_block_id = _generate_probe_circuit (gc->g, expr_block_id);
+            }
+            else
+            {
                 expr_block_id = _gen_expr_block_id();
                 delay_n_sel = _generate_expr_block_for_sel (gc->g, expr_block_id);
                 if (max_delay_n_sel < delay_n_sel) max_delay_n_sel = delay_n_sel;
-            }
-            else
-            {   // compute the else guard .. 
-                fatal_error ("should've been fixed in else generation");
             }
             _connect_guards_to_sel_split_input (sel_split_block_id, expr_block_id, i);
             block_id = _generate_gp_connect ();
@@ -1713,13 +1719,19 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         }
 
         // generate delay line for max guard evaluator delay (split)
-        Assert (max_delay_n_sel>0, "negative delay?");
-        fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
-        fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",int(std::ceil(max_delay_n_sel*delay_multiplier)),sel_split_block_id);
-        // connect prev. block p1 to delay_line then connect to select block from the output
-        fprintf(_fp,"delay_select_%d.m1 = %s%d.p1;\n",sel_split_block_id,ring_block_prefix,prev_block_id);
-        fprintf(_fp,"delay_select_%d.p1 = %s%d.m1;\n",sel_split_block_id,ring_block_prefix,sel_split_block_id);
-
+        Assert (max_delay_n_sel>=0, "negative delay?");
+        
+        if (!have_probes) {
+            fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
+            fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",int(std::ceil(max_delay_n_sel*delay_multiplier)),sel_split_block_id);
+            // connect prev. block p1 to delay_line then connect to select block from the output
+            fprintf(_fp,"delay_select_%d.m1 = %s%d.p1;\n",sel_split_block_id,ring_block_prefix,prev_block_id);
+            fprintf(_fp,"delay_select_%d.p1 = %s%d.m1;\n",sel_split_block_id,ring_block_prefix,sel_split_block_id);
+        }
+        else {
+            fprintf(_fp,"\n// Probed selection - no need to insert guard evaluator delay \n");
+            fprintf(_fp,"%s%d.p1 = %s%d.m1;\n",ring_block_prefix,prev_block_id,ring_block_prefix,sel_split_block_id);
+        }
         block_id = sel_merge_block_id;
 
         break;
