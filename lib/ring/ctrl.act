@@ -654,7 +654,7 @@ defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka)
     Reset => _Reset-
     /* cross coupled nand gates, with kill tail NMOS */
     [keeper=0] a & _v & _ki -> _u-
-    [keeper=0] ~a | ~_v | ~_Reset | ~_ki -> _u+
+    [keeper=0] ~a & ~_v | ~_Reset | ~_ki -> _u+
     [keeper=0] b & _u & _ki -> _v-
     [keeper=0] ~b & ~_u | ~_Reset | ~_ki -> _v+
 
