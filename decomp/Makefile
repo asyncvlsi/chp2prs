@@ -25,6 +25,7 @@ CPPSTD=c++20
 SHOBJS=analysis.os \
 	breakpoint.os \
 	chopping_block.os \
+	projection.os \
 	multichan.os \
 	pretty_print.os
 

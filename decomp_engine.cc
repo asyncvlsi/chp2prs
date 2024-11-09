@@ -24,6 +24,7 @@
 
 #include "decomp/breakpoint.h"
 #include "decomp/chopping_block.h"
+#include "decomp/projection.h"
 #include "decomp/pretty_print.h"
 #include "decomp/multichan.h"
 
@@ -190,7 +191,15 @@ class Decomp : public ActSynthesize {
     fprintf (stdout, "\n\n");
     print_chp(std::cout,g.graph);
     fprintf (stdout, "\n\n");
-    // p->getlang()->getchp()->c = ChpOptimize::chp_graph_to_act (g, tmp_names, p->CurScope());
+    ChpOptimize::takeOutOfStaticTokenForm(g.graph);
+
+    BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope(), 0);
+    Projection *pr = new Projection (_pp->fp, g, 
+                          bkp->get_decomp_info_map(), p->CurScope());
+    pr->project();
+    pr->print_subgraphs(_pp->fp);
+
+    p->getlang()->getchp()->c = ChpOptimize::chp_graph_to_act (g, tmp_names, p->CurScope());
 #endif
       
     }

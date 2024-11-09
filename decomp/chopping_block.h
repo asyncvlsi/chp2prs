@@ -20,6 +20,9 @@
  **************************************************************************
  */
 
+#ifndef __CHOPPING_BLOCK_H__
+#define __CHOPPING_BLOCK_H__
+
 #include "analysis.h"
 
 class ChoppingBlock {
@@ -41,7 +44,7 @@ class ChoppingBlock {
         void print_chopped_seqs();
         std::vector<Sequence> get_chopped_seqs();
 
-    private:
+    protected:
 
         FILE *fp;
         GraphWithChanNames *g;
@@ -100,3 +103,5 @@ class ChoppingBlock {
 
         void _print_seq (Sequence seq);
 };
+
+#endif
