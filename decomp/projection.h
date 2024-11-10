@@ -153,15 +153,17 @@ class Projection : protected ChoppingBlock {
 
     private:
 
-        // std::vector<Sequence> v_seqs;
+        std::vector<Sequence> seqs;
         // std::vector<Block *> nodes;
         // std::vector<Block *> ics;
         std::unordered_map<UnionFind<DFG_Node *>::id, std::vector<DFG_Node *>> subgraphs;
         DFG dfg;
 
-        void _build_graph(Sequence);
+        void _build_graph (Sequence);
 
         void _compute_connected_components ();
+
+        void _build_sub_procs ();        
 
         bool _check_linear (Sequence, int);
 

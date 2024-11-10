@@ -100,7 +100,7 @@ class Decomp : public ActSynthesize {
       std::vector<ActId *> tmp_names;
       std::unordered_set<ActId *> newnames;
     
-      std::vector<Sequence> vs, vs1;
+      std::vector<Sequence> vs, vs1, vs3;
 
 #if 1
       // necessary decompositions for synthesis -------------------------------
@@ -114,6 +114,11 @@ class Decomp : public ActSynthesize {
       cb->excise_internal_loops();
       vs1 = cb->get_chopped_seqs();
 
+      Projection *pr = new Projection (_pp->fp, g, 
+                          bkp->get_decomp_info_map(), p->CurScope());
+      pr->project();
+      vs3 = pr->get_procs();
+
       Block *top = g.graph.blockAllocator().newBlock(Block::makeParBlock());
       top->u_par().branches.push_back(g.graph.m_seq);
 
@@ -125,7 +130,7 @@ class Decomp : public ActSynthesize {
       top_chp->type = ACT_CHP_COMMA;
       top_chp->u.semi_comma.cmd = list_new();
 
-      for ( auto vv : {vs,vs1} ) 
+      for ( auto vv : {vs,vs1,vs3} ) 
       {
         for (auto v : vv)
         {

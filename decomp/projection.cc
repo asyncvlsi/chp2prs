@@ -22,12 +22,12 @@
 
 #include "projection.h"
 
-std::vector<Sequence> Projection::get_procs()
+std::vector<Sequence> Projection::get_procs ()
 {
-    return v_seqs;
+    return seqs;
 }
 
-bool Projection::_check_linear(Sequence seq, int root)
+bool Projection::_check_linear (Sequence seq, int root)
 {
     Block *curr = seq.startseq->child();
     bool ret = true;
@@ -74,9 +74,12 @@ void Projection::project()
     ChpOptimize::putIntoNewStaticTokenForm(g->graph);
 
     _build_graph(g->graph.m_seq);
+
     dfg.print_adj(stdout);
 
     _compute_connected_components();
+
+    _build_sub_procs();
 
     ChpOptimize::takeOutOfStaticTokenForm(g->graph);
 }
@@ -131,7 +134,7 @@ bool Projection::_check_data_dependence (DFG_Node *prev, DFG_Node *curr)
     return false;
 }
 
-void Projection::_build_graph(Sequence seq)
+void Projection::_build_graph (Sequence seq)
 {
     Block *curr = seq.startseq->child();
     bool ret = true;
@@ -175,7 +178,7 @@ void Projection::_build_graph(Sequence seq)
     }
 }
 
-void Projection::_compute_connected_components()
+void Projection::_compute_connected_components ()
 {
     ChpOptimize::UnionFind<DFG_Node *> uf;
     for (int i=0; i<dfg.adj.size(); i++) {
@@ -194,7 +197,7 @@ void Projection::_compute_connected_components()
     } 
 }
 
-void Projection::print_subgraphs(FILE *fp)
+void Projection::print_subgraphs (FILE *fp)
 {
     fprintf (fp, "\n--- Connected components ---\n");
     for ( auto x : subgraphs ) {
@@ -204,4 +207,19 @@ void Projection::print_subgraphs(FILE *fp)
         }
     }
     fprintf (fp, "\n\n--- Connected components ---\n");
+}
+
+void Projection::_build_sub_procs ()
+{
+    seqs.clear();
+    for ( auto x : subgraphs ) {
+        auto dfg_nodes = x.second;
+        std::vector<Block *> blks = {};
+        for ( auto y : dfg_nodes ) {
+            _splice_out_block(y->b);
+            blks.push_back(y->b);
+        }
+        Sequence seq = g->graph.newSequence(blks);
+        seqs.push_back(_wrap_in_do_loop(seq));
+    }
 }
