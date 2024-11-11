@@ -117,7 +117,7 @@ class DFG {
             adj[f_idx].push_back(nodes[t_idx]);
         }
 
-        bool node_exists (DFG_Node *node) {
+        bool contains (DFG_Node *node) {
             bool ret = false;
             for ( auto n1 : nodes ) {
                 if (node==n1) ret = true;
@@ -167,6 +167,9 @@ class Projection : protected ChoppingBlock {
         void _build_sub_procs ();        
 
         bool _check_linear (Sequence, int);
+
+        std::vector<VarId> get_defs (DFG_Node *);
+        std::unordered_set<VarId> get_uses (DFG_Node *);
 
         bool _check_data_dependence (DFG_Node *, DFG_Node *);
 

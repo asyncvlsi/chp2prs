@@ -104,160 +104,110 @@ void Projection::project()
     ChpOptimize::takeOutOfStaticTokenForm(g->graph);
 }
 
+std::vector<VarId> Projection::get_defs (DFG_Node *node)
+{
+    hassert(dfg.contains(node));
+    Block *blk = node->b;
+    std::vector<VarId> ret = {};
+    switch (node->t)
+    {                
+    case NodeType::Basic: {
+        switch (blk->u_basic().stmt.type()) {
+        case StatementType::Send:
+        break;
+        case StatementType::Assign: {
+            ret = blk->u_basic().stmt.u_assign().ids;
+        }
+        break;
+        case StatementType::Receive: {
+            if (blk->u_basic().stmt.u_receive().var)
+                ret.push_back(*blk->u_basic().stmt.u_receive().var);
+        }
+        break;
+        }
+    }
+    break;
+    case NodeType::LoopInPhi: {
+        hassert (false);
+    }
+    break;
+    case NodeType::LoopOutPhi: {
+        hassert (false);
+    }
+    break;
+    case NodeType::LoopLoopPhi: {
+        auto llp = node->llp;
+        ret.push_back(llp.bodyin_id);
+        if (llp.post_id) {
+            ret.push_back(*llp.post_id);
+        }
+    }
+    break;
+    default:
+        hassert (false);
+    break;
+    }
+    return ret;
+}
+
+std::unordered_set<VarId> Projection::get_uses (DFG_Node *node) 
+{
+    hassert(dfg.contains(node));
+    Block *blk = node->b;
+    std::unordered_set<VarId> ret = {};
+    switch (node->t)
+    {                
+    case NodeType::Basic: {
+        switch (blk->u_basic().stmt.type()) {
+        case StatementType::Send: {
+            ret = getIdsUsedByExpr(blk->u_basic().stmt.u_send().e);
+        }
+        break;
+        case StatementType::Assign: {
+            ret = getIdsUsedByExpr(blk->u_basic().stmt.u_assign().e);
+        }
+        break;
+        case StatementType::Receive: {
+        }
+        break;
+        }
+    }
+    break;
+    case NodeType::LoopInPhi: {
+        hassert (false);
+    }
+    break;
+    case NodeType::LoopOutPhi: {
+        hassert (false);
+    }
+    break;
+    case NodeType::LoopLoopPhi: {
+        auto llp = node->llp;
+        ret.insert(llp.bodyout_id);
+        ret.insert(llp.pre_id);
+    }
+    break;
+    default:
+        hassert (false);
+    break;
+    }
+    return ret;
+}
+
 /*
     True if dependent
 */
 bool Projection::_check_data_dependence (DFG_Node *prev, DFG_Node *curr) 
 {
-    hassert(dfg.node_exists(prev));
-    hassert(dfg.node_exists(curr));
-    Block *b_prev = prev->b;
-    Block *b_curr = curr->b;
+    auto defs = get_defs(prev);
+    auto uses = get_uses(curr);
 
-    // hassert (b_prev->type()==BlockType::Basic);
-    // hassert (b_curr->type()==BlockType::Basic);
+    bool ret = false;
 
-    switch(prev->t) 
-    {
-        case NodeType::Basic: 
-        {
-            switch(curr->t) 
-            {
-                case NodeType::Basic: 
-                {
-                // both basic blocks
-                    if (b_curr->u_basic().stmt.type() == StatementType::Receive) 
-                        return false;
-
-                    // curr is either send or assign
-                    switch (b_prev->u_basic().stmt.type()) {
-                        case StatementType::Send:
-                            // why? - STF
-                            return false;
-                            break;
-                        case StatementType::Assign: {
-                                bool curr_is_send = (b_curr->u_basic().stmt.type() == StatementType::Send);
-                                auto pvars = b_prev->u_basic().stmt.u_assign().ids;
-                                auto vmap = (curr_is_send) ?
-                                            getIdsUsedByExpr(b_curr->u_basic().stmt.u_send().e) :
-                                            getIdsUsedByExpr(b_curr->u_basic().stmt.u_assign().e) ;
-                                bool ret = false;
-                                for ( auto pvar : pvars ) {
-                                    if (vmap.contains(pvar)) ret = true;
-                                }
-                                return ret;
-                            }
-                            break;
-                        case StatementType::Receive: {
-                                bool curr_is_send = (b_curr->u_basic().stmt.type() == StatementType::Send);
-                                auto pvar = b_prev->u_basic().stmt.u_receive().var;
-                                if (!pvar) return false;
-                                auto vmap = (curr_is_send) ?
-                                            getIdsUsedByExpr(b_curr->u_basic().stmt.u_send().e) :
-                                            getIdsUsedByExpr(b_curr->u_basic().stmt.u_assign().e) ;
-                                return (vmap.contains(*pvar));
-                            }
-                            break;
-                    }
-                }
-                case NodeType::LoopInPhi: {
-                    hassert (false);
-                }
-                break;
-                case NodeType::LoopOutPhi: {
-                    hassert (false);
-                }
-                break;
-                case NodeType::LoopLoopPhi: {
-                    auto llp_c = curr->llp;
-                    switch (b_prev->u_basic().stmt.type()) {
-                        case StatementType::Send: {
-                            return false;
-                        }
-                        break;
-                        case StatementType::Assign: {
-                            auto vars = b_prev->u_basic().stmt.u_assign().ids;
-                            for ( auto v : vars ) {
-                                if (v==llp_c.pre_id || v==llp_c.bodyout_id) return true;
-                            }
-                            return false;
-                        }
-                        break;
-                        case StatementType::Receive: {
-                            auto var = b_prev->u_basic().stmt.u_receive().var;
-                            if (var) {
-                                return (var==llp_c.pre_id || var==llp_c.bodyout_id);
-                            }
-                            return false;
-                        }
-                        break;
-                    }
-                }
-                break;
-                default:
-                    hassert (false);
-                break;
-            }
-        }
-        break;
-        case NodeType::LoopInPhi: 
-        {
-            hassert (false);
-        }
-        break;
-        case NodeType::LoopOutPhi: 
-        {
-            hassert (false);
-        }
-        break;
-        case NodeType::LoopLoopPhi: 
-        {
-            auto llp_p = prev->llp;
-            switch(curr->t) 
-            {
-                case NodeType::Basic: 
-                {
-                    switch (b_curr->u_basic().stmt.type()) {
-                        case StatementType::Send: {
-                            auto vmap = getIdsUsedByExpr(b_curr->u_basic().stmt.u_send().e);
-                            return vmap.contains(llp_p.bodyin_id);
-                        }
-                        break;
-                        case StatementType::Assign: {
-                            auto vmap = getIdsUsedByExpr(b_curr->u_basic().stmt.u_assign().e);
-                            return vmap.contains(llp_p.bodyin_id);
-                        }
-                        break;
-                        case StatementType::Receive: {
-                            return false;
-                        }
-                        break;
-                    }
-                }
-                case NodeType::LoopInPhi: {
-                    hassert (false);
-                    }
-                    break;
-                case NodeType::LoopOutPhi: {
-                    hassert (false);
-                    }
-                    break;
-                case NodeType::LoopLoopPhi: {
-                    auto llp_c = curr->llp;
-                    return (llp_p.bodyin_id == llp_c.pre_id || llp_p.bodyin_id == llp_c.bodyout_id);
-                    }
-                    break;
-                default:
-                    hassert (false);
-            }
-        }
-        break;
-        default:
-        hassert (false); break;
+    for ( auto v : defs ) {
+        if (uses.contains(v)) ret = true;
     }
-    
-    hassert (false);
-    return false;
+    return ret;
 }
 
 void Projection::_build_graph (Sequence seq)
