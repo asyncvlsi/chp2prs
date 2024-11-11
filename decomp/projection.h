@@ -128,7 +128,7 @@ class DFG {
         void print_adj (FILE *fp) {
             fprintf (fp, "\n/* ------ adj list ------\n");
             for (int i=0;i<adj.size();i++) {
-                fprintf(fp, "\n %d (type: %d): ", nodes[i]->id, nodes[i]->t);
+                fprintf(fp, "\n %d (type: %d): ", nodes[i]->id, int(nodes[i]->t));
                 for (int j=0;j<adj[i].size();j++) {
                     fprintf (fp, "%d, ", adj[i][j]->id);
                 }

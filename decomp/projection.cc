@@ -99,7 +99,7 @@ void Projection::project()
     print_chp(std::cout, g->graph);
     fprintf(stdout, "\n*/\n");
 
-    // _build_sub_procs();
+    _build_sub_procs();
 
     ChpOptimize::takeOutOfStaticTokenForm(g->graph);
 }
@@ -294,11 +294,11 @@ void Projection::_build_graph (Sequence seq)
       
     case BlockType::DoLoop: {
         for ( auto phi : curr->u_doloop().in_phis ) {
-            fprintf(fp, "\n// inphi: %d, %d",phi.bodyin_id,phi.pre_id);
+            fprintf(fp, "\n// inphi: %llu, %llu",phi.bodyin_id.m_id,phi.pre_id.m_id);
             hassert(false);
         }
         for ( auto phi : curr->u_doloop().out_phis ) {
-            fprintf(fp, "\n// outphi: %d, %d",phi.bodyout_id,phi.post_id);
+            fprintf(fp, "\n// outphi: %llu, %llu",phi.bodyout_id.m_id,phi.post_id.m_id);
             hassert(false);
         }
         for ( auto phi : curr->u_doloop().loop_phis ) {
@@ -312,7 +312,7 @@ void Projection::_build_graph (Sequence seq)
                     dfg.add_edge(node,n);
                 }
             }
-            fprintf(fp, "\n// loopphi: %d, %d, %d, %d",phi.pre_id,phi.bodyin_id,phi.bodyout_id, phi.post_id);
+            fprintf(fp, "\n// loopphi: %llu, %llu, %llu, %llu",phi.pre_id.m_id,phi.bodyin_id.m_id,phi.bodyout_id.m_id, phi.post_id._getId());
         }
         fprintf(fp, "\n\n");
         _build_graph(curr->u_doloop().branch);
