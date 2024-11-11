@@ -117,6 +117,7 @@ class Decomp : public ActSynthesize {
       Projection *pr = new Projection (_pp->fp, g, 
                           bkp->get_decomp_info_map(), p->CurScope());
       pr->project();
+      pr->print_subgraphs();
       vs3 = pr->get_procs();
 
       Block *top = g.graph.blockAllocator().newBlock(Block::makeParBlock());
@@ -142,7 +143,6 @@ class Decomp : public ActSynthesize {
       }
       // ----------------------------------------------------------------------
 
-#if 1
       // concurrent decomposition for slack elastic programs ------------------
       std::vector<Sequence> vs2;
       Block *top2 = g.graph.blockAllocator().newBlock(Block::makeParBlock());
@@ -152,11 +152,12 @@ class Decomp : public ActSynthesize {
       {
         g.graph.m_seq = d_seq;
 
+#if 0
         BreakPoints *bkp2 = new BreakPoints (_pp->fp, g, p->CurScope(), pll);
         bkp2->mark_breakpoints();
         ChoppingBlock *cb2 = new ChoppingBlock (_pp->fp, g, 
                                   bkp2->get_decomp_info_map(), p->CurScope());
-        cb2->chop_graph();
+        // cb2->chop_graph();
         vs2 = cb2->get_chopped_seqs();
 
         for (auto v : vs2)
@@ -166,9 +167,14 @@ class Decomp : public ActSynthesize {
           list_append(top_chp->u.semi_comma.cmd, tmp2);
           for ( auto x : tmp_names ) { newnames.insert(x); }
         }
+#else
+        act_chp_lang_t *tmp2 = chp_graph_to_act (g, tmp_names, p->CurScope());
+        list_append(top_chp->u.semi_comma.cmd, tmp2);
+        for ( auto x : tmp_names ) { newnames.insert(x); }
+#endif
       }
       // ----------------------------------------------------------------------
-#endif
+
 
       act_chp_lang_t *l = top_chp;
       p->getlang()->getchp()->c = l;

@@ -126,14 +126,14 @@ class DFG {
         }
 
         void print_adj (FILE *fp) {
-            fprintf (fp, "\n------ adj list ------\n");
+            fprintf (fp, "\n/* ------ adj list ------\n");
             for (int i=0;i<adj.size();i++) {
-                fprintf(fp, "\n %d : ", nodes[i]->id);
+                fprintf(fp, "\n %d (type: %d): ", nodes[i]->id, nodes[i]->t);
                 for (int j=0;j<adj[i].size();j++) {
                     fprintf (fp, "%d, ", adj[i][j]->id);
                 }
             }
-            fprintf (fp, "\n\n------ adj list ------\n");
+            fprintf (fp, "\n\n   ------ adj list ------ */\n");
         }
 };
 
@@ -147,9 +147,10 @@ class Projection : protected ChoppingBlock {
             {
             }
         
-        void project();
-        std::vector<Sequence> get_procs();
-        void print_subgraphs(FILE *);
+        void project ();
+        std::vector<Sequence> get_procs ();
+        void print_subgraphs ();
+        void split_assignments ();
 
     private:
 
@@ -168,6 +169,8 @@ class Projection : protected ChoppingBlock {
         bool _check_linear (Sequence, int);
 
         bool _check_data_dependence (DFG_Node *, DFG_Node *);
+
+        void _split_assignments (Sequence);
 
 };
 
