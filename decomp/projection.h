@@ -29,17 +29,19 @@
 #include "../opt/static-tokens.h"
 #include "../opt/union-find.h"
 
-enum class NodeType { Basic, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv };
+enum class NodeType { Basic, Guard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv };
 
 class DFG_Node {
     public:
         NodeType t;
         Block *b;
+        bool conn;
+        Block::Variant_Select::PhiSplit phi_inv;
+        Block::Variant_Select::PhiMerge phi;
+        std::pair<int, IRGuard> g;
         Block::Variant_DoLoop::InPhi    lip;
         Block::Variant_DoLoop::OutPhi   lop;
         Block::Variant_DoLoop::LoopPhi  llp;
-        Block::Variant_Select::PhiSplit pi;
-        Block::Variant_Select::PhiMerge p;
         int id;
         int set_n;
 
@@ -47,6 +49,34 @@ class DFG_Node {
         {
             t = NodeType::Basic;
             b = _b;
+            conn = true;
+            id = idx;
+            set_n = -1;
+        }
+        DFG_Node (Block *_b, int br, IRGuard _g, int idx) 
+        {
+            t = NodeType::Guard;
+            b = _b;
+            conn = true;
+            g = {br, IRGuard::deep_copy(_g)};
+            id = idx;
+            set_n = -1;
+        }
+        DFG_Node (Block *_b, Block::Variant_Select::PhiSplit x, int idx) 
+        {
+            t = NodeType::SelPhiInv;
+            b = _b;
+            conn = true;
+            phi_inv = x;
+            id = idx;
+            set_n = -1;
+        }
+        DFG_Node (Block *_b, Block::Variant_Select::PhiMerge x, int idx) 
+        {
+            t = NodeType::SelPhi;
+            b = _b;
+            conn = true;
+            phi = x;
             id = idx;
             set_n = -1;
         }
@@ -54,6 +84,7 @@ class DFG_Node {
         {
             t = NodeType::LoopInPhi;
             b = _b;
+            conn = true;
             lip = x;
             id = idx;
             set_n = -1;
@@ -62,6 +93,7 @@ class DFG_Node {
         {
             t = NodeType::LoopOutPhi;
             b = _b;
+            conn = true;
             lop = x;
             id = idx;
             set_n = -1;
@@ -70,6 +102,7 @@ class DFG_Node {
         {
             t = NodeType::LoopLoopPhi;
             b = _b;
+            conn = true;
             llp = x;
             id = idx;
             set_n = -1;
@@ -145,12 +178,14 @@ class Projection : protected ChoppingBlock {
                         Scope *s_in) 
             : ChoppingBlock (fp_in, g_in, vmap_in, s_in) 
             {
+                sel_set_id = 0;
             }
         
         void project ();
         std::vector<Sequence> get_procs ();
         void print_subgraphs ();
         void split_assignments ();
+        void split_selections ();
 
     private:
 
@@ -160,19 +195,28 @@ class Projection : protected ChoppingBlock {
         std::unordered_map<UnionFind<DFG_Node *>::id, std::vector<DFG_Node *>> subgraphs;
         DFG dfg;
 
+        std::unordered_map<int, std::vector<Block *>> sel_sets;
+        int sel_set_id;
+
+        int _gen_sel_set_id();
+
         void _build_graph (Sequence);
 
         void _compute_connected_components ();
 
         void _build_sub_procs ();        
+        Sequence _build_sub_proc (std::vector<DFG_Node *>);        
 
         bool _check_linear (Sequence, int);
+        void _splice_out_node (DFG_Node *);
 
         std::vector<VarId> get_defs (DFG_Node *);
         std::unordered_set<VarId> get_uses (DFG_Node *);
 
         bool _check_data_dependence (DFG_Node *, DFG_Node *);
+        bool _check_guard_phi_inv_dependence (DFG_Node *, DFG_Node *);
 
+        void _split_selections (Sequence);
         void _split_assignments (Sequence);
 
 };

@@ -23,6 +23,8 @@
 #include "projection.h"
 
 /*
+    Topological sort not needed (?)
+
     Projection TODO
     - IC-LCD handling
     - cycle detection + topological sorting of blocks
@@ -78,12 +80,12 @@ bool Projection::_check_linear (Sequence seq, int root)
 
 void Projection::project()
 {
-    if (!_check_linear(g->graph.m_seq,1))
-        return;
+    // if (!_check_linear(g->graph.m_seq,1))
+    //     return;
     
     ChpOptimize::putIntoNewStaticTokenForm(g->graph);
 
-    fprintf(stdout, "\n/*\n");
+    fprintf(stdout, "\n/* first \n");
     print_chp(std::cout, g->graph);
     fprintf(stdout, "\n*/\n");
 
@@ -92,16 +94,36 @@ void Projection::project()
     _build_graph(g->graph.m_seq);
 
     dfg.print_adj(stdout);
+    fprintf(stdout, "\n\n");
 
     _compute_connected_components();
 
-    fprintf(stdout, "\n/*\n");
+    fprintf(stdout, "\n/* second \n");
     print_chp(std::cout, g->graph);
     fprintf(stdout, "\n*/\n");
 
+    ChpOptimize::takeOutOfStaticTokenForm(g->graph);
     _build_sub_procs();
 
-    ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+    Sequence save = g->graph.m_seq;
+
+    std::vector<Sequence> tmp = {}; 
+    for ( auto s : seqs ) {
+        g->graph.m_seq = s;
+        if (!g->graph.is_static_token_form)
+            ChpOptimize::putIntoNewStaticTokenForm(g->graph);
+        if (g->graph.is_static_token_form)
+            ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+        tmp.push_back(g->graph.m_seq);
+    }
+    seqs = tmp;
+    g->graph.m_seq = save;
+}
+
+int Projection::_gen_sel_set_id()
+{
+    sel_set_id++;
+    return sel_set_id;
 }
 
 std::vector<VarId> Projection::get_defs (DFG_Node *node)
@@ -127,6 +149,22 @@ std::vector<VarId> Projection::get_defs (DFG_Node *node)
         }
     }
     break;
+    case NodeType::Guard: {
+        // does not define any variables
+    }
+    break;
+    case NodeType::SelPhi: {
+        auto phi = node->phi;
+        ret.push_back(phi.post_id);
+    }
+    break;
+    case NodeType::SelPhiInv: {
+        auto phi_inv = node->phi_inv;
+        for ( auto y : phi_inv.branch_ids ) {
+            if (y) ret.push_back(*y);
+        }
+    }
+    break;
     case NodeType::LoopInPhi: {
         hassert (false);
     }
@@ -136,11 +174,12 @@ std::vector<VarId> Projection::get_defs (DFG_Node *node)
     }
     break;
     case NodeType::LoopLoopPhi: {
-        auto llp = node->llp;
-        ret.push_back(llp.bodyin_id);
-        if (llp.post_id) {
-            ret.push_back(*llp.post_id);
-        }
+        // auto llp = node->llp;
+        // ret.push_back(llp.bodyin_id);
+        // if (llp.post_id) {
+        //     ret.push_back(*llp.post_id);
+        // }
+        hassert (false);
     }
     break;
     default:
@@ -173,6 +212,20 @@ std::unordered_set<VarId> Projection::get_uses (DFG_Node *node)
         }
     }
     break;
+    case NodeType::Guard: {
+        ret = getIdsUsedByExpr(node->g.second.u_e().e);
+    }
+    case NodeType::SelPhi: {
+        auto phi = node->phi;
+        for ( auto x : phi.branch_ids )
+            ret.insert(x);
+    }
+    break;
+    case NodeType::SelPhiInv: {
+        auto phi_inv = node->phi_inv;
+        ret.insert(phi_inv.pre_id);
+    }
+    break;
     case NodeType::LoopInPhi: {
         hassert (false);
     }
@@ -202,12 +255,22 @@ bool Projection::_check_data_dependence (DFG_Node *prev, DFG_Node *curr)
     auto defs = get_defs(prev);
     auto uses = get_uses(curr);
 
-    bool ret = false;
-
     for ( auto v : defs ) {
-        if (uses.contains(v)) ret = true;
+        if (uses.contains(v)) return true;
     }
-    return ret;
+    return false;
+}
+
+bool Projection::_check_guard_phi_inv_dependence (DFG_Node *guard_node, DFG_Node *phi_inv_node)
+{
+    hassert (guard_node->t == NodeType::Guard);
+    hassert (phi_inv_node->t == NodeType::SelPhiInv);
+
+    auto br_ids = phi_inv_node->phi_inv.branch_ids;
+    int br = guard_node->g.first;
+    hassert (br < br_ids.size());
+    auto br_id = (br_ids[br]);
+    return (br_id) ? true : false; // this is just for my own sanity
 }
 
 void Projection::_build_graph (Sequence seq)
@@ -238,7 +301,62 @@ void Projection::_build_graph (Sequence seq)
     break;
       
     case BlockType::Select: {
-        fatal_error ("selections w.i.p.");
+        for ( auto phi_inv : curr->u_select().splits ) {
+            fprintf(fp, "\n// phi_inv: %llu - ",phi_inv.pre_id.m_id);
+            for ( auto y : phi_inv.branch_ids ) {
+                if (y) fprintf(fp, "%llu, ", y._getId());
+                else   fprintf(fp, "null, ");
+            }
+            auto node = new DFG_Node (curr, phi_inv, dfg.gen_id()); 
+            dfg.add_node(node);
+            for ( auto n : dfg.nodes ) {
+                if (_check_data_dependence(n, node)) {
+                    dfg.add_edge(n,node);
+                }
+                if (_check_data_dependence(node, n)) {
+                    dfg.add_edge(node,n);
+                }
+            }
+        int i=0;
+        for ( auto &branch : curr->u_select().branches ) {
+            auto node = new DFG_Node (curr, i, IRGuard::deep_copy(branch.g), dfg.gen_id()); 
+            dfg.add_node(node);
+            for ( auto n : dfg.nodes ) {
+                if (_check_data_dependence(n, node)) {
+                    dfg.add_edge(n,node);
+                }
+                if (_check_data_dependence(node, n)) {
+                    dfg.add_edge(node,n);
+                }
+                if (n->t == NodeType::SelPhiInv) {
+                    if (_check_guard_phi_inv_dependence(node, n)) {
+                        dfg.add_edge(node,n);
+                    }
+                }
+            }
+            i++;
+        }
+        for ( auto &branch : curr->u_select().branches ) {
+            _build_graph (branch.seq);
+        }
+        }
+        for ( auto phi : curr->u_select().merges ) {
+            fprintf(fp, "\n// phi: ");
+            for ( auto y : phi.branch_ids ) {
+                fprintf(fp, "%llu, ", y.m_id);
+            }
+            fprintf(fp, " - %llu",phi.post_id.m_id);
+            auto node = new DFG_Node (curr, phi, dfg.gen_id()); 
+            dfg.add_node(node);
+            for ( auto n : dfg.nodes ) {
+                if (_check_data_dependence(n, node)) {
+                    dfg.add_edge(n,node);
+                }
+                if (_check_data_dependence(node, n)) {
+                    dfg.add_edge(node,n);
+                }
+            }
+        }
     }
     break;
       
@@ -313,28 +431,77 @@ void Projection::_build_sub_procs ()
 {
     seqs.clear();
     if (subgraphs.size() == 1) {
-        // ChpOptimize::takeOutOfStaticTokenForm(g->graph);
-        // seqs.push_back(g->graph.m_seq);
         return;
     }
 
     for ( auto x : subgraphs ) {
         auto dfg_nodes = x.second;
-        std::vector<Block *> blks = {};
-        for ( auto y : dfg_nodes ) {
-            // TODO: this will be more complex when selections + loops need to be handled
-            _splice_out_block(y->b);
-            blks.push_back(y->b);
-            
+        bool build = true;
+        // only build linear subgraphs (for now)
+        for ( auto n : dfg_nodes ) {
+            if (n->t != NodeType::Basic) build = false;
         }
-        Sequence seq = g->graph.newSequence(blks);
-        seqs.push_back(_wrap_in_do_loop(seq));
+        if (build) seqs.push_back(_build_sub_proc(dfg_nodes));
     }
+}
+
+Sequence Projection::_build_sub_proc (std::vector<DFG_Node *> nodes)
+{
+    bool wrap = true;
+    std::vector<Block *> blks = {};
+    auto node = nodes.begin();
+    while ( node != nodes.end() ) 
+    {
+        switch ((*node)->t) {
+        case NodeType::Basic: {
+            _splice_out_node(*node);
+            blks.push_back((*node)->b);
+        }
+        break;
+        case NodeType::LoopLoopPhi: {
+            hassert(false);
+        }
+        break;
+        case NodeType::LoopInPhi: {
+            hassert(false);
+        }
+        break;
+        case NodeType::LoopOutPhi: {
+            hassert(false);
+        }
+        break;
+        case NodeType::SelPhiInv: {
+            hassert(false);
+        }
+        break;
+        case NodeType::SelPhi: {
+            hassert(false);
+        }
+        break;
+        default:
+            hassert(false);
+        break;
+        }
+        node++;
+    }
+    return _wrap_in_do_loop(g->graph.newSequence(blks));
+}
+
+void Projection::_splice_out_node (DFG_Node *n)
+{
+    if (!(n->conn)) return;
+    _splice_out_block (n->b);
+    n->conn = false;
 }
 
 void Projection::split_assignments()
 {
     _split_assignments(g->graph.m_seq);
+}
+
+void Projection::split_selections()
+{
+    _split_selections(g->graph.m_seq);
 }
 
 void Projection::_split_assignments(Sequence seq)
@@ -391,6 +558,59 @@ void Projection::_split_assignments(Sequence seq)
       
     case BlockType::DoLoop: {
         _split_assignments(curr->u_doloop().branch);
+    }
+    break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
+}
+
+void Projection::_split_selections(Sequence seq)
+{
+    Block *curr = seq.startseq->child();
+
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+    }
+    break;
+      
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            _split_selections (branch);
+        }
+    }
+    break;
+      
+    case BlockType::Select: {
+        for (auto &branch : curr->u_select().branches) {
+            _split_selections (branch.seq);
+        }
+        auto tmp = curr->parent();
+        _splice_out_block(curr);
+        Block *par = g->graph.blockAllocator().newBlock(Block::makeParBlock());
+        auto selsetid = _gen_sel_set_id();
+        hassert(!(sel_sets.contains(selsetid)));
+        sel_sets.insert({selsetid,{}});
+        for (auto &branch : curr->u_select().branches) {
+            Block *sel2 = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
+            sel2->u_select().branches.push_back({branch.seq,IRGuard::deep_copy(branch.g)});
+            sel2->u_select().branches.push_back({g->graph.newSequence({}),IRGuard::makeElse()});
+            par->u_par().branches.push_back(g->graph.newSequence({sel2}));
+            sel_sets[selsetid].push_back(sel2);
+        }
+        tmp = _splice_in_block_between(tmp,tmp->child(),par);
+        curr = tmp->parent();
+    }
+    break;
+      
+    case BlockType::DoLoop: {
+        _split_selections(curr->u_doloop().branch);
     }
     break;
     
