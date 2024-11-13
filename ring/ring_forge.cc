@@ -1801,7 +1801,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     list_t *gp_connect_ids;
     listitem_t *li, *lj;
     act_chp_gc_t *gc;
-    act_chp_lang_t *stmt, *main_loop;
+    act_chp_lang_t *stmt;
+    act_chp_lang_t *main_loop = NULL;
     bool have_probes = false;
     var_info *vi;
     ActId *id;
@@ -1857,6 +1858,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                 if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP)
                     main_loop = (act_chp_lang_t *)list_value(li);
             }
+            Assert (main_loop, "Process does not contain top-level infinite loop?");
 
             first_block_id = _generate_itb();
             prev_block_id = first_block_id;
