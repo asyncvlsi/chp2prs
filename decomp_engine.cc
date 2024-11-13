@@ -117,7 +117,6 @@ class Decomp : public ActSynthesize {
       Projection *pr = new Projection (_pp->fp, g, 
                           bkp->get_decomp_info_map(), p->CurScope());
       // pr->project();
-      // pr->print_subgraphs();
       // vs3 = pr->get_procs();
 
       Block *top = g.graph.blockAllocator().newBlock(Block::makeParBlock());

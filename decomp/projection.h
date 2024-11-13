@@ -107,6 +107,10 @@ class DFG_Node {
             id = idx;
             set_n = -1;
         }
+        void print ()
+        {
+            if (t==NodeType::Basic) ChpOptimize::print_chp_block(std::cout, b);
+        }
 };
 
 class DFG {
@@ -161,7 +165,9 @@ class DFG {
         void print_adj (FILE *fp) {
             fprintf (fp, "\n/* ------ adj list ------\n");
             for (int i=0;i<adj.size();i++) {
-                fprintf(fp, "\n %d (type: %d): ", nodes[i]->id, int(nodes[i]->t));
+                fprintf(fp, "\n %d (type: %d): (", nodes[i]->id, int(nodes[i]->t));
+                nodes[i]->print();
+                fprintf(fp, "): ");
                 for (int j=0;j<adj[i].size();j++) {
                     fprintf (fp, "%d, ", adj[i][j]->id);
                 }

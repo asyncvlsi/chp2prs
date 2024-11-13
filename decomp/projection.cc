@@ -102,6 +102,8 @@ void Projection::project()
     print_chp(std::cout, g->graph);
     fprintf(stdout, "\n*/\n");
 
+    print_subgraphs();
+
     ChpOptimize::takeOutOfStaticTokenForm(g->graph);
     _build_sub_procs();
 
@@ -301,6 +303,7 @@ void Projection::_build_graph (Sequence seq)
     break;
       
     case BlockType::Select: {
+        // phi-inverses
         for ( auto phi_inv : curr->u_select().splits ) {
             fprintf(fp, "\n// phi_inv: %llu - ",phi_inv.pre_id.m_id);
             for ( auto y : phi_inv.branch_ids ) {
@@ -317,6 +320,8 @@ void Projection::_build_graph (Sequence seq)
                     dfg.add_edge(node,n);
                 }
             }
+        }
+        // guard nodes
         int i=0;
         for ( auto &branch : curr->u_select().branches ) {
             auto node = new DFG_Node (curr, i, IRGuard::deep_copy(branch.g), dfg.gen_id()); 
@@ -336,10 +341,11 @@ void Projection::_build_graph (Sequence seq)
             }
             i++;
         }
+        // branches
         for ( auto &branch : curr->u_select().branches ) {
             _build_graph (branch.seq);
         }
-        }
+        // phi's
         for ( auto phi : curr->u_select().merges ) {
             fprintf(fp, "\n// phi: ");
             for ( auto y : phi.branch_ids ) {
