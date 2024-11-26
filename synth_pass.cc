@@ -153,7 +153,9 @@ static int emit_refinement_header (ActSynthesize *syn,
   pp_printf (pp, "%s <: ", buf);
   pp_lazy (pp, 4);
   if (u->getns() && u->getns() != ActNamespace::Global()) {
-    pp_printf (pp, "%s", u->getns()->Name(true));
+    char *tmp = u->getns()->Name(true);
+    pp_printf (pp, "%s", tmp);
+    FREE (tmp);
   }
   u->snprintActName (buf, 10240);
   pp_printf (pp, "%s()", buf);
