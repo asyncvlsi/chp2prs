@@ -36,17 +36,20 @@ class DFG_Node {
         NodeType t;
         Block *b;
         bool conn;
-        Block::Variant_Select::PhiSplit phi_inv;
-        Block::Variant_Select::PhiMerge phi;
-        std::pair<int, IRGuard> g;
-        Block::Variant_DoLoop::InPhi    lip;
-        Block::Variant_DoLoop::OutPhi   lop;
-        Block::Variant_DoLoop::LoopPhi  llp;
+        // union
+            Block::Variant_Select::PhiSplit phi_inv;
+            Block::Variant_Select::PhiMerge phi;
+            std::pair<int, IRGuard> g;
+            Block::Variant_DoLoop::InPhi    lip;
+            Block::Variant_DoLoop::OutPhi   lop;
+            Block::Variant_DoLoop::LoopPhi  llp;
+        // union
         int id;
         int set_n;
 
         DFG_Node (Block *_b, int idx) 
         {
+            hassert (_b->type() == BlockType::Basic);
             t = NodeType::Basic;
             b = _b;
             conn = true;
@@ -55,6 +58,7 @@ class DFG_Node {
         }
         DFG_Node (Block *_b, int br, IRGuard _g, int idx) 
         {
+            hassert (_b->type() == BlockType::Select);
             t = NodeType::Guard;
             b = _b;
             conn = true;
@@ -64,6 +68,7 @@ class DFG_Node {
         }
         DFG_Node (Block *_b, Block::Variant_Select::PhiSplit x, int idx) 
         {
+            hassert (_b->type() == BlockType::Select);
             t = NodeType::SelPhiInv;
             b = _b;
             conn = true;
@@ -73,6 +78,7 @@ class DFG_Node {
         }
         DFG_Node (Block *_b, Block::Variant_Select::PhiMerge x, int idx) 
         {
+            hassert (_b->type() == BlockType::Select);
             t = NodeType::SelPhi;
             b = _b;
             conn = true;
@@ -149,9 +155,35 @@ class DFG {
                 fatal_error ("Self-edge in graph?");
             }
             if (f_idx==-1 || t_idx==-1) {
+                printf("\nfrom: %d, to: %d", f_idx, t_idx);
                 fatal_error ("Node doesn't exist in graph");
             }
             adj[f_idx].push_back(nodes[t_idx]);
+        }
+
+        void delete_edge (DFG_Node *from, DFG_Node *to) {
+            int f_idx = -1, t_idx = -1;
+            for (int i=0; i<nodes.size(); i++) {
+                if (nodes[i] == from) {
+                    f_idx = i;
+                }
+                if (nodes[i] == to) {
+                    t_idx = i;
+                }
+            }
+            if (f_idx==t_idx) {
+                fatal_error ("Self-edge in graph?");
+            }
+            if (f_idx==-1 || t_idx==-1) {
+                printf("\nfrom: %d, to: %d", f_idx, t_idx);
+                fatal_error ("Node doesn't exist in graph");
+            }
+            std::vector<DFG_Node *> new_adj = {};
+            for (auto i = 0; i<adj[f_idx].size(); i++) {
+                if (! (adj[f_idx][i] == to))
+                    new_adj.push_back(adj[f_idx][i]);
+            }
+            adj[f_idx] = new_adj;
         }
 
         bool contains (DFG_Node *node) {
@@ -209,9 +241,11 @@ class Projection : protected ChoppingBlock {
         void _build_graph (Sequence);
 
         void _compute_connected_components ();
+        void _insert_guard_comms ();
 
         void _build_sub_procs ();        
-        Sequence _build_sub_proc (std::vector<DFG_Node *>);        
+        Sequence _build_sub_proc (std::vector<DFG_Node *>);
+        Sequence _build_basic (std::vector<DFG_Node *>);
 
         bool _check_linear (Sequence, int);
         void _splice_out_node (DFG_Node *);

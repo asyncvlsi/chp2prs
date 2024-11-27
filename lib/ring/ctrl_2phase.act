@@ -81,10 +81,11 @@ defproc connect_inchan_to_ctrl (bd<W> ch; a1of1 ctrl)
 }
 
 export template<pint W>
-defproc connect_outchan_to_ctrl (bd<W> ch; a1of1 ctrl)
+defproc connect_outchan_to_ctrl (bd<W> ch; a1of1 ctrl; bool e[W])
 {
   ch.r = ctrl.r;
   ch.a = ctrl.a;
+  ch.d = e;
 }
 
 export template<pint W>
@@ -100,9 +101,9 @@ defproc connect_capture_dout (bool fin[W]; bool d[W])
 }
 
 export template<pint W>
-defproc connect_fblock_dout (bd<W> ch; bool d[W])
+defproc connect_exprblk_dout (bool d[W]; bool e[W])
 {
-  ch.d = d;
+  e = d;
 }
 // --------------------------------------------------------
 
@@ -177,6 +178,18 @@ defproc capture(a1of1 go; bool? din[W]; bool! dout[W])
   spec {
     timing go.r+: dout < go.a+
   }
+}
+
+export template <pint W>
+defproc var_access(bool din[W]; bool dout[W])
+{
+  din = dout;
+}
+
+export template<pint W>
+defproc chan_access(bd<W> C; bool dout[W])
+{
+  C.d = dout;
 }
 
 export template <pint CD, PW, W, INIT_VAL>

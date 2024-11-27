@@ -84,6 +84,7 @@ void Projection::project()
     //     return;
     
     ChpOptimize::putIntoNewStaticTokenForm(g->graph);
+    // ChpOptimize::putIntoStaticTokenForm(g->graph);
 
     fprintf(stdout, "\n/* first \n");
     print_chp(std::cout, g->graph);
@@ -96,6 +97,8 @@ void Projection::project()
     dfg.print_adj(stdout);
     fprintf(stdout, "\n\n");
 
+    _insert_guard_comms();
+
     _compute_connected_components();
 
     fprintf(stdout, "\n/* second \n");
@@ -103,9 +106,14 @@ void Projection::project()
     fprintf(stdout, "\n*/\n");
 
     print_subgraphs();
+    fprintf(stdout, "\n\nGOT HERE 1\n\n");
 
-    ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+    dfg.print_adj(stdout);
+    fprintf(stdout, "\n\n");
+    // ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+    // hassert (false);
     _build_sub_procs();
+    fprintf(stdout, "\n\nGOT HERE 2\n\n");
 
     Sequence save = g->graph.m_seq;
 
@@ -120,6 +128,8 @@ void Projection::project()
     }
     seqs = tmp;
     g->graph.m_seq = save;
+    if (g->graph.is_static_token_form)
+        ChpOptimize::takeOutOfStaticTokenForm(g->graph);
 }
 
 int Projection::_gen_sel_set_id()
@@ -296,8 +306,23 @@ void Projection::_build_graph (Sequence seq)
     break;
       
     case BlockType::Par: {
+        for ( auto phi_inv : curr->u_par().splits ) {
+            fprintf(fp, "\n// pll_phi_inv: %llu - ",phi_inv.pre_id.m_id);
+            for ( auto y : phi_inv.branch_ids ) {
+                if (y) fprintf(fp, "%llu, ", y._getId());
+                else   fprintf(fp, "null, ");
+            }
+        }
         for (auto &branch : curr->u_par().branches) {
             _build_graph (branch);
+        }
+        for ( auto phi : curr->u_par().merges ) {
+            fprintf(fp, "\n// pll_phi: ");
+            for ( auto y : phi.branch_ids ) {
+                if (y) fprintf(fp, "%llu, ", y._getId());
+                else   fprintf(fp, "null, ");
+            }
+            fprintf(fp, " - %llu",phi.post_id.m_id);
         }
     }
     break;
@@ -421,6 +446,64 @@ void Projection::_compute_connected_components ()
     } 
 }
 
+void Projection::_insert_guard_comms ()
+{
+    std::vector<std::pair<DFG_Node *, DFG_Node *>> to_add;
+    std::vector<std::pair<DFG_Node *, DFG_Node *>> to_delete;
+    for ( int i = 0; i<dfg.nodes.size(); i++ )
+    {
+        if (dfg.nodes[i]->t == NodeType::Basic) {
+            auto assn_blk = dfg.nodes[i]->b;
+            for ( auto n = dfg.adj[i].begin(); n != dfg.adj[i].end(); n++ ) {
+                auto nn = *n;
+                if (nn->t == NodeType::Guard) {
+
+                    hassert ( assn_blk->type() == BlockType::Basic) ;
+                    hassert ( assn_blk->u_basic().stmt.type() == StatementType::Assign );
+                    hassert ( assn_blk->u_basic().stmt.u_assign().ids.size() == 1 );
+                    hassert ( g->graph.id_pool().getBitwidth(assn_blk->u_basic().stmt.u_assign().ids[0]) == 1 );
+
+                    ChanId ci = g->graph.id_pool().makeUniqueChan(1, false);
+                    auto send = g->graph.blockAllocator().newBlock(
+                        Block::makeBasicBlock(Statement::makeSend(ci, 
+                        ChpExprSingleRootDag::makeVariableAccess(assn_blk->u_basic().stmt.u_assign().ids[0], 1))));
+                    
+                    VarId g_var = g->graph.id_pool().makeUniqueVar(1, false);
+
+                    auto recv = g->graph.blockAllocator().newBlock(
+                        Block::makeBasicBlock(Statement::makeReceive(ci, g_var)));
+
+                    auto send_node = new DFG_Node (send, dfg.gen_id()); 
+                    send_node->conn = false;
+                    dfg.add_node (send_node);
+                    printf("\nsend node id: %d", send_node->id);
+                    hassert (dfg.contains(send_node));
+
+                    auto recv_node = new DFG_Node (recv, dfg.gen_id()); 
+                    recv_node->conn = false;
+                    dfg.add_node (recv_node);
+                    printf("\nrecv node id: %d", recv_node->id);
+                    hassert (dfg.contains(recv_node));
+
+                    to_add.push_back({dfg.nodes[i], send_node});
+                    to_add.push_back({recv_node, nn});
+                    to_delete.push_back({dfg.nodes[i],nn});
+
+                    // create new block with send
+                    // insert and add correct edges in DFG
+                    // rip out this edge
+                }
+            }
+        }
+    }
+    for (auto x : to_add) {
+        dfg.add_edge (x.first, x.second);
+    }
+    for (auto x : to_delete) {
+        dfg.delete_edge (x.first, x.second);
+    }
+}
+
 void Projection::print_subgraphs ()
 {
     fprintf (fp, "\n/* --- Connected components ---\n");
@@ -454,14 +537,26 @@ void Projection::_build_sub_procs ()
 Sequence Projection::_build_sub_proc (std::vector<DFG_Node *> nodes)
 {
     bool wrap = true;
-    std::vector<Block *> blks = {};
+    std::vector<DFG_Node *> v = {};
     auto node = nodes.begin();
     while ( node != nodes.end() ) 
     {
         switch ((*node)->t) {
         case NodeType::Basic: {
             _splice_out_node(*node);
-            blks.push_back((*node)->b);
+            v.push_back((*node));
+        }
+        break;
+        case NodeType::SelPhiInv: {
+            hassert(false);
+        }
+        break;
+        case NodeType::SelPhi: {
+            hassert(false);
+        }
+        break;
+        case NodeType::Guard: {
+            hassert(false);
         }
         break;
         case NodeType::LoopLoopPhi: {
@@ -476,21 +571,28 @@ Sequence Projection::_build_sub_proc (std::vector<DFG_Node *> nodes)
             hassert(false);
         }
         break;
-        case NodeType::SelPhiInv: {
-            hassert(false);
-        }
-        break;
-        case NodeType::SelPhi: {
-            hassert(false);
-        }
-        break;
         default:
             hassert(false);
         break;
         }
         node++;
     }
-    return _wrap_in_do_loop(g->graph.newSequence(blks));
+    return _build_basic(v);
+}
+
+Sequence Projection::_build_basic (std::vector<DFG_Node *> nodes)
+{
+    bool wrap = true;
+    std::vector<Block *> blks = {};
+    auto node = nodes.begin();
+    while ( node != nodes.end() ) 
+    {
+        hassert ((*node)->t == NodeType::Basic);
+        _splice_out_node(*node);
+        blks.push_back((*node)->b);
+        node++;
+    }
+    return (g->graph.newSequence(blks));
 }
 
 void Projection::_splice_out_node (DFG_Node *n)
