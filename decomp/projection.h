@@ -29,7 +29,7 @@
 #include "../opt/static-tokens.h"
 #include "../opt/union-find.h"
 
-enum class NodeType { Basic, Guard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv };
+enum class NodeType { Basic, Guard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
 
 class DFG_Node {
     public:
@@ -39,6 +39,8 @@ class DFG_Node {
         // union
             Block::Variant_Select::PhiSplit phi_inv;
             Block::Variant_Select::PhiMerge phi;
+            Block::Variant_Par::PhiSplit pll_phi_inv;
+            Block::Variant_Par::PhiMerge pll_phi;
             std::pair<int, IRGuard> g;
             Block::Variant_DoLoop::InPhi    lip;
             Block::Variant_DoLoop::OutPhi   lop;
@@ -83,6 +85,26 @@ class DFG_Node {
             b = _b;
             conn = true;
             phi = x;
+            id = idx;
+            set_n = -1;
+        }
+        DFG_Node (Block *_b, Block::Variant_Par::PhiSplit x, int idx) 
+        {
+            hassert (_b->type() == BlockType::Par);
+            t = NodeType::PllPhiInv;
+            b = _b;
+            conn = true;
+            pll_phi_inv = x;
+            id = idx;
+            set_n = -1;
+        }
+        DFG_Node (Block *_b, Block::Variant_Par::PhiMerge x, int idx) 
+        {
+            hassert (_b->type() == BlockType::Par);
+            t = NodeType::PllPhi;
+            b = _b;
+            conn = true;
+            pll_phi = x;
             id = idx;
             set_n = -1;
         }
@@ -180,18 +202,31 @@ class DFG {
             }
             std::vector<DFG_Node *> new_adj = {};
             for (auto i = 0; i<adj[f_idx].size(); i++) {
-                if (! (adj[f_idx][i] == to))
+                if ( !(adj[f_idx][i] == to) )
                     new_adj.push_back(adj[f_idx][i]);
             }
             adj[f_idx] = new_adj;
         }
 
         bool contains (DFG_Node *node) {
-            bool ret = false;
             for ( auto n1 : nodes ) {
-                if (node==n1) ret = true;
+                if (node==n1) return true;
             }
-            return ret;
+            return false;
+        }
+
+        bool contains (Block *b) {
+            for ( auto n1 : nodes ) {
+                if (b==(n1->b)) return true;
+            }
+            return false;
+        }
+
+        DFG_Node *find (Block *b) {
+            for ( auto n1 : nodes ) {
+                if (b==(n1->b)) return n1;
+            }
+            return NULL;
         }
 
         void print_adj (FILE *fp) {
@@ -244,11 +279,14 @@ class Projection : protected ChoppingBlock {
         void _insert_guard_comms ();
 
         void _build_sub_procs ();        
-        Sequence _build_sub_proc (std::vector<DFG_Node *>);
+        Sequence _build_sub_proc (Sequence, std::unordered_set<DFG_Node *>&);
+        Block *_build_selection (DFG_Node *, std::unordered_set<DFG_Node *>&);
         Sequence _build_basic (std::vector<DFG_Node *>);
 
         bool _check_linear (Sequence, int);
         void _splice_out_node (DFG_Node *);
+        void _splice_out_blocks (std::vector<Block *>);
+        void _splice_out_block_new (Block *);
 
         std::vector<VarId> get_defs (DFG_Node *);
         std::unordered_set<VarId> get_uses (DFG_Node *);
