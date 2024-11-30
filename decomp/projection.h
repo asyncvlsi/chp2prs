@@ -257,6 +257,35 @@ class DFG {
             }
             return NULL;
         }
+        DFG_Node *find (Block *b, Block::Variant_Select::PhiSplit ps) {
+            hassert (b->type()==BlockType::Select);
+            for ( auto n1 : nodes ) {
+                if ( b==(n1->b) && (n1->t == NodeType::SelPhiInv) 
+                    && (n1->phi_inv.pre_id == ps.pre_id) && 
+                    (n1->phi_inv.branch_ids == ps.branch_ids) ) 
+                        return n1;
+            }
+            return NULL;
+        }
+        DFG_Node *find (Block *b, Block::Variant_Select::PhiMerge pm) {
+            hassert (b->type()==BlockType::Select);
+            for ( auto n1 : nodes ) {
+                if ( b==(n1->b) && (n1->t == NodeType::SelPhi) 
+                    && (n1->phi.post_id == pm.post_id) && 
+                    (n1->phi.branch_ids == pm.branch_ids) ) 
+                        return n1;
+            }
+            return NULL;
+        }
+        DFG_Node *find (Block *b, std::pair<int, IRGuard> g) {
+            hassert (b->type()==BlockType::Select);
+            for ( auto n1 : nodes ) {
+                if ( b==(n1->b) && (n1->t == NodeType::Guard) 
+                    && n1->g.first == g.first ) 
+                        return n1;
+            }
+            return NULL;
+        }
 
         void print_adj (FILE *fp) {
             fprintf (fp, "\n/* ------ adj list ------\n");
@@ -311,7 +340,7 @@ class Projection : protected ChoppingBlock {
 
         void _build_sub_procs ();        
         Sequence _build_sub_proc (Sequence, std::unordered_set<DFG_Node *>&);
-        void _build_sub_proc_new (Sequence, std::unordered_set<DFG_Node *>&);
+        void _build_sub_proc_new (GraphWithChanNames &, Sequence, std::unordered_set<DFG_Node *>&);
         Block *_build_selection (DFG_Node *, std::unordered_set<DFG_Node *>&);
         Sequence _build_basic (std::vector<DFG_Node *>);
 
