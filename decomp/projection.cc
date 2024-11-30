@@ -34,9 +34,14 @@
 
 */
 
-std::vector<Sequence> Projection::get_procs ()
+std::vector<Sequence> Projection::get_seqs ()
 {
     return seqs;
+}
+
+std::vector<act_chp_lang_t *> Projection::get_procs ()
+{
+    return procs;
 }
 
 bool Projection::_check_linear (Sequence seq, int root)
@@ -88,9 +93,9 @@ void Projection::project()
     // ChpOptimize::putIntoNewStaticTokenForm(g->graph);
     ChpOptimize::putIntoStaticTokenForm(g->graph);
 
-    fprintf(stdout, "\n/* first \n");
-    print_chp(std::cout, g->graph);
-    fprintf(stdout, "\n*/\n");
+    // fprintf(stdout, "\n/* STF \n");
+    // print_chp(std::cout, g->graph);
+    // fprintf(stdout, "\n*/\n");
 
     _build_graph(g->graph.m_seq);
 
@@ -98,9 +103,9 @@ void Projection::project()
 
     _insert_guard_comms();
 
-    fprintf(stdout, "\n/* second \n");
-    print_chp(std::cout, g->graph);
-    fprintf(stdout, "\n*/\n");
+    // fprintf(stdout, "\n/* Non-STF \n");
+    // print_chp(std::cout, g->graph);
+    // fprintf(stdout, "\n*/\n");
 
     // ChpOptimize::putIntoNewStaticTokenForm(g->graph);
     ChpOptimize::putIntoStaticTokenForm(g->graph);
@@ -108,19 +113,76 @@ void Projection::project()
     _build_graph(g->graph.m_seq);
     _compute_connected_components();
 
-    dfg.print_adj(stdout);
-    fprintf(stdout, "\n\n");
+    // dfg.print_adj(stdout);
+    // fprintf(stdout, "\n\n");
 
-    print_subgraphs();
-    fprintf(stdout, "\n\nGOT HERE 1\n\n");
+    // print_subgraphs();
+    // fprintf(stdout, "\n\nGOT HERE 1\n\n");
 
     ChpOptimize::takeOutOfStaticTokenForm(g->graph);
-    fprintf(stdout, "\n/* third \n");
-    std::vector<ActId *> tmp_names;
-    auto a1 = chp_graph_to_act (*g, tmp_names, s);
-    auto g1 = chp_graph_from_act (a1, s);
-    print_chp(std::cout, g1.graph);
-    fprintf(stdout, "\n*/\n");
+    fprintf(stdout, "\n\nGOT HERE 2\n\n");
+
+    int num_subgraphs = subgraphs.size();
+    if (num_subgraphs==1) return;
+
+    // for (auto subgraph : subgraphs)
+    for (int i=0; i<num_subgraphs; i++)
+    {
+        std::vector<ActId *> tmp_names;
+        auto a1 = chp_graph_to_act (*g, tmp_names, s);
+        auto g1 = chp_graph_from_act (a1, s);
+
+        dfg.clear();
+        _split_assignments(g1.graph.m_seq);
+        ChpOptimize::putIntoStaticTokenForm(g1.graph);
+        _build_graph(g1.graph.m_seq);
+        _compute_connected_components();
+
+        fprintf(stdout, "\n\nGOT HERE 3\n\n");
+        dfg.print_adj(stdout);
+        fprintf(stdout, "\n\n");
+        print_subgraphs();
+        fprintf(stdout, "\n\n");
+
+        auto itr = subgraphs.begin();
+        for (int j=0; j<i; j++) 
+            itr++;
+        std::unordered_set<DFG_Node *> tmp ((*itr).second.begin(), (*itr).second.end());
+        fprintf(stdout, "\n%d\n",int(tmp.size()));
+        print_chp(std::cout, g1.graph);
+        fprintf(stdout, "\n\nGOT HERE 4\n\n");
+        _build_sub_proc_new (g1.graph.m_seq, tmp);
+        fprintf(stdout, "\n\nGOT HERE 5\n\n");
+
+        print_chp(std::cout, g1.graph);
+        fprintf(stdout, "\n\nGOT HERE 6\n\n");
+        if (!g1.graph.is_static_token_form)
+            ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
+        if (g1.graph.is_static_token_form)
+            ChpOptimize::takeOutOfStaticTokenForm(g1.graph);
+        seqs.push_back(g1.graph.m_seq);
+        fprintf(stdout, "\n\nGOT HERE 7\n\n");
+
+        fprintf(stdout, "\n/* subproc: \n");
+        // print_chp(std::cout, g1.graph);
+        std::vector<ActId *> tmp_names2;
+        act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
+        fprintf(stdout, "\n\n");
+        chp_print(stdout, tmpact);
+        procs.push_back(tmpact);
+        fprintf(stdout, "\n*/\n");
+    }
+
+    fprintf(stdout, "\n/* got here */\n");
+    // for (auto v : seqs)   
+    // {
+    //     std::vector<ActId *> tmp_names;
+    //     g->graph.m_seq = v;
+    //     act_chp_lang_t *tmp = chp_graph_to_act (*g, tmp_names, s);
+    // }
+    fprintf(stdout, "\n/* got here 2*/\n");
+    // print_chp(std::cout, gwcns[0].graph);
+    // fprintf(stdout, "\n*/\n");
 
     // tmp_names.clear();
     // fprintf(stdout, "\n/* fourth \n");
@@ -156,6 +218,131 @@ void Projection::project()
     // if (g->graph.is_static_token_form)
     //     ChpOptimize::takeOutOfStaticTokenForm(g->graph);
 }
+
+void Projection::_build_sub_proc_new (Sequence seq, std::unordered_set<DFG_Node *> &s)
+{
+    Block *curr = seq.startseq->child();
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        auto dfgnode = dfg.find(curr);
+        if (dfgnode && s.contains(dfgnode)) {
+            s.erase(dfgnode);
+            // printf ("\n// skipping\n");
+        }
+        else {
+            curr->dead = true;
+            curr = _splice_out_block (curr);
+            curr = curr->parent();
+            // printf ("\n// splicing\n");
+        }
+    }
+    break;
+      
+    case BlockType::Par: {
+
+        std::vector<Block::Variant_Par::PhiSplit> new_splits = {};
+        for (auto phi_inv : curr->u_par().splits) {
+            auto dfgnode = dfg.find(curr, phi_inv);
+            if (dfgnode && s.contains(dfgnode)) {
+                s.erase(dfgnode);
+                new_splits.push_back(phi_inv);
+            }
+        }
+        curr->u_par().splits = new_splits;
+        
+        for (auto &branch : curr->u_par().branches) {
+            _build_sub_proc_new (branch, s);
+        }
+
+        std::vector<Block::Variant_Par::PhiMerge> new_merges = {};
+        for (auto phi : curr->u_par().merges) {
+            auto dfgnode = dfg.find(curr, phi);
+            if (dfgnode && s.contains(dfgnode)) {
+                s.erase(dfgnode);
+                new_merges.push_back(phi);
+            }
+        }
+        curr->u_par().merges = new_merges;
+
+    }
+    break;
+      
+    case BlockType::Select: {
+        auto dfgnode = dfg.find(curr);
+        if (dfgnode && s.contains(dfgnode)) {
+        }
+    }
+    break;
+    case BlockType::DoLoop: {
+        _build_sub_proc_new(curr->u_doloop().branch, s);
+    }
+    break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
+}
+
+#if 0
+bool Projection::_set_contains (Block *b, std::unordered_set<DFG_Node *> &s)
+{
+    for ( auto node : s ) 
+    {
+        switch (node->t) {
+        case NodeType::Basic: {
+            switch (blk->u_basic().stmt.type()) {
+            case StatementType::Send:
+            break;
+            case StatementType::Assign: {
+            }
+            break;
+            case StatementType::Receive: {
+            }
+            break;
+            }
+        }
+        break;
+        case NodeType::Guard: {
+            // does not define any variables
+        }
+        break;
+        case NodeType::SelPhi: {
+        }
+        break;
+        case NodeType::SelPhiInv: {
+        }
+        break;
+        case NodeType::PllPhi: {
+        }
+        break;
+        case NodeType::PllPhiInv: {
+        }
+        break;
+        case NodeType::LoopInPhi: {
+            hassert (false);
+        }
+        break;
+        case NodeType::LoopOutPhi: {
+            hassert (false);
+        }
+        break;
+        case NodeType::LoopLoopPhi: {
+            hassert (false);
+        }
+        break;
+        default:
+            hassert (false);
+        break;
+        }
+    }
+    return false;
+}
+#endif
 
 int Projection::_gen_sel_set_id()
 {

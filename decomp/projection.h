@@ -153,6 +153,12 @@ class DFG {
             id = 0;
         }
 
+        void clear () {
+            nodes.clear();
+            adj.clear();
+            id = 0;
+        }
+
         int gen_id () {
             id++;
             return id;
@@ -223,8 +229,31 @@ class DFG {
         }
 
         DFG_Node *find (Block *b) {
+            // hassert (b->type()==BlockType::Basic);
             for ( auto n1 : nodes ) {
-                if (b==(n1->b)) return n1;
+                if (b == n1->b) {
+                    return n1;
+                }
+            }
+            return NULL;
+        }
+        DFG_Node *find (Block *b, Block::Variant_Par::PhiSplit ps) {
+            hassert (b->type()==BlockType::Par);
+            for ( auto n1 : nodes ) {
+                if ( b==(n1->b) && (n1->t == NodeType::PllPhiInv) 
+                    && (n1->pll_phi_inv.pre_id == ps.pre_id) && 
+                    (n1->pll_phi_inv.branch_ids == ps.branch_ids) ) 
+                        return n1;
+            }
+            return NULL;
+        }
+        DFG_Node *find (Block *b, Block::Variant_Par::PhiMerge pm) {
+            hassert (b->type()==BlockType::Par);
+            for ( auto n1 : nodes ) {
+                if ( b==(n1->b) && (n1->t == NodeType::PllPhi) 
+                    && (n1->pll_phi.post_id == pm.post_id) && 
+                    (n1->pll_phi.branch_ids == pm.branch_ids) ) 
+                        return n1;
             }
             return NULL;
         }
@@ -255,7 +284,8 @@ class Projection : protected ChoppingBlock {
             }
         
         void project ();
-        std::vector<Sequence> get_procs ();
+        std::vector<Sequence> get_seqs ();
+        std::vector<act_chp_lang_t *> get_procs ();
         void print_subgraphs ();
         void split_assignments ();
         void split_selections ();
@@ -263,6 +293,7 @@ class Projection : protected ChoppingBlock {
     private:
 
         std::vector<Sequence> seqs;
+        std::vector<act_chp_lang_t *> procs;
         // std::vector<Block *> nodes;
         // std::vector<Block *> ics;
         std::unordered_map<UnionFind<DFG_Node *>::id, std::vector<DFG_Node *>> subgraphs;
@@ -280,8 +311,11 @@ class Projection : protected ChoppingBlock {
 
         void _build_sub_procs ();        
         Sequence _build_sub_proc (Sequence, std::unordered_set<DFG_Node *>&);
+        void _build_sub_proc_new (Sequence, std::unordered_set<DFG_Node *>&);
         Block *_build_selection (DFG_Node *, std::unordered_set<DFG_Node *>&);
         Sequence _build_basic (std::vector<DFG_Node *>);
+
+        bool _set_contains (Block *, std::unordered_set<DFG_Node *>&);
 
         bool _check_linear (Sequence, int);
         void _splice_out_node (DFG_Node *);
