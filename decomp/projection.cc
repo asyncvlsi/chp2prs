@@ -784,13 +784,11 @@ void Projection::_insert_guard_comms ()
                         Block::makeBasicBlock(Statement::makeReceive(ci, g_var)));
 
                     auto send_node = new DFG_Node (send, dfg.gen_id()); 
-                    send_node->conn = false;
                     dfg.add_node (send_node);
                     printf("\nsend node id: %d", send_node->id);
                     hassert (dfg.contains(send_node));
 
                     auto recv_node = new DFG_Node (recv, dfg.gen_id()); 
-                    recv_node->conn = false;
                     dfg.add_node (recv_node);
                     printf("\nrecv node id: %d", recv_node->id);
                     hassert (dfg.contains(recv_node));
@@ -977,12 +975,14 @@ void Projection::_splice_out_block_new(Block *bb)
     if (before && after) Block::connect(before, after);
 }
 
+#if 0
 void Projection::_splice_out_node (DFG_Node *n)
 {
     if (!(n->conn)) return;
     _splice_out_block (n->b);
     n->conn = false;
 }
+#endif
 
 void Projection::split_assignments()
 {

@@ -35,13 +35,12 @@ class DFG_Node {
     public:
         NodeType t;
         Block *b;
-        bool conn;
         // union
             Block::Variant_Select::PhiSplit phi_inv;
             Block::Variant_Select::PhiMerge phi;
-            Block::Variant_Par::PhiSplit pll_phi_inv;
-            Block::Variant_Par::PhiMerge pll_phi;
-            std::pair<int, IRGuard> g;
+            Block::Variant_Par::PhiSplit    pll_phi_inv;
+            Block::Variant_Par::PhiMerge    pll_phi;
+            std::pair<int, IRGuard>         g;
             Block::Variant_DoLoop::InPhi    lip;
             Block::Variant_DoLoop::OutPhi   lop;
             Block::Variant_DoLoop::LoopPhi  llp;
@@ -54,7 +53,6 @@ class DFG_Node {
             hassert (_b->type() == BlockType::Basic);
             t = NodeType::Basic;
             b = _b;
-            conn = true;
             id = idx;
             set_n = -1;
         }
@@ -63,7 +61,6 @@ class DFG_Node {
             hassert (_b->type() == BlockType::Select);
             t = NodeType::Guard;
             b = _b;
-            conn = true;
             g = {br, IRGuard::deep_copy(_g)};
             id = idx;
             set_n = -1;
@@ -73,7 +70,6 @@ class DFG_Node {
             hassert (_b->type() == BlockType::Select);
             t = NodeType::SelPhiInv;
             b = _b;
-            conn = true;
             phi_inv = x;
             id = idx;
             set_n = -1;
@@ -83,7 +79,6 @@ class DFG_Node {
             hassert (_b->type() == BlockType::Select);
             t = NodeType::SelPhi;
             b = _b;
-            conn = true;
             phi = x;
             id = idx;
             set_n = -1;
@@ -93,7 +88,6 @@ class DFG_Node {
             hassert (_b->type() == BlockType::Par);
             t = NodeType::PllPhiInv;
             b = _b;
-            conn = true;
             pll_phi_inv = x;
             id = idx;
             set_n = -1;
@@ -103,7 +97,6 @@ class DFG_Node {
             hassert (_b->type() == BlockType::Par);
             t = NodeType::PllPhi;
             b = _b;
-            conn = true;
             pll_phi = x;
             id = idx;
             set_n = -1;
@@ -112,7 +105,6 @@ class DFG_Node {
         {
             t = NodeType::LoopInPhi;
             b = _b;
-            conn = true;
             lip = x;
             id = idx;
             set_n = -1;
@@ -121,7 +113,6 @@ class DFG_Node {
         {
             t = NodeType::LoopOutPhi;
             b = _b;
-            conn = true;
             lop = x;
             id = idx;
             set_n = -1;
@@ -130,7 +121,6 @@ class DFG_Node {
         {
             t = NodeType::LoopLoopPhi;
             b = _b;
-            conn = true;
             llp = x;
             id = idx;
             set_n = -1;
