@@ -90,8 +90,8 @@ void Projection::project()
 
     split_assignments();
     
-    // ChpOptimize::putIntoNewStaticTokenForm(g->graph);
     ChpOptimize::putIntoStaticTokenForm(g->graph);
+    // ChpOptimize::putIntoNewStaticTokenForm(g->graph);
 
     // fprintf(stdout, "\n/* STF \n");
     // print_chp(std::cout, g->graph);
@@ -107,20 +107,20 @@ void Projection::project()
     // print_chp(std::cout, g->graph);
     // fprintf(stdout, "\n*/\n");
 
-    // ChpOptimize::putIntoNewStaticTokenForm(g->graph);
     ChpOptimize::putIntoStaticTokenForm(g->graph);
+    // ChpOptimize::putIntoNewStaticTokenForm(g->graph);
 
     _build_graph(g->graph.m_seq);
     _compute_connected_components();
 
-    // dfg.print_adj(stdout);
-    // fprintf(stdout, "\n\n");
+    dfg.print_adj(stdout);
+    fprintf(stdout, "\n\n");
 
-    // print_subgraphs();
+    print_subgraphs();
     // fprintf(stdout, "\n\nGOT HERE 1\n\n");
 
     ChpOptimize::takeOutOfStaticTokenForm(g->graph);
-    fprintf(stdout, "\n\nGOT HERE 2\n\n");
+    // fprintf(stdout, "\n\nGOT HERE 2\n\n");
 
     int num_subgraphs = subgraphs.size();
     if (num_subgraphs==1) return;
@@ -134,8 +134,19 @@ void Projection::project()
         auto g1 = chp_graph_from_act (a1, s);
 
         dfg.clear();
-        _split_assignments(g1.graph.m_seq);
+        // _split_assignments(g1.graph.m_seq);
         ChpOptimize::putIntoStaticTokenForm(g1.graph);
+        // ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
+        // bool cc;
+        // do {
+        //     cc = false;
+
+        //     cc |= propagateConstants(g1.graph);
+        //     cc |= eliminateDeadCode(g1.graph);
+        //     // changed |= transposeAssignmentAndChanOps(g1.graph);
+        //     // changed |= fuseAssignments(g1.graph);
+        //     cc |= eliminateCopies(g1.graph);
+        // } while (cc);
         _build_graph(g1.graph.m_seq);
         _compute_connected_components();
         ChpOptimize::takeOutOfStaticTokenForm(g1.graph);
@@ -145,6 +156,7 @@ void Projection::project()
         // fprintf(stdout, "\n\n");
         // print_subgraphs();
         // fprintf(stdout, "\n\n");
+        // print_chp(std::cout, g1.graph);
 
         auto itr = subgraphs.begin();
         // for (int j=0; j<i; j++) 
@@ -172,14 +184,15 @@ void Projection::project()
         seqs.push_back(g1.graph.m_seq);
         // fprintf(stdout, "\n\nGOT HERE 7\n\n");
 
-        fprintf(stdout, "\n/* subproc: \n");
+        fprintf(stdout, "\n/* subproc: \n\n");
         // print_chp(std::cout, g1.graph);
         std::vector<ActId *> tmp_names2;
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
-        fprintf(stdout, "\n\n");
+        // auto _g = chp_graph_from_act (tmpact, s);
+        // tmpact = chp_graph_to_act (_g, tmp_names2, s);
         chp_print(stdout, tmpact);
         procs.push_back(tmpact);
-        fprintf(stdout, "\n*/\n");
+        fprintf(stdout, "\n\n*/\n");
     }
 
     // fprintf(stdout, "\n/* got here */\n");
@@ -470,7 +483,7 @@ std::vector<VarId> Projection::get_defs (DFG_Node *node)
         // if (llp.post_id) {
         //     ret.push_back(*llp.post_id);
         // }
-        hassert (false);
+        // hassert (false);
     }
     break;
     default:
@@ -707,7 +720,7 @@ void Projection::_build_graph (Sequence seq)
             hassert(false);
         }
         for ( auto phi : curr->u_doloop().out_phis ) {
-            fprintf(fp, "\n// outphi: %llu, %llu",phi.bodyout_id.m_id,phi.post_id.m_id);
+            // fprintf(fp, "\n// outphi: %llu, %llu",phi.bodyout_id.m_id,phi.post_id.m_id);
             // hassert(false);
         }
         for ( auto phi : curr->u_doloop().loop_phis ) {
@@ -721,7 +734,7 @@ void Projection::_build_graph (Sequence seq)
                     dfg.add_edge(node,n);
                 }
             }
-            fprintf(fp, "\n// loopphi: %llu, %llu, %llu, %llu",phi.pre_id.m_id,phi.bodyin_id.m_id,phi.bodyout_id.m_id, phi.post_id._getId());
+            // fprintf(fp, "\n// loopphi: %llu, %llu, %llu, %llu",phi.pre_id.m_id,phi.bodyin_id.m_id,phi.bodyout_id.m_id, phi.post_id._getId());
         }
         fprintf(fp, "\n\n");
         _build_graph(curr->u_doloop().branch);
@@ -785,12 +798,12 @@ void Projection::_insert_guard_comms ()
 
                     auto send_node = new DFG_Node (send, dfg.gen_id()); 
                     dfg.add_node (send_node);
-                    printf("\nsend node id: %d", send_node->id);
+                    // printf("\nsend node id: %d", send_node->id);
                     hassert (dfg.contains(send_node));
 
                     auto recv_node = new DFG_Node (recv, dfg.gen_id()); 
                     dfg.add_node (recv_node);
-                    printf("\nrecv node id: %d", recv_node->id);
+                    // printf("\nrecv node id: %d", recv_node->id);
                     hassert (dfg.contains(recv_node));
 
                     to_add.push_back({dfg.nodes[i], send_node});

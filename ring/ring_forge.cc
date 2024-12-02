@@ -75,10 +75,12 @@ void RingForge::run_forge ()
      * 'everything else besides the chp body'
      * needs to be added here
     */
+    Assert (_structure_check(_c), "Program not of allowed form?");
     if (_c->label && (strcmp(_c->label,"top_decomp")==0)) {
-        Assert ((_c->type == ACT_CHP_COMMA)||
-                (_c->type == ACT_CHP_LOOP)||
-                (_c->type == ACT_CHP_DOLOOP), "top-level not loop or parallel loops?");
+        // Assert ((_c->type == ACT_CHP_COMMA)||
+        //         (_c->type == ACT_CHP_LOOP)||
+        //         (_c->type == ACT_CHP_DOLOOP), "top-level not loop or parallel loops?");
+
         if (_c->type == ACT_CHP_COMMA) {
             for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li))
             {
@@ -92,6 +94,35 @@ void RingForge::run_forge ()
     else {
         _run_forge_helper (_c);
     }
+}
+
+bool RingForge::_structure_check (act_chp_lang_t *c)
+{
+    if (c->type == ACT_CHP_LOOP || c->type == ACT_CHP_DOLOOP)
+        return true;
+    
+    if (c->type == ACT_CHP_SEMI)
+    {
+        for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li))
+        {
+            act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
+            if (!(stmt->type==ACT_CHP_ASSIGN || stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP))
+                return false;
+        }
+        return true;
+    }
+    if (c->type == ACT_CHP_COMMA)
+    {
+        bool ret = true;
+        for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li))
+        {
+            act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
+            ret &= _structure_check (stmt);
+        }
+        return ret;
+    }
+    chp_print(stdout, c);
+    return false;
 }
 
 void RingForge::_run_forge_helper (act_chp_lang_t *c)

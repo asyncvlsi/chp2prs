@@ -40,6 +40,7 @@ class RingForge : public RingEngine {
     protected:
 
         void _run_forge_helper (act_chp_lang_t *);
+        bool _structure_check (act_chp_lang_t *);
 
         // Main synthesis functions
         void generate_pipe(act_chp_lang_t *, int);
