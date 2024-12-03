@@ -235,6 +235,14 @@ VarId new_do_assigning_renaming(VarId input_id,
   return new_id;
 }
 
+VarId new_do_direct_renaming (VarId input_id, VarIdRemap &curmap)
+{
+  while (curmap.contains (input_id)) {
+    input_id = curmap[input_id];
+  }
+  return input_id;
+}
+
 
 template <typename K>
 std::unordered_set<K> absl_intersection(const std::unordered_set<K> &a,
@@ -384,7 +392,7 @@ VarIdRemapPair enforce_static_token_form(Sequence seq,
 
             break;
         }
-	  
+
         case BlockType::Select: {
             hassert(curr->u_select().splits.empty());
             hassert(curr->u_select().merges.empty());
@@ -943,7 +951,115 @@ void _run_seq (Sequence seq,
     curr = curr->child();
   }
 }
- 
+
+
+/*
+ *  This takes the CHP out of static token form
+ *
+ *  If we encounter a selection:
+ *    * for splits: (a,b,c,d) := v, we map (a,b,c,d) -> v
+ *    * for merges x := (p,q,r), we map (p,q,r) to x in the body of the selection
+ */
+static
+void _run_unmap_seq (Sequence seq, VarIdRemap &curmap)
+{
+  Block *curr = seq.startseq->child();
+  while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+      switch (curr->u_basic().stmt.type()) {
+      case StatementType::Assign:
+	curr->u_basic().stmt.u_assign().e =
+	  new_do_expr_renaming (std::move(curr->u_basic().stmt.u_assign().e),
+				curmap);
+	for (auto &id : curr->u_basic().stmt.u_assign().ids) {
+	  id = new_do_direct_renaming(id, curmap);
+	}
+	break;
+
+      case StatementType::Send:
+	curr->u_basic().stmt.u_send().e =
+	  new_do_expr_renaming (std::move(curr->u_basic().stmt.u_send().e),
+				curmap);
+	break;
+
+      case StatementType::Receive:
+	if (curr->u_basic().stmt.u_receive().var) {
+	  curr->u_basic().stmt.u_receive().var =
+	    new_do_direct_renaming(*curr->u_basic().stmt.u_receive().var,
+				   curmap);
+	}
+      }
+      break;
+    }
+    case BlockType::Par: {
+      for (auto &branch : curr->u_par().branches) {
+	_run_unmap_seq (branch, curmap);
+      }
+      break;
+    }
+
+    case BlockType::Select: {
+      for (auto &splitphi : curr->u_select().splits) {
+	VarId pre_id = splitphi.pre_id;
+	for (size_t i = 0; i < splitphi.branch_ids.size(); i++) {
+	  if (splitphi.branch_ids[i]) {
+	    VarId v = *splitphi.branch_ids[i];
+	    curmap[v] = pre_id;
+	  }
+	}
+      }
+      for (auto &mergephi : curr->u_select().merges) {
+	VarId post_id = mergephi.post_id;
+	for (size_t i = 0; i < mergephi.branch_ids.size(); i++) {
+	  curmap[mergephi.branch_ids[i]] = post_id;
+	}
+      }
+      curr->u_select().splits.clear();
+      curr->u_select().merges.clear();
+
+      // rename guards based on the current map
+      for (auto &branch : curr->u_select().branches) {
+	if (branch.g.type() == IRGuardType::Expression) {
+	  branch.g.u_e().e =
+	    new_do_expr_renaming (std::move(branch.g.u_e().e), curmap);
+	}
+	_run_unmap_seq (branch.seq, curmap);
+      }
+      break;
+    }
+
+    case BlockType::DoLoop: {
+      for (auto &in_phi : curr->u_doloop().in_phis) {
+	curmap[in_phi.bodyin_id] = in_phi.pre_id;
+      }
+      for (auto &out_phi : curr->u_doloop().out_phis) {
+	curmap[out_phi.post_id] = out_phi.bodyout_id;
+      }
+      for (auto &loop_phi : curr->u_doloop().loop_phis) {
+	curmap[loop_phi.bodyin_id] = loop_phi.pre_id;
+	curmap[loop_phi.bodyout_id] = loop_phi.pre_id;
+	if (loop_phi.post_id) {
+	  curmap[*loop_phi.post_id] = loop_phi.pre_id;
+	}
+      }
+      curr->u_doloop().in_phis.clear();
+      curr->u_doloop().out_phis.clear();
+      curr->u_doloop().loop_phis.clear();
+      _run_unmap_seq (curr->u_doloop().branch, curmap);
+      curr->u_doloop().guard =
+	new_do_expr_renaming(std::move(curr->u_doloop().guard), curmap);
+      break;
+    }
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    curr = curr->child();
+  }
+}
+
 
   
 } // namespace
@@ -2575,6 +2691,16 @@ void takeOutOfStaticTokenForm(ChpGraph &graph) {
     auto crag =
         ColoredRegisterAllocationGraph::solve(std::move(rag), graph.id_pool());
     applyRegisterGraph(graph, crag);
+}
+
+void takeOutOfNewStaticTokenForm(ChpGraph &graph) {
+
+  if (graph.m_seq.empty()) {
+    return;
+  }
+
+  VarIdRemap curmap;
+  _run_unmap_seq (graph.m_seq, curmap);
 }
 
 } // namespace ChpOptimize
