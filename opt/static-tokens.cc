@@ -27,6 +27,7 @@
 #include "static-tokens.h"
 #include "chp-opt.h"
 #include "algos.h"
+#include "sequencers.h"
 
 namespace ChpOptimize {
 
@@ -2694,6 +2695,7 @@ void takeOutOfStaticTokenForm(ChpGraph &graph) {
 }
 
 void takeOutOfNewStaticTokenForm(ChpGraph &graph) {
+  hassert(graph.is_static_token_form);
 
   if (graph.m_seq.empty()) {
     return;
@@ -2701,6 +2703,9 @@ void takeOutOfNewStaticTokenForm(ChpGraph &graph) {
 
   VarIdRemap curmap;
   _run_unmap_seq (graph.m_seq, curmap);
+  removeSelfAssignments (graph);
+
+  graph.is_static_token_form = false;
 }
 
 } // namespace ChpOptimize
