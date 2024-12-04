@@ -103,6 +103,7 @@ class DFG_Node {
         }
         DFG_Node (Block *_b, Block::Variant_DoLoop::InPhi x, int idx) 
         {
+            hassert (_b->type() == BlockType::DoLoop);
             t = NodeType::LoopInPhi;
             b = _b;
             lip = x;
@@ -111,6 +112,7 @@ class DFG_Node {
         }
         DFG_Node (Block *_b, Block::Variant_DoLoop::OutPhi x, int idx) 
         {
+            hassert (_b->type() == BlockType::DoLoop);
             t = NodeType::LoopOutPhi;
             b = _b;
             lop = x;
@@ -119,6 +121,7 @@ class DFG_Node {
         }
         DFG_Node (Block *_b, Block::Variant_DoLoop::LoopPhi x, int idx) 
         {
+            hassert (_b->type() == BlockType::DoLoop);
             t = NodeType::LoopLoopPhi;
             b = _b;
             llp = x;
@@ -306,7 +309,7 @@ class Projection : protected ChoppingBlock {
         std::vector<Sequence> get_seqs ();
         std::vector<act_chp_lang_t *> get_procs ();
         void print_subgraphs ();
-        void split_assignments ();
+        void split_assignments (ChpGraph &);
         void split_selections ();
 
     private:

@@ -2695,6 +2695,8 @@ void takeOutOfStaticTokenForm(ChpGraph &graph) {
 
 void takeOutOfNewStaticTokenForm(ChpGraph &graph) {
 
+  hassert(graph.is_static_token_form);
+  graph.is_static_token_form = false;
   if (graph.m_seq.empty()) {
     return;
   }
