@@ -88,27 +88,36 @@ void Projection::project()
     // if (!_check_linear(g->graph.m_seq,1))
     //     return;
 
-    split_assignments();
-    
-    ChpOptimize::putIntoStaticTokenForm(g->graph);
-    // ChpOptimize::putIntoNewStaticTokenForm(g->graph);
-
-    // fprintf(stdout, "\n/* STF \n");
+    // fprintf(stdout, "\n/* One \n");
     // print_chp(std::cout, g->graph);
     // fprintf(stdout, "\n*/\n");
 
+    split_assignments(g->graph);
+
+    // fprintf(stdout, "\n/* Two \n");
+    // print_chp(std::cout, g->graph);
+    // fprintf(stdout, "\n*/\n");
+    
+    // ChpOptimize::putIntoStaticTokenForm(g->graph);
+    ChpOptimize::putIntoNewStaticTokenForm(g->graph);
+
+    fprintf(stdout, "\n/* STF \n");
+    print_chp(std::cout, g->graph);
+    fprintf(stdout, "\n*/\n");
+
+    // insert guard bool communications
     _build_graph(g->graph.m_seq);
-
-    ChpOptimize::takeOutOfStaticTokenForm(g->graph);
-
+    // ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+    ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
     _insert_guard_comms();
 
-    // fprintf(stdout, "\n/* Non-STF \n");
-    // print_chp(std::cout, g->graph);
-    // fprintf(stdout, "\n*/\n");
-
-    ChpOptimize::putIntoStaticTokenForm(g->graph);
-    // ChpOptimize::putIntoNewStaticTokenForm(g->graph);
+    fprintf(stdout, "\n/* Non-STF \n");
+    print_chp(std::cout, g->graph);
+    fprintf(stdout, "\n*/\n");
+    
+    // ChpOptimize::putIntoStaticTokenForm(g->graph);
+    ChpOptimize::putIntoNewStaticTokenForm(g->graph);
+    // split_assignments(g->graph);
 
     _build_graph(g->graph.m_seq);
     _compute_connected_components();
@@ -119,11 +128,12 @@ void Projection::project()
     print_subgraphs();
     // fprintf(stdout, "\n\nGOT HERE 1\n\n");
 
-    ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+    // ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+    ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
     // fprintf(stdout, "\n\nGOT HERE 2\n\n");
 
     int num_subgraphs = subgraphs.size();
-    if (num_subgraphs==1) return;
+    // if (num_subgraphs==1) return;
 
     std::unordered_set<int> marker_node_ids = {};
     // for (auto subgraph : subgraphs)
@@ -134,22 +144,14 @@ void Projection::project()
         auto g1 = chp_graph_from_act (a1, s);
 
         dfg.clear();
-        // _split_assignments(g1.graph.m_seq);
-        ChpOptimize::putIntoStaticTokenForm(g1.graph);
-        // ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
-        // bool cc;
-        // do {
-        //     cc = false;
+        _split_assignments(g1.graph.m_seq);
+        // ChpOptimize::putIntoStaticTokenForm(g1.graph);
+        ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
 
-        //     cc |= propagateConstants(g1.graph);
-        //     cc |= eliminateDeadCode(g1.graph);
-        //     // changed |= transposeAssignmentAndChanOps(g1.graph);
-        //     // changed |= fuseAssignments(g1.graph);
-        //     cc |= eliminateCopies(g1.graph);
-        // } while (cc);
         _build_graph(g1.graph.m_seq);
         _compute_connected_components();
-        ChpOptimize::takeOutOfStaticTokenForm(g1.graph);
+        // ChpOptimize::takeOutOfStaticTokenForm(g1.graph);
+        ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
 
         // fprintf(stdout, "\n\nGOT HERE 3\n\n");
         // dfg.print_adj(stdout);
@@ -195,50 +197,47 @@ void Projection::project()
         fprintf(stdout, "\n\n*/\n");
     }
 
-    // fprintf(stdout, "\n/* got here */\n");
-    // for (auto v : seqs)   
-    // {
-    //     std::vector<ActId *> tmp_names;
-    //     g->graph.m_seq = v;
-    //     act_chp_lang_t *tmp = chp_graph_to_act (*g, tmp_names, s);
-    // }
-    // fprintf(stdout, "\n/* got here 2*/\n");
-    // print_chp(std::cout, gwcns[0].graph);
-    // fprintf(stdout, "\n*/\n");
+    /*
+    for (auto v : seqs)   
+    {
+        std::vector<ActId *> tmp_names;
+        g->graph.m_seq = v;
+        act_chp_lang_t *tmp = chp_graph_to_act (*g, tmp_names, s);
+    }
+    print_chp(std::cout, gwcns[0].graph);
 
-    // tmp_names.clear();
-    // fprintf(stdout, "\n/* fourth \n");
-    // auto a2 = chp_graph_to_act (g1, tmp_names, s);
-    // auto g2 = chp_graph_from_act (a2, s);
-    // print_chp(std::cout, g1.graph);
-    // fprintf(stdout, "\n*/\n");
+    tmp_names.clear();
+    auto a2 = chp_graph_to_act (g1, tmp_names, s);
+    auto g2 = chp_graph_from_act (a2, s);
+    print_chp(std::cout, g1.graph);
 
-    // dfg.print_adj(stdout);
-    // fprintf(stdout, "\n\n");
-    // ChpOptimize::takeOutOfStaticTokenForm(g->graph);
-    // hassert (false);
-    // _build_sub_procs();
-    // fprintf(stdout, "\n\nGOT HERE 2\n\n");
+    dfg.print_adj(stdout);
+    fprintf(stdout, "\n\n");
+    ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+    hassert (false);
+    _build_sub_procs();
+    fprintf(stdout, "\n\nGOT HERE 2\n\n");
 
-    // Sequence save = g->graph.m_seq;
+    Sequence save = g->graph.m_seq;
 
-    // std::vector<Sequence> tmp = {}; 
-    // for ( auto s : seqs ) {
-    //     g->graph.m_seq = s;
+    std::vector<Sequence> tmp = {}; 
+    for ( auto s : seqs ) {
+        g->graph.m_seq = s;
 
-    //     print_chp(std::cout, g->graph);
-    //     fprintf(stdout, "\n\n");
+        print_chp(std::cout, g->graph);
+        fprintf(stdout, "\n\n");
         
-    //     if (!g->graph.is_static_token_form)
-    //         ChpOptimize::putIntoNewStaticTokenForm(g->graph);
-    //     if (g->graph.is_static_token_form)
-    //         ChpOptimize::takeOutOfStaticTokenForm(g->graph);
-    //     tmp.push_back(g->graph.m_seq);
-    // }
-    // seqs = tmp;
-    // g->graph.m_seq = save;
-    // if (g->graph.is_static_token_form)
-    //     ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+        if (!g->graph.is_static_token_form)
+            ChpOptimize::putIntoNewStaticTokenForm(g->graph);
+        if (g->graph.is_static_token_form)
+            ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+        tmp.push_back(g->graph.m_seq);
+    }
+    seqs = tmp;
+    g->graph.m_seq = save;
+    if (g->graph.is_static_token_form)
+        ChpOptimize::takeOutOfStaticTokenForm(g->graph);
+    */
 }
 
 void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std::unordered_set<DFG_Node *> &s)
@@ -470,11 +469,13 @@ std::vector<VarId> Projection::get_defs (DFG_Node *node)
     }
     break;
     case NodeType::LoopInPhi: {
-        hassert (false);
+        auto lip = node->lip;
+        ret.push_back(lip.bodyin_id);
     }
     break;
     case NodeType::LoopOutPhi: {
-        hassert (false);
+        auto lop = node->lop;
+        ret.push_back(lop.post_id);
     }
     break;
     case NodeType::LoopLoopPhi: {
@@ -542,11 +543,13 @@ std::unordered_set<VarId> Projection::get_uses (DFG_Node *node)
     }
     break;
     case NodeType::LoopInPhi: {
-        hassert (false);
+        auto lip = node->lip;
+        ret.insert(lip.pre_id);
     }
     break;
     case NodeType::LoopOutPhi: {
-        hassert (false);
+        auto lop = node->lop;
+        ret.insert(lop.bodyout_id);
     }
     break;
     case NodeType::LoopLoopPhi: {
@@ -787,6 +790,10 @@ void Projection::_insert_guard_comms ()
                     hassert ( g->graph.id_pool().getBitwidth(assn_blk->u_basic().stmt.u_assign().ids[0]) == 1 );
 
                     ChanId ci = g->graph.id_pool().makeUniqueChan(1, false);
+                    var_to_actvar vtoa(s, &g->graph.id_pool());
+                    ActId *id = vtoa.chanMap(ci);
+                    g->name_from_chan.insert({ci, id});
+                    
                     auto send = g->graph.blockAllocator().newBlock(
                         Block::makeBasicBlock(Statement::makeSend(ci, 
                         ChpExprSingleRootDag::makeVariableAccess(assn_blk->u_basic().stmt.u_assign().ids[0], 1))));
@@ -997,9 +1004,9 @@ void Projection::_splice_out_node (DFG_Node *n)
 }
 #endif
 
-void Projection::split_assignments()
+void Projection::split_assignments(ChpGraph &gg)
 {
-    _split_assignments(g->graph.m_seq);
+    _split_assignments(gg.m_seq);
 }
 
 void Projection::split_selections()
