@@ -336,6 +336,8 @@ class Projection : protected ChoppingBlock {
         void _build_sub_proc_new (GraphWithChanNames &, Sequence, std::unordered_set<DFG_Node *>&);
         Block *_build_selection (DFG_Node *, std::unordered_set<DFG_Node *>&);
         Sequence _build_basic (std::vector<DFG_Node *>);
+        void _build_basic_new (GraphWithChanNames &, std::vector<DFG_Node *>);
+        bool _all_basic (std::vector<DFG_Node *>);
 
         bool _set_contains (Block *, std::unordered_set<DFG_Node *>&);
 

@@ -101,13 +101,13 @@ void Projection::project()
     // ChpOptimize::putIntoStaticTokenForm(g->graph);
     ChpOptimize::putIntoNewStaticTokenForm(g->graph);
 
-    fprintf(stdout, "\n/* STF \n");
-    print_chp(std::cout, g->graph);
-    fprintf(stdout, "\n*/\n");
+    // fprintf(stdout, "\n/* STF \n");
+    // print_chp(std::cout, g->graph);
+    // fprintf(stdout, "\n*/\n");
 
     // insert guard bool communications
+    dfg.clear();
     _build_graph(g->graph.m_seq);
-    // ChpOptimize::takeOutOfStaticTokenForm(g->graph);
     ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
     _insert_guard_comms();
 
@@ -115,10 +115,13 @@ void Projection::project()
     print_chp(std::cout, g->graph);
     fprintf(stdout, "\n*/\n");
     
-    // ChpOptimize::putIntoStaticTokenForm(g->graph);
     ChpOptimize::putIntoNewStaticTokenForm(g->graph);
-    // split_assignments(g->graph);
 
+    fprintf(stdout, "\n/* STF \n");
+    print_chp(std::cout, g->graph);
+    fprintf(stdout, "\n*/\n");
+
+    dfg.clear();
     _build_graph(g->graph.m_seq);
     _compute_connected_components();
 
@@ -126,11 +129,8 @@ void Projection::project()
     fprintf(stdout, "\n\n");
 
     print_subgraphs();
-    // fprintf(stdout, "\n\nGOT HERE 1\n\n");
 
-    // ChpOptimize::takeOutOfStaticTokenForm(g->graph);
     ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
-    // fprintf(stdout, "\n\nGOT HERE 2\n\n");
 
     int num_subgraphs = subgraphs.size();
     // if (num_subgraphs==1) return;
@@ -143,101 +143,40 @@ void Projection::project()
         auto a1 = chp_graph_to_act (*g, tmp_names, s);
         auto g1 = chp_graph_from_act (a1, s);
 
-        dfg.clear();
-        _split_assignments(g1.graph.m_seq);
-        // ChpOptimize::putIntoStaticTokenForm(g1.graph);
         ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
 
+        dfg.clear();
         _build_graph(g1.graph.m_seq);
         _compute_connected_components();
-        // ChpOptimize::takeOutOfStaticTokenForm(g1.graph);
-        ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
-
-        // fprintf(stdout, "\n\nGOT HERE 3\n\n");
-        // dfg.print_adj(stdout);
-        // fprintf(stdout, "\n\n");
-        // print_subgraphs();
-        // fprintf(stdout, "\n\n");
-        // print_chp(std::cout, g1.graph);
 
         auto itr = subgraphs.begin();
-        // for (int j=0; j<i; j++) 
-        //     itr++;
         while ((marker_node_ids.contains((*itr).second[0]->id))) 
         {
             itr++;
         }
         hassert (itr != subgraphs.end());
         marker_node_ids.insert((*itr).second[0]->id);
-        std::unordered_set<DFG_Node *> tmp ((*itr).second.begin(), (*itr).second.end());
-        // fprintf(stdout, "\n%d\n",int(tmp.size()));
         // print_chp(std::cout, g1.graph);
-        // fprintf(stdout, "\n\nGOT HERE 4\n\n");
-        _build_sub_proc_new (g1, g1.graph.m_seq, tmp);
-        // fprintf(stdout, "\n\nGOT HERE 5\n\n");
+        if (_all_basic((*itr).second)) {
+            _build_basic_new (g1, (*itr).second);
+        }
+        else {
+            std::unordered_set<DFG_Node *> tmp ((*itr).second.begin(), (*itr).second.end());
+            _build_sub_proc_new (g1, g1.graph.m_seq, tmp);
+        }
 
-        // print_chp(std::cout, g1.graph);
-        // fprintf(stdout, "\n\nGOT HERE 6\n\n");
-        // if (!g1.graph.is_static_token_form)
-            // ChpOptimize::putIntoStaticTokenForm(g1.graph);
-            // ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
-        // if (g1.graph.is_static_token_form)
-        //     ChpOptimize::takeOutOfStaticTokenForm(g1.graph);
         seqs.push_back(g1.graph.m_seq);
-        // fprintf(stdout, "\n\nGOT HERE 7\n\n");
 
+        ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
         fprintf(stdout, "\n/* subproc: \n\n");
         // print_chp(std::cout, g1.graph);
         std::vector<ActId *> tmp_names2;
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
-        // auto _g = chp_graph_from_act (tmpact, s);
-        // tmpact = chp_graph_to_act (_g, tmp_names2, s);
         chp_print(stdout, tmpact);
         procs.push_back(tmpact);
         fprintf(stdout, "\n\n*/\n");
     }
 
-    /*
-    for (auto v : seqs)   
-    {
-        std::vector<ActId *> tmp_names;
-        g->graph.m_seq = v;
-        act_chp_lang_t *tmp = chp_graph_to_act (*g, tmp_names, s);
-    }
-    print_chp(std::cout, gwcns[0].graph);
-
-    tmp_names.clear();
-    auto a2 = chp_graph_to_act (g1, tmp_names, s);
-    auto g2 = chp_graph_from_act (a2, s);
-    print_chp(std::cout, g1.graph);
-
-    dfg.print_adj(stdout);
-    fprintf(stdout, "\n\n");
-    ChpOptimize::takeOutOfStaticTokenForm(g->graph);
-    hassert (false);
-    _build_sub_procs();
-    fprintf(stdout, "\n\nGOT HERE 2\n\n");
-
-    Sequence save = g->graph.m_seq;
-
-    std::vector<Sequence> tmp = {}; 
-    for ( auto s : seqs ) {
-        g->graph.m_seq = s;
-
-        print_chp(std::cout, g->graph);
-        fprintf(stdout, "\n\n");
-        
-        if (!g->graph.is_static_token_form)
-            ChpOptimize::putIntoNewStaticTokenForm(g->graph);
-        if (g->graph.is_static_token_form)
-            ChpOptimize::takeOutOfStaticTokenForm(g->graph);
-        tmp.push_back(g->graph.m_seq);
-    }
-    seqs = tmp;
-    g->graph.m_seq = save;
-    if (g->graph.is_static_token_form)
-        ChpOptimize::takeOutOfStaticTokenForm(g->graph);
-    */
 }
 
 void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std::unordered_set<DFG_Node *> &s)
@@ -353,6 +292,34 @@ void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
     }
     curr = curr->child();
     }
+}
+
+void Projection::_build_basic_new (GraphWithChanNames &gg, std::vector<DFG_Node *> nodes)
+{
+    std::vector<Block *> blks;
+    for ( auto n : nodes ) {
+        hassert (n->t == NodeType::Basic);
+        blks.push_back(n->b);
+    }
+    _splice_out_blocks (blks);
+    auto seq = gg.graph.blockAllocator().newSequence(blks);
+
+    Block *doloop = gg.graph.blockAllocator().newBlock(Block::makeDoLoopBlock());
+    doloop->u_doloop().branch = seq;
+
+    doloop->u_doloop().guard = (ChpExprSingleRootDag::of_expr(
+                                    ChpExpr::makeConstant(BigInt{1}, 1)));
+    
+    gg.graph.m_seq = gg.graph.blockAllocator().newSequence({doloop});
+}
+
+bool Projection::_all_basic (std::vector<DFG_Node *> xs)
+{
+    for ( auto x : xs ) {
+        if (x->t != NodeType::Basic)
+            return false;
+    }
+    return true;
 }
 
 #if 0
@@ -479,12 +446,11 @@ std::vector<VarId> Projection::get_defs (DFG_Node *node)
     }
     break;
     case NodeType::LoopLoopPhi: {
-        // auto llp = node->llp;
-        // ret.push_back(llp.bodyin_id);
-        // if (llp.post_id) {
-        //     ret.push_back(*llp.post_id);
-        // }
-        // hassert (false);
+        auto llp = node->llp;
+        ret.push_back(llp.bodyin_id);
+        if (llp.post_id) {
+            ret.push_back(*llp.post_id);
+        }
     }
     break;
     default:
@@ -718,16 +684,22 @@ void Projection::_build_graph (Sequence seq)
     break;
       
     case BlockType::DoLoop: {
-        for ( auto phi : curr->u_doloop().in_phis ) {
-            fprintf(fp, "\n// inphi: %llu, %llu",phi.bodyin_id.m_id,phi.pre_id.m_id);
-            hassert(false);
-        }
-        for ( auto phi : curr->u_doloop().out_phis ) {
-            // fprintf(fp, "\n// outphi: %llu, %llu",phi.bodyout_id.m_id,phi.post_id.m_id);
+        for ( auto iphi : curr->u_doloop().in_phis ) {
+            auto node = new DFG_Node (curr, iphi, dfg.gen_id()); 
+            dfg.add_node(node);
+            for ( auto n : dfg.nodes ) {
+                if (_check_data_dependence(n, node)) {
+                    dfg.add_edge(n,node);
+                }
+                if (_check_data_dependence(node, n)) {
+                    dfg.add_edge(node,n);
+                }
+            }
+            // fprintf(fp, "\n// inphi: %llu, %llu",phi.bodyin_id.m_id,phi.pre_id.m_id);
             // hassert(false);
         }
-        for ( auto phi : curr->u_doloop().loop_phis ) {
-            auto node = new DFG_Node (curr, phi, dfg.gen_id()); 
+        for ( auto lphi : curr->u_doloop().loop_phis ) {
+            auto node = new DFG_Node (curr, lphi, dfg.gen_id()); 
             dfg.add_node(node);
             for ( auto n : dfg.nodes ) {
                 if (_check_data_dependence(n, node)) {
@@ -739,8 +711,21 @@ void Projection::_build_graph (Sequence seq)
             }
             // fprintf(fp, "\n// loopphi: %llu, %llu, %llu, %llu",phi.pre_id.m_id,phi.bodyin_id.m_id,phi.bodyout_id.m_id, phi.post_id._getId());
         }
-        fprintf(fp, "\n\n");
+        // fprintf(fp, "\n\n");
         _build_graph(curr->u_doloop().branch);
+
+        for ( auto ophi : curr->u_doloop().out_phis ) {
+            auto node = new DFG_Node (curr, ophi, dfg.gen_id()); 
+            dfg.add_node(node);
+            for ( auto n : dfg.nodes ) {
+                if (_check_data_dependence(n, node)) {
+                    dfg.add_edge(n,node);
+                }
+                if (_check_data_dependence(node, n)) {
+                    dfg.add_edge(node,n);
+                }
+            }
+        }
     }
     break;
     
