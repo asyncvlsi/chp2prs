@@ -99,6 +99,10 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     // if (_isdynamic_var) {
     //   return;
     // }
+    if (v->fischan==1) {
+      if (id->isEqual(c->u.comm.chan))
+        v->iwrite++;
+    }
     if (c->u.comm.e) {
       if ( _var_appears_in_expr (c->u.comm.e, id) )
         v->nread++;
@@ -107,6 +111,10 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
 
   case ACT_CHP_RECV:
     // v = _var_getinfo (c->u.comm.chan);
+    if (v->fischan==1) {
+      if (id->isEqual(c->u.comm.chan))
+        v->iread++;
+    }
     if ((c->u.comm.var) && id->isEqual(c->u.comm.var))
     { 
       Assert ((latch_info_t *)(c->space), "hmm2");
@@ -967,7 +975,13 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         v->latest_for_read = 0;
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
-        // _construct_var_info (c, id, v);
+        // fprintf(stdout, "found a chan\n");
+        _construct_var_info (c, id, v);
+        if (v->iwrite>1 || v->iread>1) {
+          fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
+        }
+        v->iread = 0;
+        v->iwrite = 0;
         b = hash_add (var_infos, v->name);
         b->v = v;
       }
