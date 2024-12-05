@@ -108,8 +108,10 @@ bool RingForge::_structure_check (act_chp_lang_t *c)
             act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
             if (!(stmt->type==ACT_CHP_ASSIGN || stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP))
                 return false;
+            if ((stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP))
+                return (_internal_loop_check (stmt->u.gc->s) && !(stmt->u.gc->next));
         }
-        return true;
+        return false;
     }
     if (c->type == ACT_CHP_COMMA)
     {
@@ -123,6 +125,51 @@ bool RingForge::_structure_check (act_chp_lang_t *c)
     }
     chp_print(stdout, c);
     return false;
+}
+
+bool RingForge::_internal_loop_check (act_chp_lang_t *c)
+{
+  switch (c->type) {
+  case ACT_CHP_SKIP:
+  case ACT_CHP_ASSIGN:
+  case ACT_CHP_SEND:
+  case ACT_CHP_RECV:
+    return true;
+    break;
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI: {
+        bool ret = true;
+        for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+        {
+            ret &= _internal_loop_check ((act_chp_lang_t *) list_value (li));
+        }
+        return ret;
+    }
+    break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+    return false;
+    break;
+  case ACT_CHP_SELECT_NONDET:
+  case ACT_CHP_SELECT: {
+        act_chp_gc_t *gc = c->u.gc;
+        bool ret = true;
+        while (gc) 
+        {
+            ret &= _internal_loop_check (gc->s);
+            gc = gc->next;
+        }
+        return ret;
+    }
+    break;
+
+  case ACT_CHP_FUNC:
+    break;
+  default:
+    fatal_error ("What?");
+    break;
+  }
+  return false;
 }
 
 void RingForge::_run_forge_helper (act_chp_lang_t *c)
