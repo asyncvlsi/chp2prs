@@ -29,7 +29,7 @@
 
 static void usage(char *name)
 {
-  fprintf (stderr, "Usage: %s [-OXRbh] [-d <file>] [-e <file>] [-o <file>] [-E abc|yosys|genus] -p <proc> <actfile>\n", name);
+  fprintf (stderr, "Usage: %s [-Obh] [-P <int>] [-e <file>] [-o <file>] [-E abc|yosys|genus] -p <proc> <actfile>\n", name);
   fprintf (stderr, "Options:\n");
   fprintf (stderr, " -h : help; display this message\n");
   fprintf (stderr, " -O : optimize CHP\n");
@@ -39,11 +39,15 @@ static void usage(char *name)
   fprintf (stderr, "        * ring : ring-based synthesis prs output [implies bundled data]\n");
   fprintf (stderr, "        * decomp : decomposition - CHP-to-CHP\n");
   fprintf (stderr, " -G : Non-SSA style datapath, for ring synthesis only (with -b only for now)\n");
-  fprintf (stderr, " -R : synthesize with ring approach [deprecated, use -F ring]\n");
   fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI)\n");
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
-  fprintf (stderr, " -P <int> : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3  (default 0) \n");
+  fprintf (stderr, " -P <int> : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3 (or) 4 (default 0) \n");
+  fprintf (stderr, "      * 0 : Only necessary decomposition\n");
+  fprintf (stderr, "      * 1 : Break at receives\n");
+  fprintf (stderr, "      * 2 : Break at selections\n");
+  fprintf (stderr, "      * 3 : Break at minimum live variable points\n");
+  fprintf (stderr, "      * 4 : Break at assignments, receives and parallel branches\n");
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   fprintf (stderr, "-E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
@@ -98,11 +102,6 @@ int main(int argc, char **argv)
 	fprintf (stderr, "Unknown synthesis output format: %s\n", optarg);
 	usage (argv[0]);
       }
-      break;
-      
-    case 'R':
-      use_ring = true;
-      bundled = true;
       break;
 
     case 'G':
@@ -168,7 +167,7 @@ int main(int argc, char **argv)
     case 'P':
       parallelism = std::atoi(Strdup (optarg));
       if (!(parallelism>=0 && parallelism <=4)) {
-        fprintf (stderr, "Parallelism level: 0 (or) 1 (or) 2 (or) 3 [4 for testing]");
+        fprintf (stderr, "Parallelism level: 0 (or) 1 (or) 2 (or) 3 (or) 4");
         usage (argv[0]);
       }
       break;

@@ -48,20 +48,29 @@ class BreakPoints : public DecompAnalysis {
     private:
 
         /* 
-         * Receives only
+         * -P0
+         * No breakpoints
+         */ 
+
+        /* 
+         * -P1
+         * Receives only 
          */ 
         void _mark_breakpoints_v1(Sequence seq, int root);
         /*
+         * -P2
          * Selections only - for testing
         */
         void _mark_breakpoints_v2(Sequence seq, int root);
 
         /*
+         * -P3
          * Assignments, receives and parallel
         */
         void _mark_breakpoints_v3(Sequence seq, int root);
 
         /*
+         * -P4
          * Breakpoints at minimum live var. points
         */
         void _mark_breakpoints_v4(Sequence seq, int root);
