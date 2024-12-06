@@ -308,7 +308,7 @@ class Projection : protected ChoppingBlock {
         void project ();
         std::vector<Sequence> get_seqs ();
         std::vector<act_chp_lang_t *> get_procs ();
-        void print_subgraphs ();
+        void print_subgraphs (FILE *);
         void split_assignments (ChpGraph &);
         void split_selections ();
 
@@ -347,6 +347,7 @@ class Projection : protected ChoppingBlock {
         std::unordered_set<VarId> get_uses (DFG_Node *);
 
         bool _check_data_dependence (DFG_Node *, DFG_Node *);
+        bool _check_guard_phi_dependence (DFG_Node *, DFG_Node *);
         bool _check_guard_phi_inv_dependence (DFG_Node *, DFG_Node *);
 
         void _split_selections (Sequence);

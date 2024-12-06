@@ -101,36 +101,38 @@ void Projection::project()
     // ChpOptimize::putIntoStaticTokenForm(g->graph);
     ChpOptimize::putIntoNewStaticTokenForm(g->graph);
 
-    // fprintf(stdout, "\n/* STF \n");
-    // print_chp(std::cout, g->graph);
-    // fprintf(stdout, "\n*/\n");
+    fprintf(stdout, "\n/* STF \n");
+    print_chp(std::cout, g->graph);
+    fprintf(stdout, "\n*/\n");
 
     // insert guard bool communications
     dfg.clear();
     _build_graph(g->graph.m_seq);
     ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
-    _insert_guard_comms();
+    // _insert_guard_comms();
 
-    fprintf(stdout, "\n/* Non-STF \n");
-    print_chp(std::cout, g->graph);
-    fprintf(stdout, "\n*/\n");
-    
-    ChpOptimize::putIntoNewStaticTokenForm(g->graph);
+    // fprintf(stdout, "\n/* Non-STF \n");
+    // print_chp(std::cout, g->graph);
+    // fprintf(stdout, "\n*/\n");
 
-    fprintf(stdout, "\n/* STF \n");
-    print_chp(std::cout, g->graph);
-    fprintf(stdout, "\n*/\n");
+    std::vector<ActId *> tmp_names;
+    auto a1 = chp_graph_to_act (*g, tmp_names, s);
+    auto g1 = chp_graph_from_act (a1, s);
 
     dfg.clear();
-    _build_graph(g->graph.m_seq);
+    ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
+    _build_graph(g1.graph.m_seq);
     _compute_connected_components();
 
-    dfg.print_adj(stdout);
-    fprintf(stdout, "\n\n");
+    // dfg.print_adj(stdout);
+    // fprintf(stdout, "\n\n");
+    // print_subgraphs(stdout);
+    
+    fprintf(stdout, "\n/* STF \n");
+    print_chp(std::cout, g1.graph);
+    fprintf(stdout, "\n*/\n");
 
-    print_subgraphs();
-
-    ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
+    // ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
 
     int num_subgraphs = subgraphs.size();
     // if (num_subgraphs==1) return;
@@ -149,6 +151,13 @@ void Projection::project()
         _build_graph(g1.graph.m_seq);
         _compute_connected_components();
 
+        dfg.print_adj(stdout);
+        fprintf(stdout, "\n\n");
+        print_subgraphs(stdout);
+        fprintf(stdout, "\n/* STF \n");
+        print_chp(std::cout, g1.graph);
+        fprintf(stdout, "\n*/\n");
+
         auto itr = subgraphs.begin();
         while ((marker_node_ids.contains((*itr).second[0]->id))) 
         {
@@ -158,9 +167,19 @@ void Projection::project()
         marker_node_ids.insert((*itr).second[0]->id);
         // print_chp(std::cout, g1.graph);
         if (_all_basic((*itr).second)) {
+            // fprintf(stdout, "\n// building basic: %d \n", int((*itr).second.size()));
+            // for ( auto x : (*itr).second ) {
+            //     fprintf(stdout, "%d, ", x->id);
+            // }
+            // fprintf(stdout, "\n");
             _build_basic_new (g1, (*itr).second);
         }
         else {
+            // fprintf(stdout, "\n// building full: %d \n", int((*itr).second.size()));
+            // for ( auto x : (*itr).second ) {
+            //     fprintf(stdout, "%d, ", x->id);
+            // }
+            // fprintf(stdout, "\n");
             std::unordered_set<DFG_Node *> tmp ((*itr).second.begin(), (*itr).second.end());
             _build_sub_proc_new (g1, g1.graph.m_seq, tmp);
             _remove_guard_comms (g1, g1.graph.m_seq);
@@ -168,16 +187,21 @@ void Projection::project()
 
         seqs.push_back(g1.graph.m_seq);
 
+        fprintf(stdout, "\n/* Post-build STF \n");
+        print_chp(std::cout, g1.graph);
+        fprintf(stdout, "\n*/\n");
         ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
         fprintf(stdout, "\n/* subproc: \n\n");
-        // print_chp(std::cout, g1.graph);
         std::vector<ActId *> tmp_names2;
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
         chp_print(stdout, tmpact);
         procs.push_back(tmpact);
         fprintf(stdout, "\n\n*/\n");
+        // fprintf(stdout, "\nnum_subg: %d", num_subgraphs);
+        // fprintf(stdout, "\nsubg_size: %d", int(subgraphs.size()));
+        hassert (num_subgraphs == subgraphs.size());
     }
-
+    hassert (marker_node_ids.size() == subgraphs.size());
 }
 
 void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std::unordered_set<DFG_Node *> &s)
@@ -551,11 +575,21 @@ bool Projection::_check_guard_phi_inv_dependence (DFG_Node *guard_node, DFG_Node
     hassert (guard_node->t == NodeType::Guard);
     hassert (phi_inv_node->t == NodeType::SelPhiInv);
 
+    if (guard_node->b != phi_inv_node->b) return false;
+
     auto br_ids = phi_inv_node->phi_inv.branch_ids;
     int br = guard_node->g.first;
     hassert (br < br_ids.size());
     auto br_id = (br_ids[br]);
     return (br_id) ? true : false; // this is just for my own sanity
+}
+
+bool Projection::_check_guard_phi_dependence (DFG_Node *guard_node, DFG_Node *phi_node)
+{
+    hassert (guard_node->t == NodeType::Guard);
+    hassert (phi_node->t == NodeType::SelPhi);
+
+    return (guard_node->b == phi_node->b);
 }
 
 void Projection::_build_graph (Sequence seq)
@@ -678,6 +712,11 @@ void Projection::_build_graph (Sequence seq)
                 }
                 if (_check_data_dependence(node, n)) {
                     dfg.add_edge(node,n);
+                }
+                if (n->t == NodeType::Guard) {
+                    if (_check_guard_phi_dependence(n, node)) {
+                        dfg.add_edge(n,node);
+                    }
                 }
             }
         }
@@ -895,16 +934,16 @@ void Projection::_remove_guard_comms (GraphWithChanNames &gg, Sequence seq)
     }
 }
 
-void Projection::print_subgraphs ()
+void Projection::print_subgraphs (FILE *ff)
 {
-    fprintf (fp, "\n/* --- Connected components ---\n");
+    fprintf (ff, "\n/* --- Connected components ---\n");
     for ( auto x : subgraphs ) {
-        fprintf(fp, "\ncomponent : ");
+        fprintf(ff, "\ncomponent : ");
         for ( auto n : x.second ) {
-            fprintf(fp, "%d, ", n->id);
+            fprintf(ff, "%d, ", n->id);
         }
     }
-    fprintf (fp, "\n\n   --- Connected components --- */ \n");
+    fprintf (ff, "\n\n   --- Connected components --- */ \n");
 }
 
 void Projection::_splice_out_blocks (std::vector<Block *> blks)
