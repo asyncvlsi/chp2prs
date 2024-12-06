@@ -163,6 +163,7 @@ void Projection::project()
         else {
             std::unordered_set<DFG_Node *> tmp ((*itr).second.begin(), (*itr).second.end());
             _build_sub_proc_new (g1, g1.graph.m_seq, tmp);
+            _remove_guard_comms (g1, g1.graph.m_seq);
         }
 
         seqs.push_back(g1.graph.m_seq);
@@ -835,83 +836,53 @@ void Projection::_insert_guard_comms ()
     }
 }
 
-void Projection::print_subgraphs ()
+void Projection::_remove_guard_comms (GraphWithChanNames &gg, Sequence seq)
 {
-    fprintf (fp, "\n/* --- Connected components ---\n");
-    for ( auto x : subgraphs ) {
-        fprintf(fp, "\ncomponent : ");
-        for ( auto n : x.second ) {
-            fprintf(fp, "%d, ", n->id);
-        }
-    }
-    fprintf (fp, "\n\n   --- Connected components --- */ \n");
-}
-
-void Projection::_build_sub_procs ()
-{
-    seqs.clear();
-    if (subgraphs.size() == 1) {
-        return;
-    }
-
-    int i=0;
-    for ( auto x : subgraphs ) {
-        auto dfg_vec = x.second;
-        // bool build = true;
-        // only build linear subgraphs (for now)
-        // for ( auto n : dfg_nodes ) {
-            // if (n->t != NodeType::Basic) build = false;
-        // }
-        // if (build) 
-        printf("\nbuilding proc %d", i);
-        std::unordered_set<DFG_Node *> tmp (dfg_vec.begin(), dfg_vec.end());
-        seqs.push_back (_build_sub_proc(g->graph.m_seq, tmp));
-        // hassert (tmp.empty());
-        i++;
-    }
-}
-
-Sequence Projection::_build_sub_proc (Sequence seq, std::unordered_set<DFG_Node *> &nodes)
-{
-    Sequence ret;
-    std::vector<Block *> blks = {};
     Block *curr = seq.startseq->child();
+
     while (curr->type() != BlockType::EndSequence) {
     switch (curr->type()) {
-    case BlockType::Basic: {
-        auto dfgnode = dfg.find(curr);
-        if (dfgnode && nodes.contains(dfgnode)) {
-            blks.push_back(curr);
-            nodes.erase(dfgnode);
-        }
-    }
+    case BlockType::Basic:
     break;
       
     case BlockType::Par: {
-        hassert (false);
         for (auto &branch : curr->u_par().branches) {
-            _build_sub_proc (branch, nodes);
+            _remove_guard_comms (gg, branch);
+        }
+        if (curr->u_par().branches.size()==2) {
+            auto first = curr->u_par().branches.front();
+            auto second = curr->u_par().branches.back();
+            if (first.startseq->child()->type() == BlockType::Basic
+            && second.startseq->child()->type() == BlockType::Basic) {
+                // always (send,recv), never (recv,send)
+                auto &send = first.startseq->child()->u_basic().stmt;
+                auto &recv = second.startseq->child()->u_basic().stmt;
+                if (send.type()==StatementType::Send 
+                 && recv.type()==StatementType::Receive
+                 && send.u_send().chan == recv.u_receive().chan
+                 && (recv.u_receive().var)
+                 && gg.graph.id_pool().getBitwidth(send.u_send().chan) == 1) {
+                    auto assn = gg.graph.blockAllocator().newBlock(Block::makeBasicBlock(
+                        Statement::makeAssignment(*(recv.u_receive().var),
+                        ChpExprSingleRootDag::deep_copy(send.u_send().e))
+                    ));
+                    _splice_in_block_between(curr,curr->child(),assn);
+                    curr = _splice_out_block (curr);
+                    hassert (curr==assn);
+                }
+            }
         }
     }
     break;
       
     case BlockType::Select: {
-        auto dfgnode = dfg.find(curr);
-        if (dfgnode && nodes.contains(dfgnode)) {
-            // collect all 
-            // build the new selection
-            // erase the dfg nodes
-            auto b = _build_selection (dfgnode, nodes);
-            // for (auto &branch : curr->u_select().branches) {
-            //     _build_sub_proc (branch.seq, nodes);
-            // }
-            blks.push_back(b);
+        for (auto &branch : curr->u_select().branches) {
+            _remove_guard_comms (gg, branch.seq);
         }
     }
     break;
     case BlockType::DoLoop: {
-        ret = _build_sub_proc(curr->u_doloop().branch, nodes);
-        return _wrap_in_do_loop(ret);
+        _remove_guard_comms(gg, curr->u_doloop().branch);
     }
     break;
     
@@ -922,45 +893,18 @@ Sequence Projection::_build_sub_proc (Sequence seq, std::unordered_set<DFG_Node 
     }
     curr = curr->child();
     }
-    hassert (!(blks.empty()));
-    _splice_out_blocks (blks);
-    return g->graph.blockAllocator().newSequence(blks);
 }
 
-Block *Projection::_build_selection (DFG_Node *n, std::unordered_set<DFG_Node *> &nodes)
+void Projection::print_subgraphs ()
 {
-    Block *orig = n->b;
-    hassert (orig->type() == BlockType::Select);
-    std::vector<DFG_Node *> v;
-    std::unordered_set<int> brs;
-    std::unordered_map<int, DFG_Node *> gs;
-    for ( auto x : nodes )
-    {
-        if (x->b == n->b) {
-            v.push_back(x);
-            if (x->t == NodeType::Guard) {
-                gs.insert( {(x->g).first, x} );
-                brs.insert((x->g).first);
-            }
+    fprintf (fp, "\n/* --- Connected components ---\n");
+    for ( auto x : subgraphs ) {
+        fprintf(fp, "\ncomponent : ");
+        for ( auto n : x.second ) {
+            fprintf(fp, "%d, ", n->id);
         }
     }
-    for ( auto x : v )
-    {
-        nodes.erase(x);
-    }
-    Block *newsel = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
-    // just need to see which selection branches to put in the new one
-    // leave the rest
-    int i=0;
-    for ( auto &sel_br : orig->u_select().branches ) {
-        auto seq = sel_br.seq;
-        if (brs.contains(i)) {
-            newsel->u_select().branches.push_back({seq, IRGuard::deep_copy((gs[i])->g.second)});
-        }
-        i++;
-    }
-    newsel->u_select().branches.push_back({g->graph.blockAllocator().newSequence({}), IRGuard::makeElse()});
-    return newsel;
+    fprintf (fp, "\n\n   --- Connected components --- */ \n");
 }
 
 void Projection::_splice_out_blocks (std::vector<Block *> blks)
