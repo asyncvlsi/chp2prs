@@ -244,6 +244,17 @@ VarId new_do_direct_renaming (VarId input_id, VarIdRemap &curmap)
   return input_id;
 }
 
+void _update_curmap (VarIdRemap &curmap, VarId from, VarId to)
+{
+  if (curmap.contains (to)) {
+    curmap[from] = curmap[to];
+  }
+  else {
+    curmap[from] = to;
+  }
+  hassert (!curmap.contains (curmap[from]));
+}
+
 
 template <typename K>
 std::unordered_set<K> absl_intersection(const std::unordered_set<K> &a,
@@ -1006,7 +1017,7 @@ void _run_unmap_seq (Sequence seq, VarIdRemap &curmap)
 	for (size_t i = 0; i < splitphi.branch_ids.size(); i++) {
 	  if (splitphi.branch_ids[i]) {
 	    VarId v = *splitphi.branch_ids[i];
-	    curmap[v] = pre_id;
+	    _update_curmap (curmap, v, pre_id);
 	  }
 	}
       }
@@ -1014,6 +1025,7 @@ void _run_unmap_seq (Sequence seq, VarIdRemap &curmap)
 	VarId post_id = mergephi.post_id;
 	for (size_t i = 0; i < mergephi.branch_ids.size(); i++) {
 	  curmap[mergephi.branch_ids[i]] = post_id;
+	  _update_curmap (curmap, mergephi.branch_ids[i], post_id);
 	}
       }
       curr->u_select().splits.clear();
@@ -1032,16 +1044,16 @@ void _run_unmap_seq (Sequence seq, VarIdRemap &curmap)
 
     case BlockType::DoLoop: {
       for (auto &in_phi : curr->u_doloop().in_phis) {
-	curmap[in_phi.bodyin_id] = in_phi.pre_id;
+	_update_curmap (curmap, in_phi.bodyin_id, in_phi.pre_id);
       }
       for (auto &out_phi : curr->u_doloop().out_phis) {
-	curmap[out_phi.post_id] = out_phi.bodyout_id;
+	_update_curmap (curmap, out_phi.post_id, out_phi.bodyout_id);
       }
       for (auto &loop_phi : curr->u_doloop().loop_phis) {
-	curmap[loop_phi.bodyin_id] = loop_phi.pre_id;
-	curmap[loop_phi.bodyout_id] = loop_phi.pre_id;
+	_update_curmap (curmap, loop_phi.bodyin_id, loop_phi.pre_id);
+	_update_curmap (curmap, loop_phi.bodyout_id, loop_phi.pre_id);
 	if (loop_phi.post_id) {
-	  curmap[*loop_phi.post_id] = loop_phi.pre_id;
+	  _update_curmap (curmap, *loop_phi.post_id, loop_phi.pre_id);
 	}
       }
       curr->u_doloop().in_phis.clear();
