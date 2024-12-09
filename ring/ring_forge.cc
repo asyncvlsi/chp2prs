@@ -103,20 +103,24 @@ bool RingForge::_structure_check (act_chp_lang_t *c)
     
     if (c->type == ACT_CHP_SEMI)
     {
-        for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li))
+        for (listitem_t *li = list_first (c->u.semi_comma.cmd) ; li ; li = list_next(li))
         {
             act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
-            if (!(stmt->type==ACT_CHP_ASSIGN || stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP))
+            if (!(stmt->type==ACT_CHP_ASSIGN || stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP)) {
+                chp_print(stdout, stmt);
                 return false;
-            if ((stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP))
+            }
+            if ((stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP)) {
                 return (_internal_loop_check (stmt->u.gc->s) && !(stmt->u.gc->next));
+            }
         }
+        chp_print(stdout, c);
         return false;
     }
     if (c->type == ACT_CHP_COMMA)
     {
         bool ret = true;
-        for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li))
+        for (listitem_t *li = list_first (c->u.semi_comma.cmd) ; li ; li = list_next(li))
         {
             act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
             ret &= _structure_check (stmt);

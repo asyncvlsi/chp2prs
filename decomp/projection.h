@@ -207,6 +207,23 @@ class DFG {
             adj[f_idx] = new_adj;
         }
 
+        bool contains_edge (DFG_Node *from, DFG_Node *to) {
+            int f_idx = -1;
+            for (int i=0; i<nodes.size(); i++) {
+                if (nodes[i] == from) {
+                    f_idx = i;
+                }
+            }
+            if (f_idx==-1) {
+                printf("\nfrom: %d", f_idx);
+                fatal_error ("Node doesn't exist in graph");
+            }
+            for ( auto x : adj[f_idx] ) {
+                if (x==to) return true;
+            }
+            return false;
+        }
+
         bool contains (DFG_Node *node) {
             for ( auto n1 : nodes ) {
                 if (node==n1) return true;
@@ -331,6 +348,9 @@ class Projection : protected ChoppingBlock {
         void _compute_connected_components ();
         void _insert_guard_comms ();
         void _remove_guard_comms (GraphWithChanNames &, Sequence);
+        void _insert_copy (DFG_Node *, DFG_Node *, VarId);
+        void _insert_copies ();
+        void _replace_uses (Sequence, VarId, VarId);
 
         void _build_sub_proc_new (GraphWithChanNames &, Sequence, std::unordered_set<DFG_Node *>&);
         void _build_basic_new (GraphWithChanNames &, std::vector<DFG_Node *>);

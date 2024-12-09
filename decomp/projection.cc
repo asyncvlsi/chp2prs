@@ -109,11 +109,11 @@ void Projection::project()
     dfg.clear();
     _build_graph(g->graph.m_seq);
     ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
-    // _insert_guard_comms();
+    fprintf(stdout, "\n/* Non-STF \n");
+    print_chp(std::cout, g->graph);
+    fprintf(stdout, "\n*/\n");
+    _insert_guard_comms();
 
-    // fprintf(stdout, "\n/* Non-STF \n");
-    // print_chp(std::cout, g->graph);
-    // fprintf(stdout, "\n*/\n");
 
     std::vector<ActId *> tmp_names;
     auto a1 = chp_graph_to_act (*g, tmp_names, s);
@@ -124,9 +124,9 @@ void Projection::project()
     _build_graph(g1.graph.m_seq);
     _compute_connected_components();
 
-    // dfg.print_adj(stdout);
-    // fprintf(stdout, "\n\n");
-    // print_subgraphs(stdout);
+    dfg.print_adj(stdout);
+    fprintf(stdout, "\n\n");
+    print_subgraphs(stdout);
     
     fprintf(stdout, "\n/* STF \n");
     print_chp(std::cout, g1.graph);
@@ -151,12 +151,12 @@ void Projection::project()
         _build_graph(g1.graph.m_seq);
         _compute_connected_components();
 
-        dfg.print_adj(stdout);
-        fprintf(stdout, "\n\n");
-        print_subgraphs(stdout);
-        fprintf(stdout, "\n/* STF \n");
-        print_chp(std::cout, g1.graph);
-        fprintf(stdout, "\n*/\n");
+        // dfg.print_adj(stdout);
+        // fprintf(stdout, "\n\n");
+        // print_subgraphs(stdout);
+        // fprintf(stdout, "\n/* STF \n");
+        // print_chp(std::cout, g1.graph);
+        // fprintf(stdout, "\n*/\n");
 
         auto itr = subgraphs.begin();
         while ((marker_node_ids.contains((*itr).second[0]->id))) 
@@ -187,9 +187,9 @@ void Projection::project()
 
         seqs.push_back(g1.graph.m_seq);
 
-        fprintf(stdout, "\n/* Post-build STF \n");
-        print_chp(std::cout, g1.graph);
-        fprintf(stdout, "\n*/\n");
+        // fprintf(stdout, "\n/* Post-build STF \n");
+        // print_chp(std::cout, g1.graph);
+        // fprintf(stdout, "\n*/\n");
         ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
         fprintf(stdout, "\n/* subproc: \n\n");
         std::vector<ActId *> tmp_names2;
@@ -872,6 +872,98 @@ void Projection::_insert_guard_comms ()
     }
     for (auto x : to_delete) {
         dfg.delete_edge (x.first, x.second);
+    }
+}
+
+void Projection::_insert_copy (DFG_Node *from, DFG_Node *to, VarId v)
+{
+    auto b_from = from->b;
+    auto b_to = to->b;
+
+    hassert (b_from->child()==b_to);
+    hassert (dfg.contains_edge(from, to));
+
+    ChanId ci = g->graph.id_pool().makeUniqueChan(g->graph.id_pool().getBitwidth(v), false);
+    var_to_actvar vtoa(s, &g->graph.id_pool());
+    ActId *id = vtoa.chanMap(ci);
+    g->name_from_chan.insert({ci, id});
+    
+    auto send = g->graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeSend(ci, 
+        ChpExprSingleRootDag::makeVariableAccess(v, 1))));
+    
+    VarId copy_var = g->graph.id_pool().makeUniqueVar(g->graph.id_pool().getBitwidth(v), false);
+
+    auto recv = g->graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeReceive(ci, copy_var)));
+
+    auto dist_assn = g->graph.blockAllocator().newBlock(Block::makeParBlock());
+    dist_assn->u_par().branches.push_back(g->graph.blockAllocator().newSequence({send}));
+    dist_assn->u_par().branches.push_back(g->graph.blockAllocator().newSequence({recv}));
+
+    _splice_in_block_between (b_from, b_from->child(), dist_assn);
+
+    _replace_uses (g->graph.m_seq, v, copy_var);
+}
+
+void Projection::_replace_uses (Sequence seq, VarId oldvar, VarId newvar)
+{
+    Block *curr = seq.startseq->child();
+
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        switch (curr->u_basic().stmt.type()) {
+        case StatementType::Receive: 
+            break;
+        case StatementType::Send: {
+            ChpExprDag::mapNodes(curr->u_basic().stmt.u_send().e.m_dag, [&](ChpExprDag::Node &n) {
+            if (n.type() == IRExprTypeKind::Var) {
+                if (n.u_var().id == oldvar) {
+                    n.u_var().id = newvar;
+                }
+            }});
+        }
+            break;
+        case StatementType::Assign: {
+            ChpExprDag::mapNodes(curr->u_basic().stmt.u_assign().e, [&](ChpExprDag::Node &n) {
+            if (n.type() == IRExprTypeKind::Var) {
+                if (n.u_var().id == oldvar) {
+                    n.u_var().id = newvar;
+                }
+            }});
+            }
+            break;
+        }
+    }
+    break;
+      
+    case BlockType::Par: {
+        // To Do ....
+        for (auto &branch : curr->u_par().branches) {
+            _replace_uses (branch, oldvar, newvar);
+        }
+    }
+    break;
+      
+    case BlockType::Select: {
+        // To Do ....
+        for (auto &branch : curr->u_select().branches) {
+            _replace_uses (branch.seq , oldvar, newvar);
+        }
+    }
+    break;
+    case BlockType::DoLoop: {
+        _replace_uses (curr->u_doloop().branch, oldvar, newvar);
+    }
+    break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
     }
 }
 
