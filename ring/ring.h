@@ -64,6 +64,9 @@ class RingEngine {
         void save_var_infos ();
         void restore_var_infos ();
 
+        void _push_read_ids();
+        void _pop_and_restore_read_ids();
+
         // Merge mux info builder functions ---------
         void _construct_merge_latch_info (act_chp_lang_t *, int);
         bool _var_assigned_in_subtree (act_chp_lang_t *, const char *);
@@ -93,6 +96,8 @@ class RingEngine {
         Hashtable *var_infos;
         Hashtable *var_infos_copy;
         Hashtable *var_infos_read_ids;
+
+        list_t *H_stk;
 
         // Expression handling for Expropt
         iHashtable *_inexprmap;

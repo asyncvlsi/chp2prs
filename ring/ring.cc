@@ -38,6 +38,8 @@ RingEngine::RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
                 var_infos_copy = hash_new (4);
                 var_infos_read_ids = hash_new (4);
 
+                H_stk = list_new();
+
                 _inexprmap = ihash_new (0);
                 _inwidthmap = ihash_new (0);
 
@@ -1040,6 +1042,30 @@ void RingEngine::_save_read_ids ()
     var_infos_read_ids = _deepcopy_var_info_hashtable (var_infos, 1);
 }
 
+void RingEngine::_push_read_ids()
+{
+  auto hi = _deepcopy_var_info_hashtable (var_infos, 1);
+  stack_push (H_stk, hi);
+}
+
+void RingEngine::_pop_and_restore_read_ids()
+{
+  Assert (!(list_isempty(H_stk)), "Tried to pop from empty var_infos stack");
+  auto hi = (Hashtable *)stack_pop(H_stk);
+
+  hash_bucket_t *b, *b_saved;
+  var_info *vi, *vi_saved;
+  hash_iter_t itr;
+  hash_iter_init (var_infos, &itr);
+  while ((b = hash_iter_next (var_infos, &itr))) {
+    b_saved = hash_lookup(hi, b->key);
+    Assert (b_saved, "No var_info_read_id ??");
+    vi_saved = (var_info *)b_saved->v;
+    vi = (var_info *)b->v;
+    vi->latest_for_read = vi_saved->latest_for_read;
+  }
+}
+
 void RingEngine::restore_var_infos ()
 {
     var_infos = hash_new (4);
@@ -1047,6 +1073,7 @@ void RingEngine::restore_var_infos ()
     hash_clear (var_infos_copy);
 }
 
+#if 0
 void RingEngine::_restore_read_ids ()
 {
     hash_bucket_t *b, *b_saved;
@@ -1062,6 +1089,7 @@ void RingEngine::_restore_read_ids ()
     }
     hash_clear (var_infos_read_ids);
 }
+#endif
 
 var_info *RingEngine::_deepcopy_var_info (var_info *v, int only_read_id)
 {

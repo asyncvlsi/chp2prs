@@ -2110,10 +2110,12 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         for (int i = 0; gc; gc = gc->next)
         {   
             // _branch_id++;
-            _save_read_ids();
+            // _save_read_ids();
+            _push_read_ids();
             block_id = generate_branched_ring (gc->s, 0, list_ivalue(lj), 1);
             _connect_pipe_to_sel_merge_inputs (sel_merge_block_id, block_id, i);
-            _restore_read_ids();
+            // _restore_read_ids();
+            _pop_and_restore_read_ids();
             i++; lj = list_next(lj);
         }
 
@@ -2152,7 +2154,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             block_id = sel_merge_block_id;
         }
 
-        _save_read_ids();
+        // _save_read_ids();
         break;
         
     case ACT_CHP_SKIP:
