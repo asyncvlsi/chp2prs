@@ -81,6 +81,8 @@ void DecompAnalysis::_populate_decomp_info_map (
         di->live_out_vars.clear();
         di->live_in_vars = li_vars;
         di->live_out_vars = lo_vars;
+        di->live_in_vec.clear();
+        di->live_out_vec.clear();
         di->total_bitwidth_in = _compute_total_bits (li_vars);
         di->total_bitwidth_out = _compute_total_bits (lo_vars);
         di->break_before = false;
@@ -431,7 +433,9 @@ decomp_info_t *DecompAnalysis::_generate_decomp_info()
     decomp_info_t *di;
     di = new decomp_info_t;
     di->live_in_vars = H_live;
+    di->live_in_vec = {};
     di->live_out_vars = {}; // this should be filled in 
+    di->live_out_vec = {};
     di->total_bitwidth_in = _compute_total_bits (H_live);
     di->total_bitwidth_out = -1; // this should be filled in 
     di->break_before = false;

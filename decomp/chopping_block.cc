@@ -139,6 +139,7 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
 
     hassert (vmap.contains(bb));
     decomp_info_t *di = (vmap.find(bb))->second;
+    di->live_in_vec = std::vector<VarId> {di->live_in_vars.begin(), di->live_in_vars.end()};
 
     if (di->total_bitwidth_in == 0)
     {
@@ -207,6 +208,7 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
 
     hassert (vmap.contains(bb));
     decomp_info_t *di = (vmap.find(bb))->second;
+    di->live_out_vec = std::vector<VarId> {di->live_out_vars.begin(), di->live_out_vars.end()};
 
     if (di->total_bitwidth_out == 0)
     {
@@ -725,14 +727,6 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
     select_1->u_select().branches.push_back({line_1,std::move(c_eqs_0)});
     select_1->u_select().branches.push_back({line_2,std::move(c_eqs_1)});
 
-    Sequence line_3;
-    if (send) {
-        line_3 = g->graph.blockAllocator().newSequence({c_0,send});
-    }
-    else {
-        line_3 = g->graph.blockAllocator().newSequence({c_0});
-    }
-
     ChpExprSingleRootDag e;
     e = ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard);
 
@@ -748,6 +742,8 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
     hassert (predoloop->type() == BlockType::Select);
     postdoloop = predoloop->child();
 
+    SelectBranch *sbt = NULL;
+
     for ( auto &branch : predoloop->u_select().branches )
     {
         if (!(branch.g.type() == IRGuardType::Else))
@@ -755,7 +751,31 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
             select_2->u_select().branches.push_back({branch.seq,
                                         IRGuard::deep_copy(branch.g)});
         }
+        else {
+            sbt = &branch;
+        }
     }
+
+    std::vector<Block *> v_blks_1 = {};
+    if (sbt) {
+        for ( auto bb = (*sbt).seq.startseq->child(); bb!=(*sbt).seq.endseq; bb=bb->child() ) {
+            v_blks_1.push_back(bb);
+        }
+        for (auto bb : v_blks_1) {
+            _splice_out_block(bb);
+        }
+    }
+
+    Sequence line_3;
+    if (send) {
+        v_blks_1.push_back(c_0);
+        v_blks_1.push_back(send);
+    }
+    else {
+        v_blks_1.push_back(c_0);
+    }
+    line_3 = g->graph.blockAllocator().newSequence(v_blks_1);
+
     select_2->u_select().branches.push_back({line_3, IRGuard::makeElse()});
     
     for (auto b : v_blks)
@@ -835,15 +855,16 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
     hassert (vmap.contains(send));
     decomp_info_t *di = (vmap.find(send))->second;
 
-    std::unordered_set<VarId> vars;
+    // std::unordered_set<VarId> vars;
+    std::vector<VarId> vars;
     vars.clear();
     int bitwidth;
     if (type==LIVE_IN) {
-        vars = di->live_in_vars;
+        vars = di->live_in_vec;
         bitwidth = di->total_bitwidth_in;
     }
     else {
-        vars = di->live_out_vars;
+        vars = di->live_out_vec;
         bitwidth = di->total_bitwidth_out;
     }
 
@@ -891,6 +912,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
     Block *parallel = g->graph.blockAllocator().newBlock(Block::makeParBlock());
     for ( auto var : vars )
     {
+        hassert (range_ctr>=0);
         VarId vi = var;
         int width = g->graph.id_pool().getBitwidth(vi);
         // vi := v_concat{i+w..i}
