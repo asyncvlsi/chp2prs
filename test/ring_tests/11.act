@@ -1,0 +1,41 @@
+
+defproc receiver (chan?(int<1>) A, B; chan!(int<1>) C)
+{
+    int<1> x, y, z;
+    chp {
+        *[ A?x ; B?y; 
+			z := int(x=0 & y=1);
+			C!z
+		 ]
+    }
+}
+
+defproc sender (chan!(int<1>) A, B)
+{
+    int<1> x;
+    int<1> x1;
+    chp {
+        x:=0;
+        *[
+            [ x=0  -> A!x
+            []else -> B!x
+            ];
+            x1:=x+1; x:=x1
+        ]
+    }
+}
+
+defproc snk (chan?(int<1>) l)
+{
+	int<1> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<1>) X1, X2; chan!(int<1>) Y)
+{
+  sender s(X1,X2);
+  receiver r(X1,X2,Y);
+  snk ss(Y);
+}
