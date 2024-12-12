@@ -348,9 +348,9 @@ class Projection : protected ChoppingBlock {
         void _compute_connected_components ();
         void _insert_guard_comms ();
         void _remove_guard_comms (GraphWithChanNames &, Sequence);
-        void _insert_copy (DFG_Node *, DFG_Node *, VarId);
-        void _insert_copies ();
-        void _replace_uses (Sequence, VarId, VarId);
+        void _insert_copy (GraphWithChanNames &, DFG_Node *, VarId);
+        void _insert_copies (GraphWithChanNames &, Sequence);
+        void _replace_uses (GraphWithChanNames &, Sequence, VarId, VarId, Block *);
 
         void _build_sub_proc_new (GraphWithChanNames &, Sequence, std::unordered_set<DFG_Node *>&);
         void _build_basic_new (GraphWithChanNames &, std::vector<DFG_Node *>);

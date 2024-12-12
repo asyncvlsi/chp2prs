@@ -124,15 +124,40 @@ void Projection::project()
     _build_graph(g1.graph.m_seq);
     _compute_connected_components();
 
+    fprintf(stdout, "\nAdj. List g1 \n");
     dfg.print_adj(stdout);
     fprintf(stdout, "\n\n");
+    fprintf(stdout, "\nSubgraphs g1 \n");
     print_subgraphs(stdout);
     
-    fprintf(stdout, "\n/* STF \n");
+    fprintf(stdout, "\n/* STF g1 \n");
     print_chp(std::cout, g1.graph);
     fprintf(stdout, "\n*/\n");
 
-    // ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
+    _insert_copies(g1, g1.graph.m_seq);
+
+    ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
+
+    std::vector<ActId *> tmp_names2;
+    auto a2 = chp_graph_to_act (g1, tmp_names2, s);
+    auto g2 = chp_graph_from_act (a2, s);
+
+    dfg.clear();
+    ChpOptimize::putIntoNewStaticTokenForm(g2.graph);
+    _build_graph(g2.graph.m_seq);
+    _compute_connected_components();
+
+    fprintf(stdout, "\nAdj. List g2 \n");
+    dfg.print_adj(stdout);
+    fprintf(stdout, "\n\n");
+    fprintf(stdout, "\nSubgraphs g2 \n");
+    print_subgraphs(stdout);
+    
+    fprintf(stdout, "\n/* STF g2 \n");
+    print_chp(std::cout, g2.graph);
+    fprintf(stdout, "\n*/\n");
+
+    ChpOptimize::takeOutOfNewStaticTokenForm(g2.graph);
 
     int num_subgraphs = subgraphs.size();
     // if (num_subgraphs==1) return;
@@ -142,7 +167,8 @@ void Projection::project()
     for (int i=0; i<num_subgraphs; i++)
     {
         std::vector<ActId *> tmp_names;
-        auto a1 = chp_graph_to_act (*g, tmp_names, s);
+        // auto a1 = chp_graph_to_act (*g, tmp_names, s);
+        auto a1 = chp_graph_to_act (g2, tmp_names, s);
         auto g1 = chp_graph_from_act (a1, s);
 
         ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
@@ -875,39 +901,120 @@ void Projection::_insert_guard_comms ()
     }
 }
 
-void Projection::_insert_copy (DFG_Node *from, DFG_Node *to, VarId v)
+void Projection::_insert_copies (GraphWithChanNames &gg, Sequence seq)
+{
+    Block *curr = seq.startseq->child();
+
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        switch (curr->u_basic().stmt.type()) {
+        case StatementType::Receive: {
+            auto n = dfg.find(curr);
+            if (n) { // only do if pre-existing receive
+                auto oldvar = curr->u_basic().stmt.u_receive().var;
+                if (oldvar) {
+                    _insert_copy(gg, n, *oldvar);
+                }
+            }
+        }
+            break;
+        case StatementType::Send: {
+        }
+            break;
+        case StatementType::Assign: {
+            }
+            break;
+        }
+    }
+    break;
+      
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            _insert_copies (gg, branch);
+        }
+    }
+    break;
+      
+    case BlockType::Select: {
+        for (auto &branch : curr->u_select().branches) {
+            _insert_copies (gg, branch.seq);
+        }
+    }
+    break;
+    case BlockType::DoLoop: {
+        _insert_copies (gg, curr->u_doloop().branch);
+    }
+    break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
+}
+
+void Projection::_insert_copy (GraphWithChanNames &gg, DFG_Node *from, VarId v)
 {
     auto b_from = from->b;
-    auto b_to = to->b;
 
-    hassert (b_from->child()==b_to);
-    hassert (dfg.contains_edge(from, to));
-
-    ChanId ci = g->graph.id_pool().makeUniqueChan(g->graph.id_pool().getBitwidth(v), false);
-    var_to_actvar vtoa(s, &g->graph.id_pool());
+    ChanId ci = gg.graph.id_pool().makeUniqueChan(gg.graph.id_pool().getBitwidth(v), false);
+    var_to_actvar vtoa(s, &gg.graph.id_pool());
     ActId *id = vtoa.chanMap(ci);
-    g->name_from_chan.insert({ci, id});
+    gg.name_from_chan.insert({ci, id});
     
-    auto send = g->graph.blockAllocator().newBlock(
+    auto send = gg.graph.blockAllocator().newBlock(
         Block::makeBasicBlock(Statement::makeSend(ci, 
         ChpExprSingleRootDag::makeVariableAccess(v, 1))));
     
-    VarId copy_var = g->graph.id_pool().makeUniqueVar(g->graph.id_pool().getBitwidth(v), false);
+    VarId copy_var = gg.graph.id_pool().makeUniqueVar(gg.graph.id_pool().getBitwidth(v), false);
 
-    auto recv = g->graph.blockAllocator().newBlock(
+    auto recv = gg.graph.blockAllocator().newBlock(
         Block::makeBasicBlock(Statement::makeReceive(ci, copy_var)));
 
-    auto dist_assn = g->graph.blockAllocator().newBlock(Block::makeParBlock());
-    dist_assn->u_par().branches.push_back(g->graph.blockAllocator().newSequence({send}));
-    dist_assn->u_par().branches.push_back(g->graph.blockAllocator().newSequence({recv}));
+    auto dist_assn = gg.graph.blockAllocator().newBlock(Block::makeParBlock());
+    dist_assn->u_par().branches.push_back(gg.graph.blockAllocator().newSequence({send}));
+    dist_assn->u_par().branches.push_back(gg.graph.blockAllocator().newSequence({recv}));
 
     _splice_in_block_between (b_from, b_from->child(), dist_assn);
 
-    _replace_uses (g->graph.m_seq, v, copy_var);
+    _replace_uses (gg, gg.graph.m_seq, v, copy_var, send);
 }
 
-void Projection::_replace_uses (Sequence seq, VarId oldvar, VarId newvar)
+void Projection::_replace_uses (GraphWithChanNames &gg, Sequence seq, VarId oldvar, VarId newvar, Block *excl)
 {
+    hassert(excl->type()==BlockType::Basic && excl->u_basic().stmt.type()==StatementType::Send);
+
+    auto remap = [&](VarId &id) {
+        if (id==oldvar)
+            id = newvar;
+    };
+    auto remap_vec = [&](std::vector<VarId> &idvec) {
+        for ( auto &id : idvec ) {
+            remap(id);
+        }
+    };
+    auto remap_opt = [&](OptionalVarId &oid) {
+        if (oid) {
+            VarId id = *oid;
+            remap(id);
+            oid = id;
+        }
+    };
+    auto remap_opt_vec = [&](std::vector<OptionalVarId> &idvec) {
+        for ( auto &id : idvec ) {
+            remap_opt(id);
+        }
+    };
+    auto remap_expr = [&](ChpExprDag &dag) {
+        ChpExprDag::mapNodes(dag, [&](ChpExprDag::Node &n) {
+            if (n.type() == IRExprTypeKind::Var)
+                remap(n.u_var().id);
+        });
+    };
+
     Block *curr = seq.startseq->child();
 
     while (curr->type() != BlockType::EndSequence) {
@@ -917,21 +1024,12 @@ void Projection::_replace_uses (Sequence seq, VarId oldvar, VarId newvar)
         case StatementType::Receive: 
             break;
         case StatementType::Send: {
-            ChpExprDag::mapNodes(curr->u_basic().stmt.u_send().e.m_dag, [&](ChpExprDag::Node &n) {
-            if (n.type() == IRExprTypeKind::Var) {
-                if (n.u_var().id == oldvar) {
-                    n.u_var().id = newvar;
-                }
-            }});
+            if (curr!=excl)
+                remap_expr(curr->u_basic().stmt.u_send().e.m_dag);
         }
             break;
         case StatementType::Assign: {
-            ChpExprDag::mapNodes(curr->u_basic().stmt.u_assign().e, [&](ChpExprDag::Node &n) {
-            if (n.type() == IRExprTypeKind::Var) {
-                if (n.u_var().id == oldvar) {
-                    n.u_var().id = newvar;
-                }
-            }});
+            remap_expr(curr->u_basic().stmt.u_assign().e);
             }
             break;
         }
@@ -939,22 +1037,42 @@ void Projection::_replace_uses (Sequence seq, VarId oldvar, VarId newvar)
     break;
       
     case BlockType::Par: {
-        // To Do ....
+        for (auto &split : curr->u_par().splits) {
+            remap(split.pre_id);
+        }
+        for (auto &merge : curr->u_par().merges) {
+            remap_opt_vec(merge.branch_ids);
+        }
         for (auto &branch : curr->u_par().branches) {
-            _replace_uses (branch, oldvar, newvar);
+            _replace_uses (gg, branch, oldvar, newvar, excl);
         }
     }
     break;
       
     case BlockType::Select: {
-        // To Do ....
+        for (auto &split : curr->u_select().splits) {
+            remap(split.pre_id);
+        }
+        for (auto &merge : curr->u_select().merges) {
+            remap_vec(merge.branch_ids);
+        }
         for (auto &branch : curr->u_select().branches) {
-            _replace_uses (branch.seq , oldvar, newvar);
+            _replace_uses (gg, branch.seq , oldvar, newvar, excl);
         }
     }
     break;
     case BlockType::DoLoop: {
-        _replace_uses (curr->u_doloop().branch, oldvar, newvar);
+        for (auto &in_phi : curr->u_doloop().in_phis) {
+            remap(in_phi.pre_id);
+        }
+        for (auto &out_phi : curr->u_doloop().out_phis) {
+            remap(out_phi.bodyout_id);
+        }
+        for (auto &loop_phi : curr->u_doloop().loop_phis) {
+            remap(loop_phi.bodyout_id);
+            remap(loop_phi.pre_id);
+        }
+        _replace_uses (gg, curr->u_doloop().branch, oldvar, newvar, excl);
     }
     break;
     
