@@ -381,6 +381,7 @@ defproc selection_merge(a1of1 ci[N]; a1of1! p1)
 */
 
 // N : No. of inputs, W : Width of each input
+/*
 export template<pint N,W>
 defproc merge_mux_ohc_opt(bool? c[N]; r1of2 din[N][W]; sdtvar<W> dout)
 {
@@ -413,9 +414,86 @@ defproc merge_mux_ohc_opt(bool? c[N]; r1of2 din[N][W]; sdtvar<W> dout)
   ( i : N : ( j : W : stage_1_t[i][j].Y = stage_2_t[j].in[i]; ) )
 
   ( j : W : stage_2_f[j].out = dout.d[j].f; )
-  ( j : W : stage_2_f[j].out = dout.d[j].t; )
+  ( j : W : stage_2_t[j].out = dout.d[j].t; )
 
 }
+*/
+
+// N : No. of inputs, W : Width of each input
+
+/*
+*/
+export template<pint N,W>
+defproc merge_mux_ohc_opt(bool? c[N]; r1of2 din[N][W]; sdtvar<W> dout)
+{
+
+  // std::cells::INVX1 invs[N];
+  // ( i : N: invs[i].A = c[i]; )
+
+  std::gates::ortree<N, false> req;
+  ( i : N: req.in[i] = c[i]; )
+  ( i : N: ( j : W: req.out = din[i][j].r; ) )
+  
+  // nands
+  std::cells::AND2X1 stage_1_f[N][W]; // produce false output
+  std::cells::AND2X1 stage_1_t[N][W]; // produce true output
+  
+  // sigbuf<W> fanout_tree[N];
+  // ( i : N : fanout_tree[i].in = invs[i].Y; )
+  
+  ( i : N : ( j : W : stage_1_f[i][j].A = din[i][j].f; ) ) 
+  ( i : N : ( j : W : stage_1_f[i][j].B = c[i]; ) )
+
+  ( i : N : ( j : W : stage_1_t[i][j].A = din[i][j].t; ) ) 
+  ( i : N : ( j : W : stage_1_t[i][j].B = c[i]; ) )
+
+  // nands
+  std::gates::ortree<N, false> stage_2_f[W]; 
+  std::gates::ortree<N, false> stage_2_t[W]; 
+
+  ( i : N : ( j : W : stage_1_f[i][j].Y = stage_2_f[j].in[i]; ) )
+  ( i : N : ( j : W : stage_1_t[i][j].Y = stage_2_t[j].in[i]; ) )
+
+  ( j : W : stage_2_f[j].out = dout.d[j].f; )
+  ( j : W : stage_2_t[j].out = dout.d[j].t; )
+
+}
+
+/*
+defproc asym_c_brs_1 (bool? C, D; bool! Y)
+{
+  bool _Y;
+    prs {
+        ~Reset & ( ~C     ) -> _Y+
+         Reset | (  C & D ) -> _Y- 
+         _Y => Y-
+    }
+}
+
+export template<pint N,W>
+defproc merge_mux_ohc_opt(bool? c[N]; r1of2 din[N][W]; sdtvar<W> dout)
+{
+
+  asym_c_brs_1 ac_t[N][W];
+  asym_c_brs_1 ac_f[N][W];
+
+  ( i : N: ( j : W: ac_t[i][j].C = c[i]; ) )
+  ( i : N: ( j : W: ac_t[i][j].D = din[i][j].t; ) )
+
+  ( i : N: ( j : W: ac_f[i][j].C = c[i]; ) )
+  ( i : N: ( j : W: ac_f[i][j].D = din[i][j].f; ) )
+
+  std::gates::ortree<N, false> stage_2_f[W]; 
+  std::gates::ortree<N, false> stage_2_t[W]; 
+
+  ( i : N : ( j : W : ac[i][j].Y = stage_2_f[j].in[i]; ) )
+  ( i : N : ( j : W : ac[i][j].Y = stage_2_t[j].in[i]; ) )
+
+  ( j : W : stage_2_f[j].out = dout.d[j].f; )
+  ( j : W : stage_2_t[j].out = dout.d[j].t; )
+
+}
+*/
 
 // --------------------------------------------------------
 export deftype ring_int <: syn::sdtvar () {} 
