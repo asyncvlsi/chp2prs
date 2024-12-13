@@ -8,6 +8,7 @@ defproc test()
   bool at[4], af[4], aa;
   ( i : 4 : at[i] = t.Y.d.d[i].t; )
   ( i : 4 : af[i] = t.Y.d.d[i].f; )
+  aa = t.Y.a;
   chp {
       // a = 10
       [at[0]=false & af[0]=true  & 

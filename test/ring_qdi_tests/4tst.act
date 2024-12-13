@@ -1,21 +1,21 @@
 import globals;
-import "3.act";
-import "3_ring.act";
+import "4.act";
+import "4_ring.act";
 
 defproc test()
 {
   ring_testproc t;
   bool at[8], af[8], aa;
-  ( i : 8 : at[i] = t.Y.d.d[i].t; )
-  ( i : 8 : af[i] = t.Y.d.d[i].f; )
-  aa = t.Y.a;
+  ( i : 8 : at[i] = t.Y1.d.d[i].t; )
+  ( i : 8 : af[i] = t.Y1.d.d[i].f; )
+  aa = t.Y1.a;
   chp {
-      // a = 25
+      // a = 5
       [at[0]=true  & af[0]=false & 
        at[1]=false & af[1]=true  & 
-       at[2]=false & af[2]=true  & 
-       at[3]=true  & af[3]=false & 
-       at[4]=true  & af[4]=false & 
+       at[2]=true  & af[2]=false & 
+       at[3]=false & af[3]=true  & 
+       at[4]=false & af[4]=true  & 
        at[5]=false & af[5]=true  & 
        at[6]=false & af[6]=true  & 
        at[7]=false & af[7]=true  & 
