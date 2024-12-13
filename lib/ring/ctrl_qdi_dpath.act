@@ -191,6 +191,7 @@ export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
   }
 }
 
+/*
 export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 {
   bool _m1_r;
@@ -206,6 +207,34 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
   }
   sizing { 
       data.r{-1} 
+  }
+}
+*/
+
+export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
+{
+  bool _m1_r, _zero_r;
+  inverter m1_inv(m1.r,_m1_r);
+  inverter zr_inv(zero.r,_zero_r);
+
+  asym_c_brs ac;
+  ac.A = _m1_r;
+  ac.B = _zero_r;
+  ac.C = m1.a;
+  ac.Y = data.r;
+
+  bool _data_a;
+  inverter da_inv(data.a,_data_a);
+  data.a = zero.a;
+  
+  m1.a = p1.r;
+
+  prs {
+      ~Reset & (~_m1_r &  ~_data_a & ~p1.a) -> p1.r+ 
+        Reset | (_m1_r &   _data_a &  p1.a) -> p1.r-
+  }
+  sizing { 
+      p1.r{-1} 
   }
 }
 // ------------------------------------

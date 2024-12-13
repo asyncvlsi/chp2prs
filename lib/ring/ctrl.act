@@ -468,25 +468,27 @@ export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
   }
 }
 
-// export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
-// {
+/*
+export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
+{
 
-//   bool _zero_r, _m1_r;
-//   inverter zero_inv(zero.r,_zero_r);
-//   inverter m1_inv(m1.r,_m1_r);
+  bool _zero_r, _m1_r;
+  inverter zero_inv(zero.r,_zero_r);
+  inverter m1_inv(m1.r,_m1_r);
 
-//   zero.a = p1.r;
-//   data.a = zero.a;
-//   data.r = m1.a;
+  zero.a = p1.r;
+  data.a = zero.a;
+  data.r = m1.a;
 
-//   prs {
-//       ~Reset & (~_m1_r &  ~_zero_r & ~p1.a) -> data.r+ 
-//         Reset | (_m1_r &   _zero_r &  p1.a) -> data.r-
-//   }
-//   sizing { 
-//       data.r{-1} 
-//   }
-// }
+  prs {
+      ~Reset & (~_m1_r &  ~_zero_r & ~p1.a) -> data.r+ 
+        Reset | (_m1_r &   _zero_r &  p1.a) -> data.r-
+  }
+  sizing { 
+      data.r{-1} 
+  }
+}
+*/
 
 export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 {
