@@ -23,11 +23,12 @@
 #include "pretty_print.h"
 
 static const int indent_inc = 2;
-char ib_inc[indent_inc];
+char ib_inc[indent_inc+1];
 
 void chp_pretty_print (FILE *fp, act_chp_lang_t *c)
 {
   memset(ib_inc, ' ', indent_inc);
+  ib_inc[indent_inc] = '\0';
   _chp_pretty_print (fp, c, 0, 1);
 }
 
