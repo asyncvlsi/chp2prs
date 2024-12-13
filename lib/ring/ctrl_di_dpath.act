@@ -32,7 +32,7 @@ import "syn/qdi/_all_.act";
 
 namespace syn {
   
-  export namespace ring_qdi_dpath {
+  export namespace ring_di_dpath {
     
 
 // Basic Elements -----------------------------------------
