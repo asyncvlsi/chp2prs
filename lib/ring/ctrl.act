@@ -886,7 +886,7 @@ defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
 
 // N : No. of inputs, W : Width of each input
 export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
+defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 {
   // nands
   std::cells::NAND2X1 stage_1[N][W];
