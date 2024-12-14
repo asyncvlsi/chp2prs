@@ -1880,6 +1880,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     int comma_len, gc_len;
     int pll_port, gp_con_id;
     int delay_n_sel, max_delay_n_sel, delay_n_merge;
+    std::pair<int,int> tmp;
+    int n_muxes;
     list_t *gp_connect_ids;
     listitem_t *li, *lj;
     act_chp_gc_t *gc;
@@ -2120,7 +2122,11 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         }
 
         // muxing variables live-out of merge so downstream can access correctly
-        delay_n_merge = _compute_merge_mux_info((latch_info_t *)(c->space), sel_split_block_id);
+        tmp = _compute_merge_mux_info((latch_info_t *)(c->space), sel_split_block_id);
+        delay_n_merge = tmp.second;
+        n_muxes = tmp.first;
+        Assert (n_muxes>=0, "what");
+
         // delay_n_merge = 0;
 
         // generate delay line for max guard evaluator delay (split)
@@ -2143,7 +2149,12 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         {
             delay_merge_block_id = _gen_block_id();
             fprintf(_fp,"\n// Delaying post-merge-block sync. by max. delay of all merge muxes\n");
-            fprintf(_fp,"delay_line_chan<%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),ring_block_prefix, delay_merge_block_id);
+            if (n_muxes==0) {
+                fprintf(_fp,"delay_line_chan<%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),ring_block_prefix, delay_merge_block_id);
+            }
+            else {
+                fprintf(_fp,"delay_line_merge<%d,%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),n_muxes,ring_block_prefix, delay_merge_block_id);
+            }
             fprintf(_fp,"%s%d.m1 = %s%d.p1;\n",ring_block_prefix,delay_merge_block_id,
                                                 ring_block_prefix,sel_merge_block_id);
             // tail is the delay_merge block
@@ -2225,7 +2236,7 @@ std::pair<int,int> RingForge::_get_pre_sel_latch_and_size (std::vector<int> in)
     a selection can be addressed correctly when exiting the selection, 
     based on which branch was taken in this iteration of the loop.
 */
-int RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id)
+std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id)
 {
     var_info *vi, *vi_pre;
     hash_bucket_t *b, *b_pre;
@@ -2236,8 +2247,10 @@ int RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id)
     int max_mux_size = 0;
     int max_or_size = 0;
 
-    if ( list_isempty(l->live_vars) ) return 0;
+    if ( list_isempty(l->live_vars) ) return {0,0};
     Assert (l->type == LatchType::Mux, "wth");
+
+    int n_muxes = 0;
 
     int ctr = 0;
     for ( li = list_first(l->live_vars) ; li ; li = list_next(li) )
@@ -2277,6 +2290,7 @@ int RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id)
         int mux_id = l->merge_mux_latch_number.at(ctr);
         fprintf (_fp, "merge_mux_ohc_opt<%d,%d> %s%s_%d;\n", mux_size, vi->width, 
                                                 capture_block_prefix, vi->name, mux_id);
+        n_muxes++;
 
         // increase latest_for_read for the variable so it can be connected to correctly downstream
         vi->iwrite++;
@@ -2360,10 +2374,10 @@ int RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id)
             // TODO: temporary large value for large muxes, gotta fix 
             max_delay = 2000;
         }
-        return int(max_delay/(2*invx1_delay_ps)) + 1;
+        return {n_muxes, int(max_delay/(2*invx1_delay_ps)) + 1};
     }
     else {
-        return 0;
+        return {n_muxes, 0};
     }
 }
 

@@ -131,6 +131,15 @@ defproc delay_line_chan(a1of1 m1; a1of1 p1)
   m1.a = p1.a;
 }
 
+export template <pint N_d, N_mux>
+defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
+{
+  delay_line<N_d> d;
+  m1.r = d.in;
+  p1.r = d.out;
+  m1.a = p1.a;
+}
+
 export template <pint PW>
 defproc pulse(bool? in; bool! out)
 {
@@ -680,7 +689,7 @@ defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
 
 // N : No. of inputs, W : Width of each input
 export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
+defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 {
   // nands
   std::cells::NAND2X1 stage_1[N][W];

@@ -83,12 +83,26 @@ defproc connect_exprblk_dout (sdtexprchan<1> d[W]; sdtexprchan<W> ch)
 
 
 // QDI Datapath Elements -------------------------
+// Mx1of2 == sdtvar
+// sdtexprchan == rx1of2
 
 export template <pint N>
 defproc delay_line_chan(a1of1 m1; a1of1 p1)
 {
   m1 = p1;
 }
+
+export template <pint N_d, N_mux>
+defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
+{
+  std::gates::ctree<N_mux+1,false> c;
+  ( i : N_mux : c.in[i] = mux_acks[i]; )
+
+  m1.r = c.in[N_mux];
+  p1.r = c.out;
+  m1.a = p1.a;
+}
+
 
 export template <pint CD, PW, W>
 defproc capture(a1of1 go; Mx1of2<W> din; sdtvar<W> dout)
@@ -138,6 +152,44 @@ defproc capture_init(a1of1 go; Mx1of2<W> din; sdtvar<W> dout)
   write_sync.in[1] = go.r;
   write_sync.out = go.a;
 }
+
+// come back to this later
+// export template <pint CD, PW, W, INIT_VAL, N>
+// defproc capture_init_non_ssa(a1of1 go[N]; Mx1of2<W> din[N]; sdtvar<W> dout)
+// {  
+//   syn::var_init_val<W,INIT_VAL> var;
+//   var.v = dout;
+  
+//   syn::expr::writeport<W> wp;
+//   wp.wt = var.wt;
+//   wp.wf = var.wf;
+//   wp.var = dout;
+
+//   bool _a[N];
+//   std::gates::ortree<N, false> ot[W];
+//   std::gates::ortree<N, false> of[W];
+//   ( i : W:
+//     ( j : N:
+//       din[j].d.d[i].t = ot[i].in[j];
+//       din[j].d.d[i].f = of[i].in[j];
+//     )
+//     wp.in.d.d[i].f = of[i].out;
+//     wp.in.d.d[i].t = ot[i].out;
+//   )
+//   prs {
+//     ( i : N :
+//       wp.in.a & (din[i].d.d[0].t | din[i].d.d[0].f) -> _a[i]-
+//       ~wp.in.a & ~(din[i].d.d[0].t | din[i].d.d[0].f) -> _a[i]+
+//       _a[i] => in[i].a- )
+//   }
+
+//   wp.in.d = din;
+
+//   std::gates::ctree<2,false> write_sync;
+//   write_sync.in[0] = wp.in.a;
+//   write_sync.in[1] = go.r;
+//   write_sync.out = go.a;
+// }
 
 // --------------------------------------------------------
 
@@ -419,81 +471,89 @@ defproc merge_mux_ohc_opt(bool? c[N]; r1of2 din[N][W]; sdtvar<W> dout)
 }
 */
 
+/*
+  Note to self:
+  is this qdi in general, no.
+  is it qdi given the constraint on the inputs the way 
+  i'm using it - looks like it.
+*/
+defproc myOR2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
+  A.r = Y.r;
+  B.r = Y.r;
+  bool _f, _t;
+  prs {
+    A.d.d[0].f | B.d.d[0].f -> _f-
+    ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _f+
+    A.d.d[0].t | B.d.d[0].t-> _t-
+    ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f -> _t+
+    _f => Y.d.d[0].f-
+    _t => Y.d.d[0].t-
+  }
+  sizing{
+    p_n_mode <- 1;
+    leak_adjust <- 1;
+    Y.d.d[0].t{- 1};
+    Y.d.d[0].f{- 1};
+    _t{- 1};
+    _f{- 1}
+  }
+}
+
+template<pint N>
+defproc ortree_qdi(syn::sdtexprchan?<1> I[N]; syn::sdtexprchan!<1> Y)
+{
+  { N > 0 : "Need positive no. of inputs to gate" };
+
+  [ N=1 -> I[0] = Y; 
+  []N=2 -> myOR2X1 x(I[0],I[1],Y);
+  []N>2 -> syn::sdtexprchan<1> outx[2]; 
+            ortree_qdi <N/2>     x0(I[0..(N/2)-1],outx[0]);
+            ortree_qdi <N-(N/2)> x1(I[(N/2)..N-1],outx[1]);
+            myOR2X1 x(outx[0], outx[1], Y);
+  ]
+}
+
+/*
+  use the post-merge delay somehow?
+*/
 // N : No. of inputs, W : Width of each input
-
-/*
-*/
 export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; r1of2 din[N][W]; sdtvar<W> dout)
+defproc merge_mux_ohc_opt(bool? c[N]; sdtexprchan<1> din[N][W]; sdtvar<W> dout; bool a)
 {
 
-  // std::cells::INVX1 invs[N];
-  // ( i : N: invs[i].A = c[i]; )
-
-  std::gates::ortree<N, false> req;
-  ( i : N: req.in[i] = c[i]; )
-  ( i : N: ( j : W: req.out = din[i][j].r; ) )
+  // { false : "SSA Datapath W.I.P."};
   
-  // nands
-  std::cells::AND2X1 stage_1_f[N][W]; // produce false output
-  std::cells::AND2X1 stage_1_t[N][W]; // produce true output
-  
-  // sigbuf<W> fanout_tree[N];
-  // ( i : N : fanout_tree[i].in = invs[i].Y; )
-  
-  ( i : N : ( j : W : stage_1_f[i][j].A = din[i][j].f; ) ) 
-  ( i : N : ( j : W : stage_1_f[i][j].B = c[i]; ) )
+  ortree_qdi<N> ors[W];
+  ( i : N : ( j : W : ors[j].I[i].d = din[i][j].d; ) )
 
-  ( i : N : ( j : W : stage_1_t[i][j].A = din[i][j].t; ) ) 
-  ( i : N : ( j : W : stage_1_t[i][j].B = c[i]; ) )
+  std::gates::ortree<N, false> or_ctrl;
+  ( i : N : or_ctrl.in[i] = c[i]; )
+  ( j : W : or_ctrl.out = ors[j].Y.r; )
 
-  // nands
-  std::gates::ortree<N, false> stage_2_f[W]; 
-  std::gates::ortree<N, false> stage_2_t[W]; 
+  std::gates::ctree<2, false> read_sync[N];
+  ( i : N : c[i] = read_sync[i].in[0]; )
+  ( i : N : ( j : W : ors[j].I[i].r = read_sync[i].in[1]; ) )
+  ( i : N : ( j : W : din[i][j].r = read_sync[i].out; ) ) 
 
-  ( i : N : ( j : W : stage_1_f[i][j].Y = stage_2_f[j].in[i]; ) )
-  ( i : N : ( j : W : stage_1_t[i][j].Y = stage_2_t[j].in[i]; ) )
+  // data validity
+  std::cells::NOR2X1 nors[W];
+  ( j : W : nors[j].A = ors[j].Y.d.d[0].t; )
+  ( j : W : nors[j].B = ors[j].Y.d.d[0].f; )
 
-  ( j : W : stage_2_f[j].out = dout.d[j].f; )
-  ( j : W : stage_2_t[j].out = dout.d[j].t; )
+  std::gates::ctree<W, true> c_data;
+  ( j : W : c_data.in[j] = nors[j].Y; )
+  // c_data.out = a;
+
+  // ( j : W : dout.d[j] = ors[j].Y.d.d[0]; ) 
+
+  // TODO: Is a var on the output needed?
+  capture<1,1,W> capt;
+  c_data.out = capt.go.r;
+  a = capt.go.a;
+  ( j : W : capt.din.d[j] = ors[j].Y.d.d[0]; )
+  capt.dout = dout; 
 
 }
-
-/*
-defproc asym_c_brs_1 (bool? C, D; bool! Y)
-{
-  bool _Y;
-    prs {
-        ~Reset & ( ~C     ) -> _Y+
-         Reset | (  C & D ) -> _Y- 
-         _Y => Y-
-    }
-}
-
-export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; r1of2 din[N][W]; sdtvar<W> dout)
-{
-
-  asym_c_brs_1 ac_t[N][W];
-  asym_c_brs_1 ac_f[N][W];
-
-  ( i : N: ( j : W: ac_t[i][j].C = c[i]; ) )
-  ( i : N: ( j : W: ac_t[i][j].D = din[i][j].t; ) )
-
-  ( i : N: ( j : W: ac_f[i][j].C = c[i]; ) )
-  ( i : N: ( j : W: ac_f[i][j].D = din[i][j].f; ) )
-
-  std::gates::ortree<N, false> stage_2_f[W]; 
-  std::gates::ortree<N, false> stage_2_t[W]; 
-
-  ( i : N : ( j : W : ac[i][j].Y = stage_2_f[j].in[i]; ) )
-  ( i : N : ( j : W : ac[i][j].Y = stage_2_t[j].in[i]; ) )
-
-  ( j : W : stage_2_f[j].out = dout.d[j].f; )
-  ( j : W : stage_2_t[j].out = dout.d[j].t; )
-
-}
-*/
 
 // --------------------------------------------------------
 export deftype ring_int <: syn::sdtvar () {} 
