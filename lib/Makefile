@@ -20,6 +20,7 @@
 #-------------------------------------------------------------------------
 TARGETINSTALL=
 TARGETINSTALL_QDI=qdi/_all_.act qdi/dpath.act qdi/chan.act qdi/math.act qdi/stdcells.act qdi/var.act
+TARGETINSTALL_DI=diopt/_all_.act diopt/chan.act diopt/stdcells.act diopt/var.act diopt/test_di.act
 TARGETINSTALL_RING=ring/_all_.act ring/ctrl.act ring/ctrl_pulsed.act ring/ctrl_2phase.act ring/ctrl_qdi_dpath.act ring/ctrl_di_dpath.act
 TARGETINSTALL_BDOPT=bdopt/_all_.act bdopt/stdcells.act bdopt/dpath.act bdopt/chan.act
 TARGETINSTALL_LIBERTY=osu018_stdcells.lib LICENSE.osu018_stdcells.lib
@@ -32,7 +33,7 @@ include $(ACT_HOME)/scripts/Makefile.std
 all:
 	@echo "Done"
 
-install: install_act $(TARGETINSTALL) $(TARGETINSTALL_QDI) $(TARGETINSTALL_RING) $(TARGETINSTALL_BDOPT)
+install: install_act $(TARGETINSTALL) $(TARGETINSTALL_QDI) $(TARGETINSTALL_RING) $(TARGETINSTALL_BDOPT) $(TARGETINSTALL_DI)
 	@if [ ! -d $(ACT_HOME)/act/syn ]; then mkdir $(ACT_HOME)/act/syn; fi
 	@for i in $(TARGETINSTALL); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
 	@if [ ! -d $(ACT_HOME)/act/syn/qdi ]; then mkdir $(ACT_HOME)/act/syn/qdi; fi
@@ -43,6 +44,8 @@ install: install_act $(TARGETINSTALL) $(TARGETINSTALL_QDI) $(TARGETINSTALL_RING)
 	@for i in $(TARGETINSTALL_RING); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/$$i; done
 	@if [ ! -d $(ACT_HOME)/act/syn/liberty ]; then mkdir $(ACT_HOME)/act/syn/liberty; fi
 	@for i in $(TARGETINSTALL_LIBERTY); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/liberty/$$i; done
+	@if [ ! -d $(ACT_HOME)/act/syn/diopt ]; then mkdir $(ACT_HOME)/act/syn/diopt; fi
+	@for i in $(TARGETINSTALL_DI); do $(ACT_HOME)/scripts/install $$i $(ACT_HOME)/act/syn/diopt/$$i; done
 
 
 -include Makefile.deps

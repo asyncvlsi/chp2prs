@@ -39,7 +39,12 @@ static void usage(char *name)
   fprintf (stderr, "        * ring : ring-based synthesis prs output [implies bundled data]\n");
   fprintf (stderr, "        * decomp : decomposition - CHP-to-CHP\n");
   fprintf (stderr, " -G : Non-SSA style datapath, for ring synthesis only (with -b only for now)\n");
-  fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI)\n");
+  fprintf (stderr, " -C : qdi|bd|di|ditest: Circuit / Datapath family\n");
+  fprintf (stderr, "        * qdi : quasi delay insensitive (default)\n");
+  fprintf (stderr, "        * bd : bundeld data\n");
+  fprintf (stderr, "        * di : delay insesitive\n");
+  fprintf (stderr, "        * ditest : delay insesitive - testing for signal forks with extra buffers - not syntesisable\n");
+  fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI) [depricated use -C]\n");
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
   fprintf (stderr, " -P <int> : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3 (or) 4 (default 0) \n");
@@ -62,6 +67,8 @@ int main(int argc, char **argv)
   bool chpopt = false;
   bool decompose = false;
   bool bundled = false;
+  bool dpath_di = false;
+  bool dpath_ditest = false;
   bool non_ssa = false;
   char *exprfile = NULL;
   FILE *dfile;
@@ -82,7 +89,7 @@ int main(int argc, char **argv)
   bool project = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "RhOGbXde:E:o:p:F:P:m:")) != -1) {
+  while ((ch = getopt (argc, argv, "RhOGbXde:E:o:p:F:C:P:m:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -101,6 +108,24 @@ int main(int argc, char **argv)
       }
       else {
 	fprintf (stderr, "Unknown synthesis output format: %s\n", optarg);
+	usage (argv[0]);
+      }
+      break;
+    case 'C':
+      if (!strcmp (optarg, "qdi")) {
+  bundled = false;
+      }
+      else if (!strcmp (optarg, "bd")) {
+	bundled = true;
+      }
+      else if (!strcmp (optarg, "di")) {
+	dpath_di = true;
+      }
+      else if (!strcmp (optarg, "ditest")) {
+	dpath_ditest = true;
+      }
+      else {
+	fprintf (stderr, "Unknown circuit/datapath family: %s\n", optarg);
 	usage (argv[0]);
       }
       break;
@@ -258,6 +283,8 @@ int main(int argc, char **argv)
     c2p->setParam ("expr", (void *) exprfile);
     c2p->setParam ("externopt", external_opt);
     c2p->setParam ("bundled_dpath", bundled);
+    c2p->setParam ("di_dpath", dpath_di);
+    c2p->setParam ("ditest_dpath", dpath_ditest);
   }
 
   /* input/output options */

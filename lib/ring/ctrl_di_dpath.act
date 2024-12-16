@@ -21,14 +21,16 @@
  */
 
 // CMOS implementable versions of the pipeline elements
-// QDI Datapath
+// DI Datapath
 
 import globals;
 import std;
 open std::channel;
 open std::gates;
 
-import "syn/qdi/_all_.act";
+// the data path cells need to be imported by the program before as:
+// import syn::diopt;
+// open syn::diopt -> syn;
 
 namespace syn {
   

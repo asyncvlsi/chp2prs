@@ -1,0 +1,180 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2020 Rajit Manohar
+ *  Copyright (c) 2024 Ole Richter - Yale University
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+import globals;
+import std::gates;
+
+namespace syn {
+  export namespace diopt{
+
+    /**
+   * a variable, represented by a cross coupled inverter.
+   * with a week pullup, the variable is written with a strong pulldown
+   * @param W: how many bits the variable has
+   * @param I: the default bool the variable is set to on reset
+   */
+    template<pbool I>
+    defcell var_one_bit(bool? wt, wf; bool! dt, df; bool? Reset) {
+      prs * {
+        /* write port */
+        wf<8> -> dt-
+        wt<8> -> df-
+
+        /* hold state */
+        [iskeeper=1] df<8> -> dt-
+        [iskeeper=1] dt<8> -> df-
+        [weak=1] ~dt<4, 4> -> df+
+        [weak=1] ~df<4, 4> -> dt+
+      }
+      [
+        I ->
+        prs {
+          Reset -> df-
+        }
+      [] else ->
+        prs {
+          Reset -> dt-
+        }
+      ]
+    }
+
+    export template<pint W; pbool I>
+    defproc var_init(sdtvar<W> v; bool? wt[W], wf[W]) {
+      var_one_bit<I> bits[W];
+      ( i : W:
+        bits[i](wt[i], wf[i], v.d[i].t, v.d[i].f, Reset);
+      )
+    }
+
+    export template<pint W; pint INIT_VAL>
+    defproc var_init_val(sdtvar<W> v; bool? wt[W], wf[W]) {
+
+      { INIT_VAL >= 0 : "Only non-negative initial values" };
+      { INIT_VAL <= (1<<W)-1 : "Initial value out of bounds" };
+
+      pint ival = INIT_VAL;
+      pint j = 0;
+
+      *[ j < W -> [ (ival%2) = 0 -> 
+                        var_one_bit<false> bits_lo[j..j];
+                        bits_lo[j](wt[j], wf[j], v.d[j].t, v.d[j].f, Reset);
+                  [](ival%2) = 1 -> 
+                        var_one_bit<true>  bits_hi[j..j];
+                        bits_hi[j](wt[j], wf[j], v.d[j].t, v.d[j].f, Reset);
+                  ]; 
+                  j = j + 1; ival = ival >> 1; 
+      ]
+    }
+
+    export namespace expr {
+      /*-- variable access ports --*/
+
+      export template<pint W>
+      defproc writeport(bool! wt[W], wf[W]; sdtvar<W> var; sdtchan<W> in) {
+        bool _wack[W];
+        bool _invt[W], _invf[W];
+        prs {
+          ( i : W :
+            in.d.d[i].t => _invt[i]-
+            in.d.d[i].f => _invf[i]- )
+
+          ( i : W :
+            _invt[i] => wt[i]-
+            _invf[i] => wf[i]-
+
+            (wt[i] & var.d[i].t) | (wf[i] & var.d[i].f) -> _wack[i]-
+            ~wt[i] & ~wf[i] -> _wack[i]+ )
+        }
+        ( i : W:
+          sizing{
+            p_n_mode <- 1;
+            leak_adjust <- 1;
+            _wack[i]{- 1}
+          }
+        )
+        std::gates::ctree<W, false> wa(_wack);
+        prs {
+          Reset | wa.out => in.a-
+        }
+        sizing{
+          p_n_mode <- 1;
+          leak_adjust <- 1;
+          in.a{- 1};
+          (; i : W:
+            _invt[i]{- 1};
+            _invf[i]{- 1};
+            wt[i]{- 1};
+            wf[i]{- 1}
+          )
+        }
+      }
+
+      export template<pint W>
+      defproc readport(sdtvar<W> var; sdtexprchan<W> out) {
+        bool xout;
+
+        std::gates::sigbuf<W> s(xout);
+
+        prs {
+          out.r => xout-
+
+          ( i : W :
+            ~s.out[i] & ~var.d[i].t -> out.d.d[i].f+
+            ~s.out[i] & ~var.d[i].f -> out.d.d[i].t+
+            s.out[i] -> out.d.d[i].f-
+            s.out[i] -> out.d.d[i].t- )
+        }
+        ( i : W:
+          sizing{
+            p_n_mode <- 1;
+            leak_adjust <- 1;
+            out.d.d[i].f{- 1};
+            out.d.d[i].t{- 1}
+          }
+        )
+        sizing{
+          p_n_mode <- 1;
+          leak_adjust <- 1;
+          xout{- 1}
+        }
+      }
+
+      export template<pint W>
+      defproc wrap_to_array(sdtexprchan<W> in; sdtexprchan<1> out[W]) {
+        ( i : W:
+          in.r = out[i].r;
+          in.d.d[i] = out[i].d.d[0];
+        )
+      }
+
+      export template<pint W>
+      defproc wrap_from_array(sdtexprchan<1> in[W]; sdtexprchan<W> out) {
+        ( i : W:
+          out.r = in[i].r;
+          out.d.d[i] = in[i].d.d[0];
+        )
+      }
+
+    }
+
+  }
+}

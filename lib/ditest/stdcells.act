@@ -1,0 +1,239 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2024 Ole Richter - Yale University
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+
+import syn::diopt;
+import syn::ditest;
+open syn::diopt;
+
+
+export namespace syn {
+  export namespace ditest {
+      defproc timingtest (bool? in; bool! out){
+          // not cmos compatible only for timing tests
+          prs {
+              in => out+
+          }
+      }
+
+      export template<pint N>
+    defproc copy(stdexprchan<1> in; stdexprchan<1> out[N]) {
+      ( i : N:
+        in = out[i];
+      )
+    }
+
+    export
+    defproc source_GND(stdexprchan<1> out) {
+      timingtest bout(.out=out);
+      syn::diopt::source_GND inst(.out=bout.in);
+    }
+
+    export
+    defproc source_Vdd(stdexprchan<1> out) {
+      timingtest bout(.out=out);
+      syn::diopt::source_Vdd inst(.out=bout.in);
+    }
+
+    /*-- inverters --*/
+
+    export template<pint N>
+    defproc inv(stdexprchan?<1> A; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bY(.out=Y);
+      syn::diopt::inv inst(.A=bA.out,.Y=bY.in);
+    }
+
+    export defproc INVX1 <: inv<1> () {}
+    export defproc INVX2 <: inv<2> () {}
+    export defproc INVX4 <: inv<4> () {}
+    export defproc INVX8 <: inv<8> () {}
+
+    /*--  signal buffers --*/
+
+    export template<pint N>
+    defproc buf(stdexprchan?<1> A; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bY(.out=Y);
+      syn::diopt::buf inst(.A=bA.out,.Y=bY.in);
+    }
+
+    export defproc BUFX1 <: buf<1> () {}
+    export defproc BUFX2 <: buf<2> () {}
+    export defproc BUFX4 <: buf<4> () {}
+
+    /*-- simple gates --*/
+    export
+    defproc NOR2X1(stdexprchan?<1> A, B; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bY(.out=Y);
+      syn::diopt::NOR2X1 inst(.A=bA.out,.B=bB.out,.Y=bY.in);
+    }
+
+    export
+    defproc NOR3X1(stdexprchan?<1> A, B, C; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bC(.in=C);
+      timingtest bY(.out=Y);
+      syn::diopt::NOR3X1 inst(.A=bA.out,.B=bB.out,.C=bC.out,.Y=bY.in);
+
+    }
+
+    export
+    defproc OR2X1(stdexprchan?<1> A, B; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bY(.out=Y);
+      syn::diopt::OR2X1 inst(.A=bA.out,.B=bB.out,.Y=bY.in);
+    }
+
+    export
+    defproc OR2X2(stdexprchan?<1> A, B; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bY(.out=Y);
+      syn::diopt::OR2X2 inst(.A=bA.out,.B=bB.out,.Y=bY.in);
+    }
+
+    export
+    defproc NAND2X1(stdexprchan?<1> A, B; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bY(.out=Y);
+      syn::diopt::NAND2X1 inst(.A=bA.out,.B=bB.out,.Y=bY.in);
+    }
+
+    export
+    defproc NAND3X1(stdexprchan?<1> A, B, C; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bC(.in=C);
+      timingtest bY(.out=Y);
+      syn::diopt::NAND3X1 inst(.A=bA.out,.B=bB.out,.C=bC.out,.Y=bY.in);
+
+    }
+
+    export
+    defproc AND2X1(stdexprchan?<1> A, B; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bY(.out=Y);
+      syn::diopt::AND2X1 inst(.A=bA.out,.B=bB.out,.Y=bY.in);
+    }
+
+    export
+    defproc AND2X2(stdexprchan?<1> A, B; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bY(.out=Y);
+      syn::diopt::AND2X2 inst(.A=bA.out,.B=bB.out,.Y=bY.in);
+    }
+
+    export
+    defproc XOR2X1(stdexprchan?<1> A, B; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bY(.out=Y);
+      syn::diopt::XOR2X1 inst(.A=bA.out,.B=bB.out,.Y=bY.in);
+    }
+
+    export
+    defproc XNOR2X1(stdexprchan?<1> A, B; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bY(.out=Y);
+      syn::diopt::XNOR2X1 inst(.A=bA.out,.B=bB.out,.Y=bY.in);
+    }
+
+    export
+    defproc MUX2X1(stdexprchan?<1> A, B, S; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bS(.in=S);
+      timingtest bY(.out=Y);
+      syn::diopt::MUX3X1 inst(.A=bA.out,.B=bB.out,.S=bS.out,.Y=bY.in);
+
+    }
+
+    export
+    defproc OAI21X1(stdexprchan?<1> A, B, C; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bC(.in=C);
+      timingtest bY(.out=Y);
+      syn::diopt::OAI21X1 inst(.A=bA.out,.B=bB.out,.C=bC.out,.Y=bY.in);
+
+    }
+
+    export
+    defproc AOI21X1(stdexprchan?<1> A, B, C; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bC(.in=C);
+      timingtest bY(.out=Y);
+      syn::diopt::AOI21X1 inst(.A=bA.out,.B=bB.out,.C=bC.out,.Y=bY.in);
+
+    }
+
+    export
+    defproc OAI22X1(stdexprchan?<1> A, B, C, D; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bC(.in=C);
+      timingtest bD(.in=D);
+      timingtest bY(.out=Y);
+      syn::diopt::OAI22X1 inst(.A=bA.out,.B=bB.out,.C=bC.out,.D=bD.out,.Y=bY.in);
+    }
+
+    export
+    defproc AOI22X1(stdexprchan?<1> A, B, C, D; stdexprchan!<1> Y) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bC(.in=C);
+      timingtest bD(.in=D);
+      timingtest bY(.out=Y);
+      syn::diopt::AOI22X1 inst(.A=bA.out,.B=bB.out,.C=bC.out,.D=bD.out,.Y=bY.in);
+    }
+
+    /*--- arithmetic ---*/
+
+    export
+    defproc HAX1(stdexprchan?<1> A, B; stdexprchan!<1> YC, YS) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bYC(.out=YC);
+      timingtest bYS(.out=YS);
+      syn::diopt::HAX1 inst(.A=bA.out,.B=bB.out,.C=bC.out,.YC=bYC.in,.YS=bYS.in);
+    }
+
+    export
+    defproc FAX1(stdexprchan?<1> A, B, C; stdexprchan!<1> YC, YS) {
+      timingtest bA(.in=A);
+      timingtest bB(.in=B);
+      timingtest bC(.in=C);
+      timingtest bYC(.out=YC);
+      timingtest bYS(.out=YS);
+      syn::diopt::FAX1 inst(.A=bA.out,.B=bB.out,.C=bC.out,.YC=bYC.in,.YS=bYS.in);
+    }
+  }
+}
