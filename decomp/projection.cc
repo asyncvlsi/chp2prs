@@ -134,7 +134,8 @@ void Projection::project()
     print_chp(std::cout, g1.graph);
     fprintf(stdout, "\n*/\n");
 
-    _insert_copies(g1, g1.graph.m_seq);
+    // _insert_copies_v0 (g1, g1.graph.m_seq);
+    _insert_copies_v1 (g1, g1.graph.m_seq);
 
     ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
 
@@ -211,12 +212,12 @@ void Projection::project()
             _remove_guard_comms (g1, g1.graph.m_seq);
         }
 
-        seqs.push_back(g1.graph.m_seq);
 
         // fprintf(stdout, "\n/* Post-build STF \n");
         // print_chp(std::cout, g1.graph);
         // fprintf(stdout, "\n*/\n");
         ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
+        seqs.push_back(g1.graph.m_seq);
         fprintf(stdout, "\n/* subproc: \n\n");
         std::vector<ActId *> tmp_names2;
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
@@ -901,7 +902,7 @@ void Projection::_insert_guard_comms ()
     }
 }
 
-void Projection::_insert_copies (GraphWithChanNames &gg, Sequence seq)
+void Projection::_insert_copies_v0 (GraphWithChanNames &gg, Sequence seq)
 {
     Block *curr = seq.startseq->child();
 
@@ -914,7 +915,7 @@ void Projection::_insert_copies (GraphWithChanNames &gg, Sequence seq)
             if (n) { // only do if pre-existing receive
                 auto oldvar = curr->u_basic().stmt.u_receive().var;
                 if (oldvar) {
-                    _insert_copy(gg, n, *oldvar);
+                    _insert_copy(gg, seq, n, *oldvar);
                 }
             }
         }
@@ -931,19 +932,19 @@ void Projection::_insert_copies (GraphWithChanNames &gg, Sequence seq)
       
     case BlockType::Par: {
         for (auto &branch : curr->u_par().branches) {
-            _insert_copies (gg, branch);
+            _insert_copies_v0 (gg, branch);
         }
     }
     break;
       
     case BlockType::Select: {
         for (auto &branch : curr->u_select().branches) {
-            _insert_copies (gg, branch.seq);
+            _insert_copies_v0 (gg, branch.seq);
         }
     }
     break;
     case BlockType::DoLoop: {
-        _insert_copies (gg, curr->u_doloop().branch);
+        _insert_copies_v0 (gg, curr->u_doloop().branch);
     }
     break;
     
@@ -956,7 +957,60 @@ void Projection::_insert_copies (GraphWithChanNames &gg, Sequence seq)
     }
 }
 
-void Projection::_insert_copy (GraphWithChanNames &gg, DFG_Node *from, VarId v)
+void Projection::_insert_copies_v1 (GraphWithChanNames &gg, Sequence seq)
+{
+    Block *curr = seq.startseq->child();
+
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+    }
+    break;
+      
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            _insert_copies_v1 (gg, branch);
+        }
+    }
+    break;
+      
+    case BlockType::Select: {
+        
+        for (auto &split : curr->u_select().splits) {
+            _insert_copy(gg, seq, curr, curr->parent(), split.pre_id);
+        }
+        for (auto &branch : curr->u_select().branches) {
+            _insert_copies_v1 (gg, branch.seq);
+        }
+        for (auto &merge : curr->u_select().merges) {
+            _insert_copy(gg, seq, curr->child(), curr, merge.post_id);
+        }
+    }
+    break;
+    case BlockType::DoLoop: {
+        // for (auto &lphi : curr->u_doloop().loop_phis) {
+        //     _insert_copy(gg, seq, curr->u_doloop().branch.startseq->child(), lphi.bodyin_id);
+        // }
+        _insert_copies_v1 (gg, curr->u_doloop().branch);
+        // for (auto &lphi : curr->u_doloop().loop_phis) {
+        //     _insert_copy(gg, seq, curr->u_doloop().branch.endseq, lphi.bodyout_id);
+        // }
+    }
+    break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
+}
+
+/*
+    Due to STF, it is sufficient to rename within the sequence.
+*/
+void Projection::_insert_copy (GraphWithChanNames &gg, Sequence seq, DFG_Node *from, VarId v)
 {
     auto b_from = from->b;
 
@@ -980,10 +1034,35 @@ void Projection::_insert_copy (GraphWithChanNames &gg, DFG_Node *from, VarId v)
 
     _splice_in_block_between (b_from, b_from->child(), dist_assn);
 
-    _replace_uses (gg, gg.graph.m_seq, v, copy_var, send);
+    _replace_uses (gg, seq, v, copy_var, send, dist_assn);
 }
 
-void Projection::_replace_uses (GraphWithChanNames &gg, Sequence seq, VarId oldvar, VarId newvar, Block *excl)
+void Projection::_insert_copy (GraphWithChanNames &gg, Sequence seq, Block *bb, Block *start_after, VarId v)
+{
+    ChanId ci = gg.graph.id_pool().makeUniqueChan(gg.graph.id_pool().getBitwidth(v), false);
+    var_to_actvar vtoa(s, &gg.graph.id_pool());
+    ActId *id = vtoa.chanMap(ci);
+    gg.name_from_chan.insert({ci, id});
+    
+    auto send = gg.graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeSend(ci, 
+        ChpExprSingleRootDag::makeVariableAccess(v, 1))));
+    
+    VarId copy_var = gg.graph.id_pool().makeUniqueVar(gg.graph.id_pool().getBitwidth(v), false);
+
+    auto recv = gg.graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeReceive(ci, copy_var)));
+
+    auto dist_assn = gg.graph.blockAllocator().newBlock(Block::makeParBlock());
+    dist_assn->u_par().branches.push_back(gg.graph.blockAllocator().newSequence({send}));
+    dist_assn->u_par().branches.push_back(gg.graph.blockAllocator().newSequence({recv}));
+
+    _splice_in_block_between (bb->parent(), bb, dist_assn);
+
+    _replace_uses (gg, seq, v, copy_var, send, start_after);
+}
+
+void Projection::_replace_uses (GraphWithChanNames &gg, Sequence seq, VarId oldvar, VarId newvar, Block *excl, Block *start_after)
 {
     hassert(excl->type()==BlockType::Basic && excl->u_basic().stmt.type()==StatementType::Send);
 
@@ -1015,7 +1094,11 @@ void Projection::_replace_uses (GraphWithChanNames &gg, Sequence seq, VarId oldv
         });
     };
 
-    Block *curr = seq.startseq->child();
+    Block *curr = seq.startseq;
+    while (curr != start_after) {
+        curr = curr->child();
+    }
+    curr = curr->child();
 
     while (curr->type() != BlockType::EndSequence) {
     switch (curr->type()) {
@@ -1044,7 +1127,7 @@ void Projection::_replace_uses (GraphWithChanNames &gg, Sequence seq, VarId oldv
             remap_opt_vec(merge.branch_ids);
         }
         for (auto &branch : curr->u_par().branches) {
-            _replace_uses (gg, branch, oldvar, newvar, excl);
+            _replace_uses (gg, branch, oldvar, newvar, excl, branch.startseq);
         }
     }
     break;
@@ -1057,7 +1140,7 @@ void Projection::_replace_uses (GraphWithChanNames &gg, Sequence seq, VarId oldv
             remap_vec(merge.branch_ids);
         }
         for (auto &branch : curr->u_select().branches) {
-            _replace_uses (gg, branch.seq , oldvar, newvar, excl);
+            _replace_uses (gg, branch.seq , oldvar, newvar, excl, branch.seq.startseq);
         }
     }
     break;
@@ -1072,7 +1155,7 @@ void Projection::_replace_uses (GraphWithChanNames &gg, Sequence seq, VarId oldv
             remap(loop_phi.bodyout_id);
             remap(loop_phi.pre_id);
         }
-        _replace_uses (gg, curr->u_doloop().branch, oldvar, newvar, excl);
+        _replace_uses (gg, curr->u_doloop().branch, oldvar, newvar, excl, curr->u_doloop().branch.startseq);
     }
     break;
     
