@@ -22,9 +22,10 @@
  */
 import globals;
 import std::gates;
+import "syn/diopt/chan.act"; 
 
 namespace syn {
-  export namespace diopt{
+  //export namespace diopt{
 
     /**
    * a variable, represented by a cross coupled inverter.
@@ -176,5 +177,5 @@ namespace syn {
 
     }
 
-  }
+  //}
 }

@@ -23,9 +23,10 @@
  */
 import globals;
 import std::gates;
+import "syn/ditest/chan.act";
 
 namespace syn {
-  export namespace ditest{
+  //export namespace ditest{
 
     /**
    * a variable, represented by a cross coupled inverter.
@@ -177,5 +178,5 @@ namespace syn {
 
     }
 
-  }
+  //}
 }  

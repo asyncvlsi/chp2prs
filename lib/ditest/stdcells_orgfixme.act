@@ -22,7 +22,6 @@
  */
 
 import globals;
-import "syn/diopt/chan.act"; 
 
 /**
  * This library contains DI versions of stdcell library, with single bit channels.
@@ -32,14 +31,14 @@ import "syn/diopt/chan.act";
 namespace syn {
   //export namespace diopt{
     export template<pint N>
-    defproc copy(sdtexprchan<1> in; sdtexprchan<1> out[N]) {
+    defproc syndioptcopy(sdtexprchan<1> in; sdtexprchan<1> out[N]) {
       ( i : N:
         in = out[i];
       )
     }
 
     export
-    defcell source_GND(sdtexprchan<1> out) {
+    defproc syndioptsource_GND(sdtexprchan<1> out) {
       bool _f;
       prs {
         out.r => _f-
@@ -54,7 +53,7 @@ namespace syn {
     }
 
     export
-    defcell source_Vdd(sdtexprchan<1> out) {
+    defproc syndioptsource_Vdd(sdtexprchan<1> out) {
       bool _t;
       prs {
         out.r => _t-
@@ -71,7 +70,7 @@ namespace syn {
     /*-- inverters --*/
 
     export template<pint X>
-    defcell inv(sdtexprchan?<1> A; sdtexprchan!<1> Y) {
+    defcell syndioptinv(sdtexprchan?<1> A; sdtexprchan!<1> Y) {
       A.r = Y.r;
       [ X<=1 -> A.d.d[0].t = Y.d.d[0].f; A.d.d[0].f = Y.d.d[0].t; 
       [] else -> 
@@ -83,18 +82,18 @@ namespace syn {
     }
 
     export 
-    defcell INVX1 <: inv<1> () {}
+    defcell syndioptINVX1 <: syndioptinv<1> () {}
     export 
-    defcell INVX2 <: inv<2> () {}
+    defcell syndioptINVX2 <: syndioptinv<2> () {}
     export 
-    defcell INVX4 <: inv<4> () {}
+    defcell syndioptINVX4 <: syndioptinv<4> () {}
     export 
-    defcell INVX8 <: inv<8> () {}
+    defcell syndioptINVX8 <: syndioptinv<8> () {}
 
     /*-- clock delay buffers --*/
 
     template<pint N>
-    defcell dbuf(bool? in; bool! out) {
+    defcell syndioptdbuf(bool? in; bool! out) {
       { false : "should not have been used by the syntesis tool no qdi equivilent" };
       bool sig[2 * N + 1];
       sig[0] = in;
@@ -107,16 +106,16 @@ namespace syn {
     }
 
     export
-    defcell CLKBUF1 <: dbuf<2> () {}
+    defcell syndioptCLKBUF1 <: syndioptdbuf<2> () {}
     export
-    defcell CLKBUF2 <: dbuf<3> () {}
+    defcell syndioptCLKBUF2 <: syndioptdbuf<3> () {}
     export
-    defcell CLKBUF3 <: dbuf<4> () {}
+    defcell syndioptCLKBUF3 <: syndioptdbuf<4> () {}
 
     /*--  signal buffers --*/
 
     export template<pint N>
-    defcell buf(sdtexprchan?<1> A; sdtexprchan!<1> Y) {
+    defcell syndioptbuf(sdtexprchan?<1> A; sdtexprchan!<1> Y) {
       A.r = Y.r;
       std::gates::sigbuf<N> _f(A.d.d[0].f);
       _f.out[0] = Y.d.d[0].f;
@@ -125,11 +124,11 @@ namespace syn {
     }
 
     export
-    defcell BUFX1 <: buf<1> () {}
+    defcell syndioptBUFX1 <: syndioptbuf<1> () {}
     export
-    defcell BUFX2 <: buf<2> () {}
+    defcell syndioptBUFX2 <: syndioptbuf<2> () {}
     export
-    defcell BUFX4 <: buf<4> () {}
+    defcell syndioptBUFX4 <: syndioptbuf<4> () {}
 
     /*-- simple gates --*/
 
@@ -150,7 +149,7 @@ namespace syn {
     }
     
     export
-    defcell NOR2X1 <: nor2 () {
+    defcell syndioptNOR2X1 <: nor2 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -176,7 +175,7 @@ namespace syn {
     }
 
     export
-    defcell NOR3X1 <: nor3 () {
+    defcell syndioptNOR3X1 <: nor3 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -201,7 +200,7 @@ namespace syn {
     }
 
     export
-    defcell OR2X1 <: or2 () {
+    defcell syndioptOR2X1 <: or2 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -212,7 +211,7 @@ namespace syn {
     }
 
     export
-    defcell OR2X2 <: or2 () {
+    defcell syndioptOR2X2 <: or2 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 2};
@@ -237,7 +236,7 @@ namespace syn {
     }
 
     export
-    defcell NAND2X1 <: nand2 () {
+    defcell syndioptNAND2X1 <: nand2 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 2};
@@ -263,7 +262,7 @@ namespace syn {
     }
     
     export
-    defcell NAND3X1 <: nand3 () {
+    defcell syndioptNAND3X1 <: nand3 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -289,7 +288,7 @@ namespace syn {
     }
 
     export
-    defcell AND2X1 <: and2 () {
+    defcell syndioptAND2X1 <: and2 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -300,7 +299,7 @@ namespace syn {
     }
 
     export
-    defcell AND2X2 <: and2 () {
+    defcell syndioptAND2X2 <: and2 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 2};
@@ -325,7 +324,7 @@ namespace syn {
     }
 
     export
-    defcell XOR2X1 <: xor2 () {
+    defcell syndioptXOR2X1 <: xor2 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -350,7 +349,7 @@ namespace syn {
     }
 
     export
-    defcell XNOR2X1 <: xnor2 () {
+    defcell syndioptXNOR2X1 <: xnor2 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -377,7 +376,7 @@ namespace syn {
     }
 
     export
-    defcell MUX2X1 <: mux2 () {
+    defcell syndioptMUX2X1 <: mux2 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -403,7 +402,7 @@ namespace syn {
     }
 
     export
-    defcell OAI21X1 <: oai21 () {
+    defcell syndioptOAI21X1 <: oai21 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -429,7 +428,7 @@ namespace syn {
     }
         
     export
-    defcell AOI21X1 <: aoi21 () {
+    defcell syndioptAOI21X1 <: aoi21 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -456,7 +455,7 @@ namespace syn {
     }
 
     export
-    defcell OAI22X1 <: oai22 () {
+    defcell syndioptOAI22X1 <: oai22 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -483,7 +482,7 @@ namespace syn {
     }
 
     export
-    defcell AOI22X1 <: aoi22 () {
+    defcell syndioptAOI22X1 <: aoi22 () {
       sizing{
         p_n_mode <- 1;
         Y.d.d[0].t{- 1};
@@ -518,7 +517,7 @@ namespace syn {
     }
 
     export
-    defcell HAX1 <: ha () {
+    defcell syndioptHAX1 <: ha () {
       sizing{
         p_n_mode <- 1;
         YS.d.d[0].t{- 1};
@@ -560,7 +559,7 @@ namespace syn {
     }
     
     export
-    defcell FAX1 <: fa () {
+    defcell syndioptFAX1 <: fa () {
       sizing{
         p_n_mode <- 1;
         YC.d.d[0].t{- 1};

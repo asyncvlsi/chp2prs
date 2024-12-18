@@ -2,7 +2,7 @@
 
 echo
 echo "************************************************************************"
-echo "*               Testing ring synthesis - QDI datapath                  *"
+echo "*            Testing ring synthesis - QDI & DI datapath                *"
 echo "************************************************************************"
 echo
 
@@ -69,7 +69,7 @@ do
            myecho ".[$bname]"
         fi
         ok=1
-        for opt in "-F ring"
+        for opt in "-F ring -C qdi" "-F ring -C di" "-F ring -C ditest"
 	do
         if [ $ok -eq 1 ]
         then

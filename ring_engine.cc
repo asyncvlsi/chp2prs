@@ -52,22 +52,29 @@ class RingSynth : public ActSynthesize {
 
     /* print imports */
     // pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
-    pp_printf_raw (_pp, "import syn::ring;\n");
+    
     if (bundled_data) {
+      pp_printf_raw (_pp, "import syn::ring;\n");
       pp_printf_raw (_pp, "open syn::ring;\n");
     }
     else if (di_dpath){
-      pp_printf_raw (_pp, "import syn::diopt;\n");
-      pp_printf_raw (_pp, "open syn::diopt -> syn;\n");
+      //pp_printf_raw (_pp, "import syn::diopt;\n");
+      //pp_printf_raw (_pp, "open syn::diopt -> syn;\n");
+      pp_printf_raw (_pp, "import \"syn/diopt/_all_.act\";\n");
+      pp_printf_raw (_pp, "import syn::ring;\n");
       pp_printf_raw (_pp, "open syn::ring_di_dpath;\n");
     }
     else if (ditest_dpath){
-      pp_printf_raw (_pp, "import syn::ditest;\n");
-      pp_printf_raw (_pp, "open syn::ditest -> syn;\n");
+      //pp_printf_raw (_pp, "import syn::ditest;\n");
+      //pp_printf_raw (_pp, "open syn::ditest -> syn;\n");
+      pp_printf_raw (_pp, "import \"syn/ditest/_all_.act\";\n");
+      pp_printf_raw (_pp, "import syn::ring;\n");
       pp_printf_raw (_pp, "open syn::ring_di_dpath;\n");
     }
     else {
-      pp_printf_raw (_pp, "open syn::ring_qdi_dpath;\n");
+      pp_printf_raw (_pp, "import \"syn/qdi/_all_.act\";\n");
+      pp_printf_raw (_pp, "import syn::ring;\n");
+      pp_printf_raw (_pp, "open syn::ring_di_dpath;\n");
     }
     pp_printf_raw (_pp, "open syn;\n");
 

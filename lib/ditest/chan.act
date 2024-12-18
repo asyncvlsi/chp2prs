@@ -25,7 +25,7 @@ open std::data;
 open std::channel;
 
 namespace syn {
-  export namespace ditest {
+  //export namespace ditest {
 
     export deftype sdtvar <: Mx1of2 () {}
     export deftype sdtboolvar <: bool (sdtvar<1> x) {}
@@ -48,5 +48,5 @@ namespace syn {
     defproc sdt_connect_data(sdtexprchan<W> e; sdtchan<W> c) {
       e.d = c.d;
     }
-  }
+  //}
 } 
