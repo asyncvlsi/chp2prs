@@ -106,8 +106,9 @@ bool RingForge::_structure_check (act_chp_lang_t *c)
         for (listitem_t *li = list_first (c->u.semi_comma.cmd) ; li ; li = list_next(li))
         {
             act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
-            if (!(stmt->type==ACT_CHP_ASSIGN || stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP)) {
+            if (!(stmt->type==ACT_CHP_ASSIGN || stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP || stmt->type==ACT_CHP_FUNC)) {
                 chp_print(stdout, stmt);
+                fprintf(stdout, "\nstmt type: %d", stmt->type);
                 return false;
             }
             if ((stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP)) {

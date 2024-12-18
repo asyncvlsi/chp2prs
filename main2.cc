@@ -79,9 +79,10 @@ int main(int argc, char **argv)
 
   bool use_ring = false;
   bool arb = true;
+  bool project = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "RhOGbde:E:o:p:F:P:m:")) != -1) {
+  while ((ch = getopt (argc, argv, "RhOGbXde:E:o:p:F:P:m:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -106,6 +107,10 @@ int main(int argc, char **argv)
 
     case 'G':
       non_ssa = true;
+      break;
+
+    case 'X':
+      project = true;
       break;
       
     case 'h':
@@ -243,6 +248,7 @@ int main(int argc, char **argv)
       c2p->setParam ("engine", (void *) gen_decomp_engine);
       c2p->setParam ("prefix", (void *)Strdup ("decomp"));
       c2p->setParam ("parallelism", parallelism);
+      c2p->setParam ("project", project);
     }
     else {
       c2p->setParam ("engine", (void *) gen_sdt_engine);

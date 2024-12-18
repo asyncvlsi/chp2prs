@@ -319,7 +319,7 @@ class Projection : protected ChoppingBlock {
                         Scope *s_in) 
             : ChoppingBlock (fp_in, g_in, vmap_in, s_in) 
             {
-                sel_set_id = 0;
+                // sel_set_id = 0;
             }
         
         void project ();
@@ -327,7 +327,7 @@ class Projection : protected ChoppingBlock {
         std::vector<act_chp_lang_t *> get_procs ();
         void print_subgraphs (FILE *);
         void split_assignments (ChpGraph &);
-        void split_selections ();
+        // void split_selections ();
 
     private:
 
@@ -338,8 +338,8 @@ class Projection : protected ChoppingBlock {
         std::unordered_map<UnionFind<DFG_Node *>::id, std::vector<DFG_Node *>> subgraphs;
         DFG dfg;
 
-        std::unordered_map<int, std::vector<Block *>> sel_sets;
-        int sel_set_id;
+        // std::unordered_map<int, std::vector<Block *>> sel_sets;
+        // int sel_set_id;
 
         int _gen_sel_set_id();
 
@@ -373,7 +373,7 @@ class Projection : protected ChoppingBlock {
         bool _check_guard_phi_dependence (DFG_Node *, DFG_Node *);
         bool _check_guard_phi_inv_dependence (DFG_Node *, DFG_Node *);
 
-        void _split_selections (Sequence);
+        // void _split_selections (Sequence);
         void _split_assignments (Sequence);
 
 };

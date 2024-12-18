@@ -430,11 +430,13 @@ bool Projection::_set_contains (Block *b, std::unordered_set<DFG_Node *> &s)
 }
 #endif
 
+#if 0
 int Projection::_gen_sel_set_id()
 {
     sel_set_id++;
     return sel_set_id;
 }
+#endif
 
 std::vector<VarId> Projection::get_defs (DFG_Node *node)
 {
@@ -1270,10 +1272,12 @@ void Projection::split_assignments(ChpGraph &gg)
     _split_assignments(gg.m_seq);
 }
 
+#if 0
 void Projection::split_selections()
 {
     _split_selections(g->graph.m_seq);
 }
+#endif
 
 void Projection::_split_assignments(Sequence seq)
 {
@@ -1341,6 +1345,7 @@ void Projection::_split_assignments(Sequence seq)
     }
 }
 
+#if 0
 void Projection::_split_selections(Sequence seq)
 {
     Block *curr = seq.startseq->child();
@@ -1393,3 +1398,4 @@ void Projection::_split_selections(Sequence seq)
     curr = curr->child();
     }
 }
+#endif
