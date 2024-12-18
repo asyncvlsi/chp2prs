@@ -28,8 +28,6 @@ import std;
 open std::channel;
 open std::gates;
 
-import "syn/qdi/_all_.act";
-
 namespace syn {
   
   export namespace ring_di_dpath {

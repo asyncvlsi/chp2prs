@@ -1,0 +1,41 @@
+
+defproc fib (chan?(int<4>) l; chan!(int<8>) r)
+{
+	int<4> c;
+	int<4> c1;
+	int<8> x, y;
+	int<8> x1, y1;
+
+	chp {
+		c:=0; x:=0; y:=0;
+		*[
+			[ c=0 -> r!x; l?c , x:=0 , y:=1
+			[]c>0 -> x1 := x+y ; y1 := x1+y ; x:=x1 ; y:=y1 ; c1 := c-1 ; c:=c1
+			]
+		]
+	}
+}
+
+defproc src5 (chan!(int<4>) r)
+{
+	chp{
+		*[r!5]
+	}
+}
+
+defproc snk (chan?(int<8>) l)
+{
+	int<8> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<4>) X; chan!(int<8>) Y)
+{
+  fib f(X,Y);
+
+  src5 ix(X);
+
+  snk o(Y);
+}

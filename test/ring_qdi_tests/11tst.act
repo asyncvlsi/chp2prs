@@ -1,0 +1,17 @@
+import globals;
+import "11.act";
+import "11_ring.act";
+
+defproc test()
+{
+  ring_testproc t;
+  d1of2 a[1];
+  a = t.Y.d.d;
+  chp {
+      [
+      a[0].t=true &
+      a[0].f=false &
+      t.Y.a = true
+      -> log("SUCCESS")]
+  }
+}

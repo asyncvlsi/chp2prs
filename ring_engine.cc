@@ -54,6 +54,7 @@ class RingSynth : public ActSynthesize {
     // pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
     
     if (bundled_data) {
+      pp_printf_raw (_pp, "import \"syn/qdi/_all_.act\";\n"); // @TODO this is a bug fix until the namespace use is properly done
       pp_printf_raw (_pp, "import syn::ring;\n");
       pp_printf_raw (_pp, "open syn::ring;\n");
     }

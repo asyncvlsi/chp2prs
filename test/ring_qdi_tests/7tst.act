@@ -1,0 +1,32 @@
+import globals;
+import "7.act";
+import "7_ring.act";
+
+defproc test()
+{
+  ring_testproc t;
+  d1of2 a[8];
+  a = t.Y.d.d;
+  chp {
+      // a = 5
+      [
+      a[0].t=true  & 
+      a[1].t=false & 
+      a[2].t=true  & 
+      a[3].t=false & 
+      a[4].t=false &
+      a[5].t=false &
+      a[6].t=false &
+      a[7].t=false &
+      a[0].f=false  & 
+      a[1].f=true & 
+      a[2].f=false  & 
+      a[3].f=true & 
+      a[4].f=true &
+      a[5].f=true &
+      a[6].f=true &
+      a[7].f=true &
+      t.Y.a = true
+      -> log("SUCCESS")]
+  }
+}
