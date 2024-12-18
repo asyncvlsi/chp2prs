@@ -28,6 +28,4 @@ import "syn/ring/ctrl_pulsed.act";
 
 import "syn/ring/ctrl_2phase.act";
 
-import "syn/ring/ctrl_qdi_dpath.act";
-
 import "syn/ring/ctrl_di_dpath.act";

@@ -30,7 +30,7 @@ open std::gates;
 
 namespace syn {
   
-  export namespace ring_qdi_dpath {
+  export namespace ring_di_dpath {
     
 
 // Basic Elements -----------------------------------------

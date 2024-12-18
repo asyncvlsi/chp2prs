@@ -83,7 +83,7 @@ namespace syn {
     }
 
     export 
-    defcell INVX1 <: inv<1> () {}
+    defproc INVX1 <: inv<1> () {}
     export 
     defcell INVX2 <: inv<2> () {}
     export 
@@ -115,17 +115,20 @@ namespace syn {
 
     /*--  signal buffers --*/
 
-    export template<pint N>
+    export template<pint X>
     defcell buf(sdtexprchan?<1> A; sdtexprchan!<1> Y) {
       A.r = Y.r;
-      std::gates::sigbuf<N> _f(A.d.d[0].f);
+      [ X<=1 -> A.d.d[0].t = Y.d.d[0].t; A.d.d[0].f = Y.d.d[0].f; 
+      [] else -> 
+      std::gates::sigbuf<X> _f(A.d.d[0].f);
       _f.out[0] = Y.d.d[0].f;
-      std::gates::sigbuf<N> _t(A.d.d[0].t);
+      std::gates::sigbuf<X> _t(A.d.d[0].t);
       _t.out[0] = Y.d.d[0].t;
+      ]
     }
 
     export
-    defcell BUFX1 <: buf<1> () {}
+    defproc BUFX1 <: buf<1> () {}
     export
     defcell BUFX2 <: buf<2> () {}
     export
