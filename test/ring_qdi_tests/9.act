@@ -4,7 +4,7 @@ defproc prober (chan?(int<8>) l1, l2; chan!(int<8>) r)
 	int<8> x;
 	chp{
         *[
-            [  #l1 -> l1?x
+            [ l1=4 -> l1?x
             [] #l2 -> l2?x
             ];
             r!x

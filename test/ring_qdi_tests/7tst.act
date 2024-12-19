@@ -5,28 +5,31 @@ import "7_ring.act";
 defproc test()
 {
   ring_testproc t;
-  d1of2 a[8];
-  a = t.Y.d.d;
+  bool at[8], af[8], aa;
+  ( i : 8 : at[i] = t.Y.d.d[i].t; )
+  ( i : 8 : af[i] = t.Y.d.d[i].f; )
+  aa = t.Y.a;
   chp {
       // a = 5
       [
-      a[0].t=true  & 
-      a[1].t=false & 
-      a[2].t=true  & 
-      a[3].t=false & 
-      a[4].t=false &
-      a[5].t=false &
-      a[6].t=false &
-      a[7].t=false &
-      a[0].f=false  & 
-      a[1].f=true & 
-      a[2].f=false  & 
-      a[3].f=true & 
-      a[4].f=true &
-      a[5].f=true &
-      a[6].f=true &
-      a[7].f=true &
-      t.Y.a = true
+      at[0]=true  & 
+      at[1]=false & 
+      at[2]=true  & 
+      at[3]=false & 
+      at[4]=false &
+      at[5]=false &
+      at[6]=false &
+      at[7]=false &
+
+      af[0]=false  & 
+      af[1]=true & 
+      af[2]=false  & 
+      af[3]=true & 
+      af[4]=true &
+      af[5]=true &
+      af[6]=true &
+      af[7]=true &
+      aa = true
       -> log("SUCCESS")]
   }
 }

@@ -77,6 +77,18 @@ defproc connect_exprblk_dout (sdtexprchan<1> d[W]; sdtexprchan<W> ch)
   conv.out = ch;
 }
 
+export template<pint W>
+defproc connect_exprblk_assign (sdtexprchan<1> e[W]; Mx1of2<W> d; a1of1 go)
+{
+  sdtexprchan<W> ch;
+  syn::expr::wrap_from_array<W> conv;
+  conv.in = e;
+  conv.out = ch;
+
+  go.r = ch.r;
+  d = ch.d;
+}
+
 // --------------------------------------------------------
 
 
@@ -150,6 +162,42 @@ defproc capture_init(a1of1 go; Mx1of2<W> din; sdtvar<W> dout)
   write_sync.in[1] = go.r;
   write_sync.out = go.a;
 }
+
+// export template <pint CD, PW, W, INIT_VAL>
+// defproc capture_init_i(a1of1 go; Mx1of2<W> din; sdtvar<W> dout)
+// {  
+//   syn::var_init_val<W,INIT_VAL> var;
+//   var.v = dout;
+  
+//   syn::expr::writeport<W> wp;
+//   wp.wt = var.wt;
+//   wp.wf = var.wf;
+//   wp.var = dout;
+
+//   wp.in.d = din;
+
+//   std::gates::ctree<2,true> write_sync;
+//   write_sync.in[0] = wp.in.a;
+//   write_sync.in[1] = go.r;
+//   write_sync.out = go.a;
+// }
+
+// export template <pint CD, PW, W, INIT_VAL>
+// defproc capture_init(a1of1 go; Mx1of2<W> din; sdtvar<W> dout)
+// {  
+//   capture_init_t<CD, PW, W, INIT_VAL> c0;
+//   capture_init_i<CD, PW, W, INIT_VAL> c1;
+  
+//   din = c0.din;
+//   go.r = c0.go.r;
+//   go.a = c1.go.a;
+//   dout = c1.dout; 
+
+//   std::cells::NOR2X1 nor(Reset,c0.go.a,c1.go.r);
+
+//   var_access<W> vax(c0.dout);
+//   connect_exprblk_assign<W> conn_d(vax.dout, c1.din, c1.go);
+// }
 
 // come back to this later
 // export template <pint CD, PW, W, INIT_VAL, N>
@@ -399,6 +447,43 @@ defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
     ( i : N: ort.in[i] = co[i].a; )
 }
 
+// export template<pint N>
+// defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
+// {
+//     capture<5, 6, 1> capt[N];
+//     var_access<1> vax[N];
+
+//     ( i : N: capt[i].din = gs[i].d; )
+//     // ( i : N: gs[i].r = m1.r; )
+//     gs[0].r = m1.r;
+//     ( i : N: capt[i].dout = vax[i].din; )
+//     // ( i : N: capt[i].go.r = m1.r; )
+//     ( i : N: capt[i].go.a = vax[i].dout[0].r; )
+
+//     capt[0].go.r = m1.r;
+//     ( i : N-1 : capt[i+1].go.r = vax[i].dout[0].d.d[0].f; )
+//     ( i : N-1 : gs[i+1].r = vax[i].dout[0].d.d[0].f; )
+//     // vax[N-1].dout[0].d.d[0].f is dangling
+
+//     ( i : N: co[i].r = vax[i].dout[0].d.d[0].t; )
+//     // bool _co_r[N];
+//     // bool x[N];
+//     // ( i : N: x[i]= vax[i].dout[0].d.d[0].t; )
+    
+//     // ( i : N : 
+//     //   prs {
+//     //     vax[i].dout[0].d.d[0].t & (&k:i..i+1:tmp[k])
+//     //   }
+//     // )
+    
+//     // prs {
+//     //     ( i : N : _co_r[i] -> co[i].r- )
+//     // }
+// 
+//     std::gates::ortree<N, false> ort(, m1.a);
+//     ( i : N: ort.in[i] = co[i].a; )
+// }
+
 export template<pint N>
 defproc selection_merge(a1of1 ci[N]; a1of1! p1) 
 {
@@ -498,7 +583,7 @@ defproc myOR2X1(syn::sdtexprchan?<1> A, B; syn::sdtexprchan!<1> Y) {
 }
 
 template<pint N>
-defproc ortree_qdi(syn::sdtexprchan?<1> I[N]; syn::sdtexprchan!<1> Y)
+defproc ortree_qdi(syn::sdtexprchan<1> I[N]; syn::sdtexprchan<1> Y)
 {
   { N > 0 : "Need positive no. of inputs to gate" };
 

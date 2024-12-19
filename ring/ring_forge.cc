@@ -477,9 +477,15 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         // connect output of math block to latch input
         if (datapath_style==SSA)
         {
-            fprintf(_fp,"%s%d.out = %s%s_%d.din;\n",expr_block_instance_prefix,expr_inst_id,
-                                                capture_block_prefix,
-                                                vi->name,latch_id);
+            // fprintf(_fp,"%s%d.out = %s%s_%d.din;\n",expr_block_instance_prefix,expr_inst_id,
+            //                                     capture_block_prefix,
+            //                                     vi->name,latch_id);
+            fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din,%s%s_%d.go);\n", bw, 
+                            expr_block_output_prefix, expr_inst_id,
+                            expr_block_instance_prefix,expr_inst_id,
+                            capture_block_prefix, vi->name,latch_id,
+                            capture_block_prefix, vi->name,latch_id
+                            );
             // connect pipe block to delay_expr input
             fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
             // connect delay_expr output to capture block
@@ -488,10 +494,17 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         }
         else 
         {
-            fprintf(_fp,"%s%d.out = %s%s_%d.din[%d][0..%d];\n",expr_block_instance_prefix,expr_inst_id,
-                                                capture_block_prefix,
-                                                vi->name,latch_id,
-                                                vi->iwrite, (vi->width)-1);
+            // fprintf(_fp,"%s%d.out = %s%s_%d.din[%d][0..%d];\n",expr_block_instance_prefix,expr_inst_id,
+            //                                     capture_block_prefix,
+            //                                     vi->name,latch_id,
+            //                                     vi->iwrite, (vi->width)-1);
+            fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din[%d][0..%d], %s%s_%d.go[%d]);\n", bw, 
+                expr_block_output_prefix, expr_inst_id,
+                expr_block_instance_prefix,expr_inst_id,
+                capture_block_prefix, vi->name,latch_id, 
+                vi->iwrite, (vi->width)-1,
+                capture_block_prefix, vi->name,latch_id,vi->iwrite
+                );
             // connect pipe block to delay_expr input
             fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
             // connect delay_expr output to capture block
@@ -705,6 +718,7 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
     hash_bucket_t *b;
     var_info *vi;
     char tname[1024];
+    int va_id;
 
     block_id = _gen_block_id();
     Assert (var, "no variable (_generate_pipe_element_lcd");
@@ -723,9 +737,22 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
         first_latch_id = 0;
         last_latch_id = vi->latest_for_read;
         // connect last latch output to first latch input
-        fprintf(_fp,"%s%s_%d.dout = %s%s_%d.din;\n",capture_block_prefix,vi->name,last_latch_id,
-                                            capture_block_prefix,
-                                            vi->name,first_latch_id);
+        // fprintf(_fp,"%s%s_%d.dout = %s%s_%d.din;\n",capture_block_prefix,vi->name,last_latch_id,
+        //                                     capture_block_prefix,
+        //                                     vi->name,first_latch_id);
+        // fprintf(_fp,"%s%s_%d.dout = %s%s_%d.din;\n",capture_block_prefix,vi->name,last_latch_id,
+        //                                     capture_block_prefix,
+        //                                     vi->name,first_latch_id);
+        va_id = _gen_var_access_id();
+        fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,);\n",
+                                vi->width,var_access_prefix,va_id,
+                                capture_block_prefix,vi->name, last_latch_id);
+        fprintf(_fp, "connect_exprblk_assign<%d> %s_lcd_%d(%s%d.dout,%s%s_%d.din,%s%s_%d.go);\n", 
+                            vi->width, expr_block_output_prefix, va_id,
+                            var_access_prefix,va_id,
+                            capture_block_prefix,vi->name,first_latch_id,
+                            capture_block_prefix,vi->name,first_latch_id
+                            );
         // connect pipe block action port to latch go port
         fprintf(_fp,"%s%d.zero = %s%s_%d.go;\n",ring_block_prefix,block_id,capture_block_prefix,
                                             vi->name,first_latch_id);

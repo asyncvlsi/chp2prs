@@ -8,8 +8,9 @@ defproc test()
   d1of2 a[8];
   a = t.Y.d.d;
   chp {
-      // a = 5
+      // a = 5 or a = 2
       [
+      (
       a[0].t=true  & 
       a[1].t=false & 
       a[2].t=true  & 
@@ -27,6 +28,27 @@ defproc test()
       a[6].f=true &
       a[7].f=true &
       t.Y.a = true
+      ) 
+      |
+      (
+      a[0]=false & 
+      a[1]=true  & 
+      a[2]=false & 
+      a[3]=false & 
+      a[4]=false &
+      a[5]=false &
+      a[6]=false &
+      a[7]=false &
+      a[0].f=true  & 
+      a[1].f=false & 
+      a[2].f=true  & 
+      a[3].f=true & 
+      a[4].f=true &
+      a[5].f=true &
+      a[6].f=true &
+      a[7].f=true &
+      t.Y.a = true
+      )
       -> log("SUCCESS")]
   }
 }

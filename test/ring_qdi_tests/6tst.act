@@ -1,6 +1,6 @@
 import globals;
 import "6.act";
-import "6_ring.act";
+import "runs/6_ring.act";
 
 defproc test()
 {
@@ -8,26 +8,29 @@ defproc test()
   bool at[8], af[8], aa;
   ( i : 8 : at[i] = t.Y.d.d[i].t; )
   ( i : 8 : af[i] = t.Y.d.d[i].f; )
+  aa = t.Y.a;
   chp {
       // a = 55
       [
-      at=true  & 
-      at=true  & 
-      at=true  & 
-      at=false & 
-      at=true  &
-      at=true  &
-      at=false &
-      at=false &
-      af=false  & 
-      af=false  & 
-      af=false  & 
-      af=true & 
-      af=false  &
-      af=false  &
-      af=true &
-      af=true &
-      t.Y.a = true
+      at[0]=true  & 
+      at[1]=true  & 
+      at[2]=true  & 
+      at[3]=false & 
+      at[4]=true  &
+      at[5]=true  &
+      at[6]=false &
+      at[7]=false &
+
+      af[0]=false & 
+      af[1]=false & 
+      af[2]=false & 
+      af[3]=true  & 
+      af[4]=false &
+      af[5]=false &
+      af[6]=true  &
+      af[7]=true  &
+
+      aa = true
       -> log("SUCCESS")]
   }
 }

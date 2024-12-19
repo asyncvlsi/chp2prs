@@ -105,6 +105,12 @@ defproc connect_exprblk_dout (bool d[W]; bool e[W])
 {
   e = d;
 }
+
+export template<pint W>
+defproc connect_exprblk_assign (bool d[W]; bool e[W]; a1of1 go)
+{
+  e = d;
+}
 // --------------------------------------------------------
 
 

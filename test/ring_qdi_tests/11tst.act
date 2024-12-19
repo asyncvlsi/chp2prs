@@ -5,13 +5,15 @@ import "11_ring.act";
 defproc test()
 {
   ring_testproc t;
-  d1of2 a[1];
-  a = t.Y.d.d;
+  bool at, af, aa;
+  at = t.Y.d.d[0].t;
+  at = t.Y.d.d[0].f;
+  aa = t.Y.a;
   chp {
       [
-      a[0].t=true &
-      a[0].f=false &
-      t.Y.a = true
+      at=true  &
+      af=false &
+      aa=true
       -> log("SUCCESS")]
   }
 }
