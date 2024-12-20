@@ -37,8 +37,8 @@ namespace detail {
    * CanonicalFlatNode holds a Node *, where a Node * is an IRExpr
    * without memory management.
    */
-template <typename Tag, typename VarIdType> struct CanonicalFlatNode {
-    using Node = IRExpr<Tag, VarIdType, ManageMemory::no>;
+template <typename Tag, typename VarIdType, typename ChanIdType> struct CanonicalFlatNode {
+    using Node = IRExpr<Tag, VarIdType, ChanIdType, ManageMemory::no>;
     Node *node;
 
     /*
@@ -87,12 +87,12 @@ template <typename Tag, typename VarIdType> struct CanonicalFlatNode {
 /*
  * Hashing support
  */
-template <typename Tag, typename VarIdType>
-struct std::hash<ChpOptimize::detail::CanonicalFlatNode<Tag, VarIdType>> {
+template <typename Tag, typename VarIdType, typename ChanIdType>
+struct std::hash<ChpOptimize::detail::CanonicalFlatNode<Tag, VarIdType, ChanIdType>> {
     using Node =
-        ::ChpOptimize::IRExpr<Tag, VarIdType, ChpOptimize::ManageMemory::no>;
+      ::ChpOptimize::IRExpr<Tag, VarIdType, ChanIdType, ChpOptimize::ManageMemory::no>;
     size_t
-    operator()(const ::ChpOptimize::detail::CanonicalFlatNode<Tag, VarIdType> c)
+    operator()(const ::ChpOptimize::detail::CanonicalFlatNode<Tag, VarIdType,ChanIdType> c)
         const {
         hassert(c.node);
         Node &n = *c.node;
@@ -143,14 +143,14 @@ struct std::hash<ChpOptimize::detail::CanonicalFlatNode<Tag, VarIdType>> {
 
 namespace ChpOptimize {
 
-template <typename Tag, typename VarIdType> struct IRExprSingleRootDag;
+template <typename Tag, typename VarIdType, typename ChanIdType> struct IRExprSingleRootDag;
 
-template <typename Tag, typename VarIdType> struct IRExprDag {
+template <typename Tag, typename VarIdType,  typename ChanIdType> struct IRExprDag {
   public:
-    using IRExpr_t = IRExpr<Tag, VarIdType, ManageMemory::yes>;
-    using Node = IRExpr<Tag, VarIdType, ManageMemory::no>;
-    using CanonicalFlatNode_t = detail::CanonicalFlatNode<Tag, VarIdType>;
-    using IRExprSingleRootDag_t = IRExprSingleRootDag<Tag, VarIdType>;
+    using IRExpr_t = IRExpr<Tag, VarIdType, ChanIdType, ManageMemory::yes>;
+    using Node = IRExpr<Tag, VarIdType, ChanIdType, ManageMemory::no>;
+    using CanonicalFlatNode_t = detail::CanonicalFlatNode<Tag, VarIdType, ChanIdType>;
+    using IRExprSingleRootDag_t = IRExprSingleRootDag<Tag, VarIdType, ChanIdType>;
     std::deque<Node> nodes;
     // the order of the list of roots matters. Each root corresponds to a value
     // this dag computes and exposes to the enviroment
@@ -592,9 +592,9 @@ template <typename Tag, typename VarIdType> struct IRExprDag {
     }
 };
 
-template <typename Tag, typename VarIdType> struct IRExprSingleRootDag {
+template <typename Tag, typename VarIdType, typename ChanIdType> struct IRExprSingleRootDag {
   public:
-    using IRExprDag_t = IRExprDag<Tag, VarIdType>;
+    using IRExprDag_t = IRExprDag<Tag, VarIdType, ChanIdType>;
     using IRExpr_t = typename IRExprDag_t::IRExpr_t;
     using Node = typename IRExprDag_t::Node;
 
@@ -754,10 +754,8 @@ template <typename Tag, typename VarIdType> struct IRExprSingleRootDag {
     }
 };
 
-template <typename Tag, typename VarIdType>
-
-typename IRExprDag<Tag, VarIdType>::Node *IRExprDag<Tag, VarIdType>::addSubdag(
-    const IRExprSingleRootDag<Tag, VarIdType> &other) {
+template <typename Tag, typename VarIdType, typename ChanIdType>
+typename IRExprDag<Tag, VarIdType, ChanIdType>::Node *IRExprDag<Tag, VarIdType, ChanIdType>::addSubdag(const IRExprSingleRootDag<Tag, VarIdType, ChanIdType> &other) {
     // This could be done much better. For now, us a map that maps `old pointer`
     // to `new pointer`
     auto o_roots = addSubdag(other.m_dag);
@@ -765,50 +763,50 @@ typename IRExprDag<Tag, VarIdType>::Node *IRExprDag<Tag, VarIdType>::addSubdag(
     return o_roots[0];
 }
 
-template <typename Tag, typename VarIdType>
+template <typename Tag, typename VarIdType, typename ChanIdType>
 void addIdsUsedByExpr(std::unordered_set<VarIdType> &usages,
-                      const IRExprDag<Tag, VarIdType> &dag) {
-    IRExprDag<Tag, VarIdType>::iterNodes(dag, [&](const auto &n) {
+                      const IRExprDag<Tag, VarIdType, ChanIdType> &dag) {
+    IRExprDag<Tag, VarIdType,  ChanIdType>::iterNodes(dag, [&](const auto &n) {
         if (n.type() == IRExprTypeKind::Var) {
             usages.insert(n.u_var().id);
         }
     });
 }
 
-template <typename Tag, typename VarIdType>
+template <typename Tag, typename VarIdType, typename ChanIdType>
 void addIdsUsedByExpr(std::unordered_set<VarIdType> &usages,
-                      const IRExprSingleRootDag<Tag, VarIdType> &dag) {
+                      const IRExprSingleRootDag<Tag, VarIdType, ChanIdType> &dag) {
     addIdsUsedByExpr(usages, dag.m_dag);
 }
 
-template <typename Tag, typename VarIdType>
+template <typename Tag, typename VarIdType, typename ChanIdType>
 void addIdsUsedByExpr(std::unordered_set<VarIdType> &usages,
-                      const IRExprDag<Tag, VarIdType> &,
-                      const typename IRExprDag<Tag, VarIdType>::Node *node) {
-    IRExprDag<Tag, VarIdType>::iterNodesBelow(node, [&](const auto &n) {
+                      const IRExprDag<Tag, VarIdType,ChanIdType> &,
+                      const typename IRExprDag<Tag, VarIdType,ChanIdType>::Node *node) {
+    IRExprDag<Tag, VarIdType,ChanIdType>::iterNodesBelow(node, [&](const auto &n) {
         if (n.type() == IRExprTypeKind::Var) {
             usages.insert(n.u_var().id);
         }
     });
 }
 
-template <typename Tag, typename VarIdType>
+template <typename Tag, typename VarIdType, typename ChanIdType>
 std::unordered_set<VarIdType>
-getIdsUsedByExpr(const IRExprDag<Tag, VarIdType> &e) {
+getIdsUsedByExpr(const IRExprDag<Tag, VarIdType, ChanIdType> &e) {
     std::unordered_set<VarIdType> usages;
     addIdsUsedByExpr(usages, e);
     return usages;
 }
-template <typename Tag, typename VarIdType>
+template <typename Tag, typename VarIdType, typename ChanIdType>
 std::unordered_set<VarIdType>
-getIdsUsedByExpr(const IRExprSingleRootDag<Tag, VarIdType> &e) {
+getIdsUsedByExpr(const IRExprSingleRootDag<Tag, VarIdType,  ChanIdType> &e) {
     return getIdsUsedByExpr(e.m_dag);
 }
 
-template <typename Tag, typename VarIdType>
+template <typename Tag, typename VarIdType, typename ChanIdType>
 std::unordered_set<VarIdType>
-getIdsUsedByExpr(const IRExprDag<Tag, VarIdType> &e,
-                 const typename IRExprDag<Tag, VarIdType>::Node *node) {
+getIdsUsedByExpr(const IRExprDag<Tag, VarIdType, ChanIdType> &e,
+                 const typename IRExprDag<Tag, VarIdType, ChanIdType>::Node *node) {
     std::unordered_set<VarIdType> usages;
     addIdsUsedByExpr(usages, e, node);
     return usages;

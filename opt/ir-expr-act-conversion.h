@@ -66,23 +66,27 @@ inline std::pair<BigInt, int> bigint_from_int_expr(const ActExprStruct *o) {
  * IRExpr, while the last is a function that maps ActId * to a pair
  * corresponding to a varId and bitwidth.
  */
-template <typename Tag, typename VarIdType, ManageMemory manageMemory,
-          typename VarIdFromActIdFn>
-std::unique_ptr<IRExpr<Tag, VarIdType, manageMemory>>
+template <typename Tag, typename VarIdType, typename ChanIdType, ManageMemory manageMemory,
+          typename VarIdFromActIdFn,
+	  typename ChanIdFromActIdFn>
+std::unique_ptr<IRExpr<Tag, VarIdType, ChanIdType, manageMemory>>
 template_func_new_irexpr_from_expr(const ActExprStruct *o,
-                                   const VarIdFromActIdFn &varid_from_actid) {
+                                   const VarIdFromActIdFn &varid_from_actid,
+				   const ChanIdFromActIdFn &chanid_from_actid) {
     static_assert(
         std::is_same_v<std::invoke_result_t<VarIdFromActIdFn, ActId *>,
                        std::pair<VarIdType, int>>);
+    static_assert(
+        std::is_same_v<std::invoke_result_t<ChanIdFromActIdFn, ActId *>,
+                       std::pair<ChanIdType, int>>);
 
     // short-cut for the recursive call
     auto new_irexpr_from_expr = [&](const ActExprStruct *xo)
-        -> std::unique_ptr<IRExpr<Tag, VarIdType, manageMemory>> {
-        return template_func_new_irexpr_from_expr<Tag, VarIdType, manageMemory>(
-            xo, varid_from_actid);
+      -> std::unique_ptr<IRExpr<Tag, VarIdType, ChanIdType, manageMemory>> {
+      return template_func_new_irexpr_from_expr<Tag, VarIdType, ChanIdType, manageMemory>(										  xo, varid_from_actid, chanid_from_actid);
     };
 
-    using IRExpr_t = IRExpr<Tag, VarIdType, manageMemory>;
+   using IRExpr_t = IRExpr<Tag, VarIdType, ChanIdType, manageMemory>;
     if (!o)
         return nullptr;
 
@@ -247,14 +251,17 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
     case E_FALSE:
         return std::make_unique<IRExpr_t>(IRExpr_t::makeConstant(BigInt{0}, 1));
     case E_VAR: {
+      // this could be a channel variable too!
         auto [id, bit_width] = varid_from_actid((ActId *)o->u.e.l);
         return std::make_unique<IRExpr_t>(
             IRExpr_t::makeVariableAccess(id, bit_width));
     }
       
     case E_PROBE: {
-        hassert(false); // TODO figure this out when we need it
-        break;
+      auto [id, bit_width]  = chanid_from_actid((ActId *)o->u.e.l);
+      return std::make_unique<IRExpr_t>(
+					IRExpr_t::makeChanProbe(id, bit_width));
+      break;
     }
       
     case E_BITFIELD: {
@@ -295,25 +302,32 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
   
 // `expectedType` must be Int if the width of `o` is not 1. If it is 1, the
 // returned expr struct will be properly typed.
-template <typename Tag, typename VarIdType, ManageMemory manageMemory,
-          typename ActIdFromVarIdFn>
+template <typename Tag, typename VarIdType,
+	  typename ChanIdType,
+	  ManageMemory manageMemory,
+          typename ActIdFromVarIdFn,
+	  typename ActIdFromChanIdFn>
 ActExprStruct *template_func_new_expr_from_irexpr(
-    const IRExpr<Tag, VarIdType, manageMemory> &e, ActExprIntType expectedType,
-    const ActIdFromVarIdFn &actid_from_varid) {
+    const IRExpr<Tag, VarIdType, ChanIdType, manageMemory> &e, ActExprIntType expectedType,
+    const ActIdFromVarIdFn &actid_from_varid,
+    const ActIdFromChanIdFn &actid_from_chanid) {
     static_assert(
         std::is_same_v<std::invoke_result_t<ActIdFromVarIdFn, VarIdType>,
+                       ActId *>);
+    static_assert(
+        std::is_same_v<std::invoke_result_t<ActIdFromChanIdFn, ChanIdType>,
                        ActId *>);
     hassert(e.width > 0);
     if (e.width > 1)
         hassert(expectedType == ActExprIntType::Int);
 
-    using IRExpr_t = IRExpr<Tag, VarIdType, manageMemory>;
+    using IRExpr_t = IRExpr<Tag, VarIdType, ChanIdType, manageMemory>;
 
     auto new_expr_from_irexpr =
         [&](const IRExpr_t &xo,
             ActExprIntType expectedType) -> ActExprStruct * {
-        return template_func_new_expr_from_irexpr<Tag, VarIdType, manageMemory>(
-            xo, expectedType, actid_from_varid);
+	  return template_func_new_expr_from_irexpr<Tag, VarIdType, ChanIdType, manageMemory>(
+											      xo, expectedType, actid_from_varid, actid_from_chanid);
     };
 
     //    ActExprStruct *r;

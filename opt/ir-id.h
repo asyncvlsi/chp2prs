@@ -250,6 +250,10 @@ class IdPool {
       VarIdInfo idi = m_varid_infos[id.m_id];
       return makeUniqueVar (idi.bitwidth, idi.is_bool);
     }
+
+    [[nodiscard]] size_t varNum() const {
+      return m_varid_infos.size();
+    }
 };
 
 

@@ -219,7 +219,7 @@ class IntLattice {
 
     /*
      * Creates an integer lattice of the specified bit-width, with
-     * nothiing known about all the bits.
+     * nothing known about all the bits.
      */
     [[nodiscard]] static IntLattice of_bitwidth(int bits);
 

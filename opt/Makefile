@@ -32,7 +32,9 @@ SHOBJS=algos.os big-int.os ir-id.os \
 	sequencers.os \
 	deadcode.os \
 	livevars.os \
-	ir-to-dataflow.os
+	ir-to-dataflow.os \
+	opt-generic.os \
+	defuse.os 
 
 CPPSTD=c++20
 

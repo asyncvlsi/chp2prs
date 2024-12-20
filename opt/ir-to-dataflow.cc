@@ -544,8 +544,8 @@ void printOutermostBlock (DataflowChannelManager &dm)
 //   v = expect
 // if it is, it returns v
 // otherwise it returns a null variable
-template<typename T, typename U, typename V>
-V check_guard_eq (const typename IRExprDag<T,U>::Node *n, int expect)
+template<typename T, typename U, typename V, typename W>
+V check_guard_eq (const typename IRExprDag<T,U,W>::Node *n, int expect)
 {
   if (n->type() != IRExprTypeKind::BinaryOp) {
     return V::null_id();					
@@ -629,7 +629,7 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
 	  found_special_case = false;
 	  break;
 	}
-	gret = check_guard_eq<ChpTag,VarId,OptionalVarId> (branch.g.u_e().e.m_dag.roots[0], gval);
+	gret = check_guard_eq<ChpTag,VarId,OptionalVarId,ChanId> (branch.g.u_e().e.m_dag.roots[0], gval);
 	if (gret) {
 	  if (noguard) {
 	    noguard = false;
@@ -692,7 +692,7 @@ ChanId nodes_add_guard(const Block::Variant_Select &select,
 	    }
 	    if (lpos < bool_glist.size()) {
 	      // check that the expression is guard = lpos
-	      gret = check_guard_eq<ChpTag,ChanId,OptionalChanId> (xd.u_func().e.roots[pos], (int)lpos);
+	      gret = check_guard_eq<ChpTag,ChanId,OptionalChanId,ChanId> (xd.u_func().e.roots[pos], (int)lpos);
 	      if (gret) {
 		if (noguard) {
 		  noguard = false;
@@ -2247,7 +2247,7 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
 	t = ActExprIntType::Int;
       }
       e->u.func.lhs =
-	template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId);
+	template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId, varToId);
 
       if (d.keep) {
 	e->u.func.nbufs = const_expr (1);

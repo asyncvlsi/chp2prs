@@ -33,12 +33,16 @@ namespace ChpOptimize {
 namespace {
 std::unique_ptr<ChpExpr> new_chpexpr_from_expr(NameParsingIdPool &id_pool,
                                                const ActExprStruct *o) {
-    return template_func_new_irexpr_from_expr<ChpTag, VarId, ManageMemory::yes>(
+    return template_func_new_irexpr_from_expr<ChpTag, VarId, ChanId, ManageMemory::yes>(
         o, [&](ActId *act_id) -> std::pair<VarId, int> {
             OptionalVarId id = id_pool.varIdFromActId(act_id);
             hassert(id);
             return {*id, id_pool.getBitwidth(*id)};
-        });
+        },
+	[&](ActId *act_id) -> std::pair<ChanId, int> {
+	  OptionalChanId id = id_pool.chanIdFromActId(act_id);
+	  hassert (id);
+	  return {*id, id_pool.getBitwidth(*id)};											});
 }
 // struct expr *new_expr_from_chpexpr(IdPool &id_pool, const ChpExpr &o,
 // ActExprIntType expectedType) {
@@ -370,6 +374,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
   ret->space = NULL;
 
   auto varToId = [&] (const VarId &v) { return map.varMap (v); };
+  auto chanToId = [&] (const ChanId &v) { return map.chanMap (v); };
   
   Block *curr = seq.startseq->child();
   if (curr && (curr->type() == BlockType::EndSequence))
@@ -406,7 +411,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  }
 	  item->u.assign.e =
 	    template_func_new_expr_from_irexpr
-	    (*curr->u_basic().stmt.u_assign().e.roots[idx], t, varToId);
+	    (*curr->u_basic().stmt.u_assign().e.roots[idx], t, varToId, chanToId);
 	  list_append (ret->u.semi_comma.cmd, item);
 	  idx++;
 	}
@@ -428,7 +433,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	item->u.comm.convert = 0;
 	item->u.comm.e =
 	  template_func_new_expr_from_irexpr
-	  (*curr->u_basic().stmt.u_send().e.m_dag.roots[0], t, varToId);
+	  (*curr->u_basic().stmt.u_send().e.m_dag.roots[0], t, varToId, chanToId);
 	list_append (ret->u.semi_comma.cmd, item);
 	item->u.comm.var = NULL;
 	break;
@@ -493,7 +498,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  gc->g =
 	    template_func_new_expr_from_irexpr (*branch.g.u_e().e.m_dag.roots[0],
 						ActExprIntType::Bool,
-						varToId);
+						varToId, chanToId);
 	  break;
 
 	case IRGuardType::Else:
@@ -520,7 +525,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
       item->u.gc->g = 
 	template_func_new_expr_from_irexpr (*curr->u_doloop().guard.m_dag.roots[0],
 					    ActExprIntType::Bool,
-					    varToId);
+					    varToId, chanToId);
       item->u.gc->s = seq_to_act (curr->u_doloop().branch, map);
       list_append (ret->u.semi_comma.cmd, item);
       break;

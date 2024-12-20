@@ -31,9 +31,9 @@
 
 namespace ChpOptimize {
 
-using DExpr = IRExpr<ChpTag, ChanId, ManageMemory::no>;
-using DExprDag = IRExprDag<ChpTag, ChanId>;
-using DExprSingleRootDag = IRExprSingleRootDag<ChpTag, ChanId>;
+using DExpr = IRExpr<ChpTag, ChanId, ChanId, ManageMemory::no>;
+using DExprDag = IRExprDag<ChpTag, ChanId, ChanId>;
+using DExprSingleRootDag = IRExprSingleRootDag<ChpTag, ChanId, ChanId>;
 
 enum class DataflowKind { Func, Split, MergeMix, Arbiter, Sink, Init,
 			 //, Cluster?

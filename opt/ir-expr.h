@@ -84,7 +84,8 @@ enum class IRUnaryOpType {
     UnaryMinus,
 };
 
-enum class IRExprTypeKind { BinaryOp, UnaryOp, Query, Const, Var, Bitfield };
+enum class IRExprTypeKind { BinaryOp, UnaryOp, Query, Const, Var, Bitfield,
+			    ChanVar, ChanProbe };
 
 class BitSlice {
     int m_hi, m_lo; //  a lo value that is negative means to pad the lower bits
@@ -111,11 +112,13 @@ enum class ManageMemory { no, yes };
  * IRExpr's.
  *
  * VarIdType is used to parameterize this by the variable ID
+ * ChanIdType is used to parameterize this by the channel ID
  *
  * If manageMemory is set to true, then the IRExpr wraps all of its
  * internal pointers using std::unique_ptr<>.
  */
-template <typename Tag, typename VarIdType, ManageMemory manageMemory>
+  template <typename Tag, typename VarIdType, typename ChanIdType,
+	    ManageMemory manageMemory>
 struct IRExpr {
     using PtrType = std::conditional_t<manageMemory == ManageMemory::yes,
                                        std::unique_ptr<IRExpr>, IRExpr *>;
@@ -278,16 +281,47 @@ struct IRExpr {
         [[nodiscard]] int ct() const { return slice.ct(); }
     };
 
+    struct Variant_ChanVariable {
+        ChanIdType id;
+
+        explicit Variant_ChanVariable(ChanIdType id)
+            : id{id} {}
+
+        Variant_ChanVariable() = default;
+        ~Variant_ChanVariable() = default;
+        Variant_ChanVariable(Variant_ChanVariable &&) noexcept = default;
+        Variant_ChanVariable &operator=(Variant_ChanVariable &&) noexcept = default;
+        Variant_ChanVariable(const Variant_ChanVariable &) = default;
+        Variant_ChanVariable &operator=(const Variant_ChanVariable &) = default;
+    };
+
+    struct Variant_ChanProbe {
+        ChanIdType id;
+
+        explicit Variant_ChanProbe(ChanIdType id)
+            : id{id} {}
+
+        Variant_ChanProbe() = default;
+        ~Variant_ChanProbe() = default;
+        Variant_ChanProbe(Variant_ChanProbe &&) noexcept = default;
+        Variant_ChanProbe &operator=(Variant_ChanProbe &&) noexcept = default;
+        Variant_ChanProbe(const Variant_ChanProbe &) = default;
+        Variant_ChanProbe &operator=(const Variant_ChanProbe &) = default;
+    };
+  
+
   private:
-    /* Use the 6 variants type-safe union */
-    using Variant_t = TypedVariant6<
+    /* Use the 8 variants type-safe union */
+    using Variant_t = TypedVariant8<
         IRExprTypeKind,
         Variant_Constant, IRExprTypeKind::Const,
         Variant_Query, IRExprTypeKind::Query,
         Variant_Expression2, IRExprTypeKind::BinaryOp,
         Variant_Expression1, IRExprTypeKind::UnaryOp,
         Variant_Variable, IRExprTypeKind::Var,
-        Variant_Bitfield, IRExprTypeKind::Bitfield
+        Variant_Bitfield, IRExprTypeKind::Bitfield,
+        Variant_ChanVariable, IRExprTypeKind::ChanVar,
+        Variant_ChanProbe, IRExprTypeKind::ChanProbe
     >;
 
     Variant_t u;
@@ -395,6 +429,9 @@ struct IRExpr {
                                                    int bit_width) {
         return IRExpr{Variant_t{Variant_Variable{id}}, bit_width};
     }
+    [[nodiscard]] static IRExpr makeChanProbe(ChanIdType id, int bit_width) {
+      return IRExpr{Variant_t{Variant_ChanProbe{id}}, bit_width};
+    }
 
     [[nodiscard]] static IRExpr makeResize(PtrType e, int width) {
         hassert(width >= 1);
@@ -475,9 +512,10 @@ struct IRExpr {
     }
 };
 
-template <typename Tag, typename VarIdType, ManageMemory manageMemory>
+template <typename Tag, typename VarIdType, typename ChanIdType,
+	    ManageMemory manageMemory>
 void addIdsUsedByExpr(std::unordered_set<VarIdType> &usages,
-                      const IRExpr<Tag, VarIdType, manageMemory> *e) {
+                      const IRExpr<Tag, VarIdType, ChanIdType, manageMemory> *e) {
     if (!e)
         return;
 
@@ -513,9 +551,9 @@ void addIdsUsedByExpr(std::unordered_set<VarIdType> &usages,
     }
 }
 
-template <typename Tag, typename VarIdType, ManageMemory manageMemory>
+template <typename Tag, typename VarIdType, typename ChanIdType, ManageMemory manageMemory>
 std::unordered_set<VarIdType>
-getIdsUsedByExpr(const IRExpr<Tag, VarIdType, manageMemory> *e) {
+getIdsUsedByExpr(const IRExpr<Tag, VarIdType, ChanIdType, manageMemory> *e) {
     std::unordered_set<VarIdType> usages;
     addIdsUsedByExpr(usages, e);
     return usages;

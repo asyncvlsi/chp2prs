@@ -50,9 +50,9 @@ template <> struct std::hash<ChpOptimize::ChpTag> {
 
 namespace ChpOptimize {
 
-using ChpExpr = IRExpr<ChpTag, VarId, ManageMemory::yes>;
-using ChpExprDag = IRExprDag<ChpTag, VarId>;
-using ChpExprSingleRootDag = IRExprSingleRootDag<ChpTag, VarId>;
+using ChpExpr = IRExpr<ChpTag, VarId, ChanId, ManageMemory::yes>;
+using ChpExprDag = IRExprDag<ChpTag, VarId, ChanId>;
+using ChpExprSingleRootDag = IRExprSingleRootDag<ChpTag, VarId, ChanId>;
 
 enum class IRGuardType { Else, Expression };
 
@@ -682,8 +682,10 @@ class ChpGraph {
     [[nodiscard]] std::vector<VarId> allUsedVarIds() const;
 
     // flatten the structure  A0 -> CB -> B0 -> ... -> BN -> CB_MATCH -> A1 into
-    // the structure  A0 -> B0 -> ... -> BN
-    // -> A1
+    // the structure  A0 -> B0 -> ... -> BN -> A1
+    //
+    // This assumes that the control block (parallel, select, loop)
+    // has exactly one branch in it.
     static void spliceOutFlatNonemptyControlBlock(/*Control*/ Block *cb,
                                                   MarkDead markDead);
 

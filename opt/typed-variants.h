@@ -664,6 +664,16 @@ public:
 template <class T, class V0, T l0, class V1, T l1, class V2, T l2, class V3,
           T l3, class V4, T l4, class V5, T l5, class V6, T l6>
 class TypedVariant7 {
+  static_assert(
+      l0 != l1,
+      "Rerun the generation script and include this size enumeration");
+  static_assert(
+      l0 == l1,
+      "Rerun the generation script and include this size enumeration");
+};
+template <class T, class V0, T l0, class V1, T l1, class V2, T l2, class V3,
+          T l3, class V4, T l4, class V5, T l5, class V6, T l6, class V7, T l7>
+class TypedVariant8 {
   static_assert(!std::is_same_v<V0, V1>);
   static_assert(!std::is_assignable_v<V0, V1>);
   static_assert(l0 != l1);
@@ -682,6 +692,9 @@ class TypedVariant7 {
   static_assert(!std::is_same_v<V0, V6>);
   static_assert(!std::is_assignable_v<V0, V6>);
   static_assert(l0 != l6);
+  static_assert(!std::is_same_v<V0, V7>);
+  static_assert(!std::is_assignable_v<V0, V7>);
+  static_assert(l0 != l7);
   static_assert(!std::is_same_v<V1, V2>);
   static_assert(!std::is_assignable_v<V1, V2>);
   static_assert(l1 != l2);
@@ -697,6 +710,9 @@ class TypedVariant7 {
   static_assert(!std::is_same_v<V1, V6>);
   static_assert(!std::is_assignable_v<V1, V6>);
   static_assert(l1 != l6);
+  static_assert(!std::is_same_v<V1, V7>);
+  static_assert(!std::is_assignable_v<V1, V7>);
+  static_assert(l1 != l7);
   static_assert(!std::is_same_v<V2, V3>);
   static_assert(!std::is_assignable_v<V2, V3>);
   static_assert(l2 != l3);
@@ -709,6 +725,9 @@ class TypedVariant7 {
   static_assert(!std::is_same_v<V2, V6>);
   static_assert(!std::is_assignable_v<V2, V6>);
   static_assert(l2 != l6);
+  static_assert(!std::is_same_v<V2, V7>);
+  static_assert(!std::is_assignable_v<V2, V7>);
+  static_assert(l2 != l7);
   static_assert(!std::is_same_v<V3, V4>);
   static_assert(!std::is_assignable_v<V3, V4>);
   static_assert(l3 != l4);
@@ -718,15 +737,27 @@ class TypedVariant7 {
   static_assert(!std::is_same_v<V3, V6>);
   static_assert(!std::is_assignable_v<V3, V6>);
   static_assert(l3 != l6);
+  static_assert(!std::is_same_v<V3, V7>);
+  static_assert(!std::is_assignable_v<V3, V7>);
+  static_assert(l3 != l7);
   static_assert(!std::is_same_v<V4, V5>);
   static_assert(!std::is_assignable_v<V4, V5>);
   static_assert(l4 != l5);
   static_assert(!std::is_same_v<V4, V6>);
   static_assert(!std::is_assignable_v<V4, V6>);
   static_assert(l4 != l6);
+  static_assert(!std::is_same_v<V4, V7>);
+  static_assert(!std::is_assignable_v<V4, V7>);
+  static_assert(l4 != l7);
   static_assert(!std::is_same_v<V5, V6>);
   static_assert(!std::is_assignable_v<V5, V6>);
   static_assert(l5 != l6);
+  static_assert(!std::is_same_v<V5, V7>);
+  static_assert(!std::is_assignable_v<V5, V7>);
+  static_assert(l5 != l7);
+  static_assert(!std::is_same_v<V6, V7>);
+  static_assert(!std::is_assignable_v<V6, V7>);
+  static_assert(l6 != l7);
 
 private:
   struct Empty {};
@@ -738,6 +769,7 @@ private:
     V4 v4;
     V5 v5;
     V6 v6;
+    V7 v7;
     Empty empty;
     Variants() : empty{} {}
     ~Variants() { empty.~Empty(); }
@@ -767,6 +799,9 @@ private:
     case l6:
       u.v6.~V6();
       break;
+    case l7:
+      u.v7.~V7();
+      break;
     }
     u.empty = Empty();
   }
@@ -795,6 +830,9 @@ private:
     case l6:
       new (&u.v6) V6();
       break;
+    case l7:
+      new (&u.v7) V7();
+      break;
     }
   }
 
@@ -804,9 +842,9 @@ public:
     set_type_on_already_empty_struct(type);
   }
   [[nodiscard]] T type() const { return m_type; }
-  TypedVariant7() : m_type{l0} { set_type_on_already_empty_struct(l0); }
-  ~TypedVariant7() { set_empty(); }
-  TypedVariant7(TypedVariant7 &&o) noexcept : m_type{l0} {
+  TypedVariant8() : m_type{l0} { set_type_on_already_empty_struct(l0); }
+  ~TypedVariant8() { set_empty(); }
+  TypedVariant8(TypedVariant8 &&o) noexcept : m_type{l0} {
     set_type_on_already_empty_struct(o.type());
     switch (o.type()) {
     case l0:
@@ -830,9 +868,12 @@ public:
     case l6:
       u_v6() = std::move(o.u_v6());
       break;
+    case l7:
+      u_v7() = std::move(o.u_v7());
+      break;
     }
   }
-  TypedVariant7 &operator=(TypedVariant7 &&o) noexcept {
+  TypedVariant8 &operator=(TypedVariant8 &&o) noexcept {
     set_empty();
     set_type_on_already_empty_struct(o.type());
     switch (o.type()) {
@@ -856,11 +897,14 @@ public:
       break;
     case l6:
       u_v6() = std::move(o.u_v6());
+      break;
+    case l7:
+      u_v7() = std::move(o.u_v7());
       break;
     }
     return *this;
   }
-  TypedVariant7(const TypedVariant7 &o) noexcept : m_type{l0} {
+  TypedVariant8(const TypedVariant8 &o) noexcept : m_type{l0} {
     static_assert(std::is_copy_constructible_v<V0>);
     static_assert(std::is_copy_constructible_v<V1>);
     static_assert(std::is_copy_constructible_v<V2>);
@@ -868,6 +912,7 @@ public:
     static_assert(std::is_copy_constructible_v<V4>);
     static_assert(std::is_copy_constructible_v<V5>);
     static_assert(std::is_copy_constructible_v<V6>);
+    static_assert(std::is_copy_constructible_v<V7>);
     set_type_on_already_empty_struct(o.type());
     switch (o.type()) {
     case l0:
@@ -891,9 +936,12 @@ public:
     case l6:
       u_v6() = o.u_v6();
       break;
+    case l7:
+      u_v7() = o.u_v7();
+      break;
     }
   }
-  TypedVariant7 &operator=(const TypedVariant7 &o) noexcept {
+  TypedVariant8 &operator=(const TypedVariant8 &o) noexcept {
     static_assert(std::is_copy_constructible_v<V0>);
     static_assert(std::is_copy_constructible_v<V1>);
     static_assert(std::is_copy_constructible_v<V2>);
@@ -901,6 +949,7 @@ public:
     static_assert(std::is_copy_constructible_v<V4>);
     static_assert(std::is_copy_constructible_v<V5>);
     static_assert(std::is_copy_constructible_v<V6>);
+    static_assert(std::is_copy_constructible_v<V7>);
     set_empty();
     set_type_on_already_empty_struct(o.type());
     switch (o.type()) {
@@ -924,6 +973,9 @@ public:
       break;
     case l6:
       u_v6() = o.u_v6();
+      break;
+    case l7:
+      u_v7() = o.u_v7();
       break;
     }
     return *this;
@@ -936,11 +988,11 @@ public:
     hassert(m_type == l0);
     return u.v0;
   }
-  explicit TypedVariant7(const V0 &v0) {
+  explicit TypedVariant8(const V0 &v0) {
     set_type_on_already_empty_struct(l0);
     u_v0() = v0;
   }
-  explicit TypedVariant7(V0 &&v0) {
+  explicit TypedVariant8(V0 &&v0) {
     set_type_on_already_empty_struct(l0);
     u_v0() = std::move(v0);
   }
@@ -952,11 +1004,11 @@ public:
     hassert(m_type == l1);
     return u.v1;
   }
-  explicit TypedVariant7(const V1 &v1) {
+  explicit TypedVariant8(const V1 &v1) {
     set_type_on_already_empty_struct(l1);
     u_v1() = v1;
   }
-  explicit TypedVariant7(V1 &&v1) {
+  explicit TypedVariant8(V1 &&v1) {
     set_type_on_already_empty_struct(l1);
     u_v1() = std::move(v1);
   }
@@ -968,11 +1020,11 @@ public:
     hassert(m_type == l2);
     return u.v2;
   }
-  explicit TypedVariant7(const V2 &v2) {
+  explicit TypedVariant8(const V2 &v2) {
     set_type_on_already_empty_struct(l2);
     u_v2() = v2;
   }
-  explicit TypedVariant7(V2 &&v2) {
+  explicit TypedVariant8(V2 &&v2) {
     set_type_on_already_empty_struct(l2);
     u_v2() = std::move(v2);
   }
@@ -984,11 +1036,11 @@ public:
     hassert(m_type == l3);
     return u.v3;
   }
-  explicit TypedVariant7(const V3 &v3) {
+  explicit TypedVariant8(const V3 &v3) {
     set_type_on_already_empty_struct(l3);
     u_v3() = v3;
   }
-  explicit TypedVariant7(V3 &&v3) {
+  explicit TypedVariant8(V3 &&v3) {
     set_type_on_already_empty_struct(l3);
     u_v3() = std::move(v3);
   }
@@ -1000,11 +1052,11 @@ public:
     hassert(m_type == l4);
     return u.v4;
   }
-  explicit TypedVariant7(const V4 &v4) {
+  explicit TypedVariant8(const V4 &v4) {
     set_type_on_already_empty_struct(l4);
     u_v4() = v4;
   }
-  explicit TypedVariant7(V4 &&v4) {
+  explicit TypedVariant8(V4 &&v4) {
     set_type_on_already_empty_struct(l4);
     u_v4() = std::move(v4);
   }
@@ -1016,11 +1068,11 @@ public:
     hassert(m_type == l5);
     return u.v5;
   }
-  explicit TypedVariant7(const V5 &v5) {
+  explicit TypedVariant8(const V5 &v5) {
     set_type_on_already_empty_struct(l5);
     u_v5() = v5;
   }
-  explicit TypedVariant7(V5 &&v5) {
+  explicit TypedVariant8(V5 &&v5) {
     set_type_on_already_empty_struct(l5);
     u_v5() = std::move(v5);
   }
@@ -1032,26 +1084,32 @@ public:
     hassert(m_type == l6);
     return u.v6;
   }
-  explicit TypedVariant7(const V6 &v6) {
+  explicit TypedVariant8(const V6 &v6) {
     set_type_on_already_empty_struct(l6);
     u_v6() = v6;
   }
-  explicit TypedVariant7(V6 &&v6) {
+  explicit TypedVariant8(V6 &&v6) {
     set_type_on_already_empty_struct(l6);
     u_v6() = std::move(v6);
   }
+  [[nodiscard]] V7 &u_v7() {
+    hassert(m_type == l7);
+    return u.v7;
+  }
+  [[nodiscard]] const V7 &u_v7() const {
+    hassert(m_type == l7);
+    return u.v7;
+  }
+  explicit TypedVariant8(const V7 &v7) {
+    set_type_on_already_empty_struct(l7);
+    u_v7() = v7;
+  }
+  explicit TypedVariant8(V7 &&v7) {
+    set_type_on_already_empty_struct(l7);
+    u_v7() = std::move(v7);
+  }
 };
 
-template <class T, class V0, T l0, class V1, T l1, class V2, T l2, class V3,
-          T l3, class V4, T l4, class V5, T l5, class V6, T l6, class V7, T l7>
-class TypedVariant8 {
-  static_assert(
-      l0 != l1,
-      "Rerun the generation script and include this size enumeration");
-  static_assert(
-      l0 == l1,
-      "Rerun the generation script and include this size enumeration");
-};
 template <class T, class V0, T l0, class V1, T l1, class V2, T l2, class V3,
           T l3, class V4, T l4, class V5, T l5, class V6, T l6, class V7, T l7,
           class V8, T l8>
