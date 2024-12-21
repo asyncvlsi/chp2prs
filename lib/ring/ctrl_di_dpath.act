@@ -58,6 +58,9 @@ export defproc gp_connect (a1of1 m1; a1of1 p1)
 export template<pint W>
 defproc connect_inchan_to_ctrl (sdtchan<W> ch; a1of1 ctrl)
 {
+  bool x;
+  x = ch.a;
+  // to avoid actsim issue
   // ctrl.a = ch.a;
 }
 
@@ -533,6 +536,61 @@ defproc acelem3_r (bool in[3]; bool out)
       (~in[0] & ~in[1] & ~in[2]) -> _out+
       Reset | _out => out-
   }   
+}
+
+template<pint N>
+defproc acelem_r (bool in_f; bool in_t; bool in[N]; bool out)
+{
+  // one unused input
+  { N>=2 : " 3 or more inputs needed" };
+  bool _out;
+  prs {
+
+      in_t & (& i : N-1 : in[i]) -> _out-
+      ~in_t & ~in_f & (& i : N-1 : ~in[i] ) -> _out+
+      Reset | _out => out-
+  }   
+}
+
+export template<pint N>
+defproc selection_split_new(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+
+    { false : "FIX PLZ"};
+    capture<5, 6, 1> capt[N];
+    var_access<1> vax[N];
+
+    ( i : N: capt[i].din = gs[i].d; )
+    ( i : N: gs[i].r = capt[i].tx.r; )
+    ( i : N: capt[i].go.r = m1.r; )
+
+    ( i : N: capt[i].dout = vax[i].din; )
+
+    std::gates::ctree<N,false> c_w;
+    ( i : N: capt[i].go.a = c_w.in[i]; )
+    ( i : N: c_w.out = vax[i].dout[0].r; )
+
+    acelem_r<N> celems[N];
+    ( i : N : celems[i].in_f = vax[i].dout[0].d.d[0].f; )
+    ( i : N : celems[i].in_t = vax[i].dout[0].d.d[0].t; )
+
+    pint j=0;
+
+    // how to do this properly..
+    (
+      i : N : 
+        j = 0;    
+        *[j<N ->
+          [ j!=i -> celems[i].in[j] = vax[j].dout[0].d.d[0].f; j=j+1;
+          []else -> j=j+1;
+          ];
+        ]
+    )
+
+    ( i : N : co[i].r = celems[i].out; )
+    
+    std::gates::ortree<N, false> ort(, m1.a);
+    ( i : N: ort.in[i] = co[i].a; )
 }
 
 export template<pint N>
