@@ -107,7 +107,7 @@ defproc connect_exprblk_dout (bool d[W]; bool e[W])
 }
 
 export template<pint W>
-defproc connect_exprblk_assign (bool d[W]; bool e[W]; a1of1 go)
+defproc connect_exprblk_assign (bool d[W]; bool e[W]; a1of1 tx)
 {
   e = d;
 }
@@ -170,7 +170,7 @@ defproc pulse(bool? in; bool! out)
 
 // flip-flop without pulse generator
 export template <pint CD, PW, W>
-defproc capture(a1of1 go; bool? din[W]; bool! dout[W]) 
+defproc capture(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx) 
 {
   bool dmid[W];
   delay_line<CD+1> capture_delay_1;
@@ -299,7 +299,7 @@ defproc probe_clause(bool? g[N]; bool? probe[T]; bool! out[1]) {
 
 // flip-flop without pulse generator - initial value
 export template <pint CD, PW, W, INIT_VAL>
-defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])
+defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
 {
 
   { INIT_VAL >= 0 : "Only non-negative initial values" };
@@ -916,7 +916,7 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 // Latch for Non-SSA Style Datapath 
 // N = no. of write ports
 export template <pint CD, PW, W, INIT_VAL, N>
-defproc capture_init_non_ssa(a1of1 go[N]; bool? din[N][W]; bool! dout[W])
+defproc capture_init_non_ssa(a1of1 go[N]; bool? din[N][W]; bool! dout[W]; a1of1 tx[N])
 {
   // TODO: get this from simulation
   pint scale = 1;

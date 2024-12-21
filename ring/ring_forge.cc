@@ -225,6 +225,13 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
         }
 
         fprintf (_fp, "// Branched Ring ------------------\n");
+
+        if(c->label && strcmp(c->label,"qdi_itb")==0) {
+            fprintf (_fp, "\n // instantiating qdi itb here..\n");
+            _generate_qdi_itb(c);
+            return;
+        }
+
         generate_branched_ring (c,1,0,0);
     }
     else {
@@ -241,6 +248,46 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
     }
 }
 
+unsigned long eval_ic (Expr *);
+
+void RingForge::_generate_qdi_itb(act_chp_lang_t *cc)
+{
+    Assert (cc->type==ACT_CHP_SEMI && (list_length(cc->u.semi_comma.cmd)==2), "QDI ITB : One I.C + loop check");
+    list_t *ll = cc->u.semi_comma.cmd;
+
+    act_chp_lang_t *ic = (act_chp_lang_t *)(list_value(list_first(ll)));
+    Assert (ic->type==ACT_CHP_ASSIGN, "QDI ITB : I.C. Assignment");
+
+    unsigned long ival = eval_ic(ic->u.assign.e);
+
+    act_chp_lang_t *loop = (act_chp_lang_t *)(list_value(list_next(list_first(ll))));
+    Assert (loop->type==ACT_CHP_LOOP, "QDI ITB : Loop check");
+
+    act_chp_lang_t *body = loop->u.gc->s;
+    Assert (body->type==ACT_CHP_SEMI && (list_length(body->u.semi_comma.cmd)==2), "QDI ITB : Send + Recv check");
+    list_t *ll2 = body->u.semi_comma.cmd;
+
+    act_chp_lang_t *send = (act_chp_lang_t *)(list_value(list_first(ll2)));
+    Assert (send->type==ACT_CHP_SEND, "Send check");
+    act_chp_lang_t *recv = (act_chp_lang_t *)(list_value(list_next(list_first(ll2))));
+    Assert (recv->type==ACT_CHP_RECV, "Recv check");
+
+    char Rname[1024];
+    char Lname[1024];
+
+    get_true_name (Rname, send->u.comm.chan, _p->CurScope());
+    get_true_name (Lname, recv->u.comm.chan, _p->CurScope());
+
+    int bw_send = TypeFactory::bitWidth(_p->CurScope()->Lookup(send->u.comm.chan));
+    int bw_recv = TypeFactory::bitWidth(_p->CurScope()->Lookup(recv->u.comm.chan));
+    Assert ((bw_send == bw_recv), "Bitwidth match");
+
+    int inst_id = _gen_block_id();
+
+    fprintf(_fp, "\n qdi_itb<%d,%lu> qdi_itb_inst_%d(%s,%s);\n", 
+                    bw_send, ival, inst_id, Lname, Rname);
+}
+
 unsigned long act_expr_getconst_long (Expr *e)
 {
   if (!e) return 0;
@@ -252,8 +299,6 @@ unsigned long act_expr_getconst_long (Expr *e)
     return 0;
   }
 }
-
-unsigned long eval_ic (Expr *);
 
 bool eval_bool_expr (Expr *e)
 {
@@ -480,7 +525,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             // fprintf(_fp,"%s%d.out = %s%s_%d.din;\n",expr_block_instance_prefix,expr_inst_id,
             //                                     capture_block_prefix,
             //                                     vi->name,latch_id);
-            fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din,%s%s_%d.go);\n", bw, 
+            fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din,%s%s_%d.tx);\n", bw, 
                             expr_block_output_prefix, expr_inst_id,
                             expr_block_instance_prefix,expr_inst_id,
                             capture_block_prefix, vi->name,latch_id,
@@ -498,7 +543,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             //                                     capture_block_prefix,
             //                                     vi->name,latch_id,
             //                                     vi->iwrite, (vi->width)-1);
-            fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din[%d][0..%d], %s%s_%d.go[%d]);\n", bw, 
+            fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din[%d][0..%d], %s%s_%d.tx[%d]);\n", bw, 
                 expr_block_output_prefix, expr_inst_id,
                 expr_block_instance_prefix,expr_inst_id,
                 capture_block_prefix, vi->name,latch_id, 
@@ -606,6 +651,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                 fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
                                 vi->name,latch_id,ring_block_prefix,block_id);
                 fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
+                                                vi->name,latch_id,chan_name);
+                fprintf(_fp, "%s%s_%d.tx.a = %s.a;\n",capture_block_prefix,
                                                 vi->name,latch_id,chan_name);
             }
             else 
@@ -747,7 +794,7 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
         fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,);\n",
                                 vi->width,var_access_prefix,va_id,
                                 capture_block_prefix,vi->name, last_latch_id);
-        fprintf(_fp, "connect_exprblk_assign<%d> %s_lcd_%d(%s%d.dout,%s%s_%d.din,%s%s_%d.go);\n", 
+        fprintf(_fp, "connect_exprblk_assign<%d> %s_lcd_%d(%s%d.dout,%s%s_%d.din,%s%s_%d.tx);\n", 
                             vi->width, expr_block_output_prefix, va_id,
                             var_access_prefix,va_id,
                             capture_block_prefix,vi->name,first_latch_id,
@@ -2152,7 +2199,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
 
         // muxing variables live-out of merge so downstream can access correctly
         muxed_vars = {};
-        tmp = _compute_merge_mux_info((latch_info_t *)(c->space), sel_split_block_id, muxed_vars);
+        // tmp = _compute_merge_mux_info((latch_info_t *)(c->space), sel_split_block_id, muxed_vars);
+        tmp = _compute_merge_mux_info((latch_info_t *)(c->space), sel_merge_block_id, muxed_vars);
         delay_n_merge = tmp.second;
         n_muxes = tmp.first;
         Assert (n_muxes>=0, "what");
@@ -2345,8 +2393,11 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
         for ( auto z : l->merge_mux_inputs.at(ctr) )
         {
             if (z == pre_sel_latch) {
-                fprintf (_fp, "or_%s_%d.in[%d] = %s%d.co[%d].r;\n", vi->name, mux_id, ctr2, 
-                                    ring_block_prefix, split_block_id, ctr3);
+                // fprintf (_fp, "or_%s_%d.in[%d] = %s%d.co[%d].r;\n", vi->name, mux_id, ctr2, 
+                //                     ring_block_prefix, split_block_id, ctr3);
+                // NOTE: THIS IS MERGE BLOCK ID NOW
+                fprintf (_fp, "or_%s_%d.in[%d] = %s%d.ci[%d].r;\n", vi->name, mux_id, ctr2, 
+                                    ring_block_prefix, split_block_id, ctr3); 
                 ctr2++;
             }
             ctr3++;
@@ -2387,7 +2438,11 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
             else if (zz != pre_sel_latch) 
             {
                 // connect mux input control
-                fprintf (_fp, "%s%s_%d.c[%d] = %s%d.co[%d].r;\n", capture_block_prefix, vi->name, 
+                // fprintf (_fp, "%s%s_%d.c[%d] = %s%d.co[%d].r;\n", capture_block_prefix, vi->name, 
+                //                                         mux_id, ctr_mux_port, ring_block_prefix, 
+                //                                     split_block_id, ctr_sel_br);
+                // NOTE: THIS IS MERGE BLOCK ID NOW
+                fprintf (_fp, "%s%s_%d.c[%d] = %s%d.ci[%d].r;\n", capture_block_prefix, vi->name, 
                                                         mux_id, ctr_mux_port, ring_block_prefix, 
                                                     split_block_id, ctr_sel_br);
                 // connect mux input data

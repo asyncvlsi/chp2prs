@@ -67,6 +67,9 @@ class RingForge : public RingEngine {
         int _generate_doloop_wrapper();
         int _generate_probe_access(ActId *);
 
+        // TODO: Do this properly later
+        void _generate_qdi_itb(act_chp_lang_t *);
+
         // Datapath generation functions
         int _generate_single_latch (var_info *, latch_info *, long long);
         int _generate_single_latch_non_ssa (var_info *, long long);
