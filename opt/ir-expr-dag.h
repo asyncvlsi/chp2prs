@@ -57,6 +57,10 @@ template <typename Tag, typename VarIdType, typename ChanIdType> struct Canonica
         switch (n.type()) {
         case IRExprTypeKind::Var:
             return n.u_var().id == m.u_var().id;
+	case IRExprTypeKind::ChanVar:
+            return n.u_chvar().id == m.u_chvar().id;
+	case IRExprTypeKind::ChanProbe:
+            return n.u_probe().id == m.u_probe().id;
         case IRExprTypeKind::Const:
             return n.u_cons().v == m.u_cons().v &&
                    n.u_cons().v_width == m.u_cons().v_width;
@@ -101,6 +105,16 @@ struct std::hash<ChpOptimize::detail::CanonicalFlatNode<Tag, VarIdType, ChanIdTy
         case ChpOptimize::IRExprTypeKind::Var:
             hash_combine(seed, n.type());
             hash_combine(seed, n.u_var().id);
+            return seed;
+
+        case ChpOptimize::IRExprTypeKind::ChanVar:
+            hash_combine(seed, n.type());
+            hash_combine(seed, n.u_chvar().id);
+            return seed;
+
+        case ChpOptimize::IRExprTypeKind::ChanProbe:
+            hash_combine(seed, n.type());
+            hash_combine(seed, n.u_probe().id);
             return seed;
 
         case ChpOptimize::IRExprTypeKind::Const:
@@ -167,6 +181,8 @@ template <typename Tag, typename VarIdType,  typename ChanIdType> struct IRExprD
         switch (n.type()) {
         case IRExprTypeKind::Var:
         case IRExprTypeKind::Const:
+	case IRExprTypeKind::ChanVar:
+	case IRExprTypeKind::ChanProbe:
             break;
         case IRExprTypeKind::Query: {
             mapNodes_helper(*n.u_query().selector, done, fn);
@@ -206,6 +222,8 @@ template <typename Tag, typename VarIdType,  typename ChanIdType> struct IRExprD
         BigInt result = BigInt{0};
         switch (n.type()) {
         case IRExprTypeKind::Var:
+        case IRExprTypeKind::ChanVar:
+        case IRExprTypeKind::ChanProbe:
         case IRExprTypeKind::Const:
             break;
         case IRExprTypeKind::Query: {
@@ -331,6 +349,8 @@ template <typename Tag, typename VarIdType,  typename ChanIdType> struct IRExprD
         switch (n.type()) {
         case IRExprTypeKind::Var:
         case IRExprTypeKind::Const:
+	case IRExprTypeKind::ChanVar:
+	case IRExprTypeKind::ChanProbe:
             break;
         case IRExprTypeKind::Query: {
             n.u_query().selector = deduplicate_helper(
@@ -512,6 +532,16 @@ template <typename Tag, typename VarIdType,  typename ChanIdType> struct IRExprD
                     relabel.at(n.u_bitfield().e), n.u_bitfield().hi(),
                     n.u_bitfield().lo()));
                 break;
+
+	    case IRExprTypeKind::ChanVar:
+	      relabel[&n] = newNode (
+				     IRExprDag::Node::makeChanVariable(n.u_chvar().id, n.width));
+	      break;
+	      
+	    case IRExprTypeKind::ChanProbe:
+	      relabel[&n] = newNode (
+				     IRExprDag::Node::makeChanProbe(n.u_probe().id));
+	      break;
             }
         });
 
@@ -532,6 +562,10 @@ template <typename Tag, typename VarIdType,  typename ChanIdType> struct IRExprD
         switch (n.type()) {
         case IRExprTypeKind::Var:
             return IRExpr_t::makeVariableAccess(n.u_var().id, n.width);
+	case IRExprTypeKind::ChanVar:
+	    return IRExpr_t::makeChanVariable(n.u_chvar().id, n.width);
+	case IRExprTypeKind::ChanProbe:
+	    return IRExpr_t::makeChanProbe(n.u_probe().id);
         case IRExprTypeKind::Const:
             return IRExpr_t::makeConstant(n.u_cons().v, n.u_cons().v_width);
         case IRExprTypeKind::Query:
@@ -566,6 +600,12 @@ template <typename Tag, typename VarIdType,  typename ChanIdType> struct IRExprD
         case IRExprTypeKind::Var:
             return newNode(
                 IRExprDag::Node::makeVariableAccess(n.u_var().id, n.width));
+        case IRExprTypeKind::ChanVar:
+            return newNode(
+                IRExprDag::Node::makeChanVariable(n.u_chvar().id, n.width));
+        case IRExprTypeKind::ChanProbe:
+            return newNode(
+		IRExprDag::Node::makeChanProbe(n.u_probe().id));
         case IRExprTypeKind::Const:
             return newNode(IRExprDag::Node::makeConstant(n.u_cons().v,
                                                          n.u_cons().v_width));

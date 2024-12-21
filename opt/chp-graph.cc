@@ -47,6 +47,8 @@ void validateExprDag(const ChpExprDag &dag, const IdPool &id_pool) {
         switch (n.type()) {
         case IRExprTypeKind::Const:
         case IRExprTypeKind::Var:
+	case IRExprTypeKind::ChanVar:
+	case IRExprTypeKind::ChanProbe:
             break;
         case IRExprTypeKind::BinaryOp:
             hassert(postorder[&n] > postorder.at(n.u_e2().l));
@@ -77,6 +79,12 @@ void validateExprDag(const ChpExprDag &dag, const IdPool &id_pool) {
         case IRExprTypeKind::Var:
             hassert(id_pool.getBitwidth(n.u_var().id) == n.width);
             break;
+	case IRExprTypeKind::ChanProbe:
+	    hassert(1 == n.width);
+	    break;
+	case IRExprTypeKind::ChanVar:
+	    hassert(id_pool.getBitwidth(n.u_chvar().id) == n.width);
+	    break;
         case IRExprTypeKind::BinaryOp:
             switch (n.u_e2().op_type) {
             case IRBinaryOpType::And:

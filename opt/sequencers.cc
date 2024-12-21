@@ -382,6 +382,8 @@ void uninlineBitfieldExprsHelper(ChpExprDag &dag) {
     ChpExprDag::mapNodes(dag, [&](ChpExprDag::Node &n) {
         switch (n.type()) {
         case IRExprTypeKind::Var:
+        case IRExprTypeKind::ChanVar:
+        case IRExprTypeKind::ChanProbe:
         case IRExprTypeKind::Const:
         case IRExprTypeKind::Query:
         case IRExprTypeKind::BinaryOp:
@@ -456,6 +458,8 @@ void unpackLargeConstantHelper(ChpExprDag &dag) {
     ChpExprDag::mapNodes(dag, [&](ChpExprDag::Node &n) {
         switch (n.type()) {
         case IRExprTypeKind::Var:
+        case IRExprTypeKind::ChanVar:
+        case IRExprTypeKind::ChanProbe:
         case IRExprTypeKind::Query:
         case IRExprTypeKind::BinaryOp:
         case IRExprTypeKind::UnaryOp:

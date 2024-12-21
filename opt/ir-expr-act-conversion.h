@@ -259,8 +259,7 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
       
     case E_PROBE: {
       auto [id, bit_width]  = chanid_from_actid((ActId *)o->u.e.l);
-      return std::make_unique<IRExpr_t>(
-					IRExpr_t::makeChanProbe(id, bit_width));
+      return std::make_unique<IRExpr_t>(IRExpr_t::makeChanProbe(id));
       break;
     }
       
@@ -498,6 +497,24 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         result->type = E_VAR;
         // TODO normalize this into a VarId{} here
         ActId *id = actid_from_varid(e.u_var().id);
+        result->u.e.l = (Expr *)(id); // this is really an (ActId*)
+        return typedFromInt(result,
+                            expectedType); // we only support "int" variables
+    }
+    case IRExprTypeKind::ChanVar: {
+        Expr *result = newExprStruct();
+        result->type = E_VAR;
+        // TODO normalize this into a VarId{} here
+        ActId *id = actid_from_chanid(e.u_chvar().id);
+        result->u.e.l = (Expr *)(id); // this is really an (ActId*)
+        return typedFromInt(result,
+                            expectedType); // we only support "int" variables
+    }
+    case IRExprTypeKind::ChanProbe: {
+        Expr *result = newExprStruct();
+        result->type = E_PROBE;
+        // TODO normalize this into a VarId{} here
+        ActId *id = actid_from_chanid(e.u_chvar().id);
         result->u.e.l = (Expr *)(id); // this is really an (ActId*)
         return typedFromInt(result,
                             expectedType); // we only support "int" variables

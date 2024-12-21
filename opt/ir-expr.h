@@ -351,6 +351,14 @@ struct IRExpr {
     [[nodiscard]] Variant_Bitfield &u_bitfield() { return u.u_v5(); }
     [[nodiscard]] const Variant_Bitfield &u_bitfield() const { return u.u_v5();}
 
+    [[nodiscard]] Variant_ChanVariable &u_chvar() { return u.u_v6(); }
+    [[nodiscard]] const Variant_ChanVariable &u_chvar() const { return u.u_v6(); }
+  
+    [[nodiscard]] Variant_ChanProbe &u_probe() { return u.u_v7(); }
+    [[nodiscard]] const Variant_ChanProbe &u_probe() const { return u.u_v7(); }
+  
+    
+
     [[nodiscard]] IRExprTypeKind type() const { return u.type(); }
 
     IRExpr()
@@ -429,8 +437,13 @@ struct IRExpr {
                                                    int bit_width) {
         return IRExpr{Variant_t{Variant_Variable{id}}, bit_width};
     }
-    [[nodiscard]] static IRExpr makeChanProbe(ChanIdType id, int bit_width) {
-      return IRExpr{Variant_t{Variant_ChanProbe{id}}, bit_width};
+
+    [[nodiscard]] static IRExpr makeChanProbe(ChanIdType id) {
+      return IRExpr{Variant_t{Variant_ChanProbe{id}}, 1};
+    }
+
+    [[nodiscard]] static IRExpr makeChanVariable(ChanIdType id, int bit_width) {
+      return IRExpr{Variant_t{Variant_ChanVariable{id}}, bit_width};
     }
 
     [[nodiscard]] static IRExpr makeResize(PtrType e, int width) {
@@ -547,6 +560,8 @@ void addIdsUsedByExpr(std::unordered_set<VarIdType> &usages,
         addIdsUsedByExpr(usages, get(e->u_query().r));
         break;
     case IRExprTypeKind::Const:
+    case IRExprTypeKind::ChanVar: // this function only handles variables
+    case IRExprTypeKind::ChanProbe:  // and not channels that may be used
         break;
     }
 }

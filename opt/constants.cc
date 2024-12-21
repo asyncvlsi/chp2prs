@@ -40,18 +40,32 @@ struct IntLatticeWithCt {
 };
 
 using VarValueTable = std::unordered_map<VarId, IntLatticeWithCt>;
+using ChanValueTable = std::unordered_map<ChanId, IntLattice>;
 
 // Given the current set of possible states going into an expression and a scope
 // to look up variable names in, compute the possible values of the expression
 // [e]. If we request a rewrite, then replace subexpressions with simpler
 // constants if possible. Return the evaluation lattice
 std::unordered_map<const ChpExprDag::Node *, IntLattice>
-evaluate(const VarValueTable &table, const ChpExprDag &dag) {
+evaluate(const VarValueTable &table, const ChanValueTable &ctable,
+	 const ChpExprDag &dag) {
     std::unordered_map<const ChpExprDag::Node *, IntLattice> evaluations;
     ChpExprDag::iterNodes(dag, [&](const ChpExprDag::Node &orig) {
         switch (orig.type()) {
         case IRExprTypeKind::Var: {
             const IntLattice value = table.at(orig.u_var().id).lat;
+            hassert(value.bitwidth() == orig.width);
+            evaluations[&orig] = value;
+            return;
+        }
+        case IRExprTypeKind::ChanVar: {
+	  const IntLattice value = ctable.at(orig.u_chvar().id);
+            hassert(value.bitwidth() == orig.width);
+            evaluations[&orig] = value;
+            return;
+        }
+        case IRExprTypeKind::ChanProbe: {
+	  const IntLattice value = ctable.at(ChanId{~(uint64_t)0});
             hassert(value.bitwidth() == orig.width);
             evaluations[&orig] = value;
             return;
@@ -290,6 +304,8 @@ evaluate(const VarValueTable &table, const ChpExprDag &dag) {
         // Then this will get cleaned up at the end of the prune function
         return false;
     case IRExprTypeKind::Var:
+    case IRExprTypeKind::ChanVar:
+    case IRExprTypeKind::ChanProbe:
         return false;
     case IRExprTypeKind::Bitfield: {
         if (orig.u_bitfield().e->u_bitfield().slice.ct() - 1 >=
@@ -709,6 +725,8 @@ void prune_(
     switch (orig.type()) {
     case IRExprTypeKind::Const:
     case IRExprTypeKind::Var:
+    case IRExprTypeKind::ChanVar:
+    case IRExprTypeKind::ChanProbe:
         return;
     case IRExprTypeKind::Query: {
         prune_(*orig.u_query().selector, done_nodes, evaluations, use_cts, dag,
@@ -771,12 +789,14 @@ void prune_(
 // longer can access/free that memory), and will return a Expr* that the caller
 // takes ownership of. It is possilbe (and indeed likely) that the returned tree
 // will share much of the memory of the original tree.
-void prune(ChpExprDag &dag, const VarValueTable &table, bool &changed) {
+void prune(ChpExprDag &dag, const VarValueTable &table,
+	   const ChanValueTable &ctable,
+	   bool &changed) {
     bool my_changed;
     do {
         my_changed = false;
 
-        const auto &evaluations = evaluate(table, dag);
+        const auto &evaluations = evaluate(table, ctable, dag);
         std::unordered_set<const ChpExprDag::Node *> done_nodes;
 
         std::unordered_map<const ChpExprDag::Node *, int> use_cts;
@@ -799,6 +819,8 @@ void prune(ChpExprDag &dag, const VarValueTable &table, bool &changed) {
                 break;
             case IRExprTypeKind::Const:
             case IRExprTypeKind::Var:
+            case IRExprTypeKind::ChanVar:
+            case IRExprTypeKind::ChanProbe:
                 break;
             }
         });
@@ -816,11 +838,13 @@ void prune(ChpExprDag &dag, const VarValueTable &table, bool &changed) {
         changed |= my_changed;
     } while (my_changed);
 }
-void prune(ChpExprSingleRootDag &e, const VarValueTable &table, bool &changed) {
-    prune(e.m_dag, table, changed);
+void prune(ChpExprSingleRootDag &e, const VarValueTable &table,
+	   const ChanValueTable &ctable, bool &changed) {
+  prune(e.m_dag, table, ctable, changed);
 }
 
-bool substitute(Block *b, const VarValueTable &table) {
+bool substitute(Block *b, const VarValueTable &table,
+		const ChanValueTable &ctable) {
     bool changed = false;
     hassert(b);
     switch (b->type()) {
@@ -830,18 +854,18 @@ bool substitute(Block *b, const VarValueTable &table) {
         break;
     case BlockType::Basic:
         if (b->u_basic().stmt.type() == StatementType::Assign) {
-            prune(b->u_basic().stmt.u_assign().e, table, changed);
+	  prune(b->u_basic().stmt.u_assign().e, table, ctable, changed);
             // fprintf(stderr, "%lu\n",
             // ChpExprDag::deep_copy(b->u_basic().stmt.u_assign().e).raw_nodes_ct());
         } else if (b->u_basic().stmt.type() == StatementType::Send) {
-            prune(b->u_basic().stmt.u_send().e, table, changed);
+            prune(b->u_basic().stmt.u_send().e, table, ctable, changed);
         }
         break;
     case BlockType::Select: {
         for (SelectBranch &gs : b->u_select().branches) {
             if (gs.g.type() != IRGuardType::Else) {
                 hassert(gs.g.type() == IRGuardType::Expression);
-                prune(gs.g.u_e().e, table, changed);
+                prune(gs.g.u_e().e, table, ctable, changed);
             }
         }
         break;
@@ -849,7 +873,7 @@ bool substitute(Block *b, const VarValueTable &table) {
     case BlockType::DoLoop: {
         // In the DoLoop for forward flow, the endseq holds the set of possible
         // states after some iteration of the algorithm
-        prune(b->u_doloop().guard, table, changed);
+        prune(b->u_doloop().guard, table, ctable, changed);
         break;
     }
     case BlockType::Par:
@@ -858,7 +882,8 @@ bool substitute(Block *b, const VarValueTable &table) {
     return changed;
 }
 
-void flow(VarValueTable &table, const Sequence &seq, const IdPool &id_pool,
+void flow(VarValueTable &table, const ChanValueTable &ctable,
+	  const Sequence &seq, const IdPool &id_pool,
           std::set<Block *> &run_once) {
     // Limit the number of times constant propagation will re-evaluate on each
     // block, to avoid infinite loops.
@@ -908,7 +933,7 @@ void flow(VarValueTable &table, const Sequence &seq, const IdPool &id_pool,
                 const auto &assign = curr->u_basic().stmt.u_assign();
                 hassert(assign.ids.size() == assign.e.roots.size());
 
-                auto value_map = evaluate(table, assign.e);
+                auto value_map = evaluate(table, ctable, assign.e);
                 for (ssize_t i = 0;
                      i < static_cast<ssize_t>(assign.e.roots.size()); ++i) {
                     hassert(id_pool.getBitwidth(assign.ids[i]) ==
@@ -948,7 +973,7 @@ void flow(VarValueTable &table, const Sequence &seq, const IdPool &id_pool,
                 run_once.insert(curr);
 
                 for (const auto &branch : curr->u_par().branches)
-                    flow(table, branch, id_pool, run_once);
+		  flow(table, ctable, branch, id_pool, run_once);
 
                 // Each "merge" only has one input, so really its just a copy
                 for (const auto &merge : curr->u_par().merges) {
@@ -980,7 +1005,7 @@ void flow(VarValueTable &table, const Sequence &seq, const IdPool &id_pool,
 
                 // then do all the flows
                 for (const auto &branch : curr->u_select().branches)
-                    flow(table, branch.seq, id_pool, run_once);
+		  flow(table, ctable, branch.seq, id_pool, run_once);
 
                 // Each "merge" only has one input, so really its just a copy
                 for (const auto &merge : curr->u_select().merges) {
@@ -1008,7 +1033,7 @@ void flow(VarValueTable &table, const Sequence &seq, const IdPool &id_pool,
                 run_once.insert(curr);
 
                 do {
-                    flow(table, curr->u_doloop().branch, id_pool, run_once);
+		  flow(table, ctable, curr->u_doloop().branch, id_pool, run_once);
 
                     // and keep doing it until it stabilizes
                     changed = false;
@@ -1034,16 +1059,24 @@ void flow(VarValueTable &table, const Sequence &seq, const IdPool &id_pool,
     }
 }
 
-VarValueTable flow(const ChpGraph &graph) {
+VarValueTable flow(const ChpGraph &graph, const ChanValueTable &ctable) {
     VarValueTable table;
     std::set<Block *> run_once;
-    flow(table, graph.m_seq, graph.id_pool(), run_once);
+    flow(table, ctable, graph.m_seq, graph.id_pool(), run_once);
     return table;
 }
 
 } // namespace
 bool propagateConstants(ChpGraph &graph) {
-    VarValueTable table = flow(graph);
+    ChanValueTable  ctable;
+
+    for (size_t i = 1; i < graph.id_pool().chanNum(); i++) {
+      ChanId ch = ChanId{i};
+      ctable[ch] = IntLattice::of_bitwidth(graph.id_pool().getBitwidth(ch));
+    }
+    ctable[ChanId{~(uint64_t)0}] = IntLattice::of_bitwidth(1);
+
+    VarValueTable table = flow(graph, ctable);
 
     // do rewriting until it stabilizes. Sometimes a local rewrite enables
     // another local rewrite
@@ -1055,7 +1088,7 @@ bool propagateConstants(ChpGraph &graph) {
             // Im cahgning it to make it what I think is correct, but its hard
             // to be sure... it used to be `changed = substituteFlow(b,
             // flow_table[b].m_table_stack);`
-            changed = substitute(b, table);
+	  changed = substitute(b, table, ctable);
             ever_changed |= changed;
         } while (changed);
     }

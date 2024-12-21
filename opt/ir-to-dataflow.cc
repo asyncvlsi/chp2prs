@@ -214,6 +214,15 @@ DExprDag of_chp_dag(const ChpExprDag &dag, DataflowChannelManager &maps)
 	      ddag.newNode(DExprDag::Node::makeVariableAccess(
 		      maps.mapvar (n.u_var().id), n.width));;
             break;
+	case IRExprTypeKind::ChanVar:
+	    mp[&n] =
+	      ddag.newNode(DExprDag::Node::makeVariableAccess(n.u_chvar().id,
+							      n.width));
+	    break;
+	case IRExprTypeKind::ChanProbe:
+	    // no probes for dataflow generation
+	    hassert (false);
+	    break;
         case IRExprTypeKind::Bitfield:
             mp[&n] = ddag.newNode(DExprDag::Node::makeBitfield(
                 mp.at(n.u_bitfield().e), n.u_bitfield().hi(),
@@ -259,6 +268,14 @@ DExprSingleRootDag of_chp_dag(const ChpExprSingleRootDag &dag, DataflowChannelMa
 	      ddag.m_dag.newNode(DExprSingleRootDag::Node::makeVariableAccess(
 		      maps.mapvar (n.u_var().id), n.width));;
             break;
+        case IRExprTypeKind::ChanVar:
+	    mp[&n] =
+	      ddag.m_dag.newNode(DExprSingleRootDag::Node::makeVariableAccess(
+		      n.u_chvar().id, n.width));;
+            break;
+	case IRExprTypeKind::ChanProbe:
+   	    hassert (false);
+	    break;
         case IRExprTypeKind::Bitfield:
             mp[&n] = ddag.m_dag.newNode(DExprSingleRootDag::Node::makeBitfield(
                 mp.at(n.u_bitfield().e), n.u_bitfield().hi(),
@@ -337,6 +354,12 @@ void print_dexpr(std::ostream &o, const DExpr &e) {
         break;
     case IRExprTypeKind::Var:
         o << string_format("C%d", e.u_var().id.m_id);
+        break;
+    case IRExprTypeKind::ChanVar:
+        o << string_format("C%d", e.u_chvar().id.m_id);
+        break;
+    case IRExprTypeKind::ChanProbe:
+        hassert (false);
         break;
     case IRExprTypeKind::BinaryOp:
         if (e.u_e2().op_type == IRBinaryOpType::Concat) {
@@ -1823,7 +1846,67 @@ void elimDeadCycles (std::vector<Dataflow> &d, GraphWithChanNames &gr)
   delete a;
 }
 
- 
+bool isProbeFree (const ChpExprDag &e)
+{
+  bool retval = true;
+
+  ChpExprDag::iterNodes (e,
+			 [&] (const ChpExprDag::Node &n) -> void {
+			   if (n.type() == IRExprTypeKind::ChanProbe) {
+			     retval = false;
+			   }
+			 });
+			  
+  return retval;
+}
+
+bool isProbeFree (const Sequence &seq) 
+{
+  Block *curr = seq.startseq->child();
+  while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic:
+      switch (curr->u_basic().stmt.type()) {
+      case StatementType::Assign:
+	if (!isProbeFree (curr->u_basic().stmt.u_assign().e)) return false;
+	break;
+      case StatementType::Send:
+	if (!isProbeFree (curr->u_basic().stmt.u_send().e.m_dag)) return false;
+	break;
+      case StatementType::Receive:
+	break;
+      }
+      break;
+      
+    case BlockType::Par:
+      for (auto &branch : curr->u_par().branches) {
+	if (!isProbeFree (branch)) return false;
+      }
+      break;
+      
+    case BlockType::Select:
+      for (auto &branch : curr->u_select().branches) {
+	if (branch.g.type() == IRGuardType::Expression) {
+	  if (!isProbeFree (branch.g.u_e().e.m_dag)) return false;
+	}
+	if (!isProbeFree (branch.seq)) return false;
+      }
+      break;
+      
+    case BlockType::DoLoop:
+      if (!isProbeFree (curr->u_doloop().branch)) return false;
+      break;
+      
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    curr = curr->child();
+  }
+  return true;
+}
+
 
 } // namespace
 
@@ -1832,12 +1915,24 @@ void printDataflowExpr (std::ostream &os, const DExpr &d)
   print_dexpr (os, d);
 }
 
+
+bool isProbeFree (const ChpGraph &g)
+{
+  return isProbeFree (g.m_seq);
+}
+
 std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 {
   std::vector<Dataflow> d;
   DataflowChannelManager m;
 
   hassert (gr.graph.is_static_token_form);
+
+  if (!isProbeFree (gr.graph.m_seq)) {
+    warning ("Converting CHP to dataflow: probes are present; skipped.");
+    return d;
+  }
+
   
 #if 0
   printf ("/*#############################\n");

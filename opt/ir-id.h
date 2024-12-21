@@ -254,6 +254,9 @@ class IdPool {
     [[nodiscard]] size_t varNum() const {
       return m_varid_infos.size();
     }
+    [[nodiscard]] size_t chanNum() const {
+      return m_chanid_infos.size();
+    }
 };
 
 

@@ -98,6 +98,12 @@ void print_expr_inline_(std::ostream &o, const ChpExprDag::Node *root) {
     case IRExprTypeKind::Var:
         o << str_of_id(root->u_var().id);
         break;
+    case IRExprTypeKind::ChanVar:
+        o << str_of_id(root->u_chvar().id);
+	break;
+    case IRExprTypeKind::ChanProbe:
+        o << "#" << str_of_id(root->u_probe().id);
+	break;
     case IRExprTypeKind::BinaryOp:
         if (root->u_e2().op_type == IRBinaryOpType::Concat) {
             o << "{";
@@ -151,6 +157,12 @@ void print_expr_block(std::ostream &o, const ChpExprDag &dag, int ilevel) {
             break;
         case IRExprTypeKind::Var:
             o << str_of_id(n.u_var().id);
+            break;
+        case IRExprTypeKind::ChanVar:
+            o << str_of_id(n.u_chvar().id);
+            break;
+        case IRExprTypeKind::ChanProbe:
+            o << "#" << str_of_id(n.u_probe().id);
             break;
         case IRExprTypeKind::BinaryOp:
 

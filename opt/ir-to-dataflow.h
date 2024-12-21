@@ -719,5 +719,8 @@ act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
 			       GraphWithChanNames &gr,
 			       std::vector<ActId *> &newnames,
 			       Scope *s);
+
+// @return true if there are no probes in guards/assignments
+bool isProbeFree (const ChpGraph &g);
   
 } // namespace ChpOptimize
