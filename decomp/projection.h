@@ -128,9 +128,45 @@ class DFG_Node {
             id = idx;
             set_n = -1;
         }
-        void print ()
+        void print (std::ostream &ss)
         {
-            if (t==NodeType::Basic) ChpOptimize::print_chp_block(std::cout, b);
+            auto strofid = [&](OptionalVarId id) {
+                return id ? "v" + std::to_string(((*id).m_id)) : "vNULL";
+            };
+            switch (t) {
+            case NodeType::Basic: {
+                ChpOptimize::print_chp_block(ss, b);
+            }
+            break;
+            case NodeType::Guard: {
+                ss << "guard " << g.first << std::endl;
+            }
+            break;
+            case NodeType::SelPhi: {
+                ss << strofid(phi.post_id) << " = phi(";
+                bool first = true;
+                for (const auto &id : phi.branch_ids) {
+                    if (!first) ss << ", ";
+                    first = false;
+                    ss << strofid(id);
+                }
+                ss << ");" << std::endl;
+            }
+            break;
+            case NodeType::SelPhiInv: {
+                bool first = true;
+                ss << "(";
+                for (const auto &id : phi_inv.branch_ids) {
+                    if (!first) ss << ", ";
+                    ss << strofid(id);
+                    first = false;
+                }
+                ss << ") = phi_inv(" << strofid(phi_inv.pre_id) <<");" << std::endl;
+            }
+            break;
+            default:
+            break;
+            }
         }
 };
 
@@ -301,7 +337,7 @@ class DFG {
             fprintf (fp, "\n/* ------ adj list ------\n");
             for (int i=0;i<adj.size();i++) {
                 fprintf(fp, "\n %d (type: %d): (", nodes[i]->id, int(nodes[i]->t));
-                nodes[i]->print();
+                nodes[i]->print(std::cout);
                 fprintf(fp, "): ");
                 for (int j=0;j<adj[i].size();j++) {
                     fprintf (fp, "%d, ", adj[i][j]->id);
@@ -327,6 +363,7 @@ class Projection : protected ChoppingBlock {
         std::vector<act_chp_lang_t *> get_procs ();
         void print_subgraphs (FILE *);
         void split_assignments (ChpGraph &);
+        void export_dot(std::string);
         // void split_selections ();
 
     private:
@@ -354,8 +391,9 @@ class Projection : protected ChoppingBlock {
         
         void _insert_copies_v0 (GraphWithChanNames &, Sequence);
         void _insert_copies_v1 (GraphWithChanNames &, Sequence);
+        void _insert_copies_v2 (GraphWithChanNames &, Sequence);
 
-        void _build_sub_proc_new (GraphWithChanNames &, Sequence, std::unordered_set<DFG_Node *>&);
+        bool _build_sub_proc_new (GraphWithChanNames &, Sequence, std::unordered_set<DFG_Node *>&);
         void _build_basic_new (GraphWithChanNames &, std::vector<DFG_Node *>);
         bool _all_basic (std::vector<DFG_Node *>);
 

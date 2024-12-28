@@ -112,6 +112,7 @@ void Projection::project()
     fprintf(stdout, "\n/* Non-STF \n");
     print_chp(std::cout, g->graph);
     fprintf(stdout, "\n*/\n");
+    export_dot("zz_graph.dot");
     _insert_guard_comms();
 
 
@@ -136,6 +137,7 @@ void Projection::project()
 
     // _insert_copies_v0 (g1, g1.graph.m_seq);
     _insert_copies_v1 (g1, g1.graph.m_seq);
+    // _insert_copies_v2 (g1, g1.graph.m_seq);
 
     ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
 
@@ -231,8 +233,9 @@ void Projection::project()
     hassert (marker_node_ids.size() == subgraphs.size());
 }
 
-void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std::unordered_set<DFG_Node *> &s)
+bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std::unordered_set<DFG_Node *> &s)
 {
+    bool empty = true;
     Block *curr = seq.startseq->child();
     while (curr->type() != BlockType::EndSequence) {
     switch (curr->type()) {
@@ -240,6 +243,7 @@ void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
         auto dfgnode = dfg.find(curr);
         if (dfgnode && s.contains(dfgnode)) {
             s.erase(dfgnode);
+            empty = false;
             // printf ("\n// skipping\n");
         }
         else {
@@ -259,12 +263,13 @@ void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
             if (dfgnode && s.contains(dfgnode)) {
                 s.erase(dfgnode);
                 new_splits.push_back(phi_inv);
+                empty = false;
             }
         }
         curr->u_par().splits = new_splits;
         
         for (auto &branch : curr->u_par().branches) {
-            _build_sub_proc_new (gg, branch, s);
+            empty &= _build_sub_proc_new (gg, branch, s);
         }
 
         std::vector<Block::Variant_Par::PhiMerge> new_merges = {};
@@ -273,6 +278,7 @@ void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
             if (dfgnode && s.contains(dfgnode)) {
                 s.erase(dfgnode);
                 new_merges.push_back(phi);
+                empty = false;
             }
         }
         curr->u_par().merges = new_merges;
@@ -288,25 +294,29 @@ void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
             if (dfgnode && s.contains(dfgnode)) {
                 s.erase(dfgnode);
                 new_splits.push_back(phi_inv);
+                empty = false;
             }
         }
         curr->u_select().splits = new_splits;
 
         std::list<SelectBranch> new_branches = {};
-        bool changed = false;
+
         int i=0;
+        int orig_size = curr->u_select().branches.size();
+        bool all_empty = true;
         for ( auto &branch : curr->u_select().branches ) {
+            bool emp = _build_sub_proc_new (gg, branch.seq, s);
+
             auto dfgnode = dfg.find(curr, {i, IRGuard::deep_copy(branch.g)});
-            if (dfgnode && s.contains(dfgnode)) {
+            if (!emp || (dfgnode && s.contains(dfgnode))) {
                 s.erase(dfgnode);
                 new_branches.push_back({branch.seq, IRGuard::deep_copy(branch.g)});
-            }
-            else {
-                changed = true;
+                all_empty = false;
             }
             i++;
         }
-        if (changed) {
+
+        if (new_branches.size()<orig_size) {
             if (new_branches.empty()) {
                 new_branches.push_back({gg.graph.blockAllocator().newSequence({}), 
                     IRGuard::makeExpression(ChpExprSingleRootDag::makeConstant(BigInt(1), 1))});
@@ -317,9 +327,6 @@ void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
                 curr->u_select().branches.push_back({x.seq, IRGuard::deep_copy(x.g)});
             }
         }
-        for ( auto &branch : curr->u_select().branches ) {
-            _build_sub_proc_new (gg, branch.seq, s);
-        }
 
         std::vector<Block::Variant_Select::PhiMerge> new_merges = {};
         for (auto phi : curr->u_select().merges) {
@@ -327,13 +334,14 @@ void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
             if (dfgnode && s.contains(dfgnode)) {
                 s.erase(dfgnode);
                 new_merges.push_back(phi);
+                empty = false;
             }
         }
         curr->u_select().merges = new_merges;
     }
     break;
     case BlockType::DoLoop: {
-        _build_sub_proc_new(gg, curr->u_doloop().branch, s);
+        empty = _build_sub_proc_new(gg, curr->u_doloop().branch, s);
     }
     break;
     
@@ -344,6 +352,7 @@ void Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
     }
     curr = curr->child();
     }
+    return empty;
 }
 
 void Projection::_build_basic_new (GraphWithChanNames &gg, std::vector<DFG_Node *> nodes)
@@ -1009,6 +1018,53 @@ void Projection::_insert_copies_v1 (GraphWithChanNames &gg, Sequence seq)
     }
 }
 
+#if 0
+// for ITB extraction - QDI vs DI paper
+void Projection::_insert_copies_v2 (GraphWithChanNames &gg, Sequence seq)
+{
+    Block *curr = seq.startseq->child();
+
+    while (curr->type() != BlockType::EndSequence) {
+        switch (curr->type()) {
+        case BlockType::Basic: {
+        }
+        break;
+        
+        case BlockType::Par: {
+            for (auto &branch : curr->u_par().branches) {
+                _insert_copies_v2 (gg, branch);
+            }
+        }
+        break;
+        
+        case BlockType::Select: {
+            for (auto &branch : curr->u_select().branches) {
+                _insert_copies_v2 (gg, branch.seq);
+            }
+        }
+        break;
+        case BlockType::DoLoop: {
+            for (auto &lphi : curr->u_doloop().loop_phis) {
+                hassert (curr->u_doloop().branch.startseq->child()->type()!=BlockType::EndSequence);
+                _insert_copy(gg, seq, curr->u_doloop().branch.startseq->child(), curr->parent(), lphi.bodyin_id);
+            }
+            _insert_copies_v2 (gg, curr->u_doloop().branch);
+            // for (auto &lphi : curr->u_doloop().loop_phis) {
+            //     _insert_copy(gg, seq, curr->u_doloop().branch.endseq, curr, lphi.bodyout_id);
+            // }
+        }
+        break;
+        
+        case BlockType::StartSequence:
+        case BlockType::EndSequence:
+            hassert(false);
+            break;
+        }
+    curr = curr->child();
+    }
+}
+#endif
+
 /*
     Due to STF, it is sufficient to rename within the sequence.
 */
@@ -1039,7 +1095,7 @@ void Projection::_insert_copy (GraphWithChanNames &gg, Sequence seq, DFG_Node *f
     _replace_uses (gg, seq, v, copy_var, send, dist_assn);
 }
 
-void Projection::_insert_copy (GraphWithChanNames &gg, Sequence seq, Block *bb, Block *start_after, VarId v)
+void Projection::_insert_copy (GraphWithChanNames &gg, Sequence seq, Block *splice_before, Block *start_after, VarId v)
 {
     ChanId ci = gg.graph.id_pool().makeUniqueChan(gg.graph.id_pool().getBitwidth(v), false);
     var_to_actvar vtoa(s, &gg.graph.id_pool());
@@ -1059,7 +1115,10 @@ void Projection::_insert_copy (GraphWithChanNames &gg, Sequence seq, Block *bb, 
     dist_assn->u_par().branches.push_back(gg.graph.blockAllocator().newSequence({send}));
     dist_assn->u_par().branches.push_back(gg.graph.blockAllocator().newSequence({recv}));
 
-    _splice_in_block_between (bb->parent(), bb, dist_assn);
+    _splice_in_block_between (splice_before->parent(), splice_before, dist_assn);
+
+    // fprintf(stdout,"\n\ngot here \n\n");
+    // fprintf(stdout,"\n\ngot here \n\n");
 
     _replace_uses (gg, seq, v, copy_var, send, start_after);
 }
@@ -1099,6 +1158,7 @@ void Projection::_replace_uses (GraphWithChanNames &gg, Sequence seq, VarId oldv
     Block *curr = seq.startseq;
     while (curr != start_after) {
         curr = curr->child();
+        if (curr->type()==BlockType::EndSequence) return;
     }
     curr = curr->child();
 
@@ -1343,6 +1403,32 @@ void Projection::_split_assignments(Sequence seq)
     }
     curr = curr->child();
     }
+}
+
+void Projection::export_dot(std::string filename)
+{
+    FILE *ff = fopen(filename.c_str(), "w");
+
+    std::string edge_repr = "->";
+    fprintf(ff,"\ndigraph{ ");
+    for (auto node : dfg.nodes)
+    {
+        std::stringstream ss;
+        node->print(ss);
+        std::ostringstream ss1;
+        ss1 << ss.rdbuf();
+        auto sl = ss1.str();
+        fprintf(ff, "\n_%d [label=\"%d: %s\"];", node->id, node->id, sl.c_str());
+    }
+    for (int i=0;i<dfg.adj.size();i++)
+    {
+        for (int j=0;j<dfg.adj[i].size();j++) 
+        {
+            fprintf(ff, "\n_%d %s _%d;", dfg.nodes[i]->id, edge_repr.c_str(), dfg.adj[i][j]->id);
+        }
+    }
+    fprintf(ff,"\n}");
+    fclose(ff);
 }
 
 #if 0

@@ -169,6 +169,7 @@ bool RingForge::_internal_loop_check (act_chp_lang_t *c)
     break;
 
   case ACT_CHP_FUNC:
+    return true;
     break;
   default:
     fatal_error ("What?");
