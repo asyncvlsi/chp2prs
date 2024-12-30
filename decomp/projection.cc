@@ -112,9 +112,7 @@ void Projection::project()
     fprintf(stdout, "\n/* Non-STF \n");
     print_chp(std::cout, g->graph);
     fprintf(stdout, "\n*/\n");
-    export_dot("zz_graph.dot");
     _insert_guard_comms();
-
 
     std::vector<ActId *> tmp_names;
     auto a1 = chp_graph_to_act (*g, tmp_names, s);
@@ -159,6 +157,8 @@ void Projection::project()
     fprintf(stdout, "\n/* STF g2 \n");
     print_chp(std::cout, g2.graph);
     fprintf(stdout, "\n*/\n");
+
+    export_dot("zz_graph.dot");
 
     ChpOptimize::takeOutOfNewStaticTokenForm(g2.graph);
 

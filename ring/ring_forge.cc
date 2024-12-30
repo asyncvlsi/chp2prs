@@ -665,6 +665,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                                                 vi->name,latch_id,
                                                 vi->iwrite,(vi->width)-1,
                                                 chan_name);
+                fprintf(_fp, "%s%s_%d.tx[%d].a = %s.a;\n",capture_block_prefix,
+                                                vi->name,latch_id,vi->iwrite,chan_name);
                 vi->iwrite++;
             }
         }

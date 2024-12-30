@@ -162,6 +162,42 @@ defproc capture(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 
 }
 
+export template <pint CD, PW, W, INIT_VAL, N>
+defproc capture_init_non_ssa(a1of1 go[N]; Mx1of2<W> din[N]; sdtvar<W> dout; a1of1 tx[N])
+{
+  syn::var_init<W,false> var;
+  var.v = dout;
+  
+  syn::expr::writeport<W> wp;
+  wp.wt = var.wt;
+  wp.wf = var.wf;
+  wp.var = dout;
+
+  // wp.in.d = din;
+
+  two_to_four_brs tf[N];
+  ( i : N : tf[i].in = go[i]; )
+  ( i : N : tf[i].out.r = tx[i].r; )
+  ( i : N : tf[i].out.a = tx[i].a; )
+
+  std::gates::ctree<2,false> write_sync[N];
+  ( i : N : write_sync[i].in[0] = wp.in.a; )
+  ( i : N : write_sync[i].in[1] = tf[i].out.r; )
+  ( i : N : write_sync[i].out = tf[i].out.a; )
+
+  bool _a[N];
+  std::gates::ortree<N, false> ot[W];
+  std::gates::ortree<N, false> of[W];
+  ( i : W:
+    ( j : N:
+      din[j].d[i].t = ot[i].in[j];
+      din[j].d[i].f = of[i].in[j];
+    )
+    wp.in.d.d[i].f = of[i].out;
+    wp.in.d.d[i].t = ot[i].out;
+  )
+}
+
 // export template <pint CD, PW, W>
 // defproc capture(a1of1 go; Mx1of2<W> din; sdtvar<W> dout)
 // {
@@ -262,45 +298,6 @@ defproc qdi_itb (sdtchan<W> L; sdtchan<W> R)
     // nor.B = Reset;
     nor.Y = L.a;
 }
-
-
-// come back to this later
-// export template <pint CD, PW, W, INIT_VAL, N>
-// defproc capture_init_non_ssa(a1of1 go[N]; Mx1of2<W> din[N]; sdtvar<W> dout)
-// {  
-//   syn::var_init_val<W,INIT_VAL> var;
-//   var.v = dout;
-  
-//   syn::expr::writeport<W> wp;
-//   wp.wt = var.wt;
-//   wp.wf = var.wf;
-//   wp.var = dout;
-
-//   bool _a[N];
-//   std::gates::ortree<N, false> ot[W];
-//   std::gates::ortree<N, false> of[W];
-//   ( i : W:
-//     ( j : N:
-//       din[j].d.d[i].t = ot[i].in[j];
-//       din[j].d.d[i].f = of[i].in[j];
-//     )
-//     wp.in.d.d[i].f = of[i].out;
-//     wp.in.d.d[i].t = ot[i].out;
-//   )
-//   prs {
-//     ( i : N :
-//       wp.in.a & (din[i].d.d[0].t | din[i].d.d[0].f) -> _a[i]-
-//       ~wp.in.a & ~(din[i].d.d[0].t | din[i].d.d[0].f) -> _a[i]+
-//       _a[i] => in[i].a- )
-//   }
-
-//   wp.in.d = din;
-
-//   std::gates::ctree<2,false> write_sync;
-//   write_sync.in[0] = wp.in.a;
-//   write_sync.in[1] = go.r;
-//   write_sync.out = go.a;
-// }
 
 // --------------------------------------------------------
 
