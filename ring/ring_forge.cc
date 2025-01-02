@@ -52,9 +52,10 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     init_cond_chan_prefix = "C_init_";
 
     // Bundled datapath parameters
-    // invx1_delay_ps = 21;
-    // capture_delay = 5; // 2*n = 10 inverters in delay-line
-    // pulse_width = 6; // 2*n+1 = 13 inverters in pulse generator
+    invx1_delay_ps = config_get_int("synth.ring.bundled.invx1_delay_ps");
+    capture_delay = config_get_int("synth.ring.bundled.capture_delay");
+    pulse_width = config_get_int("synth.ring.bundled.pulse_width");
+
     _delay_margin = delay_margin;
     delay_multiplier = float(_delay_margin)/100;
 
@@ -71,16 +72,9 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
 
 void RingForge::run_forge ()
 {
-    /* Handling
-     * 'everything else besides the chp body'
-     * needs to be added here
-    */
     Assert (_structure_check(_c), "Program not of allowed form?");
-    if (_c->label && (strcmp(_c->label,"top_decomp")==0)) {
-        // Assert ((_c->type == ACT_CHP_COMMA)||
-        //         (_c->type == ACT_CHP_LOOP)||
-        //         (_c->type == ACT_CHP_DOLOOP), "top-level not loop or parallel loops?");
 
+    if (_c->label && (strcmp(_c->label,"top_decomp")==0)) {
         if (_c->type == ACT_CHP_COMMA) {
             for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li))
             {
@@ -245,6 +239,12 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
         }
 
         fprintf (_fp, "// Branched Ring Non-SSA ----------\n");
+        if(c->label && strcmp(c->label,"qdi_itb")==0) {
+            fprintf (_fp, "\n // instantiating qdi itb here..\n");
+            _generate_qdi_itb(c);
+            return;
+        }
+
         generate_branched_ring_non_ssa (c,1,0,0);
     }
 }
@@ -523,9 +523,6 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         // connect output of math block to latch input
         if (datapath_style==SSA)
         {
-            // fprintf(_fp,"%s%d.out = %s%s_%d.din;\n",expr_block_instance_prefix,expr_inst_id,
-            //                                     capture_block_prefix,
-            //                                     vi->name,latch_id);
             fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din,%s%s_%d.tx);\n", bw, 
                             expr_block_output_prefix, expr_inst_id,
                             expr_block_instance_prefix,expr_inst_id,
@@ -540,17 +537,24 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         }
         else 
         {
-            // fprintf(_fp,"%s%d.out = %s%s_%d.din[%d][0..%d];\n",expr_block_instance_prefix,expr_inst_id,
-            //                                     capture_block_prefix,
-            //                                     vi->name,latch_id,
-            //                                     vi->iwrite, (vi->width)-1);
-            fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din[%d][0..%d], %s%s_%d.tx[%d]);\n", bw, 
-                expr_block_output_prefix, expr_inst_id,
-                expr_block_instance_prefix,expr_inst_id,
-                capture_block_prefix, vi->name,latch_id, 
-                vi->iwrite, (vi->width)-1,
-                capture_block_prefix, vi->name,latch_id,vi->iwrite
-                );
+            if (bundled) {
+                fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din[%d][0..%d], %s%s_%d.tx[%d]);\n", bw, 
+                    expr_block_output_prefix, expr_inst_id,
+                    expr_block_instance_prefix,expr_inst_id,
+                    capture_block_prefix, vi->name,latch_id, 
+                    vi->iwrite, (vi->width)-1,
+                    capture_block_prefix, vi->name,latch_id,vi->iwrite
+                    );
+            }
+            else {
+                fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din[%d], %s%s_%d.tx[%d]);\n", bw, 
+                    expr_block_output_prefix, expr_inst_id,
+                    expr_block_instance_prefix,expr_inst_id,
+                    capture_block_prefix, vi->name,latch_id, 
+                    vi->iwrite,
+                    capture_block_prefix, vi->name,latch_id,vi->iwrite
+                    );
+            }
             // connect pipe block to delay_expr input
             fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
             // connect delay_expr output to capture block
@@ -661,10 +665,18 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                 fprintf(_fp, "%s%s_%d.go[%d] = %s%d.data;\n",capture_block_prefix,
                                 vi->name,latch_id,vi->iwrite,
                                 ring_block_prefix,block_id);
-                fprintf(_fp, "%s%s_%d.din[%d][0..%d] = %s.d;\n",capture_block_prefix,
-                                                vi->name,latch_id,
-                                                vi->iwrite,(vi->width)-1,
-                                                chan_name);
+                if (bundled) {
+                    fprintf(_fp, "%s%s_%d.din[%d][0..%d] = %s.d;\n",capture_block_prefix,
+                                                    vi->name,latch_id,
+                                                    vi->iwrite,(vi->width)-1,
+                                                    chan_name);
+                }
+                else {
+                    fprintf(_fp, "%s%s_%d.din[%d] = %s.d;\n",capture_block_prefix,
+                                                    vi->name,latch_id,
+                                                    vi->iwrite,
+                                                    chan_name);
+                }
                 fprintf(_fp, "%s%s_%d.tx[%d].a = %s.a;\n",capture_block_prefix,
                                                 vi->name,latch_id,vi->iwrite,chan_name);
                 vi->iwrite++;
@@ -787,12 +799,6 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
         first_latch_id = 0;
         last_latch_id = vi->latest_for_read;
         // connect last latch output to first latch input
-        // fprintf(_fp,"%s%s_%d.dout = %s%s_%d.din;\n",capture_block_prefix,vi->name,last_latch_id,
-        //                                     capture_block_prefix,
-        //                                     vi->name,first_latch_id);
-        // fprintf(_fp,"%s%s_%d.dout = %s%s_%d.din;\n",capture_block_prefix,vi->name,last_latch_id,
-        //                                     capture_block_prefix,
-        //                                     vi->name,first_latch_id);
         va_id = _gen_var_access_id();
         fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,);\n",
                                 vi->width,var_access_prefix,va_id,
@@ -976,11 +982,10 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
         Expr *e1 = (Expr *)ib->key;
         list_append (all_leaves, e1);
         }
-        // fprintf (fp, "\n// gettin here..\n" );
     }
 
     // no dots
-    config_set_int("expropt.verbose", 0);
+    config_set_int("expropt.verbose", 1);
     config_set_int("expropt.abc_use_constraints", 1);
     config_set_int("expropt.vectorize_all_ports", 1);
 
@@ -991,9 +996,6 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
     int delay_line_n;
 
     fprintf(_fp, "// output bitwidth: %d bits\n",out_expr_width);
-    fprintf(stdout, "\n\n");
-    // fprintf(stdout, "\n%d\n", e->type);
-    // print_uexpr (stdout, e);
     
     if (e->type == E_INT)
     {
@@ -1002,8 +1004,6 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 
     // run abc, then v2act to create the combinational-logic-for-math process
     ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
-    // ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, NULL, NULL, NULL);
-    // ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, NULL, NULL);
     
     if (e->type == E_INT) 
     {
@@ -1081,8 +1081,6 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
 
     int out_expr_width = 1;
 
-    fprintf(stdout, "\n");
-
     // run abc, then v2act to create the combinational-logic-for-math process
     ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
     
@@ -1111,7 +1109,6 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
 
     // force write output file
     fflush(_fp);
-    // return int(std::ceil(delay_line_n*delay_multiplier));
     return delay_line_n;
 }
 
@@ -2419,9 +2416,6 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
             if ((zz == pre_sel_latch) && !once)
             {
                 // connect pre-split data to mux last data input
-                // fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n", capture_block_prefix, vi->name, 
-                //                                     mux_id, ctr_mux_port, (vi->width)-1,
-                //                         capture_block_prefix, vi->name, pre_sel_latch);
                 int va_id = _gen_var_access_id();
                 fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,%s%s_%d.din[%d][0..%d]);\n",
                                         vi->width,var_access_prefix,va_id,
@@ -2449,9 +2443,6 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
                                                         mux_id, ctr_mux_port, ring_block_prefix, 
                                                     split_block_id, ctr_sel_br);
                 // connect mux input data
-                // fprintf (_fp, "%s%s_%d.din[%d][0..%d] = %s%s_%d.dout;\n\n",capture_block_prefix, vi->name, 
-                //                                         mux_id, ctr_mux_port, (vi->width)-1,
-                //                                     capture_block_prefix, vi->name, zz);
                 int va_id = _gen_var_access_id();
                 fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,%s%s_%d.din[%d][0..%d]);\n",
                                         vi->width,var_access_prefix,va_id,

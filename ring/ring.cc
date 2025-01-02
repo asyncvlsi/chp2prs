@@ -54,16 +54,6 @@ RingEngine::RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
                 _branch_id = 0;
             }; 
 
-// void RingEngine::run_forge ()
-// {
-//     /* Handling
-//      * 'everything else besides the chp body'
-//      * needs to be added here
-//     */
-
-//    construct_var_infos ();
-//    _run_forge_helper ();
-// }
 #define NOT_FOUND -2
 #define NO_ASSIGN -1
 

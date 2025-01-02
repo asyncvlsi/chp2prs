@@ -146,7 +146,9 @@ class RingSynth : public ActSynthesize {
       // else
       //   rf->run_forge();
 
+      fprintf(stdout, "// %s : ",p->getName());
       rf->run_forge();
+      fprintf(stdout, "\n");
 #else
 
       chp_print(stdout, c);

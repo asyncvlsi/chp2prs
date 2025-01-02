@@ -116,13 +116,13 @@ class RingForge : public RingEngine {
         const char *sync_chan_name_prefix; 
         const char *init_cond_chan_prefix;
 
-        static const unsigned int invx1_delay_ps = 21;
+        unsigned int invx1_delay_ps;
 
         // Capture delay of a latch in multiples of 2*(INVX1 delay)
-        static const unsigned int capture_delay = 5;
+        unsigned int capture_delay;
 
         // Pulse-width for the pulse-generator for the latch as fn. (2n+1)*d of invx1_delay_ps
-        static const unsigned int pulse_width = 6;
+        unsigned int pulse_width;
 
         int _delay_margin;
         float delay_multiplier;
