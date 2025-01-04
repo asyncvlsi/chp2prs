@@ -28,6 +28,11 @@ import std;
 open std::channel;
 open std::gates;
 
+pint N_delay_line_types = 4;
+
+// Delay_Params will be populated during synthesis, from synth.conf
+pint Delay_Params[N_delay_line_types+1];
+
 namespace syn {
   
   export namespace ring {
@@ -114,19 +119,100 @@ defproc connect_exprblk_assign (bool d[W]; bool e[W]; a1of1 tx)
 // --------------------------------------------------------
 
 
-// Bundled Data Datapath Elements -------------------------
-// Some copied from dflowmap_netlist/dflow_std/qdigen.act
+
+// Delay lines --------------------------------------------
+template <pint N>
+defproc delay_line_0(bool? in; bool! out)
+{
+  { N >= Delay_Params[0] : "Param out of range for this delay line" };
+  { N <  Delay_Params[1] : "Param out of range for this delay line" };
+  pint N_loc = N - Delay_Params[0];
+
+  // put your delay line here in terms of N_loc
+  pint my_N = N_loc+Delay_Params[0];
+  std::cells::INVX1 invs[2*(my_N)];
+  invs[0].A = in;
+  ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
+  invs[2*my_N-1].Y = out;
+}
+
+// Change these when new delay line types are added -------
+template <pint N>
+defproc delay_line_1(bool? in; bool! out)
+{
+  { N >= Delay_Params[1] : "Param out of range for this delay line" };
+  { N <  Delay_Params[2] : "Param out of range for this delay line" };
+  pint N_loc = N - Delay_Params[1];
+
+  // put your delay line here in terms of N_loc
+  pint my_N = N_loc+Delay_Params[1];
+  std::cells::INVX1 invs[2*(my_N)];
+  invs[0].A = in;
+  ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
+  invs[2*my_N-1].Y = out;
+}
+
+template <pint N>
+defproc delay_line_2(bool? in; bool! out)
+{
+  { N >= Delay_Params[2] : "Param out of range for this delay line" };
+  { N <  Delay_Params[3] : "Param out of range for this delay line" };
+  pint N_loc = N - Delay_Params[2];
+
+  // put your delay line here in terms of N_loc
+  pint my_N = N_loc+Delay_Params[2];
+  std::cells::INVX1 invs[2*(my_N)];
+  invs[0].A = in;
+  ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
+  invs[2*my_N-1].Y = out;
+}
+
+template <pint N>
+defproc delay_line_3(bool? in; bool! out)
+{
+  { N >= Delay_Params[3] : "Param out of range for this delay line" };
+  { N <  Delay_Params[4] : "Param out of range for this delay line" };
+  pint N_loc = N - Delay_Params[3];
+
+  // put your delay line here in terms of N_loc
+  pint my_N = N_loc+Delay_Params[3];
+  std::cells::INVX1 invs[2*(my_N)];
+  invs[0].A = in;
+  ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
+  invs[2*my_N-1].Y = out;
+}
+// Change these when new delay line types are added -------
+
+template <pint T, N>
+defproc delay_selector(bool? in; bool! out)
+{
+  [ T=0 -> delay_line_0<N> d0(in,out);
+  []T=1 -> delay_line_1<N> d1(in,out);
+  []T=2 -> delay_line_2<N> d2(in,out);
+  []T=3 -> delay_line_3<N> d3(in,out);
+  []else-> { false : "Delay line type out of range" };
+  ]
+}
 
 export template <pint N>
 defproc delay_line(bool? in; bool! out)
 {
-  std::cells::INVX1 invs[2*N];
-  invs[0].A = in;
-  (i:2*N-1 : 
-    invs[i].Y = invs[i+1].A;
-  )
-  invs[2*N-1].Y = out;
+  [
+    ([]i:N_delay_line_types: N>=Delay_Params[i] & N<Delay_Params[i+1] -> delay_selector<i,N> dl(in,out); )
+    []N>=Delay_Params[N_delay_line_types] -> { false : "Delay line parameter out of range" };
+  ]
 }
+
+// export template <pint N>
+// defproc delay_line(bool? in; bool! out)
+// {
+//   std::cells::INVX1 invs[2*N];
+//   invs[0].A = in;
+//   (i:2*N-1 : 
+//     invs[i].Y = invs[i+1].A;
+//   )
+//   invs[2*N-1].Y = out;
+// }
 
 export template <pint N>
 defproc delay_line_chan(a1of1 m1; a1of1 p1)
@@ -145,6 +231,10 @@ defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
   p1.r = d.out;
   m1.a = p1.a;
 }
+// --------------------------------------------------------
+
+// Bundled Data Datapath Elements -------------------------
+// Some copied from dflowmap_netlist/dflow_std/qdigen.act
 
 export template <pint PW>
 defproc pulse(bool? in; bool! out)

@@ -82,6 +82,18 @@ class RingSynth : public ActSynthesize {
     pp_printf_raw (_pp, "import \"%s\";\n", _ename);
     // open the operating namespace
     pp_printf_raw (_pp, "open syn::expr;\n");
+
+    // Delay-line table -------------------------
+    pp_printf_raw (_pp, "\n// Delay Line Parameters ----\n");
+    int dp_sz = config_get_table_size("synth.ring.bundled.delay_params");
+    int *dparams = config_get_table_int("synth.ring.bundled.delay_params");
+    for (int i=0;i<dp_sz;i++)
+    {
+      pp_printf_raw (_pp, "Delay_Params[%d]=%d;\n",i,dparams[i]);
+    }
+    pp_printf_raw (_pp, "// Delay Line Parameters ----\n");
+    // ------------------------------------------
+
     pp_forced (_pp, 0);
     pp_forced (_pp, 0);
 
