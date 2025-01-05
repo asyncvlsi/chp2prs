@@ -539,12 +539,12 @@ template<pint N>
 defproc acelem_r (bool in_f; bool in_t; bool in[N]; bool out)
 {
   // one unused input
-  { N>=2 : " 3 or more inputs needed" };
+  { N>=1 : " 3 or more inputs needed" };
   bool _out;
   prs {
 
-      in_t & (& i : N-1 : in[i]) -> _out-
-      ~in_t & ~in_f & (& i : N-1 : ~in[i] ) -> _out+
+      in_t & (& i : N : in[i]) -> _out-
+      ~in_t & ~in_f & (& i : N : ~in[i] ) -> _out+
       Reset | _out => out-
   }   
 }
@@ -553,7 +553,7 @@ export template<pint N>
 defproc selection_split_new(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
 {
 
-    { false : "FIX PLZ"};
+    { false : "FIX PLZ" };
     capture<5, 6, 1> capt[N];
     var_access<1> vax[N];
 
@@ -594,7 +594,7 @@ export template<pint N>
 defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
 {
 
-    { N=2 : "Two way only for now"};
+    { N<=4 : "Upto four-way only for now" };
     capture<5, 6, 1> capt[N];
     var_access<1> vax[N];
 
@@ -611,14 +611,61 @@ defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
     // ( i : N: capt[i].go.a = vax[i].dout[0].r; )
     // ( i : N: co[i].r = vax[i].dout[0].d.d[0].t; )
 
-    acelem3_r celems[2];
-    celems[0].in[0] = vax[0].dout[0].d.d[0].t; 
-    celems[0].in[1] = vax[0].dout[0].d.d[0].f;
-    celems[0].in[2] = vax[1].dout[0].d.d[0].f;
+    // acelem3_r celems[2];
+    [N=2->
+      acelem_r<1> celems[2];
 
-    celems[1].in[0] = vax[1].dout[0].d.d[0].t; 
-    celems[1].in[1] = vax[1].dout[0].d.d[0].f;
-    celems[1].in[2] = vax[0].dout[0].d.d[0].f;
+      celems[0].in_t = vax[0].dout[0].d.d[0].t; 
+      celems[0].in_f = vax[0].dout[0].d.d[0].f;
+      celems[0].in[0] = vax[1].dout[0].d.d[0].f;
+
+      celems[1].in_t = vax[1].dout[0].d.d[0].t; 
+      celems[1].in_f = vax[1].dout[0].d.d[0].f;
+      celems[1].in[0] = vax[0].dout[0].d.d[0].f;
+    []N=3->
+      acelem_r<2> celems[3];
+
+      celems[0].in_t = vax[0].dout[0].d.d[0].t; 
+      celems[0].in_f = vax[0].dout[0].d.d[0].f;
+      celems[0].in[0] = vax[1].dout[0].d.d[0].f;
+      celems[0].in[1] = vax[2].dout[0].d.d[0].f;
+
+      celems[1].in_t = vax[1].dout[0].d.d[0].t; 
+      celems[1].in_f = vax[1].dout[0].d.d[0].f;
+      celems[1].in[0] = vax[0].dout[0].d.d[0].f;
+      celems[1].in[1] = vax[2].dout[0].d.d[0].f;
+
+      celems[2].in_t = vax[2].dout[0].d.d[0].t; 
+      celems[2].in_f = vax[2].dout[0].d.d[0].f;
+      celems[2].in[0] = vax[0].dout[0].d.d[0].f;
+      celems[2].in[1] = vax[1].dout[0].d.d[0].f;
+    []N=4->
+      acelem_r<3> celems[4];
+
+      celems[0].in_t = vax[0].dout[0].d.d[0].t; 
+      celems[0].in_f = vax[0].dout[0].d.d[0].f;
+      celems[0].in[0] = vax[1].dout[0].d.d[0].f;
+      celems[0].in[1] = vax[2].dout[0].d.d[0].f;
+      celems[0].in[2] = vax[3].dout[0].d.d[0].f;
+
+      celems[1].in_t = vax[1].dout[0].d.d[0].t; 
+      celems[1].in_f = vax[1].dout[0].d.d[0].f;
+      celems[1].in[0] = vax[0].dout[0].d.d[0].f;
+      celems[1].in[1] = vax[2].dout[0].d.d[0].f;
+      celems[1].in[2] = vax[3].dout[0].d.d[0].f;
+
+      celems[2].in_t = vax[2].dout[0].d.d[0].t; 
+      celems[2].in_f = vax[2].dout[0].d.d[0].f;
+      celems[2].in[0] = vax[0].dout[0].d.d[0].f;
+      celems[2].in[1] = vax[1].dout[0].d.d[0].f;
+      celems[2].in[2] = vax[3].dout[0].d.d[0].f;
+
+      celems[3].in_t = vax[3].dout[0].d.d[0].t; 
+      celems[3].in_f = vax[3].dout[0].d.d[0].f;
+      celems[3].in[0] = vax[0].dout[0].d.d[0].f;
+      celems[3].in[1] = vax[1].dout[0].d.d[0].f;
+      celems[3].in[2] = vax[2].dout[0].d.d[0].f;
+    ]
 
     ( i : N : co[i].r = celems[i].out; )
     

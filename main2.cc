@@ -238,8 +238,8 @@ int main(int argc, char **argv)
   /* find the process specified on the command line */
   Process *p = a->findProcess(procname, true);
 
-    /* read synthesis configuration file */
-    config_read("synth.conf");
+  /* read synthesis configuration file */
+  config_read("synth.conf");
 
   if (!p) {
     fatal_error("Could not find process `%s' in file `%s'", procname,

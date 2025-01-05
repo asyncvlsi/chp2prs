@@ -56,6 +56,21 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     capture_delay = config_get_int("synth.ring.bundled.capture_delay");
     pulse_width = config_get_int("synth.ring.bundled.pulse_width");
 
+    // Delay line parameters
+    // int dp_sz = config_get_table_size("synth.ring.bundled.delay_params");
+    // int dv_sz = config_get_table_size("synth.ring.bundled.delay_vals");
+    // Assert (dp_sz==dv_sz, "Delay line table size mismatch");
+
+    // int *dparams = config_get_table_int("synth.ring.bundled.delay_params");
+    // double *dvals = config_get_table_real("synth.ring.bundled.delay_vals");
+    // delay_params.clear();
+    // delay_vals.clear();
+    // for (int i=0;i<dp_sz;i++)
+    // {
+    //     delay_params.push_back(dparams[i]);
+    //     delay_vals.push_back(dvals[i]);
+    // }
+
     _delay_margin = delay_margin;
     delay_multiplier = float(_delay_margin)/100;
 
