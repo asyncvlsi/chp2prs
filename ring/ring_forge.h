@@ -81,6 +81,9 @@ class RingForge : public RingEngine {
         float _lookup_mux_delays (int, int);
         std::pair<int,int> _get_pre_sel_latch_and_size (std::vector<int>);
 
+        int delay_table_sz;
+        int _compute_delay_line_param(double);
+
         list_t *_create_channel_accesses (list_t *ics);
 
         // expr block functions
@@ -115,10 +118,6 @@ class RingForge : public RingEngine {
         // Channel name prefixes
         const char *sync_chan_name_prefix; 
         const char *init_cond_chan_prefix;
-
-        // Delay line parameters
-        // std::vector<int> delay_params;
-        // std::vector<double> delay_vals;
 
         unsigned int invx1_delay_ps;
 

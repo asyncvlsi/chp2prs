@@ -56,20 +56,11 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     capture_delay = config_get_int("synth.ring.bundled.capture_delay");
     pulse_width = config_get_int("synth.ring.bundled.pulse_width");
 
-    // Delay line parameters
-    // int dp_sz = config_get_table_size("synth.ring.bundled.delay_params");
-    // int dv_sz = config_get_table_size("synth.ring.bundled.delay_vals");
-    // Assert (dp_sz==dv_sz, "Delay line table size mismatch");
-
-    // int *dparams = config_get_table_int("synth.ring.bundled.delay_params");
-    // double *dvals = config_get_table_real("synth.ring.bundled.delay_vals");
-    // delay_params.clear();
-    // delay_vals.clear();
-    // for (int i=0;i<dp_sz;i++)
-    // {
-    //     delay_params.push_back(dparams[i]);
-    //     delay_vals.push_back(dvals[i]);
-    // }
+    // Delay line parameters check
+    int dp_sz = config_get_table_size("synth.ring.bundled.delay_params");
+    int dv_sz = config_get_table_size("synth.ring.bundled.delay_vals");
+    Assert (dp_sz==dv_sz, "Delay line table size mismatch");
+    delay_table_sz = dp_sz;
 
     _delay_margin = delay_margin;
     delay_multiplier = float(_delay_margin)/100;
@@ -302,6 +293,32 @@ void RingForge::_generate_qdi_itb(act_chp_lang_t *cc)
 
     fprintf(_fp, "\n qdi_itb<%d,%lu> qdi_itb_inst_%d(%s,%s);\n", 
                     bw_send, ival, inst_id, Lname, Rname);
+}
+
+int RingForge::_compute_delay_line_param(double delay)
+{
+    if (delay==0) return 0;
+    
+    int *dparams = config_get_table_int("synth.ring.bundled.delay_params");
+    double *dvals = config_get_table_real("synth.ring.bundled.delay_vals");
+
+    int itr = 0;
+    while(itr<delay_table_sz && delay>dvals[itr])
+    {
+        itr++;
+    }
+    Assert ((itr>0 && itr<delay_table_sz), "Delay out of range of producible delay lines");
+    Assert ((delay>=dvals[itr-1] && delay<=dvals[itr]), "Delay PWL curve non-monotonic?");
+    // linear interpolation
+    double left = dvals[itr-1];
+    double right = dvals[itr];
+    double theta = (right-delay)/(right-left);
+    Assert ((theta>=0 && theta<=1), "What");
+
+    int n = std::ceil( theta*dparams[itr-1] + (1-theta)*dparams[itr] );
+    Assert ((n>=dparams[itr-1] && n<=dparams[itr]), "Delay PWL curve non-monotonic?");
+
+    return int(std::ceil(n*delay_multiplier))+1;
 }
 
 unsigned long act_expr_getconst_long (Expr *e)
@@ -1032,7 +1049,8 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
         // double typ_delay_ps = (ebi->getDelay().typ_val);
         if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %dps", typ_delay_ps); }
 
-        delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
+        // delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
+        delay_line_n = _compute_delay_line_param(typ_delay_ps); 
         if (delay_line_n <= 0) { delay_line_n = 1; }
 
         fprintf(_fp, "\n// typical delay: %gps\n",typ_delay_ps);
@@ -1040,7 +1058,8 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
 
     _instantiate_expr_block (xid, all_leaves);
 
-    fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",int(std::ceil(delay_line_n*delay_multiplier)),xid);
+    // fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",int(std::ceil(delay_line_n*delay_multiplier)),xid);
+    fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",delay_line_n,xid);
     // fprintf (stdout, "\n// bye from expropt\n");
 
     eeo->~ExternalExprOpt();
@@ -1104,7 +1123,8 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     // double typ_delay_ps = (ebi->getDelay().typ_val);
     // if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %dps", typ_delay_ps); }
 
-    int delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
+    // int delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
+    int delay_line_n = _compute_delay_line_param(typ_delay_ps); 
     if (delay_line_n <= 0) { delay_line_n = 1; }
 
     fprintf(_fp, "\n// typical delay: %gps\n",typ_delay_ps);
@@ -1899,7 +1919,7 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         
         if (!have_probes) {
             fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
-            fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",int(std::ceil(max_delay_n_sel*delay_multiplier)),sel_split_block_id);
+            fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",max_delay_n_sel,sel_split_block_id);
             // connect prev. block p1 to delay_line then connect to select block from the output
             fprintf(_fp,"delay_select_%d.m1 = %s%d.p1;\n",sel_split_block_id,ring_block_prefix,prev_block_id);
             fprintf(_fp,"delay_select_%d.p1 = %s%d.m1;\n",sel_split_block_id,ring_block_prefix,sel_split_block_id);
@@ -2229,7 +2249,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         if (!have_probes) {
             Assert (max_delay_n_sel>0, "non-positive delay for non-probed guard evaluators?");
             fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
-            fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",int(std::ceil(max_delay_n_sel*delay_multiplier)),sel_split_block_id);
+            fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",max_delay_n_sel,sel_split_block_id);
             // connect prev. block p1 to delay_line then connect to select block from the output
             fprintf(_fp,"delay_select_%d.m1 = %s%d.p1;\n",sel_split_block_id,ring_block_prefix,prev_block_id);
             fprintf(_fp,"delay_select_%d.p1 = %s%d.m1;\n",sel_split_block_id,ring_block_prefix,sel_split_block_id);
@@ -2244,10 +2264,12 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             delay_merge_block_id = _gen_block_id();
             fprintf(_fp,"\n// Delaying post-merge-block sync. by max. delay of all merge muxes\n");
             if (n_muxes==0) { // can't create zero-length arrays
-                fprintf(_fp,"delay_line_chan<%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),ring_block_prefix, delay_merge_block_id);
+                // fprintf(_fp,"delay_line_chan<%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),ring_block_prefix, delay_merge_block_id);
+                fprintf(_fp,"delay_line_chan<%d> %s%d;\n",delay_n_merge,ring_block_prefix, delay_merge_block_id);
             }
             else {
-                fprintf(_fp,"delay_line_merge<%d,%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),n_muxes,ring_block_prefix, delay_merge_block_id);
+                // fprintf(_fp,"delay_line_merge<%d,%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),n_muxes,ring_block_prefix, delay_merge_block_id);
+                fprintf(_fp,"delay_line_merge<%d,%d> %s%d;\n",delay_n_merge,n_muxes,ring_block_prefix, delay_merge_block_id);
                 int i = 0;
                 for ( auto var : muxed_vars ) {
                     hash_bucket_t *b = hash_lookup (var_infos, var.c_str());
@@ -2479,7 +2501,8 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
             // TODO: temporary large value for large muxes, gotta fix 
             max_delay = 2000;
         }
-        return {n_muxes, int(max_delay/(2*invx1_delay_ps)) + 1};
+        // return {n_muxes, int(max_delay/(2*invx1_delay_ps)) + 1};
+        return {n_muxes, _compute_delay_line_param(max_delay)};
     }
     else {
         return {n_muxes, 0};
