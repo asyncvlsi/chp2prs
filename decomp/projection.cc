@@ -288,6 +288,19 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
       
     case BlockType::Select: {
 
+        /*
+            Entire projected proces could be within a selection.
+            Need to lift up the branch in this case.
+            This happens when there is no guard node of this
+            selection in the set of DFG nodes.
+        */
+        bool lift = true;
+        for ( const auto &n : s ) {
+            if (n->t==NodeType::Guard && n->b == curr) {
+                lift = false; break;
+            }
+        }
+
         std::vector<Block::Variant_Select::PhiSplit> new_splits = {};
         for (auto phi_inv : curr->u_select().splits) {
             auto dfgnode = dfg.find(curr, phi_inv);
@@ -316,6 +329,10 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
             i++;
         }
 
+        if (lift) {
+            hassert (new_branches.size()<=1);
+        }
+
         if (new_branches.size()<orig_size) {
             if (new_branches.empty()) {
                 new_branches.push_back({gg.graph.blockAllocator().newSequence({}), 
@@ -338,6 +355,14 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
             }
         }
         curr->u_select().merges = new_merges;
+
+        if (lift) {
+            Block *newcurr = gg.graph.blockAllocator().newBlock(Block::makeParBlock());
+            newcurr->u_par().branches.push_back(new_branches.front().seq);
+            _splice_in_block_between(curr->parent(),curr,newcurr);
+            _splice_out_block_new(curr);
+            curr = newcurr;
+        }
     }
     break;
     case BlockType::DoLoop: {
