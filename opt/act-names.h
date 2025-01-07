@@ -52,7 +52,10 @@ struct var_to_actvar {
   }
 
   ActId *chanMap (const ChanId &ch) {
-    const char *chan_prefix = "_ch";
+    // const char *chan_prefix = "_ch";
+    int ref = config_get_int("act.refine_steps");
+    static char chan_prefix[20];
+    snprintf (chan_prefix, 20, "_ch_%d_",ref);
     static char buf[100];
     if (name_from_chan.contains(ch)) {
       return name_from_chan[ch]->Clone();
