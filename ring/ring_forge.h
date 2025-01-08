@@ -42,6 +42,7 @@ class RingForge : public RingEngine {
         void _run_forge_helper (act_chp_lang_t *);
         bool _structure_check (act_chp_lang_t *);
         bool _internal_loop_check (act_chp_lang_t *);
+        bool _fill_in_ics (act_chp_lang_t *&);
 
         // Main synthesis functions
         void generate_pipe(act_chp_lang_t *, int);

@@ -178,6 +178,96 @@ bool RingForge::_internal_loop_check (act_chp_lang_t *c)
   return false;
 }
 
+bool RingForge::_fill_in_ics (act_chp_lang_t *&c)
+{
+    bool any_added = false;
+    int type = -1;
+    list_t *ic_var_list = NULL;
+    list_t *ics_assns = NULL;
+    act_chp_lang_t *main_loop = NULL;
+
+    // Get data 
+    switch (c->type) {
+    case ACT_CHP_LOOP:
+    case ACT_CHP_DOLOOP:
+        type = 0;
+        ic_var_list = list_dup((list_t *)(((latch_info_t *)(c->space))->live_vars));
+        ics_assns = list_new();
+        main_loop = c;
+        break;
+    case ACT_CHP_SEMI:
+        type = 1;
+        ics_assns = list_dup(c->u.semi_comma.cmd);
+        list_delete_tail(ics_assns);
+        for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+        {
+            act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
+            if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) {
+                ic_var_list  = list_dup((list_t *)(((latch_info_t *)(stmt->space))->live_vars));
+                main_loop = stmt;
+            }
+        }
+        break;
+    default:
+        fatal_error ("Something went really wrong in filling in I.C.s");
+        break;
+    }
+
+    Assert (ic_var_list, "Hmm");
+    Assert (main_loop, "Hmm");
+
+    // Look through ICs and fill in missing ones
+    for (listitem_t *li = list_first (ic_var_list); li; li = list_next (li)) 
+    {
+        hash_bucket_t *b = hash_lookup(var_infos, (const char *)(list_value(li)));
+        var_info *vi = (var_info *)b->v;
+        ActId *id = vi->id;
+
+        if (vi->fischan==0) {
+            bool exists = false;
+            for (listitem_t *li = list_first (ics_assns); li; li = list_next (li)) 
+            {
+                act_chp_lang_t *assn = (act_chp_lang_t *)(list_value(li));
+                Assert ((assn->type == ACT_CHP_ASSIGN), "IC is not assignment?");
+                char rname[1024];
+                char lname[1024];
+                get_true_name(lname, assn->u.assign.id, _p->CurScope());
+                get_true_name(rname, id, _p->CurScope());
+                if (strcmp(lname, rname)==0) exists = true;
+            }
+
+            if (!exists) {
+                any_added = true;
+                act_chp_lang_t *assn = new act_chp_lang_t;
+                assn->type = ACT_CHP_ASSIGN;
+                assn->label = NULL;
+                assn->space = NULL;
+                assn->u.assign.id = id;
+                Expr *e = new Expr;
+                e->type = E_INT;
+                e->u.ival.v = 0;
+                assn->u.assign.e = e;
+                list_append_head (ics_assns, assn);
+            }
+        }
+    }
+    list_append (ics_assns, main_loop);
+    
+    if (type==1) {
+        c->u.semi_comma.cmd = ics_assns;
+    }
+    else {
+        act_chp_lang_t *newc = new act_chp_lang_t;
+        newc->type = ACT_CHP_SEMI;
+        newc->label = NULL;
+        newc->space = NULL;
+        newc->u.semi_comma.cmd = list_dup(ics_assns);
+        c = newc;
+    }
+
+    return any_added;
+}
+
 void RingForge::_run_forge_helper (act_chp_lang_t *c)
 {
     bool printt = false;
@@ -190,6 +280,15 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
     if (printt) fprintf (_fp, "// Live Vars Info -----------------\n");
     if (printt) lva->print_live_var_info();
     if (printt) fprintf (_fp, "// --------------------------------\n\n");
+
+    construct_var_infos (c);
+    if(_fill_in_ics(c)) {
+        fprintf (stdout, "\nWARNING: Some variables were uninitialized in CHP; initializing these to zero.\n");
+    }
+
+    LiveVarAnalysis *lva2 = new LiveVarAnalysis (_fp, _p, c);
+    lva2->generate_live_var_info();
+    lva2->generate_live_var_info();
 
     construct_var_infos (c);
 
@@ -1757,6 +1856,10 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
 #if 1
             // loop through initial condition assignments to create latches with correct initial values
             list_t *ic_list  = list_dup((list_t *)(((latch_info_t *)(main_loop->space))->live_vars));
+
+            // handle channel variables - i.e. value probes
+            ic_list = _create_channel_accesses(ic_list);
+
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
             {   
                 list_t *tmp = list_new();
