@@ -28,6 +28,8 @@
 #include "decomp/pretty_print.h"
 #include "decomp/multichan.h"
 
+#include "ring/ring_else_gen.h"
+
 #include "opt/chp-opt.h"
 #include "opt/static-tokens.h"
 
@@ -75,7 +77,7 @@ class Decomp : public ActSynthesize {
     // fprintf (_pp->fp, "/* start decomp */\n");
     fflush (_pp->fp);
 
-    int chpopt, pll;
+    int chpopt, pll, project;
     ActDynamicPass *dp;
 
     dp = dynamic_cast <ActDynamicPass *> (ap);
@@ -83,8 +85,12 @@ class Decomp : public ActSynthesize {
 
     chpopt = dp->getIntParam ("chp_optimize");
     pll = dp->getIntParam ("parallelism");
+    project = dp->getIntParam ("project");
 
     if (p->getlang() && p->getlang()->getchp()) {
+
+      fill_in_else_explicit (p->getlang()->getchp()->c, p, 1);
+
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope ());
 
@@ -100,7 +106,7 @@ class Decomp : public ActSynthesize {
       std::vector<ActId *> tmp_names;
       std::unordered_set<ActId *> newnames;
     
-      std::vector<Sequence> vs, vs1, vs3;
+      std::vector<Sequence> vs, vs1, vsx;
 
 #if 1
       // necessary decompositions for synthesis -------------------------------
@@ -116,8 +122,11 @@ class Decomp : public ActSynthesize {
 
       Projection *pr = new Projection (_pp->fp, g, 
                           bkp->get_decomp_info_map(), p->CurScope());
-      // pr->project();
-      // vs3 = pr->get_procs();
+      if (project) {
+        pr->project();
+      }
+      auto vs3 = pr->get_procs();
+      // vsx = pr->get_seqs();
 
       Block *top = g.graph.blockAllocator().newBlock(Block::makeParBlock());
       top->u_par().branches.push_back(g.graph.m_seq);
@@ -127,10 +136,11 @@ class Decomp : public ActSynthesize {
       act_chp_lang_t *top_chp;
       NEW (top_chp, act_chp_lang_t);
       top_chp->label = NULL;
+      top_chp->space = NULL;
       top_chp->type = ACT_CHP_COMMA;
       top_chp->u.semi_comma.cmd = list_new();
 
-      for ( auto vv : {vs,vs1,vs3} ) 
+      for ( auto vv : {vs, vs1} ) 
       {
         for (auto v : vv)
         {
@@ -140,6 +150,20 @@ class Decomp : public ActSynthesize {
           list_append(top_chp->u.semi_comma.cmd, tmp);
         }
       }
+      std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
+      for ( auto v : vs3 )
+      {
+        auto _g = ChpOptimize::chp_graph_from_act (v, p->CurScope ());
+        // ChpOptimize::optimize_chp_O2 (_g.graph, p->getName(), false);
+        ChpOptimize::optimize_chp_O0 (_g.graph, p->getName(), false);
+        std::vector<ActId *> tmp_names2;
+        v = chp_graph_to_act (_g, tmp_names2, p->CurScope());
+        for ( auto x : tmp_names2 ) { newnames.insert(x); }
+        // for ( auto id : _g.name_from_chan ) { g.name_from_chan.insert(id); }
+        nfc.push_back(_g.name_from_chan);
+        list_append(top_chp->u.semi_comma.cmd, v);
+      }
+
       // ----------------------------------------------------------------------
 
       // concurrent decomposition for slack elastic programs ------------------
@@ -168,7 +192,9 @@ class Decomp : public ActSynthesize {
         }
 #else
         act_chp_lang_t *tmp2 = chp_graph_to_act (g, tmp_names, p->CurScope());
-        list_append(top_chp->u.semi_comma.cmd, tmp2);
+        if (!project) {
+          list_append(top_chp->u.semi_comma.cmd, tmp2);
+        }
         for ( auto x : tmp_names ) { newnames.insert(x); }
 #endif
       }
@@ -186,14 +212,40 @@ class Decomp : public ActSynthesize {
         Assert (vx, "can't find ValueIdx in scope?");
         list_append(_decomp_vx, vx);
       }
+      // to prevent internal chans from getting added twice
+      std::unordered_set<std::string> chans = {};
+      int ref = config_get_int("act.refine_steps");
+      static char chan_prefix[20];
+      snprintf (chan_prefix, 20, "_ch_%d_",ref);
+      int len = strlen(chan_prefix);
+
       for (auto id : g.name_from_chan) {
         const char *channame = (id.second)->getName();
         ValueIdx *vx = p->CurScope()->LookupVal (channame);
         Assert (vx, "can't find ValueIdx in scope?");
         // TODO: there may be a better way to check for new channels..
         // Using first 3 chars for now
-        if (strncmp(channame, "_ch", 3) == 0) {
+        // if (strncmp(channame, "_ch", 3) == 0
+        if (strncmp(channame, chan_prefix, len) == 0
+        && !chans.contains(std::string(channame))) {
           list_append(_decomp_vx, vx);
+          chans.insert(std::string(channame));
+        }
+      }
+
+      for ( auto m : nfc ) {
+        for ( auto id : m ) {
+          const char *channame = (id.second)->getName();
+          ValueIdx *vx = p->CurScope()->LookupVal (channame);
+          Assert (vx, "can't find ValueIdx in scope?");
+          // TODO: there may be a better way to check for new channels..
+          // Using first 3 chars for now
+          // if (strncmp(channame, "_ch", 3) == 0
+          if (strncmp(channame, chan_prefix, len) == 0
+            && !chans.contains(std::string(channame))) {
+            list_append(_decomp_vx, vx);
+            chans.insert(std::string(channame));
+          }
         }
       }
 #else
