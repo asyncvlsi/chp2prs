@@ -123,10 +123,10 @@ void Projection::project()
     _build_graph(g1.graph.m_seq);
     _compute_connected_components();
 
-    fprintf(stdout, "\nAdj. List g1 \n");
+    fprintf(stdout, "\n// Adj. List g1 \n");
     dfg.print_adj(stdout);
     fprintf(stdout, "\n\n");
-    fprintf(stdout, "\nSubgraphs g1 \n");
+    fprintf(stdout, "\n// Subgraphs g1 \n");
     print_subgraphs(stdout);
     
     fprintf(stdout, "\n/* STF g1 \n");
@@ -148,10 +148,10 @@ void Projection::project()
     _build_graph(g2.graph.m_seq);
     _compute_connected_components();
 
-    fprintf(stdout, "\nAdj. List g2 \n");
+    fprintf(stdout, "\n// Adj. List g2 \n");
     dfg.print_adj(stdout);
     fprintf(stdout, "\n\n");
-    fprintf(stdout, "\nSubgraphs g2 \n");
+    fprintf(stdout, "\n// Subgraphs g2 \n");
     print_subgraphs(stdout);
     
     fprintf(stdout, "\n/* STF g2 \n");

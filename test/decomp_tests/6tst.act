@@ -1,0 +1,17 @@
+import "6decomp.act";
+
+defproc test ()
+{
+    chan(int<2>) A, B, C, D, E;
+    decomp_dc6 m(A, B, C, D, E);
+
+    int y1, y2;
+
+    chp {
+        A!0, (B!0;B!1), C!0, D?y1, E?y2;
+        [ y1=0 & y2=1 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+

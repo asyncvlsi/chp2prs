@@ -1,0 +1,17 @@
+defproc dc6 (chan?(int<2>) A, B, C; chan!(int<2>) D, E)
+{
+    int <2> x;
+    int <2> y, z;
+
+    chp {
+        *[
+            A?x;
+            [ x=0 -> C?y
+            []x=1 -> B?z; [ z=0 -> D!z
+                          []z=1 -> E!z
+                          []else-> skip
+                          ]
+            ]
+        ]
+    }
+}

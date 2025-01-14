@@ -1,0 +1,27 @@
+defproc dc7 (chan?(int<1>) UZ, VA; chan?(int<2>) UN; chan?(int<32>) EPC; chan?(int<4>) EX0, EX1; 
+              chan!(int<1>) REG, MEM, MULT, EX; chan!(int<32>) CP0pc; chan!(int<4>) CP0e )
+{
+    pint none = 0;
+    int<1> uz, va, valid;
+    int<2> un;
+    int<32> epc;
+    int<4> e;
+    chp {
+    valid := 1;
+    *[ 
+        UN?un; UZ?uz ; VA?va; EPC?epc;
+        [ un = 0 -> EX0?e 
+        []un = 1 -> EX1?e 
+        []un = 2 -> e := none
+        ];
+        [uz = 1 -> REG!int((valid=1) & (e=none))
+        []uz = 0 & un = 1 -> MEM!int((valid=1) & (e=none))
+        []uz = 0 & un = 2 -> MULT!int((valid=1) & (e=none))
+        ];
+        [(valid=1) & (e!=none) -> valid := 0 , EX!0 , CP0pc!epc , CP0e!e
+        [](va=1) -> valid := 1
+        [] else -> skip
+        ]
+    ]
+    }
+}
