@@ -19,13 +19,22 @@ The options are:
       * `ring` : ring-based synthesis for prs generation.
       * `decomp` : decompose chp into more concurrent chp; not a prs generation step. 
    * `-R` : synthesize with ring approach. [deprecated, use `-F ring`]
-   * `-C qdi|bd|di|ditest`: Circuit / Datapath family
+   * `-G` : Non-SSA style datapath [only ring]
+   * `-C qdi|bd|bd2|bdp|di|ditest`: Circuit / Datapath family
       * `qdi` : quasi delay insensitive (default)
       * `bd` : bundeld data
-      * `di` : delay insesitive
-      * `ditest` : delay insesitive - testing for signal forks with extra buffers - not syntesisable
+      * `bd2` : bundeld data 2 phase handshake [only ring?]
+      * `bdp` : bundeld data pulsed [only ring]
+      * `di` : delay insesitive [only ring]
+      * `ditest` : delay insesitive - testing for signal forks with extra buffers - not syntesisable [only ring]
    * `-b` : bundled-data datapath for SDT (default QDI) [depricated use -C]
    * `-m <int>` : matched delay-line multiplier (in percentage) for ring synthesis. Default is 100 (1x).
+   * `-P <int>` : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3 (or) 4 (default 0)
+         * 0 : Only necessary decomposition
+         * 1 : Break at receives
+         * 2 : Break at selections
+         * 3 : Break at minimum live variable points
+         * 4 : Break at assignments, receives and parallel branches
    * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. Default is `expr.act`
    * `-E abc|yosys|genus` : run expression optimization using the specified logic synthesis engine.
    * `-p <proc>` : the name of the ACT process to be translated (the top-level process). This is required.

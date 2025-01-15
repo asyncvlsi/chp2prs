@@ -36,14 +36,16 @@ static void usage(char *name)
   fprintf (stderr, " -F dataflow|sdt|ring : synthesis output format\n");
   fprintf (stderr, "        * dataflow : dataflow output\n");
   fprintf (stderr, "        * sdt : syntax-directed translation prs output\n");
-  fprintf (stderr, "        * ring : ring-based synthesis prs output [implies bundled data]\n");
+  fprintf (stderr, "        * ring : ring-based synthesis prs output\n");
   fprintf (stderr, "        * decomp : decomposition - CHP-to-CHP\n");
-  fprintf (stderr, " -G : Non-SSA style datapath, for ring synthesis only (with -b only for now)\n");
-  fprintf (stderr, " -C : qdi|bd|di|ditest: Circuit / Datapath family\n");
+  fprintf (stderr, " -G : Non-SSA style datapath [only ring]\n");
+  fprintf (stderr, " -C : qdi|bd|bd2|bdp|di|ditest: Circuit / Datapath family\n");
   fprintf (stderr, "        * qdi : quasi delay insensitive (default)\n");
   fprintf (stderr, "        * bd : bundeld data\n");
-  fprintf (stderr, "        * di : delay insesitive\n");
-  fprintf (stderr, "        * ditest : delay insesitive - testing for signal forks with extra buffers - not syntesisable\n");
+  fprintf (stderr, "        * bd2 : bundeld data 2 phase handshake [only ring?]\n");
+  fprintf (stderr, "        * bdp : bundeld data pulsed [only ring]\n");
+  fprintf (stderr, "        * di : delay insesitive [only ring]\n");
+  fprintf (stderr, "        * ditest : delay insesitive - testing for signal forks with extra buffers - not syntesisable [only ring]\n");
   fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI) [depricated use -C]\n");
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
@@ -69,6 +71,8 @@ int main(int argc, char **argv)
   bool bundled = false;
   bool dpath_di = false;
   bool dpath_ditest = false;
+  bool dpath_bd_2phase = false;
+  bool dpath_bd_pulsed = false;
   bool non_ssa = false;
   char *exprfile = NULL;
   FILE *dfile;
@@ -117,6 +121,14 @@ int main(int argc, char **argv)
       }
       else if (!strcmp (optarg, "bd")) {
 	bundled = true;
+      }
+      else if (!strcmp (optarg, "bd2")) {
+	bundled = true;
+  dpath_bd_2phase = true;
+      }
+      else if (!strcmp (optarg, "bdp")) {
+	bundled = true;
+  dpath_bd_pulsed = true;
       }
       else if (!strcmp (optarg, "di")) {
 	dpath_di = true;
@@ -286,6 +298,8 @@ int main(int argc, char **argv)
     c2p->setParam ("expr", (void *) exprfile);
     c2p->setParam ("externopt", external_opt);
     c2p->setParam ("bundled_dpath", bundled);
+    c2p->setParam ("bundled_dpath_2phase", dpath_bd_2phase);
+    c2p->setParam ("bundled_dpath_pulsed", dpath_bd_pulsed);
     c2p->setParam ("di_dpath", dpath_di);
     c2p->setParam ("ditest_dpath", dpath_ditest);
   }

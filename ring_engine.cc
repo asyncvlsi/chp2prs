@@ -47,6 +47,8 @@ class RingSynth : public ActSynthesize {
     ActDynamicPass *dp = dynamic_cast <ActDynamicPass *> (ap);
     Assert (dp, "Hmm");
     int bundled_data = dp->getIntParam ("bundled_dpath");
+    int bundled_data_2phase = dp->getIntParam ("bundled_dpath_2phase");
+    int bundled_data_pulsed = dp->getIntParam ("bundled_dpath_pulsed");
     int di_dpath = dp->getIntParam ("di_dpath");
     int ditest_dpath = dp->getIntParam ("ditest_dpath");
 
@@ -56,7 +58,9 @@ class RingSynth : public ActSynthesize {
     if (bundled_data) {
       pp_printf_raw (_pp, "import \"syn/qdi/_all_.act\";\n"); // @TODO this is a bug fix until the namespace use is properly done
       pp_printf_raw (_pp, "import syn::ring;\n");
-      pp_printf_raw (_pp, "open syn::ring;\n");
+      if (bundled_data_2phase) pp_printf_raw (_pp, "open syn::ring_2phase;\n");
+      else if (bundled_data_pulsed) pp_printf_raw (_pp, "open syn::ring_pulsed;\n");
+      else pp_printf_raw (_pp, "open syn::ring;\n");
     }
     else if (di_dpath){
       //pp_printf_raw (_pp, "import syn::diopt;\n");
