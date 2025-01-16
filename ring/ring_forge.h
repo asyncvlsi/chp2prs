@@ -120,7 +120,7 @@ class RingForge : public RingEngine {
         const char *sync_chan_name_prefix; 
         const char *init_cond_chan_prefix;
 
-        unsigned int invx1_delay_ps;
+        // unsigned int invx1_delay_ps;
 
         // Capture delay of a latch in multiples of 2*(INVX1 delay)
         unsigned int capture_delay;
@@ -132,6 +132,7 @@ class RingForge : public RingEngine {
         float delay_multiplier;
         int bundled;
         int datapath_style;
+        int verbose;
 
         // Temp: Lookup table for mux delays
         static const int max_mux_size = 4;

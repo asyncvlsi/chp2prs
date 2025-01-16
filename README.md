@@ -22,13 +22,14 @@ The options are:
    * `-G` : Non-SSA style datapath [only ring]
    * `-C qdi|bd|bd2|bdp|di|ditest`: Circuit / Datapath family
       * `qdi` : quasi delay insensitive (default)
-      * `bd` : bundeld data
-      * `bd2` : bundeld data 2 phase handshake [only ring?]
-      * `bdp` : bundeld data pulsed [only ring]
-      * `di` : delay insesitive [only ring]
-      * `ditest` : delay insesitive - testing for signal forks with extra buffers - not syntesisable [only ring]
-   * `-b` : bundled-data datapath for SDT (default QDI) [depricated use -C]
+      * `bd` : bundled data
+      * `bd2` : bundled data 2 phase handshake [only ring?]
+      * `bdp` : bundled data pulsed [only ring]
+      * `di` : delay insensitive [only ring]
+      * `ditest` : delay insensitive - testing for signal forks with extra buffers - not synthesizable [only ring]
+   * `-b` : bundled-data datapath for SDT (default QDI) [deprecated use -C]
    * `-m <int>` : matched delay-line multiplier (in percentage) for ring synthesis. Default is 100 (1x).
+   * `-X` : Enable projection during decomposition (w.i.p.) 
    * `-P <int>` : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3 (or) 4 (default 0)
          * 0 : Only necessary decomposition
          * 1 : Break at receives

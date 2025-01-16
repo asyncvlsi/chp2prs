@@ -52,7 +52,8 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     init_cond_chan_prefix = "C_init_";
 
     // Bundled datapath parameters
-    invx1_delay_ps = config_get_int("synth.ring.bundled.invx1_delay_ps");
+    // invx1_delay_ps = config_get_int("synth.ring.bundled.invx1_delay_ps");
+    verbose = config_get_int("synth.ring.verbose");
     capture_delay = config_get_int("synth.ring.bundled.capture_delay");
     pulse_width = config_get_int("synth.ring.bundled.pulse_width");
 
@@ -327,7 +328,7 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
         fprintf (_fp, "// Branched Ring ------------------\n");
 
         if(c->label && strcmp(c->label,"qdi_itb")==0) {
-            fprintf (_fp, "\n // instantiating qdi itb here..\n");
+            if (verbose) fprintf (_fp, "\n // instantiating qdi itb here..\n");
             _generate_qdi_itb(c);
             return;
         }
@@ -345,7 +346,7 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
 
         fprintf (_fp, "// Branched Ring Non-SSA ----------\n");
         if(c->label && strcmp(c->label,"qdi_itb")==0) {
-            fprintf (_fp, "\n // instantiating qdi itb here..\n");
+            if (verbose) fprintf (_fp, "\n // instantiating qdi itb here..\n");
             _generate_qdi_itb(c);
             return;
         }
@@ -625,13 +626,17 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         // TODO - finish
         e = c->u.assign.e;
         var = c->u.assign.id;
-        fprintf(_fp,"\n// Pipe block for action: ");
-        chp_print(_fp,c);
+        if (verbose) {
+            fprintf(_fp,"\n// Pipe block for action: ");
+            chp_print(_fp,c);
+        }
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_paa %s%d;\n",ring_block_prefix,block_id);
 
-        fprintf(_fp,"\n// Data for action: ");
-        chp_print(_fp,c);
+        if (verbose) {
+            fprintf(_fp,"\n// Data for action: ");
+            chp_print(_fp,c);
+        }
         fprintf(_fp,"\n");
         char tname[1024];
         get_true_name(tname, var, _p->CurScope());
@@ -703,8 +708,10 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         e = c->u.comm.e;
         get_true_name (chan_name, chan, _p->CurScope());
         // chan_name = chan->rootVx(p->CurScope())->getName();
-        fprintf(_fp,"\n// Pipe block for action: ");
-        chp_print(_fp,c);
+        if (verbose) {
+            fprintf(_fp,"\n// Pipe block for action: ");
+            chp_print(_fp,c);
+        }
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_paa_send %s%d;\n",ring_block_prefix,block_id);
         if (e) {
@@ -712,9 +719,10 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             bw = TypeFactory::bitWidth(it);
             fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
                 fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
-
-            fprintf(_fp,"\n// Data for action: ");
-            chp_print(_fp,c);
+            if (verbose) {
+                fprintf(_fp,"\n// Data for action: ");
+                chp_print(_fp,c);
+            }
             fprintf(_fp,"\n");
             // if (e->type == E_VAR) { // pure variable send
             if (false) { // pure variable send
@@ -753,8 +761,10 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         chan = c->u.comm.chan;
         var = c->u.comm.var;
         get_true_name (chan_name, chan, _p->CurScope());
-        fprintf(_fp,"\n// Pipe block for action: ");
-        chp_print(_fp,c);
+        if (verbose) {
+            fprintf(_fp,"\n// Pipe block for action: ");
+            chp_print(_fp,c);
+        }
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_ppa %s%d;\n",ring_block_prefix,block_id);
         it = _p->CurScope()->Lookup(chan);
@@ -764,8 +774,10 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
         
         if (var) {
-            fprintf(_fp,"\n// Data for action: ");
-            chp_print(_fp,c);
+            if (verbose) {
+                fprintf(_fp,"\n// Data for action: ");
+                chp_print(_fp,c);
+            }
             fprintf(_fp,"\n");
             char tname[1024];
             get_true_name(tname, var, _p->CurScope());
@@ -819,8 +831,10 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         break;
 
     case ACT_CHP_SKIP:
-        fprintf(_fp,"\n// Pipe block for action: ");
-        chp_print(_fp,c);
+        if (verbose) {
+            fprintf(_fp,"\n// Pipe block for action: ");
+            chp_print(_fp,c);
+        }
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_skip %s%d;\n",ring_block_prefix,block_id);
         break;
@@ -919,7 +933,9 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
     switch(type)
     {
     case ACT_CHP_ASSIGN:
-        fprintf(_fp,"\n// Pipe block for lcd. transmission.");
+        if (verbose) {
+            fprintf(_fp,"\n// Pipe block for lcd. transmission.");
+        }
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_paa %s%d;\n",ring_block_prefix,block_id);
         char tname[1024];
@@ -964,7 +980,9 @@ int RingForge::_generate_pipe_element_lcd(int type, const char *tname)
     switch(type)
     {
     case ACT_CHP_ASSIGN:
-        fprintf(_fp,"\n// Pipe block for lcd. transmission.");
+        if (verbose) {
+            fprintf(_fp,"\n// Pipe block for lcd. transmission.");
+        }
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_paa %s%d;\n",ring_block_prefix,block_id);
         b = hash_lookup(var_infos, tname);
@@ -990,7 +1008,8 @@ int RingForge::_generate_pipe_element_lcd(int type, const char *tname)
 
 int RingForge::_generate_pause_element()
 {   
-    fprintf(_fp,"\n// Pause element to suspend execution of ring\n");
+    if (verbose) fprintf(_fp,"\n// Pause element to suspend execution of ring");
+    fprintf(_fp,"\n");
     int id = _gen_block_id();
     fprintf(_fp,"elem_c_pause %s%d;\n",ring_block_prefix,id);
     return id;
@@ -1001,7 +1020,8 @@ int RingForge::_generate_pause_element()
 */
 int RingForge::_generate_itb()
 {   
-    fprintf(_fp,"\n// Initial token buffer to initialize ring\n");
+    if (verbose) fprintf(_fp,"\n// Initial token buffer to initialize ring");
+    fprintf(_fp,"\n");
     int id = _gen_block_id();
     fprintf(_fp,"elem_c_itb %s%d;\n",ring_block_prefix,id);
     return id;
@@ -1013,7 +1033,8 @@ int RingForge::_generate_itb()
 */
 int RingForge::_generate_init_cond_itb(int value, int width, int chan_id_out, int chan_id_in)
 {
-    fprintf(_fp,"\n// Initial token buffer for initial condition transmission\n");
+    if (verbose) fprintf(_fp,"\n// Initial token buffer for initial condition transmission");
+    fprintf(_fp,"\n");
     int id = _gen_itb_wrapper_id();
     fprintf(_fp,"itb_wrapper<%d,%d,%d,%d> itb_w_%d(%s%d,%s%d);\n",int(std::ceil(capture_delay*delay_multiplier)),int(std::ceil(pulse_width*delay_multiplier)),
                             width,value, id, init_cond_chan_prefix,chan_id_out,init_cond_chan_prefix,chan_id_in);
@@ -1126,7 +1147,8 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
     int out_expr_width = out_bw;
     int delay_line_n;
 
-    fprintf(_fp, "// output bitwidth: %d bits\n",out_expr_width);
+    if (verbose) fprintf(_fp, "// output bitwidth: %d bits",out_expr_width);
+    fprintf(_fp,"\n");
     
     if (e->type == E_INT)
     {
@@ -1152,7 +1174,8 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
         delay_line_n = _compute_delay_line_param(typ_delay_ps); 
         if (delay_line_n <= 0) { delay_line_n = 1; }
 
-        fprintf(_fp, "\n// typical delay: %gps\n",typ_delay_ps);
+        if (verbose) fprintf(_fp, "\n// typical delay: %gps",typ_delay_ps);
+        fprintf(_fp,"\n");
     }
 
     _instantiate_expr_block (xid, all_leaves);
@@ -1226,7 +1249,8 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     int delay_line_n = _compute_delay_line_param(typ_delay_ps); 
     if (delay_line_n <= 0) { delay_line_n = 1; }
 
-    fprintf(_fp, "\n// typical delay: %gps\n",typ_delay_ps);
+    if (verbose) fprintf(_fp, "\n// typical delay: %gps",typ_delay_ps);
+    fprintf(_fp,"\n");
     _instantiate_expr_block (xid, all_leaves);
 
     eeo->~ExternalExprOpt();
@@ -1668,7 +1692,8 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
 */
 int RingForge::_connect_pipe_elements (int prev_block_id, int next_block_id)
 {
-    fprintf(_fp,"\n// Connecting block_%d & block_%d\n",prev_block_id, next_block_id);
+    if (verbose) fprintf(_fp,"\n// Connecting block_%d & block_%d",prev_block_id, next_block_id);
+    fprintf(_fp,"\n");
     fprintf(_fp,"block_%d.m1 = block_%d.p1;\n",next_block_id,prev_block_id);
     return 0;
 }
@@ -1679,8 +1704,9 @@ int RingForge::_connect_pipe_elements (int prev_block_id, int next_block_id)
 */
 int RingForge::_connect_pll_split_outputs_to_pipe (int pll_split_block_id, int pipe_block_id, int pll_split_block_port)
 {
-    fprintf(_fp,"\n// Connecting parallel split block_%d (output) & pipe block_%d\n",
+    if (verbose) fprintf(_fp,"\n// Connecting parallel split block_%d (output) & pipe block_%d",
                                                 pll_split_block_id, pipe_block_id);
+    fprintf(_fp,"\n");
     fprintf(_fp,"block_%d.co[%d] = block_%d.m1;\n",
                     pll_split_block_id,pll_split_block_port,pipe_block_id);
     return 0;
@@ -1692,8 +1718,9 @@ int RingForge::_connect_pll_split_outputs_to_pipe (int pll_split_block_id, int p
 */
 int RingForge::_connect_pipe_to_pll_merge_inputs (int pll_merge_block_id, int pipe_block_id, int pll_merge_block_port)
 {
-    fprintf(_fp,"\n// Connecting parallel merge block_%d (input) & pipe block_%d\n",
+    if (verbose) fprintf(_fp,"\n// Connecting parallel merge block_%d (input) & pipe block_%d",
                                                 pll_merge_block_id, pipe_block_id);
+    fprintf(_fp,"\n");
     fprintf(_fp,"block_%d.ci[%d] = block_%d.p1;\n",
                     pll_merge_block_id,pll_merge_block_port,pipe_block_id);
     return 0;
@@ -1705,8 +1732,9 @@ int RingForge::_connect_pipe_to_pll_merge_inputs (int pll_merge_block_id, int pi
 */
 int RingForge::_connect_sel_split_outputs_to_pipe (int sel_split_block_id, int pipe_block_id, int sel_split_block_port)
 {
-    fprintf(_fp,"\n// Connecting selection split block_%d (output) & pipe block_%d\n",
+    if (verbose) fprintf(_fp,"\n// Connecting selection split block_%d (output) & pipe block_%d",
                                                 sel_split_block_id, pipe_block_id);
+    fprintf(_fp,"\n");
     fprintf(_fp,"block_%d.co[%d] = block_%d.m1;\n",
                     sel_split_block_id,sel_split_block_port,pipe_block_id);
     return 0;
@@ -1731,8 +1759,9 @@ int RingForge::_connect_guards_to_sel_split_input (int sel_split_block_id,
 */
 int RingForge::_connect_pipe_to_sel_merge_inputs (int sel_merge_block_id, int pipe_block_id, int sel_merge_block_port)
 {
-    fprintf(_fp,"\n// Connecting selection merge block_%d (input) & pipe block_%d\n",
+    if (verbose) fprintf(_fp,"\n// Connecting selection merge block_%d (input) & pipe block_%d",
                                                 sel_merge_block_id, pipe_block_id);
+    fprintf(_fp,"\n");
     fprintf(_fp,"block_%d.ci[%d] = block_%d.p1;\n",
                     sel_merge_block_id,sel_merge_block_port,pipe_block_id);
     return 0;
@@ -1813,11 +1842,14 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         else 
         {
             comma_len = list_length(c->u.semi_comma.cmd);
-            fprintf (_fp, "// %d-way parallel split for actions: ",comma_len);
-            chp_print(_fp, c);
+            if (verbose) {
+                fprintf (_fp, "// %d-way parallel split for actions: ",comma_len);
+                chp_print(_fp, c);
+            }
             fprintf (_fp, "\n");
 
-            fprintf (_fp, "// %d-way parallel merge \n",comma_len);
+            if (verbose) fprintf (_fp, "// %d-way parallel merge",comma_len);
+            fprintf (_fp, "\n");
             pll_split_block_id = _generate_parallel_split(comma_len);
             pll_merge_block_id = _generate_parallel_merge(comma_len);
             // connect_pipe_to_pll_split_input(fp, pll_split_block_id, prev_block_id);
@@ -1974,10 +2006,13 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         gc_len = length_of_guard_set (c);
         max_delay_n_sel = 0;
 
-        fprintf (_fp, "\n// %d-way selection split for : ", gc_len);
-        chp_print(_fp, c);
+        if (verbose) {
+            fprintf (_fp, "\n// %d-way selection split for : ", gc_len);
+            chp_print(_fp, c);
+        }
         fprintf (_fp, "\n");
-        fprintf (_fp, "// %d-way selection merge \n", gc_len);
+        if (verbose) fprintf (_fp, "// %d-way selection merge", gc_len);
+        fprintf (_fp, "\n");
         if (_guards_have_probes(gc)) {
             have_probes = true;
             sel_split_block_id = _generate_nds_split(gc_len);
@@ -2021,14 +2056,15 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         Assert (max_delay_n_sel>=0, "negative delay?");
         
         if (!have_probes) {
-            fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
+            if (verbose) fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators");
+            fprintf(_fp,"\n");
             fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",max_delay_n_sel,sel_split_block_id);
             // connect prev. block p1 to delay_line then connect to select block from the output
             fprintf(_fp,"delay_select_%d.m1 = %s%d.p1;\n",sel_split_block_id,ring_block_prefix,prev_block_id);
             fprintf(_fp,"delay_select_%d.p1 = %s%d.m1;\n",sel_split_block_id,ring_block_prefix,sel_split_block_id);
         }
         else {
-            fprintf(_fp,"\n// Probed selection - no need to insert guard evaluator delay \n");
+            if (verbose) fprintf(_fp,"\n// Probed selection - no need to insert guard evaluator delay \n");
             fprintf(_fp,"%s%d.p1 = %s%d.m1;\n",ring_block_prefix,prev_block_id,ring_block_prefix,sel_split_block_id);
         }
         block_id = sel_merge_block_id;
@@ -2044,8 +2080,11 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
         if (c->label && !strcmp(c->label,"pause"))
         {
             block_id = _generate_pause_element();
-            fprintf (stdout, "\n a1of1 pause port placed here : %s%d.pause \n",ring_block_prefix,block_id);
-            fprintf (stdout, "\n pause.r must be grounded for ring execution \n");
+            if (verbose) {
+                fprintf (stdout, "\n a1of1 pause port placed here : %s%d.pause \n",ring_block_prefix,block_id);
+                fprintf (stdout, "\n pause.r must be grounded for ring execution");
+            }
+            fprintf(_fp,"\n");
             if (connect_prev == 1)
             {
                 _connect_pipe_elements(prev_block_id, block_id);
@@ -2121,11 +2160,14 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         else 
         {
             comma_len = list_length(c->u.semi_comma.cmd);
-            fprintf (_fp, "// %d-way parallel split for actions: ",comma_len);
-            chp_print(_fp, c);
+            if (verbose) {
+                fprintf (_fp, "// %d-way parallel split for actions: ",comma_len);
+                chp_print(_fp, c);
+            }
             fprintf (_fp, "\n");
 
-            fprintf (_fp, "// %d-way parallel merge \n",comma_len);
+            if (verbose) fprintf (_fp, "// %d-way parallel merge",comma_len);
+            fprintf(_fp,"\n");
             pll_split_block_id = _generate_parallel_split(comma_len);
             pll_merge_block_id = _generate_parallel_merge(comma_len);
             // connect_pipe_to_pll_split_input(fp, pll_split_block_id, prev_block_id);
@@ -2285,10 +2327,13 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         gc_len = length_of_guard_set (c);
         max_delay_n_sel = 0;
 
-        fprintf (_fp, "\n// %d-way selection split for : ", gc_len);
-        chp_print(_fp, c);
+        if (verbose) {
+            fprintf (_fp, "\n// %d-way selection split for : ", gc_len);
+            chp_print(_fp, c);
+        }
         fprintf (_fp, "\n");
-        fprintf (_fp, "// %d-way selection merge \n", gc_len);
+        if (verbose) fprintf (_fp, "// %d-way selection merge", gc_len);
+        fprintf (_fp, "\n");
         if (_guards_have_probes(gc)) {
             have_probes = true;
             sel_split_block_id = _generate_nds_split(gc_len);
@@ -2351,21 +2396,24 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
 
         if (!have_probes) {
             Assert (max_delay_n_sel>0, "non-positive delay for non-probed guard evaluators?");
-            fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators\n");
+            if (verbose) fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators");
+            fprintf(_fp,"\n");
             fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",max_delay_n_sel,sel_split_block_id);
             // connect prev. block p1 to delay_line then connect to select block from the output
             fprintf(_fp,"delay_select_%d.m1 = %s%d.p1;\n",sel_split_block_id,ring_block_prefix,prev_block_id);
             fprintf(_fp,"delay_select_%d.p1 = %s%d.m1;\n",sel_split_block_id,ring_block_prefix,sel_split_block_id);
         }
         else {
-            fprintf(_fp,"\n// Probed selection - no need to insert guard evaluator delay \n");
+            if (verbose) fprintf(_fp,"\n// Probed selection - no need to insert guard evaluator delay");
+            fprintf(_fp,"\n");
             fprintf(_fp,"%s%d.p1 = %s%d.m1;\n",ring_block_prefix,prev_block_id,ring_block_prefix,sel_split_block_id);
         }
 
         if (delay_n_merge > 0)
         {
             delay_merge_block_id = _gen_block_id();
-            fprintf(_fp,"\n// Delaying post-merge-block sync. by max. delay of all merge muxes\n");
+            if (verbose) fprintf(_fp,"\n// Delaying post-merge-block sync. by max. delay of all merge muxes");
+            fprintf(_fp,"\n");
             if (n_muxes==0) { // can't create zero-length arrays
                 // fprintf(_fp,"delay_line_chan<%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),ring_block_prefix, delay_merge_block_id);
                 fprintf(_fp,"delay_line_chan<%d> %s%d;\n",delay_n_merge,ring_block_prefix, delay_merge_block_id);
@@ -2405,8 +2453,11 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         if (c->label && !strcmp(c->label,"pause"))
         {
             block_id = _generate_pause_element();
-            fprintf (stdout, "\n a1of1 pause port placed here : %s%d.pause \n",ring_block_prefix,block_id);
-            fprintf (stdout, "\n pause.r must be grounded for ring execution \n");
+            if (verbose) {
+                fprintf (stdout, "\n a1of1 pause port placed here : %s%d.pause \n",ring_block_prefix,block_id);
+                fprintf (stdout, "\n pause.r must be grounded for ring execution");
+            }
+            fprintf(_fp,"\n");
             if (connect_prev == 1)
             {
                 _connect_pipe_elements(prev_block_id, block_id);
@@ -2487,10 +2538,12 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
         if (!b) fatal_error ("variable not found - whatt");
         vi = (var_info *)b->v;
 
-        fprintf (_fp, "\n// variable: %s\n", vi->name);
+        if (verbose) fprintf (_fp, "\n// variable: %s", vi->name);
+        fprintf(_fp,"\n");
         if (l->merge_mux_latch_number.at(ctr) == -1) 
         {
-            fprintf (_fp, "// mux not needed\n");
+            if (verbose) fprintf (_fp, "// mux not needed");
+            fprintf(_fp,"\n");
             ctr++;
             continue;
         }
@@ -2504,11 +2557,13 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
         if (or_size == 1)
         {
             Assert ((pre_sel_latch==-1), "check that there were no duplicates");
-            fprintf(_fp, "// assigned in all branches\n"); 
+            if (verbose) fprintf(_fp, "// assigned in all branches"); 
+            fprintf(_fp,"\n");
         }
         else
         { 
-            fprintf(_fp, "// not assigned in all branches\n"); 
+            if (verbose) fprintf(_fp, "// not assigned in all branches");
+            fprintf(_fp,"\n"); 
         }
         // find the variable with the biggest mux+or combo (lookup TODO)
         if (max_mux_size < mux_size) max_mux_size = mux_size;

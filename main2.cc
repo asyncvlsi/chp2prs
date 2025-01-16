@@ -29,7 +29,7 @@
 
 static void usage(char *name)
 {
-  fprintf (stderr, "Usage: %s [-Obh] [-P <int>] [-e <file>] [-o <file>] [-E abc|yosys|genus] -p <proc> <actfile>\n", name);
+  fprintf (stderr, "Usage: %s [-OXbh] [-C <circuit family>] [-P <int>] [-e <file>] [-o <file>] [-E abc|yosys|genus] -p <proc> <actfile>\n", name);
   fprintf (stderr, "Options:\n");
   fprintf (stderr, " -h : help; display this message\n");
   fprintf (stderr, " -O : optimize CHP\n");
@@ -41,14 +41,15 @@ static void usage(char *name)
   fprintf (stderr, " -G : Non-SSA style datapath [only ring]\n");
   fprintf (stderr, " -C : qdi|bd|bd2|bdp|di|ditest: Circuit / Datapath family\n");
   fprintf (stderr, "        * qdi : quasi delay insensitive (default)\n");
-  fprintf (stderr, "        * bd : bundeld data\n");
-  fprintf (stderr, "        * bd2 : bundeld data 2 phase handshake [only ring?]\n");
-  fprintf (stderr, "        * bdp : bundeld data pulsed [only ring]\n");
-  fprintf (stderr, "        * di : delay insesitive [only ring]\n");
-  fprintf (stderr, "        * ditest : delay insesitive - testing for signal forks with extra buffers - not syntesisable [only ring]\n");
+  fprintf (stderr, "        * bd : bundled data\n");
+  fprintf (stderr, "        * bd2 : bundled data 2 phase handshake [only ring?]\n");
+  fprintf (stderr, "        * bdp : bundled data pulsed [only ring]\n");
+  fprintf (stderr, "        * di : delay insensitive [only ring]\n");
+  fprintf (stderr, "        * ditest : delay insensitive - testing for signal forks with extra buffers - not synthesizable [only ring]\n");
   fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI) [depricated use -C]\n");
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
+  fprintf (stderr, " -X : Enable projection during decomposition (w.i.p.) \n");
   fprintf (stderr, " -P <int> : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3 (or) 4 (default 0) \n");
   fprintf (stderr, "      * 0 : Only necessary decomposition\n");
   fprintf (stderr, "      * 1 : Break at receives\n");
