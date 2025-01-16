@@ -91,44 +91,84 @@ namespace syn {
       /*-- variable access ports --*/
 
       export template<pint W>
-      defcell writeport_cell(bool! wt, wf, wack; sdtvar<1> var; sdtchan<1> in) {
-        bool _invt, _invf;
-        prs {
-            in.d.d[0].t => _invt-
-            in.d.d[0].f => _invf- 
-            _invt => wt-
-            _invf => wf-
-            (wt & var.d[0].t) | (wf & var.d[0].f) -> wack-
-            ~wt & ~wf -> wack+ 
-        }
-        sizing{
-          p_n_mode <- 1;
-          wt{- 1};
-          wf{- 1};
-          wack{- 1}
-        }
-      }
-
-      export template<pint W>
       defproc writeport(bool! wt[W], wf[W]; sdtvar<W> var; sdtchan<W> in) {
         bool _wack[W];
         bool _invt[W], _invf[W];
-        writeport_cell ports[W];
-          ( i : W:
-            in.d.d[i] = ports[i].in.d.d[0];
-            wt[i] = ports[i].wt;
-            wf[i] = ports[i].wf;
-            _wack[i] = ports[i].wack;
-          )
+        prs {
+          ( i : W :
+            in.d.d[i].t => _invt[i]-
+            in.d.d[i].f => _invf[i]- )
+
+          ( i : W :
+            _invt[i] => wt[i]-
+            _invf[i] => wf[i]-
+
+            (wt[i] & var.d[i].t) | (wf[i] & var.d[i].f) -> _wack[i]-
+            ~wt[i] & ~wf[i] -> _wack[i]+ )
+        }
+        ( i : W:
+          sizing{
+            p_n_mode <- 1;
+            leak_adjust <- 1;
+            _wack[i]{- 1}
+          }
+        )
         std::gates::ctree<W, false> wa(_wack);
         prs {
           Reset | wa.out => in.a-
         }
         sizing{
           p_n_mode <- 1;
-          in.a{- 1}
+          leak_adjust <- 1;
+          in.a{- 1};
+          (; i : W:
+            _invt[i]{- 1};
+            _invf[i]{- 1};
+            wt[i]{- 1};
+            wf[i]{- 1}
+          )
         }
       }
+
+      // defcell writeport_cell(bool! wt, wf, wack; sdtvar<1> var; sdtchan<1> in) {
+      //   bool _invt, _invf;
+      //   prs {
+      //       in.d.d[0].t => _invt-
+      //       in.d.d[0].f => _invf- 
+      //       _invt => wt-
+      //       _invf => wf-
+      //       (wt & var.d[0].t) | (wf & var.d[0].f) -> wack-
+      //       ~wt & ~wf -> wack+ 
+      //   }
+      //   sizing{
+      //     p_n_mode <- 1;
+      //     wt{- 1};
+      //     wf{- 1};
+      //     wack{- 1}
+      //   }
+      // }
+
+      // export template<pint W>
+      // defproc writeport(bool! wt[W], wf[W]; sdtvar<W> var; sdtchan<W> in) {
+      //   writeport_cell wports[W];
+      //   std::gates::ctree<W, false> wa;
+
+      //   ( i : W:
+      //     in.d.d[i] = wports[i].in.d.d[0];
+      //     wt[i] = wports[i].wt;
+      //     wf[i] = wports[i].wf;
+      //     wa.in[i] = wports[i].wack;
+      //     var.d[i] = wports[i].var.d[0];
+      //   )
+        
+      //   prs {
+      //     Reset | wa.out => in.a-
+      //   }
+      //   sizing{
+      //     p_n_mode <- 1;
+      //     in.a{- 1}
+      //   }
+      // }
 
       defcell readport_cell(sdtvar<1> var; sdtexprchan<1> out) {
         prs {
