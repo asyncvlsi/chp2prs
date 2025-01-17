@@ -167,7 +167,7 @@ class RingSynth : public ActSynthesize {
       fprintf(stdout, "\n");
 #else
 
-      chp_print(stdout, c);
+      chp_print(_pp->fp, c);
       fprintf(stdout, "\n\n");
 
 #endif

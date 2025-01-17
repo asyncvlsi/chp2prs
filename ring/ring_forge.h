@@ -88,6 +88,7 @@ class RingForge : public RingEngine {
         list_t *_create_channel_accesses (list_t *ics);
 
         // expr block functions
+        void _dagify (Expr *&);
         void _expr_collect_vars (Expr *, int);
         void _instantiate_expr_block (int, list_t *);
         void _print_list_of_vars (FILE *fp, list_t *);

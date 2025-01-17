@@ -26,6 +26,124 @@
 #define SSA 0
 #define NON_SSA 1
 
+static std::unordered_map<act_connection *, Expr *> _invarsmap;
+
+bool varsmap_contains (act_connection *conn)
+{
+    for ( auto x : _invarsmap ) {
+        if (conn==x.first) return true;
+    }
+    return false;
+}
+
+void RingForge::_dagify (Expr *&e)
+{
+  int id;
+  Assert (e, "Hmm");
+
+#define BINARY_OP					\
+  do {							\
+    _dagify (e->u.e.l);	\
+    _dagify (e->u.e.r);	\
+  } while (0)
+
+#define UNARY_OP					\
+  do {							\
+    _dagify (e->u.e.l);	\
+  } while (0)
+  
+  switch (e->type) {
+    /* binary */
+  case E_AND:
+  case E_OR:
+  case E_XOR:
+  case E_PLUS:
+  case E_MINUS:
+  case E_LT:
+  case E_GT:
+  case E_LE:
+  case E_GE:
+  case E_EQ:
+  case E_NE:
+  case E_MULT:
+  case E_DIV:
+  case E_MOD:
+  case E_LSL:
+  case E_LSR:
+  case E_ASR:
+    BINARY_OP;
+    break;
+    
+  case E_UMINUS:
+  case E_NOT:
+  case E_COMPLEMENT:
+  case E_BUILTIN_INT:
+  case E_BUILTIN_BOOL:
+    UNARY_OP;
+    break;
+
+  case E_QUERY:
+    _dagify (e->u.e.l);
+    _dagify (e->u.e.r->u.e.l);
+    _dagify (e->u.e.r->u.e.r);
+    break;
+
+  case E_COLON:
+  case E_COMMA:
+    fatal_error ("Should have been handled elsewhere");
+    break;
+
+  case E_CONCAT:
+    {
+      Expr *tmp = e;
+      while (tmp) {
+	_dagify (tmp->u.e.l);
+	tmp = tmp->u.e.r;
+      }
+    }
+    break;
+
+  case E_REAL:
+    fatal_error ("No real expressions please.");
+    break;
+
+  case E_TRUE:
+    break;
+    
+  case E_FALSE:
+    break;
+    
+  case E_INT:
+    break;
+
+  case E_BITFIELD:
+  case E_VAR:
+    {
+        ActId *var = (ActId *)e->u.e.l;
+        act_connection *canon_conn = var->Canonical(_p->CurScope());
+        if (!varsmap_contains(canon_conn)) {
+            _invarsmap.insert({canon_conn, e});
+        }
+        Assert (_invarsmap.contains(canon_conn),"what");
+        e = _invarsmap[canon_conn];
+    }
+    break;
+
+  case E_PROBE:
+    break;
+    
+  case E_FUNCTION:
+    fatal_error ("function!");
+  case E_SELF:
+  default:
+    fatal_error ("Unknown expression type %d\n", e->type);
+    break;
+  }
+  return;
+#undef BINARY_OP
+#undef UNARY_OP
+}
+
 RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
             ActBooleanizePass *bp, int bdpath,
             int delay_margin, int dp_style,
@@ -1122,6 +1240,9 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
     // collect input vars info
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
+    _invarsmap.clear();
+    _dagify (e);
+
     _expr_collect_vars (e, 1);
 
     // collect input vars in list
@@ -1609,6 +1730,7 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
   case E_BITFIELD:
   case E_VAR:
     if (collect_phase) {
+        // fprintf(stdout, "\nle: %lu\n", long(e));
         ActId *var = (ActId *)e->u.e.l;
         var_info *vi;
         hash_bucket_t *b;
