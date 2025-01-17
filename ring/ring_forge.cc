@@ -1338,6 +1338,9 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     // collect input vars info
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
+    _invarsmap.clear();
+    _dagify (e);
+    
     _expr_collect_vars (e, 1);
 
     // collect input vars in list
