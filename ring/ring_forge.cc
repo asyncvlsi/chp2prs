@@ -28,14 +28,6 @@
 
 static std::unordered_map<act_connection *, Expr *> _invarsmap;
 
-bool varsmap_contains (act_connection *conn)
-{
-    for ( auto x : _invarsmap ) {
-        if (conn==x.first) return true;
-    }
-    return false;
-}
-
 void RingForge::_dagify (Expr *&e)
 {
   int id;
@@ -121,7 +113,7 @@ void RingForge::_dagify (Expr *&e)
     {
         ActId *var = (ActId *)e->u.e.l;
         act_connection *canon_conn = var->Canonical(_p->CurScope());
-        if (!varsmap_contains(canon_conn)) {
+        if (!_invarsmap.contains(canon_conn)) {
             _invarsmap.insert({canon_conn, e});
         }
         Assert (_invarsmap.contains(canon_conn),"what");
