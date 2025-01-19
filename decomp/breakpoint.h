@@ -22,15 +22,15 @@
 
 #include "analysis.h"
 /*
- * Marks breakpoints on each block. There are a few rules that must
- * be followed in order for a marking to be a valid marking.
- * 1. The first block in the top-level sequence cannot be marked 
- *    with a break_before.
- * 2. The last block in the top-level sequence cannot be marked 
- *    with a break_after.
- * 3. If a sequence within a selection has any markings, then
- *    the parent selection must be marked break_before AND break_after.
- * 4. I'll probably put more in here as I deal with this thing lol
+    Marks breakpoints on each block. There are a few rules that must
+    be followed in order for a marking to be a valid marking.
+    1. The first block in the top-level sequence cannot be marked 
+       with a break_before.
+    2. The last block in the top-level sequence cannot be marked 
+       with a break_after.
+    3. If a sequence within a selection has any markings, then
+       the parent selection must be marked break_before AND break_after.
+    4. I'll probably put more in here as I deal with this thing lol
 */
 class BreakPoints : public DecompAnalysis {
     public:
@@ -48,30 +48,30 @@ class BreakPoints : public DecompAnalysis {
     private:
 
         /* 
-         * -P0
-         * No breakpoints
+            -P0
+            No breakpoints
          */ 
 
         /* 
-         * -P1
-         * Receives only 
+            -P1
+            Receives only 
          */ 
         void _mark_breakpoints_v1(Sequence seq, int root);
         /*
-         * -P2
-         * Selections only - for testing
+            -P2
+            Selections only - for testing
         */
         void _mark_breakpoints_v2(Sequence seq, int root);
 
         /*
-         * -P3
-         * Assignments, receives and parallel
+            -P3
+            Assignments, receives and parallel
         */
         void _mark_breakpoints_v3(Sequence seq, int root);
 
         /*
-         * -P4
-         * Breakpoints at minimum live var. points
+            -P4
+            Breakpoints at minimum live var. points
         */
         void _mark_breakpoints_v4(Sequence seq, int root);
 

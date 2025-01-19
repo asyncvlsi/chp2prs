@@ -30,6 +30,9 @@
 // ChpOptimize::ChpGraph *g;
 using namespace ChpOptimize;
 
+/*
+    Per-block information structure
+*/
 typedef struct decomp_info {
     std::unordered_set<VarId> live_in_vars;
     std::vector<VarId> live_in_vec;
@@ -56,6 +59,12 @@ static decomp_info_t *_deepcopy_decomp_info(decomp_info_t *di)
     return di_new;
 }
 
+/*
+    Generate info about live variables etc. in the program.
+    Most of the actual functionality is no longer used - it
+    just calls the analysis from opt/live_vars.cc.
+    Mostly just convenience functions.
+*/
 class DecompAnalysis {
     public:
 
@@ -67,10 +76,18 @@ class DecompAnalysis {
                 decomp_info_map.clear();
             } 
 
+        /*
+            Call live-vars analysis in opt/
+        */
         void analyze ();
-
+        /*
+            Print information structure for the graph
+        */
         void print_decomp_info ();
 
+        /*
+            Returns map from block to info about block
+        */
         std::unordered_map<const Block *, decomp_info_t *> get_decomp_info_map ();
     
     protected: 
@@ -79,13 +96,28 @@ class DecompAnalysis {
         GraphWithChanNames *g;
         Scope *s;
 
-        // map from a block to variables that are live-in to that block
+        /*
+            Map from a block to info about that block
+        */
         std::unordered_map<const Block *, decomp_info_t *> decomp_info_map;
 
+        /*
+            Populate the map based on information from the 
+            live-vars analysis in opt/
+        */
         void _populate_decomp_info_map ( 
             std::unordered_map<const Block *, std::unordered_set<VarId>> lim,
             std::unordered_map<const Block *, std::unordered_set<VarId>> lom);
 
+        /*
+            Compute total bitwidth of set of vars
+        */
+        int _compute_total_bits (std::unordered_set<VarId> vars);
+
+        /*
+            NOTE: All those below are unused
+            TODO: Delete all this later
+        */
         // running state of live variables
         std::unordered_set<VarId> H_live;
 
@@ -105,9 +137,6 @@ class DecompAnalysis {
         void _add_to_live_vars (VarId vid);
         void _add_to_live_vars (std::unordered_set<VarId> vids);
         void _remove_from_live_vars (VarId vid);
-
-        // compute total bitwidth of set of vars
-        int _compute_total_bits (std::unordered_set<VarId> vars);
 
         // return a decomp_info_t based on the current state of H_live
         decomp_info_t *_generate_decomp_info ();
@@ -139,7 +168,6 @@ class DecompAnalysis {
 
         // add the vars from top element of stack to H_live
         void _restore_live_vars_from_parent (); //_restore_live_vars_from_parent
-      
 };
 
 #endif

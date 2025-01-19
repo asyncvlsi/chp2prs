@@ -310,12 +310,6 @@ Block *ChoppingBlock::_find_next_break_before (Block *b)
     return NULL;
 }
 
-/*
- * Tear out from b_start to b_end.
- * b_start included, b_end EXCLUDED.
- * TODO: check if both are part of same Sequence, 
- * assuming that's true for now.
-*/
 std::vector<Block *> ChoppingBlock::_split_sequence_from_to(Block *b_start, Block *b_end)
 {
     hassert (b_start->type() != BlockType::StartSequence);
@@ -668,19 +662,6 @@ Block *ChoppingBlock::_excise_loop (Block *curr)
     return NULL;
 }
 
-/*
-    construct this:
-    x:=0;
-    init_vars:=0;
-    *[  [ c=0 -> Ls?{vars};{assign all from concat};c:=1 (line 1)
-        []c=1 -> skip (line 2)
-        ];
-        [ L
-        []else -> Lf!{vars};c:=0 (line 3)
-        ]  ]
-    
-    where L is the original loop (turned into selection) and an else branch is added
-*/
 Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> recv, Block *send)
 {
 
@@ -814,6 +795,7 @@ std::vector<Block *> ChoppingBlock::_initialize_ics(Block *curr)
 {
     std::vector<Block *> v_inits;
     hassert (vmap.contains(curr));
+    hassert (curr->type() == BlockType::DoLoop);
     decomp_info_t *di = (vmap.find(curr))->second;
     
     if (di->live_in_vars.size() == 0)
@@ -1116,15 +1098,6 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_pll_send_recv_and_seed_bran
 
 }
 
-/*
-    *[C?live_in; { live_1 := live_in{0..i}, live_2 := live_in{i+1..j} ... }
-        [ G1 -> Ctrl!1 , Co1!live_out_1
-        []G2 -> Ctrl!2 , Co2!live_out_2
-        ..
-        []Gn -> Ctrl!n , Con!live_out_n
-        ]
-     ]
-*/
 std::tuple<Block *, Block *, Block *> ChoppingBlock::_generate_split_merge_and_seed_branches (Block *sel)
 {
     Block *split = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());

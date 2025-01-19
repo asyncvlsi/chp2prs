@@ -52,14 +52,6 @@ int DecompAnalysis::_compute_total_bits (std::unordered_set<VarId> vars)
 
 void DecompAnalysis::analyze ()
 {
-    // total_bits = 0;
-    // H_live.clear();
-    // H_saved.clear();
-    // H_parents.clear();
-    // decomp_info_map.clear();
-    // fprintf (stdout, "\nanalyzing... \n");
-    // _generate_decomp_info (g->graph.m_seq, 1);
-
     auto [lim, lom] = getLiveVars (g->graph);
     _populate_decomp_info_map (lim, lom);
 }
@@ -91,7 +83,6 @@ void DecompAnalysis::_populate_decomp_info_map (
     }
 }
 
-
 void DecompAnalysis::_add_to_live_vars (VarId vid)
 {
     H_live.insert(vid);
@@ -118,7 +109,6 @@ void DecompAnalysis::_remove_from_live_vars (VarId vid)
 
 void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
 {
-    // Block *curr = seq.startseq->child();
     Block *curr = seq.endseq->parent();
     decomp_info *di;
     std::unordered_set<VarId> live_out;
@@ -315,43 +305,28 @@ void DecompAnalysis::_generate_decomp_info (Sequence seq, int root)
 
 void DecompAnalysis::_save_state_live_vars ()
 {
-    // H_saved.clear();
     H_saved = H_live;
 }
 
 void DecompAnalysis::_restore_state_live_vars ()
 {
-    // H_live.clear();
     H_live = H_saved;
 }
 
 void DecompAnalysis::_init_union ()
 {
     std::unordered_set<VarId> h_p;
-    // h_p = H_live;
     h_p.clear();
     H_parents.push_back(h_p);
 }
 
 void DecompAnalysis::_free_union ()
 {
-    // hash_free (H_parent);
     H_parents.pop_back();
 }
 
 void DecompAnalysis::_h_live_union_h_parent ()
 {
-    // Hashtable *h_p = (Hashtable *)stack_peek (H_parents);
-    // hash_bucket_t *b;
-    // hash_iter_t itr;
-    // hash_iter_init (H_live, &itr);
-    // while ((b = hash_iter_next(H_live, &itr))) 
-    // {
-    //     if (!hash_lookup(h_p, b->key))
-    //     {
-    //         hash_add (h_p, b->key);
-    //     }
-    // }
     std::unordered_set<VarId> h_p = H_parents.back();
     std::unordered_set<VarId>::iterator itr;
     for (itr = H_live.begin(); itr != H_live.end(); itr++)
@@ -409,16 +384,6 @@ std::unordered_set<VarId> DecompAnalysis::_prune_T (std::unordered_set<VarId> T_
 
 void DecompAnalysis::_restore_live_vars_from_parent ()
 {
-    // hash_free (H_live);
-    // Hashtable *h_p = (Hashtable *) stack_peek (H_parents);
-    // H_live = hash_new (4);
-    // hash_bucket_t *b;
-    // hash_iter_t itr;
-    // hash_iter_init (h_p, &itr);
-    // while ((b = hash_iter_next(h_p, &itr))) 
-    // {
-    //     hash_add (H_live, b->key);
-    // }
     std::unordered_set<VarId> h_p = H_parents.back();
     H_live.clear();
     std::unordered_set<VarId>::iterator itr;
@@ -442,20 +407,6 @@ decomp_info_t *DecompAnalysis::_generate_decomp_info()
     di->break_after = false;
     return di;
 }
-
-// Unused
-#if 0
-decomp_info_t *DecompAnalysis::_generate_decomp_info(std::unordered_set<VarId> H)
-{
-    decomp_info_t *di;
-    NEW (di, decomp_info_t);
-    di->live_in_vars = H;
-    di->total_bitwidth_in = _compute_total_bits (H);
-    di->break_before = false;
-    di->break_after = false;
-    return di;
-}
-#endif
 
 void DecompAnalysis::_print_decomp_info (decomp_info_t *di)
 {
