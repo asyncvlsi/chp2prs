@@ -20,14 +20,7 @@
  **************************************************************************
  */
 
-import std::cells;
+pint N_delay_line_types = 4;
 
-import "syn/ring/common.act";
-
-import "syn/ring/ctrl.act";
-
-import "syn/ring/ctrl_pulsed.act";
-
-import "syn/ring/ctrl_2phase.act";
-
-import "syn/ring/ctrl_di_dpath.act";
+// Delay_Params will be populated during synthesis, from synth.conf
+pint Delay_Params[N_delay_line_types+1];

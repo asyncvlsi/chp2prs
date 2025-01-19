@@ -28,11 +28,6 @@ import std;
 open std::channel;
 open std::gates;
 
-pint N_delay_line_types = 4;
-
-// Delay_Params will be populated during synthesis, from synth.conf
-pint Delay_Params[N_delay_line_types+1];
-
 namespace syn {
   
   export namespace ring {
@@ -117,7 +112,6 @@ defproc connect_exprblk_assign (bool d[W]; bool e[W]; a1of1 tx)
   e = d;
 }
 // --------------------------------------------------------
-
 
 
 // Delay lines --------------------------------------------
@@ -234,42 +228,16 @@ defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
 // --------------------------------------------------------
 
 // Bundled Data Datapath Elements -------------------------
-// Some copied from dflowmap_netlist/dflow_std/qdigen.act
 
-export template <pint PW>
-defproc pulse(bool? in; bool! out)
+export template <pint CD>
+defproc ff_control (a1of1 go; bool clk1, clk2)
 {
-  std::cells::INVX1 invs[2*PW+1];
-  invs[0].A = in;
-  (i:2*PW: 
-    invs[i].Y = invs[i+1].A;
-  )
-
-  std::cells::AND2X1 and;
-  and.A = in;
-  and.B = invs[2*PW].Y;
-
-  out = and.Y;
-
-  spec {
-    timing in+: out+ <[1] and.B-
-    // this delay margin is a placeholder, 
-    // its actual value depends on the delay of LATCH
-  }
-}
-
-// flip-flop without pulse generator
-export template <pint CD, PW, W>
-defproc capture(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx) 
-{
-  bool dmid[W];
-  delay_line<CD+1> capture_delay_1;
-  delay_line<CD> capture_delay_2;
-
-  // controller 
   std::cells::OR2X1 or;
   std::cells::AND2X1 and;
   std::gates::ctree<2,false> c2;
+
+  delay_line<CD+1> capture_delay_1;
+  delay_line<CD> capture_delay_2;
 
   or.A = go.r;
   and.A = go.r;
@@ -286,11 +254,23 @@ defproc capture(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
   std::cells::INVX1 inv_clk;
   inv_clk.A = or.Y;
 
+  inv_clk.Y = clk1;
+  and.Y = clk2;
+}
+
+// flip-flop without pulse generator
+export template <pint CD, PW, W>
+defproc capture(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx) 
+{
+  bool dmid[W];
+
   std::cells::LATCH x1[W], x2[W];
   sigbuf<W> fanout_tree_1, fanout_tree_2;
 
-  inv_clk.Y = fanout_tree_1.in;
-  and.Y = fanout_tree_2.in;
+  ff_control<CD> ff_ctrl;
+  ff_ctrl.go = go;
+  ff_ctrl.clk1 = fanout_tree_1.in;
+  ff_ctrl.clk2 = fanout_tree_2.in;
 
   (i:W:
     x1[i].CLK = fanout_tree_1.out[i];
@@ -302,33 +282,6 @@ defproc capture(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
     x2[i].CLK = fanout_tree_2.out[i];
     x2[i].D = dmid[i];
     x2[i].Q = dout[i];
-  )
-
-  spec {
-    timing go.r+: dout < go.a+
-  }
-}
-
-// pulsed latch
-export template <pint CD, PW, W>
-defproc capture_pulsed(a1of1 go; bool? din[W]; bool! dout[W])
-{
-  delay_line<CD> capture_delay;
-  go.r = capture_delay.in;
-  go.a = capture_delay.out;
-
-  pulse<PW> pulse_generator;
-  go.r = pulse_generator.in;
-
-  sigbuf<W> fanout_tree;
-  pulse_generator.out = fanout_tree.in;
-
-  std::cells::LATCH x[W];
-  // std::cells::LATCHLO x[W];
-  (i:W:
-    x[i].CLK = fanout_tree.out[i];
-    x[i].D = din[i];
-    x[i].Q = dout[i];
   )
 
   spec {
@@ -399,33 +352,13 @@ defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
   pint j = 0;
 
   bool dmid[W];
-  delay_line<CD+1> capture_delay_1;
-  delay_line<CD> capture_delay_2;
-
-  // controller 
-  std::cells::OR2X1 or;
-  std::cells::AND2X1 and;
-  std::gates::ctree<2,false> c2;
-
-  or.A = go.r;
-  and.A = go.r;
-
-  capture_delay_1.in = or.Y;
-  capture_delay_1.out = and.B;
-  capture_delay_2.in = and.Y;
-  capture_delay_2.out = or.B;
-
-  or.B = c2.in[0];
-  and.B = c2.in[1];
-  c2.out = go.a;
-
-  std::cells::INVX1 inv_clk;
-  inv_clk.A = or.Y;
 
   sigbuf<W> fanout_tree_1, fanout_tree_2;
 
-  inv_clk.Y = fanout_tree_1.in;
-  and.Y = fanout_tree_2.in;
+  ff_control<CD> ff_ctrl;
+  ff_ctrl.go = go;
+  ff_ctrl.clk1 = fanout_tree_1.in;
+  ff_ctrl.clk2 = fanout_tree_2.in;
 
   *[ j < W -> [ (ival%2) = 0 -> std::cells::LATCHLO x_lo_1[j..j];
                                 std::cells::LATCHLO x_lo_2[j..j];
@@ -452,45 +385,6 @@ defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
               ]; j = j + 1; ival = ival >> 1;
   ]
 
-  spec {
-    timing go.r+: dout < go.a+
-  }
-}
-
-export template <pint CD, PW, W, INIT_VAL>
-defproc capture_init_pulsed(a1of1 go; bool? din[W]; bool! dout[W])
-{
-  delay_line<CD> capture_delay;
-  go.r = capture_delay.in;
-  go.a = capture_delay.out;
-
-  pulse<PW> pulse_generator;
-  go.r = pulse_generator.in;
-
-  sigbuf<W> fanout_tree;
-  pulse_generator.out = fanout_tree.in;
-
-  { INIT_VAL >= 0 : "Only non-negative initial values" };
-  { INIT_VAL <= (1<<W)-1 : "Initial value out of bounds" };
-
-  pint ival = INIT_VAL;
-  pint j = 0;
-
-  *[ j < W -> [ (ival%2) = 0 -> std::cells::LATCHLO x_lo[j..j];                         
-                                x_lo[j].CLK = fanout_tree.out[j];
-                                x_lo[j].D = din[j];
-                                x_lo[j].Q = dout[j];
-                                x_lo[j].R = Reset;
-
-             [] (ival%2) = 1 -> std::cells::LATCHHI x_hi[j..j];
-                                x_hi[j].CLK = fanout_tree.out[j];
-                                x_hi[j].D = din[j];
-                                x_hi[j].Q = dout[j];
-                                x_hi[j].S = Reset;
-
-              ]; j = j + 1; ival = ival >> 1;
-  ]
-  
   spec {
     timing go.r+: dout < go.a+
   }
@@ -621,7 +515,6 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
       p1.r{-1} 
   }
 }
-
 
 // ------------------------------------
 
@@ -1002,7 +895,7 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 }
 
 // --------------------------------------------------------
-
+/*
 // Latch for Non-SSA Style Datapath 
 // N = no. of write ports
 export template <pint CD, PW, W, INIT_VAL, N>
@@ -1063,6 +956,7 @@ defproc capture_init_non_ssa(a1of1 go[N]; bool? din[N][W]; bool! dout[W]; a1of1 
     }
   )
 }
+*/
 
 
 // Variables and Channels ---------------------------------

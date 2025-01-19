@@ -69,7 +69,7 @@ do
            myecho ".[$bname]"
         fi
         ok=1
-        for opt in "-F ring -C bd" "-F ring -C bd -G"
+        for opt in "-F ring -C bd" "-F ring -C bdp" "-F ring -C bdp -G" 
 	do
         if [ $ok -eq 1 ]
         then

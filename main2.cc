@@ -41,9 +41,9 @@ static void usage(char *name)
   fprintf (stderr, " -G : Non-SSA style datapath [only ring]\n");
   fprintf (stderr, " -C : qdi|bd|bd2|bdp|di|ditest: Circuit / Datapath family\n");
   fprintf (stderr, "        * qdi : quasi delay insensitive (default)\n");
-  fprintf (stderr, "        * bd : bundled data\n");
+  fprintf (stderr, "        * bd : bundled data (D flip-flops) \n");
   fprintf (stderr, "        * bd2 : bundled data 2 phase handshake [only ring?]\n");
-  fprintf (stderr, "        * bdp : bundled data pulsed [only ring]\n");
+  fprintf (stderr, "        * bdp : bundled data (pulsed latches) [only ring]\n");
   fprintf (stderr, "        * di : delay insensitive [only ring]\n");
   fprintf (stderr, "        * ditest : delay insensitive - testing for signal forks with extra buffers - not synthesizable [only ring]\n");
   fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI) [depricated use -C]\n");
@@ -232,6 +232,11 @@ int main(int argc, char **argv)
 
   if (dflow && use_ring) {
     fprintf (stderr, "Please select either dataflow or ring output, not both!");
+    usage (argv[0]);
+  }
+
+  if (use_ring && non_ssa && bundled && !(dpath_bd_pulsed)) {
+    fprintf (stderr, "Non-SSA style bundled datapath not supported with DFFs");
     usage (argv[0]);
   }
 
