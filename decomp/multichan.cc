@@ -290,64 +290,6 @@ void MultiChan::_replace_with_alias (Block *b, ChanId alias_chan)
     }
 }
 
-Block* MultiChan::_compute_next_alias_block (Sequence seq, ChanId id, int root)
-{
-    Block *ret = NULL;
-
-    Block *curr = seq.startseq->child();
-
-    while (curr->type() != BlockType::EndSequence) {
-    switch (curr->type()) {
-    case BlockType::Basic: {
-        switch (curr->u_basic().stmt.type()) {
-        case StatementType::Assign:
-            break;
-        case StatementType::Send:
-            if (curr->u_basic().stmt.u_send().chan == id)
-            {
-                return (mc_info.find(id)->second).find(curr)->first;
-            }
-            break;
-        case StatementType::Receive:
-            if (curr->u_basic().stmt.u_receive().chan == id)
-            {
-                return (mc_info.find(id)->second).find(curr)->first;
-            }
-            break;
-      }
-    }
-    break;
-      
-    case BlockType::Par: {
-        for (auto &branch : curr->u_par().branches) {
-            ret = _compute_next_alias_block (branch, id, 0);
-            if (ret) return ret;
-        }
-    }
-    break;
-      
-    case BlockType::Select:
-        fatal_error("wip");
-        // for (auto &branch : curr->u_select().branches) {
-        //     ret = _compute_next_alias_block (branch.seq, id, 0);
-        //     if (ret) return ret;
-        // }
-    break;
-      
-    case BlockType::DoLoop:
-        ret = _compute_next_alias_block (curr->u_doloop().branch, id, 0);
-        break;
-    
-    case BlockType::StartSequence:
-    case BlockType::EndSequence:
-        hassert(false);
-        break;
-    }
-    curr = curr->child();
-    }
-    return ret;
-}
-
 bool MultiChan::_seq_contains_block (Block *b, Sequence seq)
 {
     Block *curr = seq.startseq->child();
@@ -494,14 +436,6 @@ void MultiChan::_print_state_table (StateTable st)
     fprintf (fp, "\n-------------------- \n");
 }
 
-/*
-    For every staterow where the current state is a
-    non-receiving state, replace all its (curr) occurrences
-    in the next_state vectors of all other rows with
-    next_state of this row. Effectively trims 
-    unconditional state updates from a non-receiving state
-    to other states.
-*/
 void MultiChan::_optimize_state_table ()
 {
     for ( auto &sr : _st )
@@ -532,10 +466,6 @@ void MultiChan::_optimize_state_table ()
     _st = temp;
 }
 
-/*
-    If guard case but the guard just evaluates to true,
-    we take that into account to simplify
-*/ 
 void MultiChan::_optimize_state_table_1 ()
 {
     for ( auto &sr : _st )
@@ -561,10 +491,6 @@ void MultiChan::_optimize_state_table_1 ()
     }
 }
 
-/*
-    If alias accesses are all relatively unconditional, 
-    we only need those state rows, rest are irrelevant
-*/ 
 void MultiChan::_optimize_state_table_2 ()
 {
     StateTable temp;
@@ -581,11 +507,6 @@ void MultiChan::_optimize_state_table_2 ()
     _st = temp;
 }
 
-/*
-    Checking this:
-    All alias accesses are within the same branch, 
-    i.e. are relatively unconditional
-*/
 bool MultiChan::_is_relatively_unconditional()
 {
     std::vector<bool> ret (alias_number-1, false);
@@ -616,7 +537,6 @@ void MultiChan::_replace_next_states (int old_st, int new_st)
     }
 }
 
-// Can probably merge this into the optimize_state_table run
 void MultiChan::_re_encode_states ()
 {
     int alias_n = alias_number;
@@ -654,7 +574,6 @@ void MultiChan::_re_encode_state (int old_st, int new_st)
 
 // ^ implementing this is a nightmare, gonna do state transition table
 
-// Build up the auxiliary multichan handler process
 Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
 {
     // auto alias_var_bw = log_2_round_up(st.size());
@@ -852,8 +771,6 @@ Block *MultiChan::_build_next_assign (VarId v, int v_bw, std::vector<int> nxts, 
     return ret;
 }
 
-// this is inefficient - gotta fix this later
-// it's probably fine lol
 Block *MultiChan::_find_alias_block (ChanId id, unsigned int alias_i)
 {
     auto cbp = mc_info.find(id)->second;
