@@ -23,15 +23,11 @@
 #include "projection.h"
 
 /*
-    Topological sort not needed (?)
-
     Projection TODO
-    - IC-LCD handling
-    - cycle detection + topological sorting of blocks
-    - selection handling
-    - test interaction with other passes
+    - IC-LCD handling (done)
+    - selection handling (done)
+    - test interaction with other passes (wip)
     - implement min-cut
-
 */
 
 std::vector<Sequence> Projection::get_seqs ()
@@ -244,13 +240,11 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
         if (dfgnode && s.contains(dfgnode)) {
             s.erase(dfgnode);
             empty = false;
-            // printf ("\n// skipping\n");
         }
         else {
             curr->dead = true;
             curr = _splice_out_block (curr);
             curr = curr->parent();
-            // printf ("\n// splicing\n");
         }
     }
     break;
@@ -408,70 +402,6 @@ bool Projection::_all_basic (std::vector<DFG_Node *> xs)
     return true;
 }
 
-#if 0
-bool Projection::_set_contains (Block *b, std::unordered_set<DFG_Node *> &s)
-{
-    for ( auto node : s ) 
-    {
-        switch (node->t) {
-        case NodeType::Basic: {
-            switch (blk->u_basic().stmt.type()) {
-            case StatementType::Send:
-            break;
-            case StatementType::Assign: {
-            }
-            break;
-            case StatementType::Receive: {
-            }
-            break;
-            }
-        }
-        break;
-        case NodeType::Guard: {
-            // does not define any variables
-        }
-        break;
-        case NodeType::SelPhi: {
-        }
-        break;
-        case NodeType::SelPhiInv: {
-        }
-        break;
-        case NodeType::PllPhi: {
-        }
-        break;
-        case NodeType::PllPhiInv: {
-        }
-        break;
-        case NodeType::LoopInPhi: {
-            hassert (false);
-        }
-        break;
-        case NodeType::LoopOutPhi: {
-            hassert (false);
-        }
-        break;
-        case NodeType::LoopLoopPhi: {
-            hassert (false);
-        }
-        break;
-        default:
-            hassert (false);
-        break;
-        }
-    }
-    return false;
-}
-#endif
-
-#if 0
-int Projection::_gen_sel_set_id()
-{
-    sel_set_id++;
-    return sel_set_id;
-}
-#endif
-
 std::vector<VarId> Projection::get_defs (DFG_Node *node)
 {
     hassert(dfg.contains(node));
@@ -619,9 +549,6 @@ std::unordered_set<VarId> Projection::get_uses (DFG_Node *node)
     return ret;
 }
 
-/*
-    True if dependent
-*/
 bool Projection::_check_data_dependence (DFG_Node *prev, DFG_Node *curr) 
 {
     auto defs = get_defs(prev);
@@ -812,7 +739,8 @@ void Projection::_build_graph (Sequence seq)
                     dfg.add_edge(node,n);
                 }
             }
-            // fprintf(fp, "\n// loopphi: %llu, %llu, %llu, %llu",phi.pre_id.m_id,phi.bodyin_id.m_id,phi.bodyout_id.m_id, phi.post_id._getId());
+            // fprintf(fp, "\n// loopphi: %llu, %llu, %llu, %llu",phi.pre_id.m_id,
+            // phi.bodyin_id.m_id,phi.bodyout_id.m_id, phi.post_id._getId());
         }
         // fprintf(fp, "\n\n");
         _build_graph(curr->u_doloop().branch);
@@ -1043,56 +971,6 @@ void Projection::_insert_copies_v1 (GraphWithChanNames &gg, Sequence seq)
     }
 }
 
-#if 0
-// for ITB extraction - QDI vs DI paper
-void Projection::_insert_copies_v2 (GraphWithChanNames &gg, Sequence seq)
-{
-    Block *curr = seq.startseq->child();
-
-    while (curr->type() != BlockType::EndSequence) {
-        switch (curr->type()) {
-        case BlockType::Basic: {
-        }
-        break;
-        
-        case BlockType::Par: {
-            for (auto &branch : curr->u_par().branches) {
-                _insert_copies_v2 (gg, branch);
-            }
-        }
-        break;
-        
-        case BlockType::Select: {
-            for (auto &branch : curr->u_select().branches) {
-                _insert_copies_v2 (gg, branch.seq);
-            }
-        }
-        break;
-        case BlockType::DoLoop: {
-            for (auto &lphi : curr->u_doloop().loop_phis) {
-                hassert (curr->u_doloop().branch.startseq->child()->type()!=BlockType::EndSequence);
-                _insert_copy(gg, seq, curr->u_doloop().branch.startseq->child(), curr->parent(), lphi.bodyin_id);
-            }
-            _insert_copies_v2 (gg, curr->u_doloop().branch);
-            // for (auto &lphi : curr->u_doloop().loop_phis) {
-            //     _insert_copy(gg, seq, curr->u_doloop().branch.endseq, curr, lphi.bodyout_id);
-            // }
-        }
-        break;
-        
-        case BlockType::StartSequence:
-        case BlockType::EndSequence:
-            hassert(false);
-            break;
-        }
-    curr = curr->child();
-    }
-}
-#endif
-
-/*
-    Due to STF, it is sufficient to rename within the sequence.
-*/
 void Projection::_insert_copy (GraphWithChanNames &gg, Sequence seq, DFG_Node *from, VarId v)
 {
     auto b_from = from->b;
@@ -1342,15 +1220,6 @@ void Projection::_splice_out_block_new(Block *bb)
     if (after)  Block::disconnect(bb, after);
     if (before && after) Block::connect(before, after);
 }
-
-#if 0
-void Projection::_splice_out_node (DFG_Node *n)
-{
-    if (!(n->conn)) return;
-    _splice_out_block (n->b);
-    n->conn = false;
-}
-#endif
 
 void Projection::split_assignments(ChpGraph &gg)
 {

@@ -31,10 +31,28 @@
 
 enum class NodeType { Basic, Guard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
 
+/*
+    Class that implements a single node in the 
+    data-dependence graph.
+    @param NodeType t Type of the node
+    @param b ChpGraph Block corresponding to the node  
+    @param phi_inv Selection-Phi-Inverse 
+    @param phi Selection-Phi
+    @param pll_phi_inv Parallel-Phi-Inverse
+    @param pll_phi Parallel-Phi
+    @param g Pair of guard expr and branch id in a selection
+    @param lip Loop-In-Phi
+    @param lop Loop-Out-Phi
+    @param llp Loop-Loop-Phi 
+    @param id Unique node ID
+    @param set_n Set number for the node
+
+*/
 class DFG_Node {
     public:
         NodeType t;
         Block *b;
+
         // union
             Block::Variant_Select::PhiSplit phi_inv;
             Block::Variant_Select::PhiMerge phi;
@@ -45,6 +63,7 @@ class DFG_Node {
             Block::Variant_DoLoop::OutPhi   lop;
             Block::Variant_DoLoop::LoopPhi  llp;
         // union
+
         int id;
         int set_n;
 
@@ -128,6 +147,10 @@ class DFG_Node {
             id = idx;
             set_n = -1;
         }
+
+        /*
+            Print the DFG Node
+        */
         void print (std::ostream &ss)
         {
             auto strofid = [&](OptionalVarId id) {
@@ -170,6 +193,12 @@ class DFG_Node {
         }
 };
 
+/*
+    Class implementing the data-dependence graph.
+    @param nodes Vector of DFG nodes
+    @param adj Adjancency list encoding edges between DFG nodes
+    @param id Internal ID counter to enumerate nodes
+*/
 class DFG {
     public:
         std::vector<DFG_Node *> nodes;
@@ -182,6 +211,9 @@ class DFG {
             id = 0;
         }
 
+        /*
+            Clear the DFG.
+        */
         void clear () {
             nodes.clear();
             adj.clear();
@@ -193,11 +225,18 @@ class DFG {
             return id;
         }
 
+        /*
+            Add a given node to the DFG.
+        */
         void add_node (DFG_Node *n) {
             nodes.push_back(n);
             adj.push_back({});
         }
 
+        /*
+            Add a directed edge between two nodes.
+            Both nodes must be in the DFG.
+        */
         void add_edge (DFG_Node *from, DFG_Node *to) {
             int f_idx = -1, t_idx = -1;
             for (int i=0; i<nodes.size(); i++) {
@@ -218,6 +257,10 @@ class DFG {
             adj[f_idx].push_back(nodes[t_idx]);
         }
 
+        /*
+            Delete a directed edge between two nodes.
+            Edge and both nodes must be in the DFG.
+        */
         void delete_edge (DFG_Node *from, DFG_Node *to) {
             int f_idx = -1, t_idx = -1;
             for (int i=0; i<nodes.size(); i++) {
@@ -243,6 +286,10 @@ class DFG {
             adj[f_idx] = new_adj;
         }
 
+        /*
+            Check if there exists a directed edge
+            between the given nodes. 
+        */
         bool contains_edge (DFG_Node *from, DFG_Node *to) {
             int f_idx = -1;
             for (int i=0; i<nodes.size(); i++) {
@@ -260,6 +307,9 @@ class DFG {
             return false;
         }
 
+        /*
+            Check if given node exists in the DFG.
+        */
         bool contains (DFG_Node *node) {
             for ( auto n1 : nodes ) {
                 if (node==n1) return true;
@@ -267,6 +317,9 @@ class DFG {
             return false;
         }
 
+        /*
+            Check if a node with the given Block* exists in the DFG.
+        */
         bool contains (Block *b) {
             for ( auto n1 : nodes ) {
                 if (b==(n1->b)) return true;
@@ -274,8 +327,11 @@ class DFG {
             return false;
         }
 
+        /*
+            Check if given basic block exists in the DFG.
+        */
         DFG_Node *find (Block *b) {
-            // hassert (b->type()==BlockType::Basic);
+            hassert (b->type()==BlockType::Basic);
             for ( auto n1 : nodes ) {
                 if (b == n1->b) {
                     return n1;
@@ -333,6 +389,9 @@ class DFG {
             return NULL;
         }
 
+        /*
+            Print the DFG
+        */
         void print_adj (FILE *fp) {
             fprintf (fp, "\n/* ------ adj list ------\n");
             for (int i=0;i<adj.size();i++) {
@@ -347,6 +406,13 @@ class DFG {
         }
 };
 
+/*
+    Class implementing projection based on the DFG.
+    @param seqs Vector of Sequences of projected processes
+    @param procs Vector of act_chp_lang's of projected processes
+    @param subgraphs Union-Find structure to track connected components in DFG
+    @param dfg The DFG itself
+*/
 class Projection : protected ChoppingBlock {
     public:
 
@@ -355,65 +421,172 @@ class Projection : protected ChoppingBlock {
                         Scope *s_in) 
             : ChoppingBlock (fp_in, g_in, vmap_in, s_in) 
             {
-                // sel_set_id = 0;
+                seqs.clear();
+                procs.clear();
+                subgraphs.clear();
+                dfg.clear();
             }
         
+        /*
+            Compute the projected processes
+        */
         void project ();
+
+        /*
+            Returns vector of Sequences of projected proceses 
+        */
         std::vector<Sequence> get_seqs ();
+
+        /*
+            Returns vector of act_chp_lang's of projected proceses 
+        */
         std::vector<act_chp_lang_t *> get_procs ();
+
+        /*
+            Print DFG of subgraphs into a file
+        */
         void print_subgraphs (FILE *);
+
+        /*
+            Split multi-assignments into single
+        */
         void split_assignments (ChpGraph &);
+
+        /*
+            Print DOT graph of the projected processes
+        */
         void export_dot(std::string);
-        // void split_selections ();
 
     private:
 
         std::vector<Sequence> seqs;
         std::vector<act_chp_lang_t *> procs;
-        // std::vector<Block *> nodes;
-        // std::vector<Block *> ics;
         std::unordered_map<UnionFind<DFG_Node *>::id, std::vector<DFG_Node *>> subgraphs;
         DFG dfg;
 
-        // std::unordered_map<int, std::vector<Block *>> sel_sets;
-        // int sel_set_id;
-
-        int _gen_sel_set_id();
-
+        /*
+            Construct DFG from ChpGraph
+        */
         void _build_graph (Sequence);
 
+        /*
+            Use Union-Find to compute connected 
+            components in the DFG
+        */
         void _compute_connected_components ();
+
+        /*
+            Insert distributed assignment of 
+            guard variables before selections
+        */
         void _insert_guard_comms ();
+
+        /*
+            Remove distributed assignment of 
+            guard variables before selections,
+            if they are in same process
+        */
         void _remove_guard_comms (GraphWithChanNames &, Sequence);
+
+        /*
+            Insert a distributed assignment for a given variable, 
+            and flush the renaming downstream in the program. 
+            Due to STF, it is sufficient to rename within the sequence.
+        */
         void _insert_copy (GraphWithChanNames &, Sequence, DFG_Node *, VarId);
+
+        /*
+            Same as other overload, with option to specify where to place 
+            the distributed assignment and where to start the renaming from. 
+        */
         void _insert_copy (GraphWithChanNames &, Sequence, Block *, Block *, VarId);
+
+        /*
+            Rename `old_var` to `new_var`, but exclude `excl` and start after `start_after`
+        */
         void _replace_uses (GraphWithChanNames &, Sequence, VarId, VarId, Block *, Block *);
         
+        /*
+            Copy insertion strategy: at all receives.
+        */
         void _insert_copies_v0 (GraphWithChanNames &, Sequence);
+
+        /*
+            Copy insertion strategy: at splits and merges.
+        */
         void _insert_copies_v1 (GraphWithChanNames &, Sequence);
+
+        /*
+            Copy insertion strategy: smart, cost-based.
+            (TODO)
+        */
         void _insert_copies_v2 (GraphWithChanNames &, Sequence);
 
+        /*
+            Construct a sub-process from a set of DFG nodes.
+        */
         bool _build_sub_proc_new (GraphWithChanNames &, Sequence, std::unordered_set<DFG_Node *>&);
+        
+        /*
+            Construct a sub-process from a set of DFG nodes, 
+            where all the nodes are basic nodes.
+        */
         void _build_basic_new (GraphWithChanNames &, std::vector<DFG_Node *>);
+        
+        /*
+            Check if all nodes are basic nodes.
+        */
         bool _all_basic (std::vector<DFG_Node *>);
 
-        bool _set_contains (Block *, std::unordered_set<DFG_Node *>&);
-
+        /*
+            Check if a sequence is linear, i.e. has no
+            selections or loops within it.
+        */
         bool _check_linear (Sequence, int);
-        void _splice_out_node (DFG_Node *);
+
+        /*
+            Splice out set of blocks
+        */
         void _splice_out_blocks (std::vector<Block *>);
+        
+        /*
+            Splice out a block from its sequence
+        */
         void _splice_out_block_new (Block *);
 
+        /*
+            Get set of vars defined by a DFG node
+        */
         std::vector<VarId> get_defs (DFG_Node *);
+        
+        /*
+            Get set of vars used by a DFG node
+        */
         std::unordered_set<VarId> get_uses (DFG_Node *);
 
+        /*
+            Check if there is a data dependence between
+            `prev` and `curr`. Order matters.
+        */
         bool _check_data_dependence (DFG_Node *, DFG_Node *);
+
+        /*
+            Check if there is guard-phi dependence between
+            `guard_node` and `phi_node`. Returns true when
+            the guard node and phi node are of the same selection.
+        */
         bool _check_guard_phi_dependence (DFG_Node *, DFG_Node *);
+        
+        /*
+            Check if there is guard-phi-inv dependence between
+            `guard_node` and `phi_inv_node`. Returns true when
+            `guard_node` and `phi_inv_node` are of the same selection,
+            and the output of the `phi_inv` corresponding to the 
+            `guard_node`'s branch is not NULL.
+        */
         bool _check_guard_phi_inv_dependence (DFG_Node *, DFG_Node *);
 
-        // void _split_selections (Sequence);
         void _split_assignments (Sequence);
-
 };
 
 #endif
