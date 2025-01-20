@@ -1,0 +1,46 @@
+deftype mystr1 (int<8> a, b)
+{}
+
+
+defproc buf (chan?(int<8>) L1, L2; chan!(int<16>) R)
+{
+    mystr1 s, t;
+    int<8> x, y;
+    chp {
+        *[
+            L1?x; L2?y; 
+            s := mystr1({x,y});
+            t := s; R!(int(t))
+        ]
+    }
+}
+
+defproc src1 (chan!(int<8>) r)
+{
+	chp{
+		*[r!3]
+	}
+}
+
+defproc src2 (chan!(int<8>) r)
+{
+	chp{
+		*[r!5]
+	}
+}
+
+defproc snk (chan?(int<16>) l)
+{
+	int<16> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<8>) X1, X2;chan!(int<16>) Y)
+{
+  buf b(X1,X2,Y);
+  src1 i1(X1);
+  src2 i2(X2);
+  snk o(Y);
+}
