@@ -1,0 +1,43 @@
+deftype mystr (int<8> a, b; chan?(int<8>) L; chan!(int<8>) R)
+{
+    methods {
+        macro send_a () {R!a}
+        macro send_b () {R!b}
+        macro recv_a () {L?a}
+        macro recv_b () {L?b}
+    }
+}
+
+defproc buf (chan?(int<8>) l; chan!(int<8>) r)
+{
+    mystr s;
+    s.L = l;
+    s.R = r;
+	chp{
+		*[
+            s.recv_a(); s.send_a()
+        ]
+	}
+}
+
+defproc src (chan!(int<8>) r)
+{
+	chp{
+		*[r!5]
+	}
+}
+
+defproc snk (chan?(int<8>) l)
+{
+	int<8> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<8>) X;chan!(int<8>) Y)
+{
+  buf b(X,Y);
+  src i(X);
+  snk o(Y);
+}

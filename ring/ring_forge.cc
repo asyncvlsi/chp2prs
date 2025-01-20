@@ -492,11 +492,11 @@ void RingForge::_generate_qdi_itb(act_chp_lang_t *cc)
     char Rname[1024];
     char Lname[1024];
 
-    get_true_name (Rname, send->u.comm.chan, _p->CurScope());
-    get_true_name (Lname, recv->u.comm.chan, _p->CurScope());
+    get_true_name (Rname, send->u.comm.chan, _p->CurScope(), false);
+    get_true_name (Lname, recv->u.comm.chan, _p->CurScope(), false);
 
-    int bw_send = TypeFactory::bitWidth(_p->CurScope()->Lookup(send->u.comm.chan));
-    int bw_recv = TypeFactory::bitWidth(_p->CurScope()->Lookup(recv->u.comm.chan));
+    int bw_send = _bitWidth(send->u.comm.chan);
+    int bw_recv = _bitWidth(recv->u.comm.chan);
     Assert ((bw_send == bw_recv), "Bitwidth match");
 
     int inst_id = _gen_block_id();
@@ -816,7 +816,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
     case ACT_CHP_SEND:
         chan = c->u.comm.chan;
         e = c->u.comm.e;
-        get_true_name (chan_name, chan, _p->CurScope());
+        get_true_name (chan_name, chan, _p->CurScope(), false);
         // chan_name = chan->rootVx(p->CurScope())->getName();
         if (verbose) {
             fprintf(_fp,"\n// Pipe block for action: ");
@@ -825,8 +825,9 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_paa_send %s%d;\n",ring_block_prefix,block_id);
         if (e) {
-            it = _p->CurScope()->Lookup(chan);
-            bw = TypeFactory::bitWidth(it);
+            // it = _p->CurScope()->Lookup(chan);
+            // bw = TypeFactory::bitWidth(it);
+            bw = _bitWidth(chan);
             fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
                 fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
             if (verbose) {
@@ -870,15 +871,16 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
     case ACT_CHP_RECV:
         chan = c->u.comm.chan;
         var = c->u.comm.var;
-        get_true_name (chan_name, chan, _p->CurScope());
+        get_true_name (chan_name, chan, _p->CurScope(), false);
         if (verbose) {
             fprintf(_fp,"\n// Pipe block for action: ");
             chp_print(_fp,c);
         }
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_ppa %s%d;\n",ring_block_prefix,block_id);
-        it = _p->CurScope()->Lookup(chan);
-        bw = TypeFactory::bitWidth(it);
+        // it = _p->CurScope()->Lookup(chan);
+        // bw = TypeFactory::bitWidth(it);
+        bw = _bitWidth(chan);
         fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
         fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
         fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
@@ -2815,3 +2817,14 @@ void RingForge::_print_list_of_vars (FILE *fp, list_t *vars)
     return;
 }
 
+int RingForge::_bitWidth (ActId *id)
+{
+  if (!id) {
+    return -1;
+  }
+  InstType *it = _p->CurScope()->FullLookup (id, NULL);
+  if (!it) {
+    return -1;
+  }
+  return TypeFactory::bitWidth (it);
+}
