@@ -164,14 +164,17 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     // Bundled datapath parameters
     // invx1_delay_ps = config_get_int("synth.ring.bundled.invx1_delay_ps");
     verbose = config_get_int("synth.ring.verbose");
-    capture_delay = config_get_int("synth.ring.bundled.capture_delay");
-    pulse_width = config_get_int("synth.ring.bundled.pulse_width");
+    capture_delay = config_get_real("synth.ring.bundled.capture_delay");
+    pulse_width = config_get_real("synth.ring.bundled.pulse_width");
 
     // Delay line parameters check
     int dp_sz = config_get_table_size("synth.ring.bundled.delay_params");
     int dv_sz = config_get_table_size("synth.ring.bundled.delay_vals");
     Assert (dp_sz==dv_sz, "Delay line table size mismatch");
     delay_table_sz = dp_sz;
+
+    mux_table_sz = config_get_table_size("synth.ring.bundled.mux_delays");
+    or_table_sz = config_get_table_size("synth.ring.bundled.or_delays");
 
     _delay_margin = delay_margin;
     delay_multiplier = float(_delay_margin)/100;
@@ -663,14 +666,14 @@ int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long ini
     {
         if (init_val == -1)
         {
-            fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", int(std::ceil(capture_delay*delay_multiplier)), 
-                                                         int(std::ceil(pulse_width*delay_multiplier)), 
+            fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+                                                         _compute_delay_line_param(pulse_width), 
                                                     v->width, capture_block_prefix, v->name,latch_id);
         }
         else
         {
-            fprintf(_fp, "capture_init<%d,%d,%d,%lli> %s%s_%d;\n", int(std::ceil(capture_delay*delay_multiplier)), 
-                                                                   int(std::ceil(pulse_width*delay_multiplier)), 
+            fprintf(_fp, "capture_init<%d,%d,%d,%lli> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+                                                                   _compute_delay_line_param(pulse_width), 
                                                     v->width, init_val, capture_block_prefix, v->name,latch_id);
         }
         v->iwrite++;
@@ -698,8 +701,8 @@ int RingForge::_generate_single_latch_non_ssa (var_info *v, long long init_val=0
     if (!(v->fischan))
     {
         fprintf(_fp, "capture_init_non_ssa<%d,%d,%d,%lld,%d> %s%s_%d;\n", 
-                            int(std::ceil(capture_delay*delay_multiplier)), 
-                            int(std::ceil(pulse_width*delay_multiplier)), 
+                            _compute_delay_line_param(capture_delay), 
+                            _compute_delay_line_param(pulse_width),
                             v->width, init_val, write_ports, 
                             capture_block_prefix, v->name,latch_id);
 
@@ -1136,20 +1139,6 @@ int RingForge::_generate_itb()
     fprintf(_fp,"\n");
     int id = _gen_block_id();
     fprintf(_fp,"elem_c_itb %s%d;\n",ring_block_prefix,id);
-    return id;
-}
-
-/*
-    Generate an initial condition handling ITB to
-    wrap around the main ring.
-*/
-int RingForge::_generate_init_cond_itb(int value, int width, int chan_id_out, int chan_id_in)
-{
-    if (verbose) fprintf(_fp,"\n// Initial token buffer for initial condition transmission");
-    fprintf(_fp,"\n");
-    int id = _gen_itb_wrapper_id();
-    fprintf(_fp,"itb_wrapper<%d,%d,%d,%d> itb_w_%d(%s%d,%s%d);\n",int(std::ceil(capture_delay*delay_multiplier)),int(std::ceil(pulse_width*delay_multiplier)),
-                            width,value, id, init_cond_chan_prefix,chan_id_out,init_cond_chan_prefix,chan_id_in);
     return id;
 }
 
@@ -2773,12 +2762,7 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
     }
 
     if ( max_mux_size>0 ) {
-        float max_delay = _lookup_mux_delays (max_mux_size, max_or_size);
-        if (max_delay == -1) {
-            // TODO: temporary large value for large muxes, gotta fix 
-            max_delay = 2000;
-        }
-        // return {n_muxes, int(max_delay/(2*invx1_delay_ps)) + 1};
+        double max_delay = _lookup_mux_delays (max_mux_size, max_or_size);
         return {n_muxes, _compute_delay_line_param(max_delay)};
     }
     else {
@@ -2786,16 +2770,17 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
     }
 }
 
-/*
-    Temp: lookup the mux delay table
-*/
-float RingForge::_lookup_mux_delays (int mux_sz, int or_sz)
+double RingForge::_lookup_mux_delays (int mux_sz, int or_sz)
 {
-    if (mux_sz <= max_mux_size && or_sz <= max_or_size && mux_sz>0 && or_sz>=0)
-    {
-        return mux_delays[mux_sz-1][or_sz];
-    }
-    return -1;
+    Assert (mux_sz>0, "What is this mux");
+    Assert (or_sz>=0, "What is this or");
+    double *mux_table = config_get_table_real("synth.ring.bundled.mux_delays");
+    double *or_table  = config_get_table_real("synth.ring.bundled.or_delays");
+
+    double mux_del = ((mux_sz-1)<mux_table_sz) ? mux_table[mux_sz-1] : mux_table[mux_table_sz-1];
+    double or_del  = ((or_sz)<or_table_sz) ? or_table[or_sz] : or_table[or_table_sz-1];
+
+    return mux_del + or_del;
 }
 
 void RingForge::_print_list_of_vars (FILE *fp, list_t *vars)

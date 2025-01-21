@@ -79,10 +79,12 @@ class RingForge : public RingEngine {
         std::pair<int,int> _compute_merge_mux_info(latch_info_t *, int, std::vector<std::string>&);
         int _generate_probe_clause(list_t *, list_t *);
         int _generate_probe_circuit(Expr *, int);
-        float _lookup_mux_delays (int, int);
+        double _lookup_mux_delays (int, int);
         std::pair<int,int> _get_pre_sel_latch_and_size (std::vector<int>);
 
         int delay_table_sz;
+        int mux_table_sz;
+        int or_table_sz;
         int _compute_delay_line_param(double);
 
         list_t *_create_channel_accesses (list_t *ics);
@@ -124,26 +126,16 @@ class RingForge : public RingEngine {
 
         // unsigned int invx1_delay_ps;
 
-        // Capture delay of a latch in multiples of 2*(INVX1 delay)
-        unsigned int capture_delay;
+        // Capture delay of a latch (ps)
+        double capture_delay;
 
-        // Pulse-width for the pulse-generator for the latch as fn. (2n+1)*d of invx1_delay_ps
-        unsigned int pulse_width;
+        // Pulse-width for the pulse-generator for the latch (ps)
+        double pulse_width;
 
         int _delay_margin;
         float delay_multiplier;
         int bundled;
         int datapath_style;
         int verbose;
-
-        // Temp: Lookup table for mux delays
-        static const int max_mux_size = 4;
-        static const int max_or_size = 4;
-        float mux_delays[max_mux_size][max_or_size] = {
-                        {0     , 0     , 0     , 0     }, // 1-input muxes => no mux 
-                        {96.43 , 96.43 , 102.36, 106.81}, // 2-input muxes
-                        {102.36, 102.36, 106.81, 124.33}, // 3-input muxes
-                        {106.81, 106.81, 124.33, 135.41}  // 4-input muxes
-        };             // 0-OR    1-OR    2-OR    3-OR 
 
 };
