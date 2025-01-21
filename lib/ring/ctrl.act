@@ -856,26 +856,26 @@ defproc doloop_wrapper (bool? g; a1of1? m1;
 // ------------------------------------
 
 // N : No. of inputs, W : Width of each input
-export template<pint N,W>
-defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
-{
-  // ands
-  std::cells::AND2X1 stage_1[N][W];
+// export template<pint N,W>
+// defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
+// {
+//   // ands
+//   std::cells::AND2X1 stage_1[N][W];
   
-  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
-  ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
+//   ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
+//   ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
 
-  // ors
-  std::gates::ortree<N, false> stage_2[W]; 
+//   // ors
+//   std::gates::ortree<N, false> stage_2[W]; 
 
-  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
-  ( j : W : stage_2[j].out = dout[j]; )
+//   ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
+//   ( j : W : stage_2[j].out = dout[j]; )
 
-}
+// }
 
 // N : No. of inputs, W : Width of each input
 export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
+defproc merge_mux_ohc_old(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 {
   // nands
   std::cells::NAND2X1 stage_1[N][W];
@@ -891,7 +891,39 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 
   ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
   ( j : W : stage_2[j].out = dout[j]; )
+}
 
+// N : No. of inputs, W : Width of each input
+export template<pint N,W>
+defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
+{
+  { N>1 : "Size two or greater merge mux only"};
+  
+  // aoi's
+  std::cells::AOI22X1 stage_1[N/2][W];
+  [ (N%2)=1 -> std::cells::NAND2X1 last[W]; ]
+  
+  sigbuf<W> fanout_tree[N];
+  ( i : N : fanout_tree[i].in = c[i]; )
+
+  ( i : N/2 : ( j : W : stage_1[i][j].A = din[ 2*i   ][j];        
+                        stage_1[i][j].C = din[(2*i)+1][j]; ) ) 
+
+  ( i : N/2 : ( j : W : stage_1[i][j].B = fanout_tree[ 2*i   ].out[j];
+                        stage_1[i][j].D = fanout_tree[(2*i)+1].out[j]; ) )
+
+  [ (N%2)=1 -> ( j : W : last[j].A = din[N-1][j];
+                         last[j].B = fanout_tree[N-1].out[j]; ) 
+  ]
+
+  // nands
+  std::gates::andtree<(N+1)/2, true> stage_2[W]; 
+
+  ( i : N/2 :  ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
+  [ (N%2)=1 -> ( j : W :       last[j].Y = stage_2[j].in[(N-1)/2]; ) 
+  ]
+
+  ( j : W : stage_2[j].out = dout[j]; )
 }
 
 // --------------------------------------------------------
