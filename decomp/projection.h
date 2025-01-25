@@ -221,8 +221,8 @@ class DFG {
         }
 
         int gen_id () {
-            id++;
-            return id;
+            // id++;
+            return id++;
         }
 
         /*
@@ -517,10 +517,19 @@ class Projection : protected ChoppingBlock {
         void _insert_copies_v1 (GraphWithChanNames &, Sequence);
 
         /*
-            Copy insertion strategy: smart, cost-based.
-            (TODO)
+            Copy insertion strategy: heuristic-based.
+            Sends/receives included
         */
-        void _insert_copies_v2 (GraphWithChanNames &, Sequence);
+        void _insert_copies_v2 (GraphWithChanNames &, Sequence, int, bool &);
+
+        /*
+            Copy insertion strategy: heuristic-based.
+            Sends/receives excluded
+        */
+        void _insert_copies_v3 (GraphWithChanNames &, Sequence, int, bool &);
+
+        DFG_Node *_heuristic1 (DFG_Node *, int);
+        DFG_Node *_heuristic2 (DFG_Node *, int);
 
         /*
             Construct a sub-process from a set of DFG nodes.

@@ -130,8 +130,10 @@ void Projection::project()
     fprintf(stdout, "\n*/\n");
 
     // _insert_copies_v0 (g1, g1.graph.m_seq);
-    _insert_copies_v1 (g1, g1.graph.m_seq);
-    // _insert_copies_v2 (g1, g1.graph.m_seq);
+    // _insert_copies_v1 (g1, g1.graph.m_seq);
+    bool _ins = false;
+    _insert_copies_v3 (g1, g1.graph.m_seq, subgraphs.size(), _ins);
+    _insert_copies_v2 (g1, g1.graph.m_seq, subgraphs.size(), _ins);
 
     ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
 
@@ -958,6 +960,253 @@ void Projection::_insert_copies_v1 (GraphWithChanNames &gg, Sequence seq)
         _insert_copies_v1 (gg, curr->u_doloop().branch);
         // for (auto &lphi : curr->u_doloop().loop_phis) {
         //     _insert_copy(gg, seq, curr->u_doloop().branch.endseq, lphi.bodyout_id);
+        // }
+    }
+    break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
+}
+
+DFG_Node *Projection::_heuristic1(DFG_Node *n, int nwcc)
+{
+    auto dest_nodes = dfg.adj[n->id];
+    for (int i=0;i<dest_nodes.size();i++) {
+        fprintf(stdout, "\nCHECKING\n");
+        dfg.delete_edge(n,dest_nodes[i]);
+        _compute_connected_components();
+        dfg.add_edge(n,dest_nodes[i]);
+        if (subgraphs.size()>nwcc) {
+            fprintf(stdout, "\nFOUND\n");
+            return dest_nodes[i];
+        }
+    }
+    return NULL;
+}
+
+DFG_Node *Projection::_heuristic2(DFG_Node *n, int nwcc)
+{
+    std::vector<DFG_Node *> src_nodes = {};
+    int i=0;
+    for ( auto ns : dfg.adj ) {
+        for ( auto n1 : ns ) {
+            if (n1==n) src_nodes.push_back(dfg.nodes[i]);
+        }
+        i++;
+    }
+    for (int i=0;i<src_nodes.size();i++) {
+        dfg.print_adj(stdout);
+        fprintf(stdout, "\nSRC NODES\n");
+        src_nodes[i]->print(std::cout);
+        fprintf(stdout, "\nSRC NODES\n");
+        dfg.delete_edge(src_nodes[i],n);
+        _compute_connected_components();
+        fprintf(stdout,"\nbrrrr : %d\n", subgraphs.size());
+        dfg.print_adj(stdout);
+        dfg.add_edge(src_nodes[i],n);
+        fprintf(stdout,"\nbrrrr\n");
+        if (subgraphs.size()>nwcc) {
+            return src_nodes[i];
+        }
+    }
+    return NULL;
+}
+
+void Projection::_insert_copies_v2 (GraphWithChanNames &gg, Sequence seq, int nwcc, bool &inserted)
+{
+    Block *curr = seq.startseq->child();
+
+    while (curr->type() != BlockType::EndSequence) {
+    if (inserted) return;
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        switch (curr->u_basic().stmt.type()) {
+        case StatementType::Receive: {
+            auto n = dfg.find(curr);
+            if (n) { // only do if pre-existing receive
+                auto vars = get_defs(n);
+                hassert (vars.size()<=1);
+                if (vars.size()==1 && _heuristic1(n, nwcc)) {
+                    _insert_copy(gg, seq, n, vars[0]);
+                    inserted = true;
+                }
+            }
+        }
+            break;
+        case StatementType::Send: {
+            auto n = dfg.find(curr);
+            if (n) {
+                auto n1 = _heuristic2(n, nwcc);
+                if (dfg.contains(n1)) {
+                    auto vars = get_defs(n1);
+                    hassert (vars.size()==1);
+                    _insert_copy(gg, seq, n1, vars[0]);
+                    inserted = true;
+                } 
+            }
+        }
+        break;
+        case StatementType::Assign: {
+            auto n = dfg.find(curr);
+            if (n) {
+                auto vars = get_defs(n);
+                hassert (vars.size()<=1);
+                if (vars.size()==1 && _heuristic1(n, nwcc)) {
+                    _insert_copy(gg, seq, n, vars[0]);
+                    inserted = true;
+                    return;
+                }
+                auto n1 = _heuristic2(n, nwcc);
+                if (dfg.contains(n1)) {
+                    auto vars = get_defs(n1);
+                    hassert (vars.size()==1);
+                    _insert_copy(gg, seq, n1, vars[0]);
+                    inserted = true;
+                    return;
+                }
+            }
+        }
+        break;
+        }
+    }
+    break;
+      
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            _insert_copies_v2 (gg, branch, nwcc, inserted);
+        }
+    }
+    break;
+      
+    case BlockType::Select: {
+        
+        for (auto &split : curr->u_select().splits) {
+            auto n = dfg.find(curr, split);
+            auto vars = get_defs(n);
+            if (_heuristic1(n, nwcc)) {
+                _insert_copy (gg, seq, n, split.pre_id);
+                inserted = true;
+                return;
+            }
+        }
+        for (auto &branch : curr->u_select().branches) {
+            _insert_copies_v2 (gg, branch.seq, nwcc, inserted);
+        }
+        for (auto &merge : curr->u_select().merges) {
+            auto n = dfg.find(curr, merge);
+            auto vars = get_defs(n);
+            if (_heuristic1(n, nwcc)) {
+                _insert_copy (gg, seq, n, merge.post_id);
+                inserted = true;
+                return;
+            }
+        }
+    }
+    break;
+    case BlockType::DoLoop: {
+        // for (auto &lphi : curr->u_doloop().loop_phis) {
+        //     _insert_copy(gg, seq, curr->u_doloop().branch.startseq->child(), curr->u_doloop().branch.startseq, lphi.bodyin_id);
+        // }
+        _insert_copies_v2 (gg, curr->u_doloop().branch, nwcc, inserted);
+        // for (auto &lphi : curr->u_doloop().loop_phis) {
+        //     _insert_copy(gg, seq, curr->u_doloop().branch.startseq->child(), curr->u_doloop().branch.startseq, lphi.bodyin_id);
+        // }
+    }
+    break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
+}
+
+void Projection::_insert_copies_v3 (GraphWithChanNames &gg, Sequence seq, int nwcc, bool &inserted)
+{
+    Block *curr = seq.startseq->child();
+
+    while (curr->type() != BlockType::EndSequence) {
+    if (inserted) return;
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        switch (curr->u_basic().stmt.type()) {
+        case StatementType::Receive: {
+        }
+        break;
+        case StatementType::Send: {
+        }
+        break;
+        case StatementType::Assign: {
+            auto n = dfg.find(curr);
+            if (n) {
+                auto vars = get_defs(n);
+                hassert (vars.size()<=1);
+                if (vars.size()==1 && _heuristic1(n, nwcc)) {
+                    _insert_copy(gg, seq, n, vars[0]);
+                    inserted = true;
+                    return;
+                }
+                auto n1 = _heuristic2(n, nwcc);
+                if (dfg.contains(n1)) {
+                    auto vars = get_defs(n1);
+                    hassert (vars.size()==1);
+                    _insert_copy(gg, seq, n1, vars[0]);
+                    inserted = true;
+                    return;
+                }
+            }
+        }
+        break;
+        }
+    }
+    break;
+      
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            _insert_copies_v3 (gg, branch, nwcc, inserted);
+        }
+    }
+    break;
+      
+    case BlockType::Select: {
+        
+        for (auto &split : curr->u_select().splits) {
+            auto n = dfg.find(curr, split);
+            auto vars = get_defs(n);
+            if (_heuristic1(n, nwcc)) {
+                _insert_copy (gg, seq, n, split.pre_id);
+                inserted = true;
+                return;
+            }
+        }
+        for (auto &branch : curr->u_select().branches) {
+            _insert_copies_v3 (gg, branch.seq, nwcc, inserted);
+        }
+        for (auto &merge : curr->u_select().merges) {
+            auto n = dfg.find(curr, merge);
+            auto vars = get_defs(n);
+            if (_heuristic1(n, nwcc)) {
+                _insert_copy (gg, seq, n, merge.post_id);
+                inserted = true;
+                return;
+            }
+        }
+    }
+    break;
+    case BlockType::DoLoop: {
+        // for (auto &lphi : curr->u_doloop().loop_phis) {
+        //     _insert_copy(gg, seq, curr->u_doloop().branch.startseq->child(), curr->u_doloop().branch.startseq, lphi.bodyin_id);
+        // }
+        _insert_copies_v3 (gg, curr->u_doloop().branch, nwcc, inserted);
+        // for (auto &lphi : curr->u_doloop().loop_phis) {
+        //     _insert_copy(gg, seq, curr->u_doloop().branch.startseq->child(), curr->u_doloop().branch.startseq, lphi.bodyin_id);
         // }
     }
     break;
