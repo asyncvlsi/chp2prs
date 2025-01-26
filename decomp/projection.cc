@@ -104,6 +104,7 @@ void Projection::project()
     // insert guard bool communications
     dfg.clear();
     _build_graph(g->graph.m_seq);
+
     ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
     fprintf(stdout, "\n/* Non-STF \n");
     print_chp(std::cout, g->graph);
@@ -129,6 +130,13 @@ void Projection::project()
     print_chp(std::cout, g1.graph);
     fprintf(stdout, "\n*/\n");
 
+    components = {};
+    std::vector<std::vector<DFG_Node *>> adj_cond = {};
+    hassert (dfg.id==dfg.nodes.size());
+    dfg.scc(components, adj_cond);
+    for ( auto c : components ) {
+        fprintf(stdout, "\ncomp size: %d", int(c.size()));
+    }
     // _insert_copies_v0 (g1, g1.graph.m_seq);
     // _insert_copies_v1 (g1, g1.graph.m_seq);
     bool _ins = false;
@@ -973,17 +981,43 @@ void Projection::_insert_copies_v1 (GraphWithChanNames &gg, Sequence seq)
     }
 }
 
+bool Projection::_in_same_scc (DFG_Node *n1, DFG_Node *n2)
+{
+    // hassert (sccs.contains(n1));
+    // hassert (sccs.contains(n2));
+    fprintf(stdout, "\nhi1: ");
+    n1->print(std::cout);
+    fprintf(stdout, "\nhi2: ");
+    n2->print(std::cout);
+    int i1 = -1, i2 = -1;
+    int ii=0;
+    for ( auto c : components ) {
+        for ( auto node : c ) {
+            fprintf(stdout, "\nhi: ");
+            node->print(std::cout);
+            if (node==n1) i1 = ii;
+            if (node==n2) i2 = ii;
+        }
+        ii++;
+    }
+    hassert (i1!=-1);
+    hassert (i2!=-1);
+    return (i1==i2);
+}
+
 DFG_Node *Projection::_heuristic1(DFG_Node *n, int nwcc)
 {
     auto dest_nodes = dfg.adj[n->id];
     for (int i=0;i<dest_nodes.size();i++) {
-        fprintf(stdout, "\nCHECKING\n");
-        dfg.delete_edge(n,dest_nodes[i]);
-        _compute_connected_components();
-        dfg.add_edge(n,dest_nodes[i]);
-        if (subgraphs.size()>nwcc) {
-            fprintf(stdout, "\nFOUND\n");
-            return dest_nodes[i];
+        if (!_in_same_scc(n,dest_nodes[i])) {
+            fprintf(stdout, "\nCHECKING\n");
+            dfg.delete_edge(n,dest_nodes[i]);
+            _compute_connected_components();
+            dfg.add_edge(n,dest_nodes[i]);
+            if (subgraphs.size()>nwcc) {
+                fprintf(stdout, "\nFOUND\n");
+                return dest_nodes[i];
+            }
         }
     }
     return NULL;
@@ -1000,18 +1034,20 @@ DFG_Node *Projection::_heuristic2(DFG_Node *n, int nwcc)
         i++;
     }
     for (int i=0;i<src_nodes.size();i++) {
-        dfg.print_adj(stdout);
-        fprintf(stdout, "\nSRC NODES\n");
-        src_nodes[i]->print(std::cout);
-        fprintf(stdout, "\nSRC NODES\n");
-        dfg.delete_edge(src_nodes[i],n);
-        _compute_connected_components();
-        fprintf(stdout,"\nbrrrr : %d\n", subgraphs.size());
-        dfg.print_adj(stdout);
-        dfg.add_edge(src_nodes[i],n);
-        fprintf(stdout,"\nbrrrr\n");
-        if (subgraphs.size()>nwcc) {
-            return src_nodes[i];
+        if (!_in_same_scc(n,src_nodes[i])) {
+            dfg.print_adj(stdout);
+            fprintf(stdout, "\nSRC NODES\n");
+            src_nodes[i]->print(std::cout);
+            fprintf(stdout, "\nSRC NODES\n");
+            dfg.delete_edge(src_nodes[i],n);
+            _compute_connected_components();
+            // fprintf(stdout,"\nbrrrr : %d\n", subgraphs.size());
+            dfg.print_adj(stdout);
+            dfg.add_edge(src_nodes[i],n);
+            // fprintf(stdout,"\nbrrrr\n");
+            if (subgraphs.size()>nwcc) {
+                return src_nodes[i];
+            }
         }
     }
     return NULL;

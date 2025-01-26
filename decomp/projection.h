@@ -31,6 +31,8 @@
 
 enum class NodeType { Basic, Guard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
 
+static std::vector<bool> visited (1000, false); // keeps track of which vertices are already visited
+
 /*
     Class that implements a single node in the 
     data-dependence graph.
@@ -187,6 +189,10 @@ class DFG_Node {
                 ss << ") = phi_inv(" << strofid(phi_inv.pre_id) <<");" << std::endl;
             }
             break;
+            case NodeType::LoopLoopPhi: {
+                ss << "(" << strofid(llp.post_id) << ", " << strofid(llp.bodyin_id) << ") = phiL(" << strofid(llp.pre_id) << ", " << strofid(llp.bodyout_id) << ");" << std::endl;
+            }
+            break;
             default:
             break;
             }
@@ -208,6 +214,7 @@ class DFG {
         DFG () {
             nodes.clear();
             adj.clear();
+            visited.clear();
             id = 0;
         }
 
@@ -328,8 +335,17 @@ class DFG {
         }
 
         /*
-            Check if given basic block exists in the DFG.
+            Find a given basic block exists in the DFG.
         */
+        DFG_Node *find (int node_id) {
+            hassert (node_id>=0 && node_id<nodes.size());
+            for ( auto n1 : nodes ) {
+                if (n1->id == node_id) 
+                    return n1;
+            }
+            hassert(false);
+            return NULL;
+       }
         DFG_Node *find (Block *b) {
             hassert (b->type()==BlockType::Basic);
             for ( auto n1 : nodes ) {
@@ -404,6 +420,63 @@ class DFG {
             }
             fprintf (fp, "\n\n   ------ adj list ------ */\n");
         }
+
+        // runs depth first search starting at vertex v.
+        // each visited vertex is appended to the output vector when dfs leaves it.
+        void dfs(DFG_Node *v, std::vector<std::vector<DFG_Node *>> const& _adj, std::vector<DFG_Node *> &output) {
+            visited[v->id] = true;
+            for (auto u : _adj[v->id])
+                if (!visited[u->id])
+                    dfs(u, _adj, output);
+            output.push_back(v);
+        }
+
+        // input: adj -- adjacency list of G
+        // output: components -- the strongy connected components in G
+        // output: adj_cond -- adjacency list of G^SCC (by root vertices)
+        void scc(std::vector<std::vector<DFG_Node *>> &components,
+                    std::vector<std::vector<DFG_Node *>> &adj_cond) {
+            int nv = adj.size();
+            components.clear(), adj_cond.clear();
+            std::vector<DFG_Node *> order; // will be a sorted list of G's vertices by exit time
+            for (int i=0; i<nv; i++) {
+                visited.push_back(false);
+            }
+
+            // first series of depth first searches
+            for ( auto n : nodes )
+                if (!visited[n->id])
+                    dfs(n, adj, order);
+
+            // create adjacency list of G^T
+            std::vector<std::vector<DFG_Node *>> adj_rev(nv);
+            for (auto v : nodes)
+                for (auto u : adj[v->id])
+                    adj_rev[u->id].push_back(v);
+
+            visited.assign(nv, false);
+            reverse(order.begin(), order.end());
+
+            std::vector<DFG_Node *> roots(nv, NULL); // gives the root vertex of a vertex's SCC
+
+            // second series of depth first searches
+            for (auto v : order)
+                if (!visited[v->id]) {
+                    std::vector<DFG_Node *> component;
+                    dfs(v, adj_rev, component);
+                    components.push_back(component);
+                    auto root = component[0];
+                    for (auto u : component)
+                        roots[u->id] = root;
+                }
+
+            // add edges to condensation graph
+            adj_cond.assign(nv, {});
+            for (auto v : nodes)
+                for (auto u : adj[v->id])
+                    if (roots[v->id] != roots[u->id])
+                        adj_cond[roots[v->id]->id].push_back(roots[u->id]);
+        }
 };
 
 /*
@@ -463,6 +536,8 @@ class Projection : protected ChoppingBlock {
         std::vector<act_chp_lang_t *> procs;
         std::unordered_map<UnionFind<DFG_Node *>::id, std::vector<DFG_Node *>> subgraphs;
         DFG dfg;
+        std::unordered_map<DFG_Node *, int> sccs;
+        std::vector<std::vector<DFG_Node *>> components;
 
         /*
             Construct DFG from ChpGraph
@@ -470,8 +545,8 @@ class Projection : protected ChoppingBlock {
         void _build_graph (Sequence);
 
         /*
-            Use Union-Find to compute connected 
-            components in the DFG
+            Use Union-Find to compute weakly
+            connected components in the DFG
         */
         void _compute_connected_components ();
 
@@ -530,6 +605,12 @@ class Projection : protected ChoppingBlock {
 
         DFG_Node *_heuristic1 (DFG_Node *, int);
         DFG_Node *_heuristic2 (DFG_Node *, int);
+
+        /*
+            Check if two nodes are in the same
+            strongly-connected component in the DDG
+        */
+        bool _in_same_scc (DFG_Node *, DFG_Node *);
 
         /*
             Construct a sub-process from a set of DFG nodes.
