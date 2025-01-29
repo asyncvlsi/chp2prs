@@ -605,12 +605,25 @@ class Projection : protected ChoppingBlock {
 
         DFG_Node *_heuristic1 (DFG_Node *, int);
         DFG_Node *_heuristic2 (DFG_Node *, int);
+        DFG_Node *_heuristic3 (DFG_Node *, int);
 
         /*
             Check if two nodes are in the same
             strongly-connected component in the DDG
         */
         bool _in_same_scc (DFG_Node *, DFG_Node *);
+        
+        /*
+            Find SCC of a given node
+        */
+        std::vector<DFG_Node *>  find_component (DFG_Node *);
+
+        /*
+            Find all edges in same group as this edge
+            group_ij: set of all edges that go from SCC_i to SCC_j
+        */
+        std::pair<std::vector<DFG_Node *>, std::vector<DFG_Node *>>  find_components (DFG_Node *, DFG_Node *);
+
 
         /*
             Construct a sub-process from a set of DFG nodes.

@@ -30,6 +30,8 @@
     - implement min-cut
 */
 
+static std::vector<std::vector<DFG_Node *>> adj_cond;
+
 std::vector<Sequence> Projection::get_seqs ()
 {
     return seqs;
@@ -131,12 +133,16 @@ void Projection::project()
     fprintf(stdout, "\n*/\n");
 
     components = {};
-    std::vector<std::vector<DFG_Node *>> adj_cond = {};
+    adj_cond = {};
+    std::vector<std::vector<DFG_Node *>> adj_cond1 = {};
     hassert (dfg.id==dfg.nodes.size());
-    dfg.scc(components, adj_cond);
+
+    dfg.scc(components, adj_cond1);
+
     for ( auto c : components ) {
         fprintf(stdout, "\ncomp size: %d", int(c.size()));
     }
+    adj_cond = adj_cond1;
     // _insert_copies_v0 (g1, g1.graph.m_seq);
     // _insert_copies_v1 (g1, g1.graph.m_seq);
     bool _ins = false;
@@ -1005,6 +1011,26 @@ bool Projection::_in_same_scc (DFG_Node *n1, DFG_Node *n2)
     return (i1==i2);
 }
 
+std::vector<DFG_Node *> Projection::find_component (DFG_Node *n1)
+{
+    for ( auto c : components ) {
+        for ( auto node : c ) {
+            if (node==n1) {
+                return c;
+            } 
+        }
+    }
+    return {};
+}
+
+std::pair<std::vector<DFG_Node *>, std::vector<DFG_Node *>> Projection::find_components (DFG_Node *n1, DFG_Node *n2)
+{
+    auto c1 = find_component(n1);
+    auto c2 = find_component(n2);
+    hassert(c1!=c2);
+    return {c1, c2};
+}
+
 DFG_Node *Projection::_heuristic1(DFG_Node *n, int nwcc)
 {
     auto dest_nodes = dfg.adj[n->id];
@@ -1047,6 +1073,43 @@ DFG_Node *Projection::_heuristic2(DFG_Node *n, int nwcc)
             // fprintf(stdout,"\nbrrrr\n");
             if (subgraphs.size()>nwcc) {
                 return src_nodes[i];
+            }
+        }
+    }
+    return NULL;
+}
+
+DFG_Node *Projection::_heuristic3(DFG_Node *n, int nwcc)
+{
+    auto dest_nodes = dfg.adj[n->id];
+    std::vector<std::pair<DFG_Node *, DFG_Node *>> reconnect = {};
+    for (int i=0;i<dest_nodes.size();i++) {
+        if (!_in_same_scc(n,dest_nodes[i])) {
+
+            auto [c1, c2] = find_components(n,dest_nodes[i]);
+            fprintf(stdout, "\nCHECKING\n");
+
+            // delete ALL edges from SCC_i to SCC_j
+            for ( auto m1 : c1 ) {
+                for ( auto m2 : c2 ) {
+                    if (dfg.contains_edge(m1, m2)) {
+                        dfg.delete_edge(n,dest_nodes[i]);
+                        reconnect.push_back({n,dest_nodes[i]});
+                    }
+                }
+            }
+
+            // now check if |WCC| has increased
+            _compute_connected_components();
+
+            // add back the original edges from SCC_i to SCC_j
+            for ( auto [ns, nd] : reconnect ) {
+                dfg.add_edge(ns,nd);
+            }
+
+            if (subgraphs.size()>nwcc) {
+                fprintf(stdout, "\nFOUND\n");
+                return n;
             }
         }
     }
@@ -1184,7 +1247,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, Sequence seq, int nw
             if (n) {
                 auto vars = get_defs(n);
                 hassert (vars.size()<=1);
-                if (vars.size()==1 && _heuristic1(n, nwcc)) {
+                if (vars.size()==1 && _heuristic3(n, nwcc)) {
                     _insert_copy(gg, seq, n, vars[0]);
                     inserted = true;
                     return;
@@ -1216,7 +1279,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, Sequence seq, int nw
         for (auto &split : curr->u_select().splits) {
             auto n = dfg.find(curr, split);
             auto vars = get_defs(n);
-            if (_heuristic1(n, nwcc)) {
+            if (_heuristic3(n, nwcc)) {
                 _insert_copy (gg, seq, n, split.pre_id);
                 inserted = true;
                 return;
@@ -1228,7 +1291,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, Sequence seq, int nw
         for (auto &merge : curr->u_select().merges) {
             auto n = dfg.find(curr, merge);
             auto vars = get_defs(n);
-            if (_heuristic1(n, nwcc)) {
+            if (_heuristic3(n, nwcc)) {
                 _insert_copy (gg, seq, n, merge.post_id);
                 inserted = true;
                 return;
