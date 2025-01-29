@@ -24,7 +24,7 @@
 
 Act *a_mangle = NULL;
 
-static const int style_global = 1;
+static const int style_global = 0;
 
 void mangle_init ()
 { 
