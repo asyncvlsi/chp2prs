@@ -33,14 +33,14 @@ void RingForge::_dagify (Expr *&e)
   int id;
   Assert (e, "Hmm");
 
-#define BINARY_OP					\
-  do {							\
+#define BINARY_OP		\
+  do {					\
     _dagify (e->u.e.l);	\
     _dagify (e->u.e.r);	\
   } while (0)
 
-#define UNARY_OP					\
-  do {							\
+#define UNARY_OP		\
+  do {					\
     _dagify (e->u.e.l);	\
   } while (0)
   
@@ -109,10 +109,13 @@ void RingForge::_dagify (Expr *&e)
     break;
 
   case E_BITFIELD:
+  case E_BITSLICE:
   case E_VAR:
     {
         ActId *var = (ActId *)e->u.e.l;
+        Assert (var, "what");
         act_connection *canon_conn = var->Canonical(_p->CurScope());
+        Assert (canon_conn, "whatt");
         if (!_invarsmap.contains(canon_conn)) {
             _invarsmap.insert({canon_conn, e});
         }
@@ -1224,7 +1227,9 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
     _invarsmap.clear();
-    _dagify (e);
+    // _dagify (e);
+    e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
+    e = expr_dag(e);
 
     _expr_collect_vars (e, 1);
 
@@ -1322,7 +1327,9 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
     _invarsmap.clear();
-    _dagify (e);
+    // _dagify (e);
+    e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
+    e = expr_dag(e);
     
     _expr_collect_vars (e, 1);
 
