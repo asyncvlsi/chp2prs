@@ -50,7 +50,7 @@ namespace syn {
 
   /*-- inverters --*/
 
-  export template<pint N>
+  export template<pint X>
   defproc inv(syn::sdtexprchan?<1> A; syn::sdtexprchan!<1> Y) {
       A.r = Y.r;
       [ X<=1 -> A.d.d[0].t = Y.d.d[0].f; A.d.d[0].f = Y.d.d[0].t; 
@@ -88,7 +88,7 @@ namespace syn {
 
   /*--  signal buffers --*/
 
-  export template<pint N>
+  export template<pint X>
   defproc buf(syn::sdtexprchan?<1> A; syn::sdtexprchan!<1> Y) {
       A.r = Y.r;
       [ X<=1 -> A.d.d[0].t = Y.d.d[0].t; A.d.d[0].f = Y.d.d[0].f; 
