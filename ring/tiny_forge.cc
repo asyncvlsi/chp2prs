@@ -170,7 +170,7 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
     InstType *it;
     var_info *vi;
     Expr *e = NULL;
-    ActId *chan, *var;
+    ActId *chan, *chan2, *var;
     char chan_name[1024];
     char var_name[1024];
     
@@ -185,8 +185,8 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
         fatal_error ("Shouldn't have gotten here.."); break; 
 
     case ACT_CHP_SEMI:
-        fatal_error ("Shouldn't have gotten here.."); break; 
-#if 0
+        // fatal_error ("Shouldn't have gotten here.."); break; 
+#if 1
         Assert ((list_length(c->u.semi_comma.cmd) == 2), "hmm, pipe check failed?"); 
         li = (list_first (c->u.semi_comma.cmd));
         stmt1 = (act_chp_lang_t *)list_value (li);
@@ -195,7 +195,9 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
         Assert (stmt1->type == ACT_CHP_RECV, "hmm");
         var = stmt1->u.comm.var;
         chan = stmt1->u.comm.chan;
-        get_true_name (chan_name, chan, _p->CurScope());
+        chan2 = stmt2->u.comm.chan;
+        // chan = stmt2->u.comm.chan;
+        get_true_name (chan_name, chan2, _p->CurScope());
         it = _p->CurScope()->Lookup(chan);
         bw = TypeFactory::bitWidth(it);
         if (var) {
@@ -207,12 +209,13 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
             latch_id = _generate_single_latch (vi, (latch_info_t *)(stmt1->space), -1);
         }
 
-        // generate pipe element according to second action
-        block_id = _generate_pipe_element (stmt2, -1);
-        _terminate_port (block_id, Port::P1, Term::Sink);
+        // generate pipe element according to first action
+        block_id = _generate_pipe_element (stmt1, -1);
+        _terminate_port (block_id, Port::M1, Term::Source);
 
         fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n", bw, conn_block_prefix,block_id+1);
-        fprintf(_fp,"%s%d.ctrl = %s%d.m1;\n",conn_block_prefix,block_id+1,ring_block_prefix,block_id);
+        // fprintf(_fp,"%s%d.ctrl = %s%d.m1;\n",conn_block_prefix,block_id+1,ring_block_prefix,block_id);
+        fprintf(_fp,"%s%d.ctrl = %s%d.p1;\n",conn_block_prefix,block_id+1,ring_block_prefix,block_id);
         fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id+1,chan_name);
 
         if (var) {

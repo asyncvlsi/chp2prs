@@ -155,16 +155,16 @@ class RingSynth : public ActSynthesize {
 
 #if 1
       RingForge *rf = new RingForge (_pp->fp, p, c, b, bundled, dm, dpath_style, "", _ename);
-      // TinyForge *tf = new TinyForge (_pp->fp, p, c, b, bundled, dm, "", _ename);
+      TinyForge *tf = new TinyForge (_pp->fp, p, c, b, bundled, dm, dpath_style, "", _ename);
 
+      fprintf(stdout, "// %s : ",p->getName());
       // if (tf->check_if_pipeable(c))
       //   tf->run_forge();
       // else
       //   rf->run_forge();
-
-      fprintf(stdout, "// %s : ",p->getName());
       rf->run_forge();
       fprintf(stdout, "\n");
+      fprintf(stdout, "// process ABC duration: %lld microseconds\n", rf->get_runtime());
 #else
 
       chp_print(_pp->fp, c);

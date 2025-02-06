@@ -33,7 +33,7 @@ static const std::set<std::vector<Action>> valid_signatures =
 {   
     {Action::Send},
     {Action::Receive},
-    // {Action::Receive, Action::Send} // gotta figure out if need half/full buffer..
+    {Action::Receive, Action::Send} // gotta figure out if need half/full buffer..
 };
 
 class TinyForge : public RingForge {

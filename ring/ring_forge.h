@@ -36,6 +36,7 @@ class RingForge : public RingEngine {
             const char *exprfile);
 
         void run_forge ();
+        long long get_runtime();
 
     protected:
 
@@ -137,5 +138,8 @@ class RingForge : public RingEngine {
         int bundled;
         int datapath_style;
         int verbose;
+
+        long long runtime1;
+        // long long runtime2;
 
 };
