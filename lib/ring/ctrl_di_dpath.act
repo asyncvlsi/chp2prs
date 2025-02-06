@@ -619,6 +619,8 @@ defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
 {
 
     { N<=4 : "Upto four-way only for now" };
+
+    { N>1 : "one way split, something whent wrong" };
     capture<5, 6, 1> capt[N];
     var_access<1> vax[N];
 
@@ -636,8 +638,9 @@ defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
     // ( i : N: co[i].r = vax[i].dout[0].d.d[0].t; )
 
     // acelem3_r celems[2];
+    acelem_r<N-1> celems[N];
     [N=2->
-      acelem_r<1> celems[2];
+      //acelem_r<1> celems[2];
 
       celems[0].in_t = vax[0].dout[0].d.d[0].t; 
       celems[0].in_f = vax[0].dout[0].d.d[0].f;
@@ -647,7 +650,7 @@ defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
       celems[1].in_f = vax[1].dout[0].d.d[0].f;
       celems[1].in[0] = vax[0].dout[0].d.d[0].f;
     []N=3->
-      acelem_r<2> celems[3];
+      //acelem_r<2> celems[3];
 
       celems[0].in_t = vax[0].dout[0].d.d[0].t; 
       celems[0].in_f = vax[0].dout[0].d.d[0].f;
@@ -664,7 +667,7 @@ defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
       celems[2].in[0] = vax[0].dout[0].d.d[0].f;
       celems[2].in[1] = vax[1].dout[0].d.d[0].f;
     []N=4->
-      acelem_r<3> celems[4];
+      //acelem_r<3> celems[4];
 
       celems[0].in_t = vax[0].dout[0].d.d[0].t; 
       celems[0].in_f = vax[0].dout[0].d.d[0].f;

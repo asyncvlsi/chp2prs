@@ -50,13 +50,16 @@ namespace syn {
 
   /*-- inverters --*/
 
-  export template<pint N>
+  export template<pint X>
   defproc inv(syn::sdtexprchan?<1> A; syn::sdtexprchan!<1> Y) {
-    A.r = Y.r;
-    std::gates::sigbuf<N> _f(A.d.d[0].t);
-    _f.out[0] = Y.d.d[0].f;
-    std::gates::sigbuf<N> _t(A.d.d[0].f);
-    _t.out[0] = Y.d.d[0].t;
+      A.r = Y.r;
+      [ X<=1 -> A.d.d[0].t = Y.d.d[0].f; A.d.d[0].f = Y.d.d[0].t; 
+      [] else -> 
+      std::gates::sigbuf<X> _f(A.d.d[0].t);
+      _f.out[0] = Y.d.d[0].f;
+      std::gates::sigbuf<X> _t(A.d.d[0].f);
+      _t.out[0] = Y.d.d[0].t;
+      ]
   }
 
   export defproc INVX1 <: inv<1> () {}
@@ -85,13 +88,16 @@ namespace syn {
 
   /*--  signal buffers --*/
 
-  export template<pint N>
+  export template<pint X>
   defproc buf(syn::sdtexprchan?<1> A; syn::sdtexprchan!<1> Y) {
-    A.r = Y.r;
-    std::gates::sigbuf<N> _f(A.d.d[0].f);
-    _f.out[0] = Y.d.d[0].f;
-    std::gates::sigbuf<N> _t(A.d.d[0].t);
-    _t.out[0] = Y.d.d[0].t;
+      A.r = Y.r;
+      [ X<=1 -> A.d.d[0].t = Y.d.d[0].t; A.d.d[0].f = Y.d.d[0].f; 
+      [] else -> 
+      std::gates::sigbuf<X> _f(A.d.d[0].f);
+      _f.out[0] = Y.d.d[0].f;
+      std::gates::sigbuf<X> _t(A.d.d[0].t);
+      _t.out[0] = Y.d.d[0].t;
+      ]
   }
 
   export defproc BUFX1 <: buf<1> () {}
