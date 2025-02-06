@@ -193,6 +193,11 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     _branch_id = 0;
 }
 
+long long RingForge::get_runtime()
+{
+    return runtime1;
+}
+
 void RingForge::run_forge ()
 {
     Assert (_structure_check(_c), "Program not of allowed form?");
