@@ -29,6 +29,9 @@
 
 #include "opt/chp-opt.h"
 
+#include <chrono>
+using namespace std::chrono;
+
 class RingSynth : public ActSynthesize {
  public:
   RingSynth (const char *prefix,
@@ -162,9 +165,18 @@ class RingSynth : public ActSynthesize {
       //   tf->run_forge();
       // else
       //   rf->run_forge();
+      auto ss1 = high_resolution_clock::now();
       rf->run_forge();
-      fprintf(stdout, "\n");
-      fprintf(stdout, "// process ABC duration: %lld microseconds\n", rf->get_runtime());
+      auto st1 = high_resolution_clock::now();
+      auto d2 = duration_cast<microseconds>(st1 - ss1);
+
+      int print_rt = dp->getIntParam ("run_time");
+      if (print_rt) {
+        fprintf(stdout, "\n\n// forge duration: %lld microseconds \n\n", d2.count());
+        fprintf(stdout, "// process ABC duration: %lld microseconds\n\n", rf->get_runtime());
+        fprintf(stdout, "// process ABC I/O duration: %lld microseconds\n", rf->get_io_runtime());
+        fprintf(stdout, "\n\n");
+      }
 #else
 
       chp_print(_pp->fp, c);

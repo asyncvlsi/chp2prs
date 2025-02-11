@@ -23,6 +23,9 @@
 #include "ring_forge.h"
 #include <cmath>
 
+#include <chrono>
+using namespace std::chrono;
+
 #define SSA 0
 #define NON_SSA 1
 
@@ -196,6 +199,11 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
 long long RingForge::get_runtime()
 {
     return runtime1;
+}
+
+long long RingForge::get_io_runtime()
+{
+    return runtime2;
 }
 
 void RingForge::run_forge ()
@@ -392,6 +400,8 @@ bool RingForge::_fill_in_ics (act_chp_lang_t *&c)
 
 void RingForge::_run_forge_helper (act_chp_lang_t *c)
 {
+
+    auto ss1 = high_resolution_clock::now();
     bool printt = false;
     LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, c);
     // yes, run twice :)
@@ -413,9 +423,15 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
     lva2->generate_live_var_info();
 
     construct_var_infos (c);
+    auto st1 = high_resolution_clock::now();
+    auto d2 = duration_cast<microseconds>(st1 - ss1);
+    if (printt) fprintf(stdout, "\n\n// forge preprocessing duration 1: %lld microseconds \n\n", d2.count());
 
     if (datapath_style==SSA) 
     {
+
+        auto ss2 = high_resolution_clock::now();
+
         if (printt) fprintf (_fp, "// Read/Write Info pre-mux gen ----\n");
         if (printt) print_var_infos (_fp);
         if (printt) fprintf (_fp, "// --------------------------------\n\n");
@@ -453,6 +469,10 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
             _generate_qdi_itb(c);
             return;
         }
+
+        auto st2 = high_resolution_clock::now();
+        auto d3 = duration_cast<microseconds>(st2 - ss2);
+        if (printt) fprintf(stdout, "\n\n// forge preprocessing duration 2: %lld microseconds \n\n", d3.count());
 
         generate_branched_ring (c,1,0,0);
     }
@@ -1233,6 +1253,8 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
     _inwidthmap = ihash_new (0);
     _invarsmap.clear();
     // _dagify (e);
+
+    auto ss1 = high_resolution_clock::now();
     e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
     e = expr_dag(e);
 
@@ -1269,8 +1291,16 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
         config_set_int("expropt.abc_use_constraints", 0);
     }
 
+    auto st1 = high_resolution_clock::now();
+    auto de = duration_cast<microseconds>(st1 - ss1);
+    // fprintf(stdout, "\n\n// one expr duration: %lld microseconds \n\n", de.count());
+
+
     // run abc, then v2act to create the combinational-logic-for-math process
     ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+    runtime1 += ebi->getRuntime();
+    runtime2 += ebi->getIORuntime();
+    runtime2 += de.count();
     
     if (e->type == E_INT) 
     {
@@ -1358,6 +1388,8 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
 
     // run abc, then v2act to create the combinational-logic-for-math process
     ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+    runtime1 += ebi->getRuntime();
+    runtime2 += ebi->getIORuntime();
     
     Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;

@@ -37,6 +37,7 @@ class RingForge : public RingEngine {
 
         void run_forge ();
         long long get_runtime();
+        long long get_io_runtime();
 
     protected:
 
@@ -140,6 +141,6 @@ class RingForge : public RingEngine {
         int verbose;
 
         long long runtime1;
-        // long long runtime2;
+        long long runtime2;
 
 };

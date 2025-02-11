@@ -26,6 +26,8 @@
 #include <act/iter.h>
 #include <act/passes.h>
 #include "engines.h"
+#include <chrono>
+using namespace std::chrono;
 
 static void usage(char *name)
 {
@@ -58,7 +60,8 @@ static void usage(char *name)
   fprintf (stderr, "      * 4 : Break at assignments, receives and parallel branches\n");
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
-  fprintf (stderr, "-E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
+  fprintf (stderr, " -E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
+  fprintf (stderr, " -t : print tool runtime breakdown\n");
   fprintf (stderr, "\n");
   exit(1);
 }
@@ -83,6 +86,7 @@ int main(int argc, char **argv)
   int parallelism = 0;
   bool dflow = false;
 
+  auto start = high_resolution_clock::now();
   /* initialize ACT library */
   Act::Init(&argc, &argv);
 
@@ -92,9 +96,10 @@ int main(int argc, char **argv)
   bool use_ring = false;
   bool arb = true;
   bool project = false;
+  bool run_time = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "RhOGbXde:E:o:p:F:C:P:m:")) != -1) {
+  while ((ch = getopt (argc, argv, "RhtOGbXde:E:o:p:F:C:P:m:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -147,6 +152,10 @@ int main(int argc, char **argv)
       non_ssa = true;
       break;
 
+    case 't':
+      run_time = true;
+      break;
+
     case 'X':
       project = true;
       break;
@@ -187,13 +196,6 @@ int main(int argc, char **argv)
       }
       exprfile = Strdup (optarg);
       break;
-      
-    // case 'd':
-    //   if (decompfile) {
-    //     FREE (decompfile);
-    //   }
-    //   decompfile = Strdup (optarg);
-    //   break;
       
     case 'E':
       external_opt = 1;
@@ -255,7 +257,6 @@ int main(int argc, char **argv)
 
   /* find the process specified on the command line */
   Process *p = a->findProcess(procname, true);
-
   /* read synthesis configuration file */
   config_read("synth.conf");
 
@@ -268,6 +269,7 @@ int main(int argc, char **argv)
     p = p->Expand (ActNamespace::Global(), p->CurScope(), 0, NULL);
   }
   Assert (p, "What?");
+  auto mid = high_resolution_clock::now();
 
   ActDynamicPass *c2p = new ActDynamicPass (a, "synth", "libactchp2prspass.so", "synthesis");
 
@@ -289,6 +291,7 @@ int main(int argc, char **argv)
       c2p->setParam ("prefix", (void *)Strdup ("ring"));
       c2p->setParam ("delay_margin", delay_margin);
       c2p->setParam ("datapath_style", non_ssa);
+      c2p->setParam ("run_time", run_time);
     }
     else if (decompose) {
       c2p->setParam ("engine", (void *) gen_decomp_engine);
@@ -336,8 +339,18 @@ int main(int argc, char **argv)
     }
     c2p->setParam ("use_yosys", param);
   }
+  auto mid2 = high_resolution_clock::now();
   c2p->run (p);
 
-  // sleep(3600);
+  auto stop = high_resolution_clock::now();
+  auto duration = duration_cast<microseconds>(stop - start);
+  auto duration1 = duration_cast<microseconds>(mid - start);
+  auto duration2 = duration_cast<microseconds>(stop - mid2);
+  if (run_time) {
+    fprintf(stdout, "\n// total duration: %lld microseconds \n", duration.count());
+    fprintf(stdout, "\n// core lib duration: %lld microseconds \n", duration1.count());
+    fprintf(stdout, "\n// pass duration: %lld microseconds \n", duration2.count());
+  }
+
   return 0;
 }
