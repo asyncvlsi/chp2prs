@@ -31,7 +31,7 @@
 
 enum class NodeType { Basic, Guard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
 
-static std::vector<bool> visited (1000, false); // keeps track of which vertices are already visited
+// static std::vector<bool> visited (1000, false); // keeps track of which vertices are already visited
 
 /*
     Class that implements a single node in the 
@@ -55,7 +55,7 @@ class DFG_Node {
         NodeType t;
         Block *b;
 
-        // union
+        // should be union
             Block::Variant_Select::PhiSplit phi_inv;
             Block::Variant_Select::PhiMerge phi;
             Block::Variant_Par::PhiSplit    pll_phi_inv;
@@ -64,11 +64,38 @@ class DFG_Node {
             Block::Variant_DoLoop::InPhi    lip;
             Block::Variant_DoLoop::OutPhi   lop;
             Block::Variant_DoLoop::LoopPhi  llp;
-        // union
+        // should be union
 
         int id;
         int set_n;
 
+        explicit operator bool() const {
+            return (id!=-1);
+        }
+
+        DFG_Node (const DFG_Node &other) {
+            t = other.t;
+            b = other.b;
+            phi_inv = other.phi_inv;
+            phi = other.phi;
+            pll_phi_inv = other.pll_phi_inv;
+            pll_phi = other.pll_phi;
+            g = {other.g.first,IRGuard::deep_copy(other.g.second)};
+            lip = other.lip;
+            lop = other.lop;
+            llp = other.llp;
+            id = other.id;
+            set_n = other.set_n;
+        }
+
+        // Do not use !!
+        DFG_Node (int idx) 
+        {
+            t = NodeType::Basic;
+            b = NULL;
+            id = idx;
+            set_n = -1;
+        }
         DFG_Node (Block *_b, int idx) 
         {
             hassert (_b->type() == BlockType::Basic);
@@ -200,6 +227,14 @@ class DFG_Node {
 };
 
 /*
+    bottom/null element for this class.
+    idk what the idiomatic C/C++ way to do this is.
+*/
+static DFG_Node bot(-1);
+
+
+std::unordered_map<int, int> sccs = {};
+/*
     Class implementing the data-dependence graph.
     @param nodes Vector of DFG nodes
     @param adj Adjancency list encoding edges between DFG nodes
@@ -207,14 +242,15 @@ class DFG_Node {
 */
 class DFG {
     public:
-        std::vector<DFG_Node *> nodes;
-        std::vector<std::vector<DFG_Node *>> adj;
+        std::vector<std::unique_ptr<DFG_Node>> nodes;
+        std::vector<std::vector<int>> adj;
         int id;
 
-        DFG () {
+        DFG () :
+        nodes {}, adj {}
+        {
             nodes.clear();
             adj.clear();
-            visited.clear();
             id = 0;
         }
 
@@ -228,15 +264,14 @@ class DFG {
         }
 
         int gen_id () {
-            // id++;
             return id++;
         }
 
         /*
             Add a given node to the DFG.
         */
-        void add_node (DFG_Node *n) {
-            nodes.push_back(n);
+        void add_node (DFG_Node n) {
+            nodes.push_back(std::make_unique<DFG_Node> (n));
             adj.push_back({});
         }
 
@@ -244,82 +279,39 @@ class DFG {
             Add a directed edge between two nodes.
             Both nodes must be in the DFG.
         */
-        void add_edge (DFG_Node *from, DFG_Node *to) {
-            int f_idx = -1, t_idx = -1;
-            for (int i=0; i<nodes.size(); i++) {
-                if (nodes[i] == from) {
-                    f_idx = i;
-                }
-                if (nodes[i] == to) {
-                    t_idx = i;
-                }
-            }
-            if (f_idx==t_idx) {
-                fatal_error ("Self-edge in graph?");
-            }
-            if (f_idx==-1 || t_idx==-1) {
-                printf("\nfrom: %d, to: %d", f_idx, t_idx);
-                fatal_error ("Node doesn't exist in graph");
-            }
-            adj[f_idx].push_back(nodes[t_idx]);
+        void add_edge (int from, int to) {
+            Assert (from>=0 && from<adj.size(), "invalid from node");
+            Assert (to>=0 && to<adj.size(), "invalid to node");
+            adj[from].push_back(to);
         }
 
         /*
             Delete a directed edge between two nodes.
             Edge and both nodes must be in the DFG.
         */
-        void delete_edge (DFG_Node *from, DFG_Node *to) {
-            int f_idx = -1, t_idx = -1;
-            for (int i=0; i<nodes.size(); i++) {
-                if (nodes[i] == from) {
-                    f_idx = i;
-                }
-                if (nodes[i] == to) {
-                    t_idx = i;
-                }
-            }
-            if (f_idx==t_idx) {
-                fatal_error ("Self-edge in graph?");
-            }
-            if (f_idx==-1 || t_idx==-1) {
-                printf("\nfrom: %d, to: %d", f_idx, t_idx);
-                fatal_error ("Node doesn't exist in graph");
-            }
-            std::vector<DFG_Node *> new_adj = {};
-            for (auto i = 0; i<adj[f_idx].size(); i++) {
-                if ( !(adj[f_idx][i] == to) )
-                    new_adj.push_back(adj[f_idx][i]);
-            }
-            adj[f_idx] = new_adj;
+        void delete_edge (int from, int to) {
+            Assert (from>=0 && from<adj.size(), "invalid from node");
+            Assert (to>=0 && to<adj.size(), "invalid to node");
+            adj[from].erase(std::remove(adj[from].begin(), adj[from].end(), to), adj[from].end());
         }
 
         /*
             Check if there exists a directed edge
             between the given nodes. 
         */
-        bool contains_edge (DFG_Node *from, DFG_Node *to) {
-            int f_idx = -1;
-            for (int i=0; i<nodes.size(); i++) {
-                if (nodes[i] == from) {
-                    f_idx = i;
-                }
-            }
-            if (f_idx==-1) {
-                printf("\nfrom: %d", f_idx);
-                fatal_error ("Node doesn't exist in graph");
-            }
-            for ( auto x : adj[f_idx] ) {
-                if (x==to) return true;
-            }
-            return false;
+        bool contains_edge (int from, int to) {
+            Assert (from>=0 && from<adj.size(), "invalid from node");
+            Assert (to>=0 && to<adj.size(), "invalid to node");
+            const auto &neighbors = adj[from];
+            return std::find(neighbors.begin(), neighbors.end(), to) != neighbors.end();
         }
 
         /*
-            Check if given node exists in the DFG.
+            Check if given node_id exists in the DFG.
         */
-        bool contains (DFG_Node *node) {
-            for ( auto n1 : nodes ) {
-                if (node==n1) return true;
+        bool contains (int node_id) {
+            for ( const auto &n1 : nodes ) {
+                if (node_id==n1->id) return true;
             }
             return false;
         }
@@ -328,81 +320,83 @@ class DFG {
             Check if a node with the given Block* exists in the DFG.
         */
         bool contains (Block *b) {
-            for ( auto n1 : nodes ) {
+            for ( const auto &n1 : nodes ) {
                 if (b==(n1->b)) return true;
             }
             return false;
         }
 
         /*
-            Find a given basic block exists in the DFG.
+            Find a given basic block in the DFG.
         */
-        DFG_Node *find (int node_id) {
+        const DFG_Node &find (int node_id) {
             hassert (node_id>=0 && node_id<nodes.size());
-            for ( auto n1 : nodes ) {
+            for ( const auto &n1 : nodes ) {
                 if (n1->id == node_id) 
-                    return n1;
+                    return *n1;
             }
             hassert(false);
-            return NULL;
+            return bot;
        }
-        DFG_Node *find (Block *b) {
+
+        const DFG_Node &find (Block *b) {
             hassert (b->type()==BlockType::Basic);
-            for ( auto n1 : nodes ) {
+            for ( const auto &n1 : nodes ) {
                 if (b == n1->b) {
-                    return n1;
+                    return *n1;
                 }
             }
-            return NULL;
+            return bot;
         }
-        DFG_Node *find (Block *b, Block::Variant_Par::PhiSplit ps) {
+
+        const DFG_Node &find (Block *b, Block::Variant_Par::PhiSplit ps) {
             hassert (b->type()==BlockType::Par);
-            for ( auto n1 : nodes ) {
+            for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::PllPhiInv) 
                     && (n1->pll_phi_inv.pre_id == ps.pre_id) && 
                     (n1->pll_phi_inv.branch_ids == ps.branch_ids) ) 
-                        return n1;
+                        return *n1;
             }
-            return NULL;
+            return bot;
         }
-        DFG_Node *find (Block *b, Block::Variant_Par::PhiMerge pm) {
+        const DFG_Node &find (Block *b, Block::Variant_Par::PhiMerge pm) {
             hassert (b->type()==BlockType::Par);
-            for ( auto n1 : nodes ) {
+            for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::PllPhi) 
                     && (n1->pll_phi.post_id == pm.post_id) && 
                     (n1->pll_phi.branch_ids == pm.branch_ids) ) 
-                        return n1;
+                        return *n1;
             }
-            return NULL;
+            return bot;
         }
-        DFG_Node *find (Block *b, Block::Variant_Select::PhiSplit ps) {
+        const DFG_Node &find (Block *b, Block::Variant_Select::PhiSplit ps) {
             hassert (b->type()==BlockType::Select);
-            for ( auto n1 : nodes ) {
+            for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::SelPhiInv) 
                     && (n1->phi_inv.pre_id == ps.pre_id) && 
                     (n1->phi_inv.branch_ids == ps.branch_ids) ) 
-                        return n1;
+                        return *n1;
             }
-            return NULL;
+            return bot;
         }
-        DFG_Node *find (Block *b, Block::Variant_Select::PhiMerge pm) {
+        const DFG_Node &find (Block *b, Block::Variant_Select::PhiMerge pm) {
             hassert (b->type()==BlockType::Select);
-            for ( auto n1 : nodes ) {
+            for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::SelPhi) 
                     && (n1->phi.post_id == pm.post_id) && 
                     (n1->phi.branch_ids == pm.branch_ids) ) 
-                        return n1;
+                        return *n1;
             }
-            return NULL;
+            return bot;
         }
-        DFG_Node *find (Block *b, std::pair<int, IRGuard> g) {
+        const DFG_Node &find (Block *b, std::pair<int, IRGuard> g) {
             hassert (b->type()==BlockType::Select);
-            for ( auto n1 : nodes ) {
+            for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::Guard) 
                     && n1->g.first == g.first ) 
-                        return n1;
+                        return *n1;
             }
-            return NULL;
+            return bot;
         }
 
         /*
@@ -415,7 +409,7 @@ class DFG {
                 nodes[i]->print(std::cout);
                 fprintf(fp, "): ");
                 for (int j=0;j<adj[i].size();j++) {
-                    fprintf (fp, "%d, ", adj[i][j]->id);
+                    fprintf (fp, "%d, ", adj[i][j]);
                 }
             }
             fprintf (fp, "\n\n   ------ adj list ------ */\n");
@@ -423,59 +417,77 @@ class DFG {
 
         // runs depth first search starting at vertex v.
         // each visited vertex is appended to the output vector when dfs leaves it.
-        void dfs(DFG_Node *v, std::vector<std::vector<DFG_Node *>> const& _adj, std::vector<DFG_Node *> &output) {
-            visited[v->id] = true;
-            for (auto u : _adj[v->id])
-                if (!visited[u->id])
-                    dfs(u, _adj, output);
+        void dfs(int v, std::vector<std::vector<int>> const& _adj, 
+                std::vector<int> &output, std::vector<bool> &visited) {
+            hassert(v>=0);
+            visited[v] = true;
+            for (auto u : _adj[v])
+                if (!visited[u])
+                    dfs(u, _adj, output, visited);
             output.push_back(v);
         }
 
         // input: adj -- adjacency list of G
         // output: components -- the strongy connected components in G
         // output: adj_cond -- adjacency list of G^SCC (by root vertices)
-        void scc(std::vector<std::vector<DFG_Node *>> &components,
-                    std::vector<std::vector<DFG_Node *>> &adj_cond) {
+        void scc(std::vector<std::vector<int>> &comps,
+                    std::vector<std::vector<int>> &adj_cond,
+                    std::vector<bool> &visited) {
             int nv = adj.size();
-            components.clear(), adj_cond.clear();
-            std::vector<DFG_Node *> order; // will be a sorted list of G's vertices by exit time
+            comps.clear(), adj_cond.clear(), visited.clear();
+
+            std::vector<int> order; // will be a sorted list of G's vertices by exit time
             for (int i=0; i<nv; i++) {
                 visited.push_back(false);
             }
 
             // first series of depth first searches
-            for ( auto n : nodes )
+            for ( const auto &n : nodes )
                 if (!visited[n->id])
-                    dfs(n, adj, order);
+                    dfs(n->id, adj, order, visited);
 
             // create adjacency list of G^T
-            std::vector<std::vector<DFG_Node *>> adj_rev(nv);
-            for (auto v : nodes)
+            std::vector<std::vector<int>> adj_rev(nv);
+            for ( const auto &v : nodes )
                 for (auto u : adj[v->id])
-                    adj_rev[u->id].push_back(v);
+                    adj_rev[u].push_back(v->id);
 
             visited.assign(nv, false);
             reverse(order.begin(), order.end());
 
-            std::vector<DFG_Node *> roots(nv, NULL); // gives the root vertex of a vertex's SCC
+            std::vector<int> roots(nv, -1); // gives the root vertex of a vertex's SCC
 
             // second series of depth first searches
             for (auto v : order)
-                if (!visited[v->id]) {
-                    std::vector<DFG_Node *> component;
-                    dfs(v, adj_rev, component);
-                    components.push_back(component);
+                if (!visited[v]) {
+                    std::vector<int> component;
+                    dfs(v, adj_rev, component, visited);
+                    comps.push_back(component);
                     auto root = component[0];
                     for (auto u : component)
-                        roots[u->id] = root;
+                        roots[u] = root;
                 }
 
             // add edges to condensation graph
             adj_cond.assign(nv, {});
-            for (auto v : nodes)
+            for (const auto &v : nodes)
                 for (auto u : adj[v->id])
-                    if (roots[v->id] != roots[u->id])
-                        adj_cond[roots[v->id]->id].push_back(roots[u->id]);
+                    if (roots[v->id] != roots[u])
+                        adj_cond[roots[v->id]].push_back(roots[u]);
+        }
+
+        /*
+            Build strongly-connected components map
+        */
+        void build_sccs (const std::vector<std::vector<int>> &comps)
+        {
+            int i=0;
+            for ( const auto &comp : comps ) {
+                for ( const auto n : comp ) {
+                    sccs[n]=i;
+                }
+                i++;
+            }
         }
 };
 
@@ -534,15 +546,15 @@ class Projection : protected ChoppingBlock {
 
         std::vector<Sequence> seqs;
         std::vector<act_chp_lang_t *> procs;
-        std::unordered_map<UnionFind<DFG_Node *>::id, std::vector<DFG_Node *>> subgraphs;
+        std::unordered_map<UnionFind<int>::id, std::vector<int>> subgraphs;
         DFG dfg;
-        std::unordered_map<DFG_Node *, int> sccs;
-        std::vector<std::vector<DFG_Node *>> components;
 
         /*
             Construct DFG from ChpGraph
         */
         void _build_graph (Sequence);
+        void _build_graph_nodes (Sequence);
+        void _build_graph_edges ();
 
         /*
             Use Union-Find to compute weakly
@@ -568,7 +580,7 @@ class Projection : protected ChoppingBlock {
             and flush the renaming downstream in the program. 
             Due to STF, it is sufficient to rename within the sequence.
         */
-        void _insert_copy (GraphWithChanNames &, Sequence, DFG_Node *, VarId);
+        void _insert_copy (GraphWithChanNames &, Sequence, int, VarId);
 
         /*
             Same as other overload, with option to specify where to place 
@@ -603,49 +615,43 @@ class Projection : protected ChoppingBlock {
         */
         void _insert_copies_v3 (GraphWithChanNames &, Sequence, int, bool &);
 
-        DFG_Node *_heuristic1 (DFG_Node *, int);
-        DFG_Node *_heuristic2 (DFG_Node *, int);
-        DFG_Node *_heuristic3 (DFG_Node *, int);
+        int _heuristic1 (const DFG_Node &, int);
+        int _heuristic2 (const DFG_Node &, int);
+        int _heuristic3 (const DFG_Node &, int);
 
         /*
             Check if two nodes are in the same
             strongly-connected component in the DDG
         */
-        bool _in_same_scc (DFG_Node *, DFG_Node *);
+        bool _in_same_scc (int, int);
         
         /*
             Find SCC of a given node
         */
-        std::vector<DFG_Node *>  find_component (DFG_Node *);
+        std::vector<int>  find_component (DFG_Node *);
 
         /*
             Find all edges in same group as this edge
             group_ij: set of all edges that go from SCC_i to SCC_j
         */
-        std::pair<std::vector<DFG_Node *>, std::vector<DFG_Node *>>  find_components (DFG_Node *, DFG_Node *);
+        std::pair<std::vector<int>, std::vector<int>>  find_components (int, int);
 
 
         /*
             Construct a sub-process from a set of DFG nodes.
         */
-        bool _build_sub_proc_new (GraphWithChanNames &, Sequence, std::unordered_set<DFG_Node *>&);
+        bool _build_sub_proc_new (GraphWithChanNames &, Sequence, std::unordered_set<int>&);
         
         /*
             Construct a sub-process from a set of DFG nodes, 
             where all the nodes are basic nodes.
         */
-        void _build_basic_new (GraphWithChanNames &, std::vector<DFG_Node *>);
+        void _build_basic_new (GraphWithChanNames &, std::vector<int>);
         
         /*
             Check if all nodes are basic nodes.
         */
-        bool _all_basic (std::vector<DFG_Node *>);
-
-        /*
-            Check if a sequence is linear, i.e. has no
-            selections or loops within it.
-        */
-        bool _check_linear (Sequence, int);
+        bool _all_basic (std::vector<int>);
 
         /*
             Splice out set of blocks
@@ -660,25 +666,25 @@ class Projection : protected ChoppingBlock {
         /*
             Get set of vars defined by a DFG node
         */
-        std::vector<VarId> get_defs (DFG_Node *);
+        std::vector<VarId> get_defs (const DFG_Node&);
         
         /*
             Get set of vars used by a DFG node
         */
-        std::unordered_set<VarId> get_uses (DFG_Node *);
+        std::unordered_set<VarId> get_uses (const DFG_Node&);
 
         /*
             Check if there is a data dependence between
             `prev` and `curr`. Order matters.
         */
-        bool _check_data_dependence (DFG_Node *, DFG_Node *);
+        bool _check_data_dependence (const DFG_Node&, const DFG_Node&);
 
         /*
             Check if there is guard-phi dependence between
             `guard_node` and `phi_node`. Returns true when
             the guard node and phi node are of the same selection.
         */
-        bool _check_guard_phi_dependence (DFG_Node *, DFG_Node *);
+        bool _check_guard_phi_dependence (const DFG_Node &, const DFG_Node &);
         
         /*
             Check if there is guard-phi-inv dependence between
@@ -687,7 +693,7 @@ class Projection : protected ChoppingBlock {
             and the output of the `phi_inv` corresponding to the 
             `guard_node`'s branch is not NULL.
         */
-        bool _check_guard_phi_inv_dependence (DFG_Node *, DFG_Node *);
+        bool _check_guard_phi_inv_dependence (const DFG_Node &, const DFG_Node &);
 
         void _split_assignments (Sequence);
 };
