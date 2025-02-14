@@ -1,0 +1,13 @@
+defproc le6 (chan?(int) A, C; chan!(int) B, D)
+{
+	int x;
+	chp {
+		*[
+			A?x; 
+			*[x=0 -> 
+                *[ x<1 -> C?x;D!x ]
+            ];
+			B!x
+		 ] 
+	}
+}
