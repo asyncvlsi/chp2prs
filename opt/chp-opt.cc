@@ -108,4 +108,8 @@ void optimize_chp_O0(ChpGraph &g, const std::string &, bool) {
     removeElseOnlySelect(g);
 }
 
+void optimize_chp_basic(ChpGraph &g, const std::string &, bool) {
+    removeElseOnlySelect(g);
+}
+
 } // namespace ChpOptimize

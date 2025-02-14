@@ -32,6 +32,7 @@ namespace ChpOptimize {
 
 void optimize_chp_O2(ChpGraph &g, const std::string &proc_name, bool verbose);
 void optimize_chp_O0(ChpGraph &g, const std::string &proc_name, bool verbose);
+void optimize_chp_basic(ChpGraph &g, const std::string &proc_name, bool verbose);
 
 /* optimizations */
 bool propagateConstants(ChpGraph &graph);

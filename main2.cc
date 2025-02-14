@@ -249,6 +249,10 @@ int main(int argc, char **argv)
     }
   }
 
+  if (decompose && chpopt && !project ) {
+      fatal_error ("Do not use -O for standard decomposition, opt is broken, this is for use with projection (-X) only - w.i.p.");
+  }
+
   /* read in the ACT file */
   a = new Act(argv[optind]);
 
