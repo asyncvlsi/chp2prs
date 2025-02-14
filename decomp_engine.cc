@@ -95,15 +95,14 @@ class Decomp : public ActSynthesize {
 						p->CurScope ());
 
       if (chpopt) {
-        Assert (project, "shouldn't have been used for standard decompositions");
-        ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
-        // ChpOptimize::optimize_chp_basic (g.graph, p->getName(), false);
+        // ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
+        ChpOptimize::optimize_chp_basic2 (g.graph, p->getName(), false);
       }
       else {
         ChpOptimize::optimize_chp_basic (g.graph, p->getName(), false);
         // ChpOptimize::eliminateDeadCode (g.graph);
       }
-      // uninlineBitfieldExprsHack (g.graph);
+      uninlineBitfieldExprsHack (g.graph);
 
       std::vector<ActId *> tmp_names;
       std::unordered_set<ActId *> newnames;

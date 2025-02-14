@@ -29,7 +29,7 @@
 #include "../opt/static-tokens.h"
 #include "../opt/union-find.h"
 
-enum class NodeType { Basic, Guard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
+enum class NodeType { Basic, Guard, LoopGuard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
 
 // static std::vector<bool> visited (1000, false); // keeps track of which vertices are already visited
 
@@ -110,6 +110,17 @@ class DFG_Node {
             t = NodeType::Guard;
             b = _b;
             g = {br, IRGuard::deep_copy(_g)};
+            id = idx;
+            set_n = -1;
+        }
+        // Note: Don't think this nodetype is necessary, but 
+        // leaving it in for now..
+        DFG_Node (Block *_b, const ChpExprSingleRootDag &_g, int idx) 
+        {
+            hassert (_b->type() == BlockType::DoLoop);
+            t = NodeType::LoopGuard;
+            b = _b;
+            g = {0, IRGuard::makeExpression(ChpExprSingleRootDag::deep_copy(_g))};
             id = idx;
             set_n = -1;
         }

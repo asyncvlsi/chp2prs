@@ -323,6 +323,9 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, Sequence seq, std:
     break;
     case BlockType::DoLoop: {
         empty = _build_sub_proc_new(gg, curr->u_doloop().branch, s);
+
+        curr->u_doloop().guard = (ChpExprSingleRootDag::of_expr(
+                                        ChpExpr::makeConstant(BigInt{1}, 1)));
     }
     break;
     
@@ -387,6 +390,10 @@ std::vector<VarId> Projection::get_defs (const DFG_Node &node)
     }
     break;
     case NodeType::Guard: {
+        // does not define any variables
+    }
+    break;
+    case NodeType::LoopGuard: {
         // does not define any variables
     }
     break;
@@ -462,6 +469,9 @@ std::unordered_set<VarId> Projection::get_uses (const DFG_Node &node)
     }
     break;
     case NodeType::Guard: {
+        ret = getIdsUsedByExpr(node.g.second.u_e().e);
+    }
+    case NodeType::LoopGuard: {
         ret = getIdsUsedByExpr(node.g.second.u_e().e);
     }
     case NodeType::SelPhi: {
@@ -624,8 +634,13 @@ void Projection::_build_graph_nodes (Sequence seq)
         for ( auto lphi : curr->u_doloop().loop_phis ) {
             dfg.add_node(DFG_Node (curr, lphi, dfg.gen_id()));
         }
-        // fprintf(fp, "\n\n");
+
         _build_graph_nodes(curr->u_doloop().branch);
+
+        /*
+            // Assuming top-level loop guard is always `true` 
+            dfg.add_node(DFG_Node (curr, curr->u_doloop().guard, dfg.gen_id()));
+        */
 
         for ( auto ophi : curr->u_doloop().out_phis ) {
             dfg.add_node(DFG_Node (curr, ophi, dfg.gen_id()));

@@ -109,7 +109,14 @@ void optimize_chp_O0(ChpGraph &g, const std::string &, bool) {
 }
 
 void optimize_chp_basic(ChpGraph &g, const std::string &, bool) {
+    removeSelfAssignments(g);
     removeElseOnlySelect(g);
+}
+
+void optimize_chp_basic2(ChpGraph &g, const std::string &, bool) {
+    removeSelfAssignments(g);
+    removeElseOnlySelect(g);
+    liftGuards(g);
 }
 
 } // namespace ChpOptimize
