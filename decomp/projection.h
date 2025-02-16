@@ -624,7 +624,7 @@ class Projection : protected ChoppingBlock {
             Copy insertion strategy: heuristic-based.
             Sends/receives excluded
         */
-        void _insert_copies_v3 (GraphWithChanNames &, Sequence, int, bool &);
+        void _insert_copies_v3 (GraphWithChanNames &, Sequence, int, int, bool &);
 
         int _heuristic1 (const DFG_Node &, int);
         int _heuristic2 (const DFG_Node &, int);

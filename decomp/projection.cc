@@ -106,7 +106,7 @@ void Projection::project()
     // _insert_copies_v0 (g1, g1.graph.m_seq);
     // _insert_copies_v1 (g1, g1.graph.m_seq);
     bool _ins = false;
-    _insert_copies_v3 (g1, g1.graph.m_seq, subgraphs.size(), _ins);
+    _insert_copies_v3 (g1, g1.graph.m_seq, subgraphs.size(), 1, _ins);
     // _insert_copies_v2 (g1, g1.graph.m_seq, subgraphs.size(), _ins);
 
     ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
@@ -1087,7 +1087,7 @@ void Projection::_insert_copies_v2 (GraphWithChanNames &gg, Sequence seq, int nw
     }
 }
 
-void Projection::_insert_copies_v3 (GraphWithChanNames &gg, Sequence seq, int nwcc, bool &inserted)
+void Projection::_insert_copies_v3 (GraphWithChanNames &gg, Sequence seq, int nwcc, int root, bool &inserted)
 {
     Block *curr = seq.startseq->child();
 
@@ -1104,7 +1104,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, Sequence seq, int nw
         break;
         case StatementType::Assign: {
             const auto &n = dfg.find(curr);
-            if (n) {
+            if (n && root==0) {
                 auto vars = get_defs(n);
                 hassert (vars.size()<=1);
                 if (vars.size()==1 && (_heuristic3(n, nwcc)!=-1)) {
@@ -1129,7 +1129,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, Sequence seq, int nw
       
     case BlockType::Par: {
         for (auto &branch : curr->u_par().branches) {
-            _insert_copies_v3 (gg, branch, nwcc, inserted);
+            _insert_copies_v3 (gg, branch, nwcc, root, inserted);
         }
     }
     break;
@@ -1139,19 +1139,19 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, Sequence seq, int nw
         for (auto &split : curr->u_select().splits) {
             const auto &n = dfg.find(curr, split);
             auto vars = get_defs(n);
-            if (_heuristic3(n, nwcc)!=-1) {
+            if (root==0 && _heuristic3(n, nwcc)!=-1) {
                 _insert_copy (gg, seq, n.id, split.pre_id);
                 inserted = true;
                 return;
             }
         }
         for (auto &branch : curr->u_select().branches) {
-            _insert_copies_v3 (gg, branch.seq, nwcc, inserted);
+            _insert_copies_v3 (gg, branch.seq, nwcc, root, inserted);
         }
         for (auto &merge : curr->u_select().merges) {
             auto n = dfg.find(curr, merge);
             auto vars = get_defs(n);
-            if (_heuristic3(n, nwcc)!=-1) {
+            if (root==0 && _heuristic3(n, nwcc)!=-1) {
                 _insert_copy (gg, seq, n.id, merge.post_id);
                 inserted = true;
                 return;
@@ -1163,7 +1163,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, Sequence seq, int nw
         // for (auto &lphi : curr->u_doloop().loop_phis) {
         //     _insert_copy(gg, seq, curr->u_doloop().branch.startseq->child(), curr->u_doloop().branch.startseq, lphi.bodyin_id);
         // }
-        _insert_copies_v3 (gg, curr->u_doloop().branch, nwcc, inserted);
+        _insert_copies_v3 (gg, curr->u_doloop().branch, nwcc, 0, inserted);
         // for (auto &lphi : curr->u_doloop().loop_phis) {
         //     _insert_copy(gg, seq, curr->u_doloop().branch.startseq->child(), curr->u_doloop().branch.startseq, lphi.bodyin_id);
         // }
