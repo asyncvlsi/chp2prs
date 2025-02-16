@@ -561,6 +561,11 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
 
 }
 
+export defproc capture_bool (bool i; bool dout[1])
+{
+  i = dout[0];
+}
+
 // --------------------------------------------------------
 
 
@@ -570,6 +575,9 @@ export template <pint M>
 deftype ring_int <: int<M> (bool d[M]) {} 
 
 export defchan ring_chan <: bd () {}
+
+export deftype ring_bool_readonly <: bool () {}
+
 // --------------------------------------------------------
 
   }

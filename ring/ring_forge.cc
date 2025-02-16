@@ -690,9 +690,14 @@ int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long ini
 {
     Assert (l->type == LatchType::Latch, "generate latch for non-assignment?");
     int latch_id = l->latch_number;
+    static char buf[1024];
     if (v->iwrite < v->nwrite)
     {
-        if (init_val == -1)
+        if (v->fisbool) {
+            get_true_name(buf, v->id, _p->CurScope(), false);
+            fprintf(_fp, "capture_bool %s%s_%d(%s);\n", capture_block_prefix, v->name, latch_id, buf);
+        }
+        else if (init_val == -1)
         {
             fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
                                                          _compute_delay_line_param(pulse_width), 
@@ -724,16 +729,22 @@ int RingForge::_generate_single_latch_non_ssa (var_info *v, long long init_val=0
     int latch_id = 0;
     int write_ports = v->nwrite;
     if (write_ports==0) write_ports = 1;
+    static char buf[1024];
     
     Assert (v->iread==0, "Already created latch for this variable?");
     if (!(v->fischan))
     {
-        fprintf(_fp, "capture_init_non_ssa<%d,%d,%d,%lld,%d> %s%s_%d;\n", 
-                            _compute_delay_line_param(capture_delay), 
-                            _compute_delay_line_param(pulse_width),
-                            v->width, init_val, write_ports, 
-                            capture_block_prefix, v->name,latch_id);
-
+        if (v->fisbool) {
+            get_true_name(buf, v->id, _p->CurScope(), false);
+            fprintf(_fp, "capture_bool %s%s_%d(%s);\n", capture_block_prefix, v->name, latch_id, buf);
+        }
+        else {
+            fprintf(_fp, "capture_init_non_ssa<%d,%d,%d,%lld,%d> %s%s_%d;\n", 
+                                _compute_delay_line_param(capture_delay), 
+                                _compute_delay_line_param(pulse_width),
+                                v->width, init_val, write_ports, 
+                                capture_block_prefix, v->name,latch_id);
+        }
         v->iread++;
         v->latest_for_read = latch_id;
     }
@@ -2418,9 +2429,13 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     id = stmt1->u.assign.id;
                     char tname[1024];
                     get_true_name(tname, id, _p->CurScope());
-                    block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id);
-                    _connect_pipe_elements (prev_block_id, block_id);
-                    prev_block_id = block_id;
+                    hash_bucket_t *b = hash_lookup(var_infos, tname);
+                    vi = (var_info *)b->v;
+                    if (vi->fisbool==0) {
+                        block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id);
+                        _connect_pipe_elements (prev_block_id, block_id);
+                        prev_block_id = block_id;
+                    }
                 }
             }
             if (!list_isempty(ic_list))

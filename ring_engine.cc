@@ -113,7 +113,9 @@ class RingSynth : public ActSynthesize {
     snprintf (buf, sz, "ring_int<%d>", bitwidth);
   }
   void typeBool (char *buf, int sz) {
-    fatal_error ("bools not supported, use int<1> instead");
+    // fatal_error ("bools not supported, use int<1> instead");
+    snprintf (buf, sz, "ring_bool_readonly");
+    // snprintf (buf, sz, "bool");
   }
   void typeIntChan (char *buf, int sz, int bitwidth) {
     snprintf (buf, sz, "ring_chan<%d>", bitwidth);

@@ -923,6 +923,7 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
   act_boolean_netlist_t *bnl = _bp->getBNL(_p);
   Assert (bnl, "hmm BNL");
   pHashtable *pht = bnl->cH;
+  bool warn_once_bools = true;
 
   act_booleanized_var_t *bv;
   act_connection *conn;
@@ -945,11 +946,18 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         v->nwrite = 0;
         v->iwrite = 0;
         v->fischan = 0;
+        v->fisbool = TypeFactory::isBoolType (conn->getvx()->t);
         v->latest_for_read = 0;
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
         
         _construct_var_info (c, id, v);
+        if (v->fisbool) {
+          if (warn_once_bools) {
+            warning ("Bools in process, they must be read-only. Hope you know what you're doing.");
+            warn_once_bools = false;
+          }
+        }
         b = hash_add (var_infos, v->name);
         b->v = v;
       }

@@ -894,11 +894,20 @@ defproc merge_mux_ohc_opt(bool? c[N]; sdtexprchan<1> din[N][W]; sdtvar<W> dout; 
   a = capt.go.a;
 }
 
+export defproc capture_bool (bool i; sdtvar<1> dout)
+{
+  inverter inv(i);
+
+  i = dout.d[0].t;
+  inv.out = dout.d[0].f;
+}
 
 // --------------------------------------------------------
 export deftype ring_int <: syn::sdtvar () {} 
 
 export defchan ring_chan <: syn::sdtchan () {}
+
+export deftype ring_bool_readonly <: bool () {}
 
   }
 
