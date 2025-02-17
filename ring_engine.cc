@@ -113,15 +113,19 @@ class RingSynth : public ActSynthesize {
     snprintf (buf, sz, "ring_int<%d>", bitwidth);
   }
   void typeBool (char *buf, int sz) {
-    // fatal_error ("bools not supported, use int<1> instead");
-    snprintf (buf, sz, "ring_bool_readonly");
-    // snprintf (buf, sz, "bool");
+    fatal_error ("shouldn't have overridden bools");
   }
   void typeIntChan (char *buf, int sz, int bitwidth) {
     snprintf (buf, sz, "ring_chan<%d>", bitwidth);
   }
   void typeBoolChan (char *buf, int sz) {
     fatal_error ("bool chans not supported, use chan(int<1>) instead");
+  }
+
+  bool skipOverride (ValueIdx *vx) {
+    if (TypeFactory::isDataType(vx->t) && TypeFactory::isBoolType(vx->t))
+      return true;
+    return false;
   }
 
   void runSynth (ActPass *ap, Process *p) {

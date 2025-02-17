@@ -576,8 +576,6 @@ deftype ring_int <: int<M> (bool d[M]) {}
 
 export defchan ring_chan <: bd () {}
 
-export deftype ring_bool_readonly <: bool () {}
-
 // --------------------------------------------------------
 
   }

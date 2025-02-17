@@ -954,7 +954,7 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         _construct_var_info (c, id, v);
         if (v->fisbool) {
           if (warn_once_bools) {
-            warning ("Bools in process, they must be read-only. Hope you know what you're doing.");
+            fprintf(stdout, "\nWARNING: Bools in process, they must be read-only. Hope you know what you're doing.");
             warn_once_bools = false;
           }
         }

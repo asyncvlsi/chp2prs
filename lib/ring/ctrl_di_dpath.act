@@ -907,8 +907,6 @@ export deftype ring_int <: syn::sdtvar () {}
 
 export defchan ring_chan <: syn::sdtchan () {}
 
-export deftype ring_bool_readonly <: bool () {}
-
   }
 
 }
