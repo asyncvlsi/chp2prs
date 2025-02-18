@@ -42,16 +42,7 @@ std::vector<act_chp_lang_t *> Projection::get_procs ()
 
 void Projection::project()
 {
-
-    // fprintf(stdout, "\n/* One \n");
-    // print_chp(std::cout, g->graph);
-    // fprintf(stdout, "\n*/\n");
-
     split_assignments(g->graph);
-
-    // fprintf(stdout, "\n/* Two \n");
-    // print_chp(std::cout, g->graph);
-    // fprintf(stdout, "\n*/\n");
 
     ChpCost c(s);
 
@@ -91,8 +82,6 @@ void Projection::project()
     print_chp(std::cout, g1.graph);
     fprintf(stdout, "\n*/\n");
 
-    // fprintf(stdout, "\n\nbrr 1\n\n");
-
     std::vector<std::vector<int>> adj_cond, comps;
     std::vector<bool> visited;
     adj_cond.clear();
@@ -100,13 +89,10 @@ void Projection::project()
     visited.clear();
     hassert (dfg.id==dfg.nodes.size());
 
-    // dfg.scc(components, adj_cond, visited);
     dfg.scc(comps, adj_cond, visited);
 
     dfg.build_sccs(comps);
     
-    // _insert_copies_v0 (g1, g1.graph.m_seq);
-    // _insert_copies_v1 (g1, g1.graph.m_seq);
     bool _ins = false;
     _insert_copies_v3 (g1, g1.graph.m_seq, subgraphs.size(), 1, _ins);
     // _insert_copies_v2 (g1, g1.graph.m_seq, subgraphs.size(), _ins);
@@ -122,25 +108,29 @@ void Projection::project()
     _build_graph(g2.graph.m_seq);
     _compute_connected_components();
 
-    fprintf(stdout, "\n// Adj. List g2 \n");
-    dfg.print_adj(stdout);
-    fprintf(stdout, "\n\n");
-    fprintf(stdout, "\n// Subgraphs g2 \n");
-    print_subgraphs(stdout);
+    // fprintf(stdout, "\n// Adj. List g2 \n");
+    // dfg.print_adj(stdout);
+    // fprintf(stdout, "\n\n");
+    // fprintf(stdout, "\n// Subgraphs g2 \n");
+    // print_subgraphs(stdout);
     
-    fprintf(stdout, "\n/* STF g2 \n");
-    print_chp(std::cout, g2.graph);
-    fprintf(stdout, "\n*/\n");
+    // fprintf(stdout, "\n/* STF g2 \n");
+    // print_chp(std::cout, g2.graph);
+    // fprintf(stdout, "\n*/\n");
 
-    export_dot("zz_graph.dot");
+    // export_dot("zz_graph.dot");
 
+    _build_procs (g2);
+}
+
+void Projection::_build_procs (GraphWithChanNames &g2)
+{
     ChpOptimize::takeOutOfNewStaticTokenForm(g2.graph);
 
     int num_subgraphs = subgraphs.size();
-    // if (num_subgraphs==1) return;
 
     std::unordered_set<int> marker_node_ids = {};
-    // for (auto subgraph : subgraphs)
+
     for (int i=0; i<num_subgraphs; i++)
     {
         std::vector<ActId *> tmp_names;
@@ -163,32 +153,20 @@ void Projection::project()
         marker_node_ids.insert((*itr).second[0]);
 
         if (_all_basic((*itr).second)) {
-            fprintf(stdout, "\n// building basic: %d \n", int((*itr).second.size()));
-            fprintf(stdout, "\n\n");
             _build_basic_new (g1, (*itr).second);
         }
         else {
-            fprintf(stdout, "\n// building full: %d \n", int((*itr).second.size()));
-            fprintf(stdout, "\n\n");
             std::unordered_set<int> tmp ((*itr).second.begin(), (*itr).second.end());
             _build_sub_proc_new (g1, g1.graph.m_seq, tmp);
             _remove_guard_comms (g1, g1.graph.m_seq);
         }
 
-        // fprintf(stdout, "\n/* Post-build STF \n");
-        // print_chp(std::cout, g1.graph);
-        // fprintf(stdout, "\n*/\n");
         ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
         seqs.push_back(g1.graph.m_seq);
-        fprintf(stdout, "\n/* subproc: \n\n");
         std::vector<ActId *> tmp_names2;
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
-        chp_print(stdout, tmpact);
-        // fprintf (stdout, "\n\n LATENCY COST: %f\n\n", c.latency_cost (tmpact));
         procs.push_back(tmpact);
-        fprintf(stdout, "\n\n*/\n");
-        // fprintf(stdout, "\nnum_subg: %d", num_subgraphs);
-        // fprintf(stdout, "\nsubg_size: %d", int(subgraphs.size()));
+
         hassert (num_subgraphs == subgraphs.size());
     }
     hassert (marker_node_ids.size() == subgraphs.size());
@@ -870,26 +848,25 @@ bool Projection::_in_same_scc (int n1, int n2)
     hassert (n1!=-1);
     hassert (n2!=-1);
 
-    hassert (sccs.contains(n1));
-    hassert (sccs.contains(n2));
+    hassert (dfg.sccs.contains(n1));
+    hassert (dfg.sccs.contains(n2));
 
-    return (sccs[n1]==sccs[n2]);
+    return (dfg.sccs[n1]==dfg.sccs[n2]);
 }
-
 
 std::pair<std::vector<int>, std::vector<int>> Projection::find_components (int n1, int n2)
 {
     std::vector<int> c1 = {};
     std::vector<int> c2 = {};
     
-    hassert (sccs.contains(n1));
-    hassert (sccs.contains(n2));
+    hassert (dfg.sccs.contains(n1));
+    hassert (dfg.sccs.contains(n2));
 
-    auto r1 = sccs[n1];
-    auto r2 = sccs[n2];
+    auto r1 = dfg.sccs[n1];
+    auto r2 = dfg.sccs[n2];
     hassert (r1!=r2);
 
-    for ( const auto &x : sccs ) {
+    for ( const auto &x : dfg.sccs ) {
         if (x.second==r1) c1.push_back(x.first);
         if (x.second==r2) c2.push_back(x.first);
     }

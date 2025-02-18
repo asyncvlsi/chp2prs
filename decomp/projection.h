@@ -244,8 +244,6 @@ class DFG_Node {
 */
 static DFG_Node bot(-1);
 
-
-std::unordered_map<int, int> sccs = {};
 /*
     Class implementing the data-dependence graph.
     @param nodes Vector of DFG nodes
@@ -256,6 +254,7 @@ class DFG {
     public:
         std::vector<std::unique_ptr<DFG_Node>> nodes;
         std::vector<std::vector<int>> adj;
+        std::unordered_map<int, int> sccs;
         int id;
 
         DFG () :
@@ -263,6 +262,7 @@ class DFG {
         {
             nodes.clear();
             adj.clear();
+            sccs.clear();
             id = 0;
         }
 
@@ -272,6 +272,7 @@ class DFG {
         void clear () {
             nodes.clear();
             adj.clear();
+            sccs.clear();
             id = 0;
         }
 
@@ -503,6 +504,8 @@ class DFG {
         }
 };
 
+
+DFG dfg;
 /*
     Class implementing projection based on the DFG.
     @param seqs Vector of Sequences of projected processes
@@ -559,8 +562,11 @@ class Projection : protected ChoppingBlock {
         std::vector<Sequence> seqs;
         std::vector<act_chp_lang_t *> procs;
         std::unordered_map<UnionFind<int>::id, std::vector<int>> subgraphs;
-        DFG dfg;
 
+        /*
+            Construct CHP process from DFG
+        */
+        void _build_procs (GraphWithChanNames &);
         /*
             Construct DFG from ChpGraph
         */

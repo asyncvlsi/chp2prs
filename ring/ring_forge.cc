@@ -1323,7 +1323,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
         Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
         double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
         // double typ_delay_ps = (ebi->getDelay().typ_val);
-        if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %dps", typ_delay_ps); }
+        if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %lfps", typ_delay_ps); }
 
         // delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
         delay_line_n = _compute_delay_line_param(typ_delay_ps); 
@@ -1411,7 +1411,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     int delay_line_n = _compute_delay_line_param(typ_delay_ps); 
     if (delay_line_n <= 0) { delay_line_n = 1; }
 
-    if (verbose) fprintf(_fp, "\n// typical delay: %gps",typ_delay_ps);
+    if (verbose) fprintf(_fp, "\n// typical delay: %lfps",typ_delay_ps);
     fprintf(_fp,"\n");
     _instantiate_expr_block (xid, all_leaves);
 

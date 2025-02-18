@@ -28,6 +28,24 @@ void ChpCost::add_procs (std::vector<act_chp_lang_t *> cs)
     procs.insert( procs.end(), cs.begin(), cs.end() );
 }
 
+void ChpCost::clear()
+{
+    procs.clear();
+}
+
+std::vector<double> ChpCost::get_latency_costs ()
+{
+    std::vector<double> latency_costs = {};
+    for ( auto c : procs ) {
+        latency_costs.push_back(latency_cost(c));
+    }
+    return latency_costs;
+}
+
+/*
+    Calculate latency for a given CHP process.
+    Assumes no internal loops.
+*/
 double ChpCost::latency_cost (act_chp_lang_t *c)
 {
     double ret = 0;
@@ -81,14 +99,18 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
     case ACT_CHP_SELECT_NONDET:
     case ACT_CHP_SELECT: {
         Assert (false, "wip");
+        int way = selection_way (c);
+        Assert (way<max_way, "Selection way beyond allowed range");
+        double max_del = 0;
         act_chp_gc_t *gc = c->u.gc;
         while (gc) 
         {
+            double br_del = _latency_cost (gc->s) + expr_delay (gc->g, 1) + capture_delay;
+            if (br_del > max_del) max_del = br_del;
             gc = gc->next;
         }
-        // return ret;
+        return ( max_del + sel_delays[way] + or_delays[way] );
     }
-    return -1;
     break;
 
     case ACT_CHP_FUNC:
@@ -101,6 +123,7 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
     Assert (false, "brr");
     return -1;
 }
+
 /*
     General purpose synthesis function
 */
@@ -134,7 +157,7 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
         }
     }
 
-    config_set_int("expropt.verbose", 1);
+    config_set_int("expropt.verbose", 0);
     config_set_int("expropt.abc_use_constraints", 1);
     config_set_int("expropt.vectorize_all_ports", 1);
 
@@ -143,7 +166,7 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
 
     Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
-    if (typ_delay_ps <= 0) { fprintf(stdout, "warning: non-positive delay from abc: %fps", typ_delay_ps); }
+    // if (typ_delay_ps <= 0) { fprintf(stdout, "warning: non-positive delay from abc: %fps", typ_delay_ps); }
     
     eeo->~ExternalExprOpt();
     ebi->~ExprBlockInfo();
@@ -326,4 +349,15 @@ int ChpCost::bitwidth (ActId *id)
     return -1;
   }
   return TypeFactory::bitWidth (it);
+}
+
+int ChpCost::selection_way (act_chp_lang_t *c)
+{
+  act_chp_gc_t *gc_itr;
+  int counter = 0;
+  Assert (((c->type == ACT_CHP_SELECT)), "Called selection_way on a non-selection");
+
+  for (gc_itr = c->u.gc; gc_itr; gc_itr = gc_itr->next)
+  { counter++; }
+  return counter;
 }

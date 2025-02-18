@@ -39,17 +39,33 @@ class ChpCost {
             recv_delay = config_get_real("synth.ring.bundled.recv_delay");
             assn_delay = config_get_real("synth.ring.bundled.assn_delay");
             capture_delay = config_get_real("synth.ring.bundled.capture_delay");
+
+            int sel_sz = config_get_table_size("synth.ring.bundled.sel_delays");
+            int or_sz = config_get_table_size("synth.ring.bundled.or_delays");
+
+            Assert (sel_sz==or_sz, "Need same size for OR-delays and Sel-delays tables");
+            max_way = sel_sz;
+
+            double *tmp = config_get_table_real("synth.ring.bundled.sel_delays");
+            double *tmp2 = config_get_table_real("synth.ring.bundled.or_delays");
+            sel_delays = std::vector<double> (tmp,tmp+sel_sz);
+            or_delays = std::vector<double> (tmp2,tmp2+sel_sz);
         }
 
+        void clear();
         void add_procs (std::vector<act_chp_lang_t *>);
+        std::vector<double> get_latency_costs ();
 
         double latency_cost (act_chp_lang_t *);
+
+
         double _latency_cost (act_chp_lang_t *);
 
         double expr_delay (Expr *, int);
         void _expr_collect_vars (Expr *);
         int _gen_expr_id ();
         int bitwidth (ActId *);
+        int selection_way (act_chp_lang_t *);
 
         // Expression handling for Expropt
         iHashtable *_inexprmap;
@@ -65,6 +81,9 @@ class ChpCost {
         double recv_delay;
         double assn_delay;
         double capture_delay;
+        int max_way;
+        std::vector<double> or_delays;
+        std::vector<double> sel_delays;
 
 
 
