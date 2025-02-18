@@ -184,7 +184,7 @@ void Projection::project()
         std::vector<ActId *> tmp_names2;
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
         chp_print(stdout, tmpact);
-        fprintf (stdout, "\n\n LATENCY COST: %f\n\n", c.latency_cost (tmpact));
+        // fprintf (stdout, "\n\n LATENCY COST: %f\n\n", c.latency_cost (tmpact));
         procs.push_back(tmpact);
         fprintf(stdout, "\n\n*/\n");
         // fprintf(stdout, "\nnum_subg: %d", num_subgraphs);
