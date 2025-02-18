@@ -25,6 +25,7 @@
 #define __PROJECTION_H__
 
 #include "chopping_block.h"
+#include "chp_cost.h"
 
 #include "../opt/static-tokens.h"
 #include "../opt/union-find.h"

@@ -52,7 +52,9 @@ void Projection::project()
     // fprintf(stdout, "\n/* Two \n");
     // print_chp(std::cout, g->graph);
     // fprintf(stdout, "\n*/\n");
-    
+
+    ChpCost c(s);
+
     // ChpOptimize::putIntoStaticTokenForm(g->graph);
     ChpOptimize::putIntoNewStaticTokenForm(g->graph);
 
@@ -182,6 +184,7 @@ void Projection::project()
         std::vector<ActId *> tmp_names2;
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
         chp_print(stdout, tmpact);
+        fprintf (stdout, "\n\n LATENCY COST: %f\n\n", c.latency_cost (tmpact));
         procs.push_back(tmpact);
         fprintf(stdout, "\n\n*/\n");
         // fprintf(stdout, "\nnum_subg: %d", num_subgraphs);
