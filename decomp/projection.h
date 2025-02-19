@@ -32,7 +32,16 @@
 
 enum class NodeType { Basic, Guard, LoopGuard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
 
-// static std::vector<bool> visited (1000, false); // keeps track of which vertices are already visited
+typedef std::pair<int,int> IntPair;
+
+template<> struct std::hash<IntPair> {
+    size_t operator()(const IntPair &x) const {
+        size_t seed = 0;
+        hash_combine(seed, x.first);
+        hash_combine(seed, x.second);
+        return seed;
+    }
+};
 
 /*
     Class that implements a single node in the 
@@ -504,8 +513,8 @@ class DFG {
         }
 };
 
-
 DFG dfg;
+
 /*
     Class implementing projection based on the DFG.
     @param seqs Vector of Sequences of projected processes
@@ -637,12 +646,18 @@ class Projection : protected ChoppingBlock {
         int _heuristic2 (const DFG_Node &, int);
         int _heuristic3 (const DFG_Node &, int);
 
+        std::unordered_map<IntPair, std::vector<IntPair>> _candidate_edges ();
+
         /*
             Check if two nodes are in the same
             strongly-connected component in the DDG
         */
         bool _in_same_scc (int, int);
         
+        /*
+            Find SCC of a given node
+        */
+        int _find_scc (int n1);
         /*
             Find SCC of a given node
         */

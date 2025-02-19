@@ -42,113 +42,121 @@ std::vector<act_chp_lang_t *> Projection::get_procs ()
 
 void Projection::project()
 {
+    bool printt = false;
+
+    // split multi-assignments into single
     split_assignments(g->graph);
-
-    ChpCost c(s);
-
-    // ChpOptimize::putIntoStaticTokenForm(g->graph);
     ChpOptimize::putIntoNewStaticTokenForm(g->graph);
 
-    fprintf(stdout, "\n/* STF \n");
-    print_chp(std::cout, g->graph);
-    fprintf(stdout, "\n*/\n");
+    if (printt) {
+        fprintf(stdout, "\n/* STF \n");
+        print_chp(std::cout, g->graph);
+        fprintf(stdout, "\n*/\n");
+    }
 
     // insert guard bool communications
     dfg.clear();
     _build_graph(g->graph.m_seq);
-
     ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
-    fprintf(stdout, "\n/* Non-STF \n");
-    print_chp(std::cout, g->graph);
-    fprintf(stdout, "\n*/\n");
     _insert_guard_comms();
 
-    std::vector<ActId *> tmp_names;
-    auto a1 = chp_graph_to_act (*g, tmp_names, s);
-    auto g1 = chp_graph_from_act (a1, s);
+    if (printt) {
+        fprintf(stdout, "\n/* Non-STF \n");
+        print_chp(std::cout, g->graph);
+        fprintf(stdout, "\n*/\n");
+    }
 
     dfg.clear();
-    ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
-    _build_graph(g1.graph.m_seq);
+    ChpOptimize::putIntoNewStaticTokenForm(g->graph);
+    _build_graph(g->graph.m_seq);
     _compute_connected_components();
 
-    fprintf(stdout, "\n// Adj. List g1 \n");
-    dfg.print_adj(stdout);
-    fprintf(stdout, "\n\n");
-    fprintf(stdout, "\n// Subgraphs g1 \n");
-    print_subgraphs(stdout);
-    
-    fprintf(stdout, "\n/* STF g1 \n");
-    print_chp(std::cout, g1.graph);
-    fprintf(stdout, "\n*/\n");
+    if (printt) {
+        fprintf(stdout, "\n// Adj. List g1 \n");
+        dfg.print_adj(stdout);
+        fprintf(stdout, "\n\n");
+        fprintf(stdout, "\n// Subgraphs g1 \n");
+        print_subgraphs(stdout);
+        fprintf(stdout, "\n/* STF g1 \n");
+        print_chp(std::cout, g->graph);
+        fprintf(stdout, "\n*/\n");
+    }
 
+    // SCC aux. structures
     std::vector<std::vector<int>> adj_cond, comps;
     std::vector<bool> visited;
-    adj_cond.clear();
-    comps.clear();
-    visited.clear();
+    adj_cond.clear(); comps.clear(); visited.clear();
     hassert (dfg.id==dfg.nodes.size());
 
+    // Compute SCCs
     dfg.scc(comps, adj_cond, visited);
-
     dfg.build_sccs(comps);
     
+    // Copy-insertion strategy
     bool _ins = false;
-    _insert_copies_v3 (g1, g1.graph.m_seq, subgraphs.size(), 1, _ins);
-    // _insert_copies_v2 (g1, g1.graph.m_seq, subgraphs.size(), _ins);
+    _insert_copies_v3 (*g, g->graph.m_seq, subgraphs.size(), 1, _ins);
 
-    ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
+    auto brr = _candidate_edges ();
 
-    std::vector<ActId *> tmp_names2;
-    auto a2 = chp_graph_to_act (g1, tmp_names2, s);
-    auto g2 = chp_graph_from_act (a2, s);
+    // Construct sub-processes
+    _build_procs (*g);
 
-    dfg.clear();
-    ChpOptimize::putIntoNewStaticTokenForm(g2.graph);
-    _build_graph(g2.graph.m_seq);
-    _compute_connected_components();
+    ChpCost cc(s);
+    cc.add_procs(procs);
+    // auto ret = cc.get_latency_costs();
+    // for ( auto r : ret ) {
+    //     fprintf (stdout, "%lf, ", r);
+    // }
 
-    // fprintf(stdout, "\n// Adj. List g2 \n");
-    // dfg.print_adj(stdout);
-    // fprintf(stdout, "\n\n");
-    // fprintf(stdout, "\n// Subgraphs g2 \n");
-    // print_subgraphs(stdout);
-    
-    // fprintf(stdout, "\n/* STF g2 \n");
-    // print_chp(std::cout, g2.graph);
-    // fprintf(stdout, "\n*/\n");
-
-    // export_dot("zz_graph.dot");
-
-    _build_procs (g2);
 }
 
-void Projection::_build_procs (GraphWithChanNames &g2)
+/*
+    Returns map from pair `{scc_i,scc_j}` to vector of edges that go from `scc_i` to `scc_j`
+*/
+std::unordered_map<IntPair, std::vector<IntPair>> Projection::_candidate_edges ()
 {
-    ChpOptimize::takeOutOfNewStaticTokenForm(g2.graph);
+    std::unordered_map<IntPair, std::vector<IntPair>> ret = {};
+    int i=0;
+    for ( const auto &src : dfg.adj ) {
+        for ( const auto &dest : src ) {
+            auto scc1 = _find_scc(i);
+            auto scc2 = _find_scc(dest);
+            if (scc1!=scc2) {
+                if (!ret.contains(IntPair(scc1,scc2)))
+                    ret.insert({IntPair(scc1,scc2),{}});
+                ret[IntPair(scc1,scc2)].push_back(IntPair(i,dest));
+            }
+        }
+        i++;
+    }
+    return ret;
+}
+
+void Projection::_build_procs (GraphWithChanNames &gx)
+{
+    ChpOptimize::takeOutOfNewStaticTokenForm(gx.graph);
 
     int num_subgraphs = subgraphs.size();
-
     std::unordered_set<int> marker_node_ids = {};
 
     for (int i=0; i<num_subgraphs; i++)
     {
         std::vector<ActId *> tmp_names;
 
-        auto a1 = chp_graph_to_act (g2, tmp_names, s);
+        auto a1 = chp_graph_to_act (gx, tmp_names, s);
         auto g1 = chp_graph_from_act (a1, s);
 
         ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
 
+        // Need to do this coz making the copy-graph g1 means all the Block pointers are new
+        // Perhaps there's a better way to do this but Blocks are explicitly banned from being copied
         dfg.clear();
         _build_graph(g1.graph.m_seq);
         _compute_connected_components();
 
         auto itr = subgraphs.begin();
         while ((marker_node_ids.contains((*itr).second[0]))) 
-        {
-            itr++;
-        }
+        { itr++; }
         hassert (itr != subgraphs.end());
         marker_node_ids.insert((*itr).second[0]);
 
@@ -854,6 +862,13 @@ bool Projection::_in_same_scc (int n1, int n2)
     return (dfg.sccs[n1]==dfg.sccs[n2]);
 }
 
+int Projection::_find_scc (int n1)
+{
+    hassert (n1!=-1);
+    hassert (dfg.sccs.contains(n1));
+    return dfg.sccs[n1];
+}
+
 std::pair<std::vector<int>, std::vector<int>> Projection::find_components (int n1, int n2)
 {
     std::vector<int> c1 = {};
@@ -933,7 +948,7 @@ int Projection::_heuristic3(const DFG_Node &n, int nwcc)
         if (!_in_same_scc(n.id,dest_nodes[i])) {
 
             auto [c1, c2] = find_components(n.id,dest_nodes[i]);
-            fprintf(stdout, "\n// CHECKING\n");
+            // fprintf(stdout, "\n// CHECKING\n");
 
             // delete ALL edges from SCC_i to SCC_j
             for ( auto m1 : c1 ) {
@@ -954,8 +969,8 @@ int Projection::_heuristic3(const DFG_Node &n, int nwcc)
             }
 
             if (subgraphs.size()>nwcc) {
-                fprintf(stdout, "\n// FOUND\n");
-                return n.id;
+                // fprintf(stdout, "\n// FOUND\n");
+                return dest_nodes[i];
             }
         }
     }
@@ -1321,6 +1336,10 @@ void Projection::_replace_uses (GraphWithChanNames &gg, Sequence seq, VarId oldv
     }
 }
 
+/*
+    TODO: This could conflict with an actual
+    copy of a 1-bit var.
+*/
 void Projection::_remove_guard_comms (GraphWithChanNames &gg, Sequence seq)
 {
     Block *curr = seq.startseq->child();

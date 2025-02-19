@@ -54,10 +54,10 @@ class ChpCost {
 
         void clear();
         void add_procs (std::vector<act_chp_lang_t *>);
+        double get_max_latency_cost ();
         std::vector<double> get_latency_costs ();
 
         double latency_cost (act_chp_lang_t *);
-
 
         double _latency_cost (act_chp_lang_t *);
 
@@ -66,6 +66,8 @@ class ChpCost {
         int _gen_expr_id ();
         int bitwidth (ActId *);
         int selection_way (act_chp_lang_t *);
+
+        void fill_in_else_explicit (act_chp_lang_t *);
 
         // Expression handling for Expropt
         iHashtable *_inexprmap;

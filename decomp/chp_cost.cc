@@ -33,6 +33,12 @@ void ChpCost::clear()
     procs.clear();
 }
 
+double ChpCost::get_max_latency_cost ()
+{
+    auto costs = get_latency_costs();
+    return *std::max_element(costs.begin(), costs.end());
+}
+
 std::vector<double> ChpCost::get_latency_costs ()
 {
     std::vector<double> latency_costs = {};
@@ -49,6 +55,7 @@ std::vector<double> ChpCost::get_latency_costs ()
 double ChpCost::latency_cost (act_chp_lang_t *c)
 {
     double ret = 0;
+    fill_in_else_explicit (c);
     return _latency_cost (c);
 }
 
@@ -98,7 +105,6 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
 
     case ACT_CHP_SELECT_NONDET:
     case ACT_CHP_SELECT: {
-        Assert (false, "wip");
         int way = selection_way (c);
         Assert (way<max_way, "Selection way beyond allowed range");
         double max_del = 0;
@@ -125,7 +131,7 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
 }
 
 /*
-    General purpose synthesis function
+    General purpose expression synthesis and delay extraction function
 */
 double ChpCost::expr_delay (Expr *e, int out_bw)
 {
@@ -166,7 +172,6 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
 
     Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
-    // if (typ_delay_ps <= 0) { fprintf(stdout, "warning: non-positive delay from abc: %fps", typ_delay_ps); }
     
     eeo->~ExternalExprOpt();
     ebi->~ExprBlockInfo();
@@ -360,4 +365,101 @@ int ChpCost::selection_way (act_chp_lang_t *c)
   for (gc_itr = c->u.gc; gc_itr; gc_itr = gc_itr->next)
   { counter++; }
   return counter;
+}
+
+void ChpCost::fill_in_else_explicit (act_chp_lang_t *c)
+{
+    listitem_t *li;
+    act_chp_lang_t *stmt;
+    act_chp_gc_t *gc;
+    Expr *g, *disj_gs, *tmp, *itr;
+    Expr *inv_disj_gs, *expr_false, *else_explicit;
+    if (!c) return;
+
+    switch (c->type) {
+    case ACT_CHP_COMMALOOP:
+    case ACT_CHP_SEMILOOP:
+        fatal_error ("Replication loops should've been removed..");
+        break;
+        
+    case ACT_CHP_COMMA:
+    case ACT_CHP_SEMI:
+        for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+        {
+            stmt = (act_chp_lang_t *)(list_value(li));
+            fill_in_else_explicit (stmt);
+        }
+        break;
+
+    case ACT_CHP_LOOP:
+    case ACT_CHP_DOLOOP:
+        gc = c->u.gc;
+        fill_in_else_explicit (gc->s);
+        break;
+        
+    case ACT_CHP_SELECT:
+        NEW (disj_gs, Expr);
+        disj_gs->type = E_OR;
+
+        NEW (expr_false, Expr);
+        expr_false->type = E_FALSE;
+
+        gc = c->u.gc;
+        disj_gs->u.e.r = expr_expand(gc->g, ActNamespace::Global(), _s);
+        itr = disj_gs;
+
+        for (gc = gc->next ; gc ; gc = gc->next)
+        {
+            if (gc->g)
+            {
+                itr->u.e.l = gc->g;
+                NEW (tmp, Expr);
+                tmp->type = E_OR;
+                tmp->u.e.r = expr_expand(itr, ActNamespace::Global(), _s);
+                NEW (itr, Expr);
+                itr = tmp;
+            }
+            else
+            {
+                // else exists => complement and insert
+                itr = itr->u.e.r;
+                NEW (inv_disj_gs, Expr);
+                inv_disj_gs->type = E_NOT;
+                inv_disj_gs->u.e.l = itr;
+                gc->g = expr_expand(inv_disj_gs, ActNamespace::Global(), _s);
+            }
+        }
+
+        for (gc = c->u.gc ; gc ; gc = gc->next)
+        {
+            fill_in_else_explicit (gc->s);
+        }
+
+        break;
+
+    case ACT_CHP_SELECT_NONDET:
+        for (gc = c->u.gc ; gc ; gc = gc->next)
+        {
+            fill_in_else_explicit (gc->s);
+        }
+        break;
+        
+    case ACT_CHP_SKIP:
+    case ACT_CHP_ASSIGN:
+    case ACT_CHP_ASSIGNSELF:
+    case ACT_CHP_RECV:
+    case ACT_CHP_SEND:
+        break;
+        
+    case ACT_CHP_FUNC:
+    case ACT_CHP_HOLE: /* to support verification */
+    case ACT_CHP_MACRO:
+    case ACT_HSE_FRAGMENTS:
+        break;
+
+    default:
+        fatal_error ("Unknown type");
+        break;
+    }
+    return;
 }
