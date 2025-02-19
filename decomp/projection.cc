@@ -96,20 +96,59 @@ void Projection::project()
     bool _ins = false;
     _insert_copies_v3 (*g, g->graph.m_seq, subgraphs.size(), 1, _ins);
 
-    auto brr = _candidate_edges ();
-
     // Construct sub-processes
     _build_procs (*g);
 
-    ChpCost cc(s);
-    cc.add_procs(procs);
-    // auto ret = cc.get_latency_costs();
-    // for ( auto r : ret ) {
-    //     fprintf (stdout, "%lf, ", r);
-    // }
-
 }
+/*
+    This is the brute-force bit.
+    Checks every possible subset of SCC-edges that can be cut.
+    Picks the one with minimum max. latency cost
+*/
 
+void Projection::_insert_copies_v4 (GraphWithChanNames &g)
+{
+    auto cand_edges = _candidate_edges();
+    std::vector<std::pair<IntPair, std::vector<IntPair>>> edges (cand_edges.begin(), cand_edges.end());
+    auto sz = cand_edges.size();
+
+    ChpCost c(s);
+    double min_max_cost = std::numeric_limits<double>::max();
+    std::vector<IntPair> best_edges_subset = {};
+
+    // iterate over all possible subsets
+    for (int mask=0; mask<(1<<sz); mask++)
+    {
+        std::vector<IntPair> edges_subset = {};
+        // pick the subset 
+        for (int i = 0; i < sz; i++) {
+            if (mask & (1 << i)) {
+                edges_subset.insert(edges_subset.end(), edges[i].second.begin(), edges[i].second.end());
+            }
+        }
+
+        // delete edges in this subset
+        for ( auto e : edges_subset ) {
+            dfg.delete_edge (e.first, e.second);
+            // TODO: Actually insert copies corresponding to this edge deletion..
+            // How to "un-insert" copies..?
+        }
+
+        // build the subprocess and see what the cost is
+        _build_procs(g);
+        c.add_procs(procs);
+        auto cost = c.get_max_latency_cost();
+        if (cost < min_max_cost) {
+            min_max_cost = cost;
+            best_edges_subset = edges_subset;
+        }
+
+        // add edges back
+        for ( auto e : edges_subset ) {
+            dfg.add_edge (e.first, e.second);
+        }
+    }
+}
 /*
     Returns map from pair `{scc_i,scc_j}` to vector of edges that go from `scc_i` to `scc_j`
 */
@@ -134,6 +173,7 @@ std::unordered_map<IntPair, std::vector<IntPair>> Projection::_candidate_edges (
 
 void Projection::_build_procs (GraphWithChanNames &gx)
 {
+    procs.clear();
     ChpOptimize::takeOutOfNewStaticTokenForm(gx.graph);
 
     int num_subgraphs = subgraphs.size();
