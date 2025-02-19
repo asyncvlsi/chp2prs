@@ -607,18 +607,28 @@ class Projection : protected ChoppingBlock {
             and flush the renaming downstream in the program. 
             Due to STF, it is sufficient to rename within the sequence.
         */
-        void _insert_copy (GraphWithChanNames &, Sequence, int, VarId);
+        VarId _insert_copy (GraphWithChanNames &, int, VarId);
+        // void _insert_copy (GraphWithChanNames &, Sequence, int, VarId);
+        void _uninsert_copy (GraphWithChanNames &, int, VarId, VarId);
+
 
         /*
             Same as other overload, with option to specify where to place 
             the distributed assignment and where to start the renaming from. 
+            Deprecated.
         */
-        void _insert_copy (GraphWithChanNames &, Sequence, Block *, Block *, VarId);
+        // void _insert_copy (GraphWithChanNames &, Sequence, Block *, Block *, VarId);
 
         /*
             Rename `old_var` to `new_var`, but exclude `excl` and start after `start_after`
         */
+        void _replace_uses (GraphWithChanNames &, VarId, VarId, Block *, Block *);
+        
+        /*
+            Internal use only.
+        */
         void _replace_uses (GraphWithChanNames &, Sequence, VarId, VarId, Block *, Block *);
+        void _replace_uses (GraphWithChanNames &, Block *, VarId, VarId, Block *, Block *);
         
         /*
             Copy insertion strategy: at all receives.
