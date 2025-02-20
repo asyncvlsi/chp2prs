@@ -815,4 +815,6 @@ act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr,
 			       Scope *s);
 
 
+GraphWithChanNames deep_copy_graph (const GraphWithChanNames &g);
+
 } // namespace ChpOptimize

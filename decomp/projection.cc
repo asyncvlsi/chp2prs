@@ -97,6 +97,13 @@ void Projection::project()
     _insert_copies_v3 (*g, g->graph.m_seq, subgraphs.size(), 1, _ins);
     // _insert_copies_v4 (*g);
 
+    // auto ggg = ChpOptimize::deep_copy_graph(*g);
+    // print_chp(std::cout, ggg.graph);
+    // fprintf(stdout, "\n\n");
+    // print_chp(std::cout, g->graph);
+    // fprintf(stdout, "\n\n");
+    // hassert (false);
+
     // Construct sub-processes
     _build_procs (*g);
 }
@@ -132,7 +139,6 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g)
         print_chp (std::cout, g.graph);
         fprintf (stdout, "\nchp 1 -----\n");
 
-
         // delete edges in this subset
         std::unordered_map<VarId, VarId> old_to_new = {};
         for ( auto e : edges_subset ) {
@@ -142,9 +148,9 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g)
             auto vars = get_defs(node);
             Assert(vars.size()<=1, "hm");
             if (vars.size()==1) {
-                // auto newvar = _insert_copy (g, e.first, vars[0]);
-                // old_to_new.insert({vars[0],newvar});
-                // fprintf (stdout, "\n\ninserting copy: %llu, %llu \n", vars[0].m_id, newvar.m_id);
+                auto newvar = _insert_copy (g, e.first, vars[0]);
+                old_to_new.insert({vars[0],newvar});
+                fprintf (stdout, "\n\ninserting copy: %llu, %llu \n", vars[0].m_id, newvar.m_id);
             }
         }
 
@@ -160,6 +166,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g)
         //     min_max_cost = cost;
         //     best_edges_subset = edges_subset;
         // }
+        // ChpOptimize::putIntoNewStaticTokenForm(g.graph);
 
         // add edges back
         for ( auto e : edges_subset ) {
