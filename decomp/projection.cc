@@ -56,17 +56,16 @@ void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
     d_in.clear();
     ChpOptimize::putIntoNewStaticTokenForm(g_in.graph);
     _build_graph(g_in.graph.m_seq, d_in);
-    subgraphs = _compute_connected_components(d_in);
 
     // SCC aux. structures
     std::vector<std::vector<int>> adj_cond, comps;
     std::vector<bool> visited;
     adj_cond.clear(); comps.clear(); visited.clear();
-    hassert (dfg1.id==dfg1.nodes.size());
+    hassert (d_in.id==d_in.nodes.size());
 
     // Compute SCCs
-    dfg1.scc(comps, adj_cond, visited);
-    dfg1.build_sccs(comps);
+    d_in.scc(comps, adj_cond, visited);
+    d_in.build_sccs(comps);
 }
 
 void Projection::project()
@@ -91,7 +90,10 @@ void Projection::project()
     _build_graph(g->graph.m_seq, dfg1);
 
     // Construct sub-processes
+
+    ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
     _build_procs (*g, dfg1);
+    // ChpOptimize::putIntoNewStaticTokenForm(g->graph);
 }
 
 /*
@@ -102,17 +104,20 @@ void Projection::project()
 */
 void Projection::_insert_copies_v4 (const GraphWithChanNames &g, DFG &d_in)
 {
-    auto cand_edges = _candidate_edges(d_in);
+    // make copy of graph
+    std::unordered_map<ChanId, ChanId> cc;
+    std::unordered_map<VarId, VarId> vv;
+    auto g_copy = deep_copy_graph(g,cc,vv);
+    DFG d_loc;
+    step2(g_copy, d_loc);
+
+    auto cand_edges = _candidate_edges(d_loc);
     std::vector<std::pair<IntPair, std::vector<IntPair>>> edges (cand_edges.begin(), cand_edges.end());
     auto sz = cand_edges.size();
 
     ChpCost c(s);
     double min_max_cost = std::numeric_limits<double>::max();
     std::vector<IntPair> best_edges_subset = {};
-
-    std::unordered_map<ChanId, ChanId> cc;
-    std::unordered_map<VarId, VarId> vv;
-    auto gtmp = deep_copy_graph(g,cc,vv);
 
     // iterate over all possible subsets
     for (int mask=0; mask<(1<<sz); mask++)
@@ -126,30 +131,30 @@ void Projection::_insert_copies_v4 (const GraphWithChanNames &g, DFG &d_in)
         }
 
         fprintf (stdout, "\nchp 1 -----\n");
-        print_chp (std::cout, gtmp.graph);
+        print_chp (std::cout, g_copy.graph);
         fprintf (stdout, "\nchp 1 -----\n");
 
         // delete edges in this subset
         std::unordered_map<VarId, VarId> old_to_new = {};
         for ( auto e : edges_subset ) {
-            d_in.delete_edge (e.first, e.second);
+            d_loc.delete_edge (e.first, e.second);
             // Actually insert copies corresponding to this edge deletion
-            const auto &node = d_in.find(e.first);
+            const auto &node = d_loc.find(e.first);
             auto vars = get_defs(node);
             Assert(vars.size()<=1, "hm");
             if (vars.size()==1) {
-                auto newvar = _insert_copy (gtmp, d_in, e.first, vars[0]);
+                auto newvar = _insert_copy (g_copy, d_loc, e.first, vars[0]);
                 old_to_new.insert({vars[0],newvar});
                 fprintf (stdout, "\n\ninserting copy: %llu, %llu \n", vars[0].m_id, newvar.m_id);
             }
         }
 
         fprintf (stdout, "\nchp after copy insertion -----\n");
-        print_chp (std::cout, gtmp.graph);
+        print_chp (std::cout, g_copy.graph);
         fprintf (stdout, "\nchp after copy insertion -----\n");
 
         // build the subprocesses and see what the cost is
-        _build_procs(gtmp, d_in);
+        _build_procs(g_copy, d_loc);
         fprintf (stdout, "\n\n");
         fprintf (stdout, "got here\n\n");
         c.add_procs(procs);
@@ -162,13 +167,13 @@ void Projection::_insert_copies_v4 (const GraphWithChanNames &g, DFG &d_in)
 
         // add edges back
         for ( auto e : edges_subset ) {
-            d_in.add_edge (e.first, e.second);
+            d_loc.add_edge (e.first, e.second);
             // Un-insert the copy corresponding to this edge
-            const auto &node = d_in.find(e.first);
+            const auto &node = d_loc.find(e.first);
             auto vars = get_defs(node);
             Assert(vars.size()<=1, "hm");
             if (vars.size()==1) {
-                _uninsert_copy (gtmp, d_in, e.first, old_to_new[vars[0]], vars[0]);
+                _uninsert_copy (g_copy, d_loc, e.first, old_to_new[vars[0]], vars[0]);
             }
         }
     }
@@ -213,10 +218,10 @@ std::unordered_map<IntPair, std::vector<IntPair>> Projection::_candidate_edges (
     return ret;
 }
 
-void Projection::_build_procs (GraphWithChanNames &gx, DFG &d_in)
+void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
 {
     procs.clear();
-    ChpOptimize::takeOutOfNewStaticTokenForm(gx.graph);
+    // ChpOptimize::takeOutOfNewStaticTokenForm(gx.graph);
 
     int num_subgraphs = _compute_connected_components(d_in).size();
     std::unordered_set<int> marker_node_ids = {};
@@ -767,7 +772,7 @@ void Projection::_insert_guard_comms (GraphWithChanNames &g_in, DFG &d_in)
                     hassert ( g_in.graph.id_pool().getBitwidth(assn_blk->u_basic().stmt.u_assign().ids[0]) == 1 );
 
                     ChanId ci = g_in.graph.id_pool().makeUniqueChan(1, false);
-                    var_to_actvar vtoa(s, &g_in.graph.id_pool());
+                    var_to_actvar vtoa(s, g_in.graph.id_pool());
                     ActId *id = vtoa.chanMap(ci);
                     g_in.name_from_chan.insert({ci, id});
                     
@@ -1260,7 +1265,7 @@ VarId Projection::_insert_copy (GraphWithChanNames &gg, const DFG &d_in, int fro
     auto b_from = d_in.find(from).b;
 
     ChanId ci = gg.graph.id_pool().makeUniqueChan(gg.graph.id_pool().getBitwidth(v), false);
-    var_to_actvar vtoa(s, &gg.graph.id_pool());
+    var_to_actvar vtoa(s, gg.graph.id_pool());
     ActId *id = vtoa.chanMap(ci);
     gg.name_from_chan.insert({ci, id});
     

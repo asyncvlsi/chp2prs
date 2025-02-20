@@ -543,10 +543,10 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 
 }
 
-act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr,
+act_chp_lang *chp_graph_to_act(const GraphWithChanNames &gr,
 			       std::vector<ActId *> &newnames,
 			       Scope *s) {
-  var_to_actvar table(s, &gr.graph.id_pool());
+  var_to_actvar table(s, gr.graph.id_pool());
 
   for (auto &[x, v] : gr.name_from_chan) {
     table.name_from_chan[x] = v;

@@ -579,7 +579,7 @@ class Projection : protected ChoppingBlock {
         /*
             Construct CHP process from DFG
         */
-        void _build_procs (GraphWithChanNames &, DFG &d_in);
+        void _build_procs (const GraphWithChanNames &, DFG &d_in);
         /*
             Construct DFG from ChpGraph
         */

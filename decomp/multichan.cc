@@ -215,7 +215,7 @@ void MultiChan::_update_with_aliases (Sequence seq, ChanId id)
             if (curr->u_basic().stmt.u_send().chan == id)
             {
                 ChanId alias_chan = g->graph.id_pool().makeUniqueChan(g->graph.id_pool().getBitwidth(id));
-                var_to_actvar vtoa(s, &g->graph.id_pool());
+                var_to_actvar vtoa(s, g->graph.id_pool());
                 ActId *aid = vtoa.chanMap(alias_chan);
                 g->name_from_chan.insert({alias_chan, aid});
 
@@ -227,7 +227,7 @@ void MultiChan::_update_with_aliases (Sequence seq, ChanId id)
             if (curr->u_basic().stmt.u_receive().chan == id)
             {
                 ChanId alias_chan = g->graph.id_pool().makeUniqueChan(g->graph.id_pool().getBitwidth(id));
-                var_to_actvar vtoa(s, &g->graph.id_pool());
+                var_to_actvar vtoa(s, g->graph.id_pool());
                 ActId *aid = vtoa.chanMap(alias_chan);
                 g->name_from_chan.insert({alias_chan, aid});
                 
@@ -652,7 +652,7 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
         {
             auto Gbw = log_2_round_up(sr.nexts.size());
             auto Gchan = g->graph.id_pool().makeUniqueChan(Gbw);
-            var_to_actvar vtoa(s, &g->graph.id_pool());
+            var_to_actvar vtoa(s, g->graph.id_pool());
             ActId *id = vtoa.chanMap(Gchan);
             g->name_from_chan.insert({Gchan, id});
             auto Gvar  = g->graph.id_pool().makeUniqueVar (Gbw);

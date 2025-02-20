@@ -810,7 +810,7 @@ struct GraphWithChanNames {
 };
   
 GraphWithChanNames chp_graph_from_act(act_chp_lang *lang, Scope *s);
-act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr,
+act_chp_lang *chp_graph_to_act(const GraphWithChanNames &gr,
 			       std::vector<ActId *> &newnames,
 			       Scope *s);
 
