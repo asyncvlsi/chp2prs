@@ -90,9 +90,6 @@ void Projection::project()
     dfg1.clear();
     _build_graph(g->graph.m_seq, dfg1);
 
-    std::unordered_map<VarId,VarId> vmap5, vmap6, vmap7, vmap8;
-    std::unordered_map<ChanId,ChanId> cmap5, cmap6, cmap7, cmap8;
-
     // Construct sub-processes
     _build_procs (*g, dfg1);
 }

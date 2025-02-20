@@ -817,9 +817,9 @@ act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr,
 /*
     Requires:
     1. Input GraphWithChanNames
-    2. OldChan-to-NewChan Map
-    3. OldVar-to-NewVar Map
-    
+    2. Empty OldChan-to-NewChan Map, which will be populated
+    3. Empty OldVar-to-NewVar Map, which will be populated
+
     Returns newly constructed GraphWithChanNames
 */
 GraphWithChanNames deep_copy_graph (
