@@ -814,7 +814,17 @@ act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr,
 			       std::vector<ActId *> &newnames,
 			       Scope *s);
 
-
-GraphWithChanNames deep_copy_graph (const GraphWithChanNames &g);
+/*
+    Requires:
+    1. Input GraphWithChanNames
+    2. OldChan-to-NewChan Map
+    3. OldVar-to-NewVar Map
+    
+    Returns newly constructed GraphWithChanNames
+*/
+GraphWithChanNames deep_copy_graph (
+        const GraphWithChanNames &g,
+        std::unordered_map<ChanId, ChanId> &cc_in,
+        std::unordered_map<VarId, VarId> &vv_in);
 
 } // namespace ChpOptimize

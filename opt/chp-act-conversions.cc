@@ -748,7 +748,11 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
   return g_new.newSequence(blks);
 }
 
-GraphWithChanNames deep_copy_graph (const GraphWithChanNames &g)
+GraphWithChanNames deep_copy_graph (
+      const GraphWithChanNames &g, 
+std::unordered_map<ChanId, ChanId> &cc_in,
+std::unordered_map<VarId, VarId> &vv_in
+)
 {
   GraphWithChanNames ret;
   cc.clear();
@@ -757,6 +761,9 @@ GraphWithChanNames deep_copy_graph (const GraphWithChanNames &g)
   for ( const auto &x : g.name_from_chan ) {
     ret.name_from_chan.insert({get_chan_id(x.first, ret.graph, g.graph),x.second});
   }
+  ret.graph.is_static_token_form = g.graph.is_static_token_form;
+  cc_in = std::move(cc);
+  vv_in = std::move(vv);
   return ret;
 }
 

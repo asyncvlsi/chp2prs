@@ -321,7 +321,7 @@ class DFG {
             Check if there exists a directed edge
             between the given nodes. 
         */
-        bool contains_edge (int from, int to) {
+        bool contains_edge (int from, int to) const {
             Assert (from>=0 && from<adj.size(), "invalid from node");
             Assert (to>=0 && to<adj.size(), "invalid to node");
             const auto &neighbors = adj[from];
@@ -331,7 +331,7 @@ class DFG {
         /*
             Check if given node_id exists in the DFG.
         */
-        bool contains (int node_id) {
+        bool contains (int node_id) const {
             for ( const auto &n1 : nodes ) {
                 if (node_id==n1->id) return true;
             }
@@ -341,7 +341,7 @@ class DFG {
         /*
             Check if a node with the given Block* exists in the DFG.
         */
-        bool contains (Block *b) {
+        bool contains (Block *b) const {
             for ( const auto &n1 : nodes ) {
                 if (b==(n1->b)) return true;
             }
@@ -351,7 +351,7 @@ class DFG {
         /*
             Find a given basic block in the DFG.
         */
-        const DFG_Node &find (int node_id) {
+        const DFG_Node &find (int node_id) const {
             hassert (node_id>=0 && node_id<nodes.size());
             for ( const auto &n1 : nodes ) {
                 if (n1->id == node_id) 
@@ -361,7 +361,7 @@ class DFG {
             return bot;
        }
 
-        const DFG_Node &find (Block *b) {
+        const DFG_Node &find (Block *b) const {
             hassert (b->type()==BlockType::Basic);
             for ( const auto &n1 : nodes ) {
                 if (b == n1->b) {
@@ -371,7 +371,7 @@ class DFG {
             return bot;
         }
 
-        const DFG_Node &find (Block *b, Block::Variant_Par::PhiSplit ps) {
+        const DFG_Node &find (Block *b, Block::Variant_Par::PhiSplit ps) const {
             hassert (b->type()==BlockType::Par);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::PllPhiInv) 
@@ -381,7 +381,7 @@ class DFG {
             }
             return bot;
         }
-        const DFG_Node &find (Block *b, Block::Variant_Par::PhiMerge pm) {
+        const DFG_Node &find (Block *b, Block::Variant_Par::PhiMerge pm) const {
             hassert (b->type()==BlockType::Par);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::PllPhi) 
@@ -391,7 +391,7 @@ class DFG {
             }
             return bot;
         }
-        const DFG_Node &find (Block *b, Block::Variant_Select::PhiSplit ps) {
+        const DFG_Node &find (Block *b, Block::Variant_Select::PhiSplit ps) const {
             hassert (b->type()==BlockType::Select);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::SelPhiInv) 
@@ -401,7 +401,7 @@ class DFG {
             }
             return bot;
         }
-        const DFG_Node &find (Block *b, Block::Variant_Select::PhiMerge pm) {
+        const DFG_Node &find (Block *b, Block::Variant_Select::PhiMerge pm) const {
             hassert (b->type()==BlockType::Select);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::SelPhi) 
@@ -411,7 +411,7 @@ class DFG {
             }
             return bot;
         }
-        const DFG_Node &find (Block *b, std::pair<int, IRGuard> g) {
+        const DFG_Node &find (Block *b, std::pair<int, IRGuard> g) const {
             hassert (b->type()==BlockType::Select);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::Guard) 
@@ -513,7 +513,8 @@ class DFG {
         }
 };
 
-DFG dfg;
+DFG dfg1;
+DFG dfg2;
 
 /*
     Class implementing projection based on the DFG.
@@ -533,7 +534,8 @@ class Projection : protected ChoppingBlock {
                 seqs.clear();
                 procs.clear();
                 subgraphs.clear();
-                dfg.clear();
+                dfg1.clear();
+                dfg2.clear();
             }
         
         /*
@@ -554,7 +556,7 @@ class Projection : protected ChoppingBlock {
         /*
             Print DFG of subgraphs into a file
         */
-        void print_subgraphs (FILE *);
+        void print_subgraphs (FILE *, const std::unordered_map<UnionFind<int>::id, std::vector<int>> &);
 
         /*
             Split multi-assignments into single
@@ -564,7 +566,7 @@ class Projection : protected ChoppingBlock {
         /*
             Print DOT graph of the projected processes
         */
-        void export_dot(std::string);
+        void export_dot(std::string, const DFG &);
 
     private:
 
@@ -572,28 +574,30 @@ class Projection : protected ChoppingBlock {
         std::vector<act_chp_lang_t *> procs;
         std::unordered_map<UnionFind<int>::id, std::vector<int>> subgraphs;
 
+        void step1(GraphWithChanNames &, DFG &);
+        void step2(GraphWithChanNames &, DFG &);
         /*
             Construct CHP process from DFG
         */
-        void _build_procs (GraphWithChanNames &);
+        void _build_procs (GraphWithChanNames &, DFG &d_in);
         /*
             Construct DFG from ChpGraph
         */
-        void _build_graph (Sequence);
-        void _build_graph_nodes (Sequence);
-        void _build_graph_edges ();
+        void _build_graph (const Sequence &, DFG &);
+        void _build_graph_nodes (const Sequence &, DFG &);
+        void _build_graph_edges (DFG &);
 
         /*
             Use Union-Find to compute weakly
             connected components in the DFG
         */
-        void _compute_connected_components ();
+        std::unordered_map<UnionFind<int>::id, std::vector<int>> _compute_connected_components (const DFG &);
 
         /*
             Insert distributed assignment of 
             guard variables before selections
         */
-        void _insert_guard_comms ();
+        void _insert_guard_comms (GraphWithChanNames &, DFG &);
 
         /*
             Remove distributed assignment of 
@@ -607,9 +611,9 @@ class Projection : protected ChoppingBlock {
             and flush the renaming downstream in the program. 
             Due to STF, it is sufficient to rename within the sequence.
         */
-        VarId _insert_copy (GraphWithChanNames &, int, VarId);
+        VarId _insert_copy (GraphWithChanNames &, const DFG &, int, VarId);
         // void _insert_copy (GraphWithChanNames &, Sequence, int, VarId);
-        void _uninsert_copy (GraphWithChanNames &, int, VarId, VarId);
+        void _uninsert_copy (GraphWithChanNames &, const DFG &, int, VarId, VarId);
 
 
         /*
@@ -623,7 +627,7 @@ class Projection : protected ChoppingBlock {
             Rename `old_var` to `new_var`, but exclude `excl` and start after `start_after`
         */
         void _replace_uses (GraphWithChanNames &, VarId, VarId, Block *, Block *);
-        
+
         /*
             Internal use only.
         */
@@ -650,29 +654,29 @@ class Projection : protected ChoppingBlock {
             Copy insertion strategy: heuristic-based.
             Sends/receives excluded
         */
-        void _insert_copies_v3 (GraphWithChanNames &, Sequence, int, int, bool &);
+        void _insert_copies_v3 (GraphWithChanNames &, DFG &, Sequence, int, int, bool &);
 
         /*
             Copy insertion strategy: latency cost-based.
         */
-        void _insert_copies_v4 (GraphWithChanNames &);
+        void _insert_copies_v4 (const GraphWithChanNames &, DFG &);
 
-        int _heuristic1 (const DFG_Node &, int);
-        int _heuristic2 (const DFG_Node &, int);
-        int _heuristic3 (const DFG_Node &, int);
+        int _heuristic1 (DFG &, const DFG_Node &, int);
+        int _heuristic2 (DFG &, const DFG_Node &, int);
+        int _heuristic3 (DFG &, const DFG_Node &, int);
 
-        std::unordered_map<IntPair, std::vector<IntPair>> _candidate_edges ();
+        std::unordered_map<IntPair, std::vector<IntPair>> _candidate_edges (const DFG &);
 
         /*
             Check if two nodes are in the same
             strongly-connected component in the DDG
         */
-        bool _in_same_scc (int, int);
+        bool _in_same_scc (const DFG &, int, int);
         
         /*
             Find SCC of a given node
         */
-        int _find_scc (int n1);
+        int _find_scc (const DFG &, int n1);
         /*
             Find SCC of a given node
         */
@@ -682,24 +686,24 @@ class Projection : protected ChoppingBlock {
             Find all edges in same group as this edge
             group_ij: set of all edges that go from SCC_i to SCC_j
         */
-        std::pair<std::vector<int>, std::vector<int>>  find_components (int, int);
+        std::pair<std::vector<int>, std::vector<int>>  find_components (const DFG &, int, int);
 
 
         /*
             Construct a sub-process from a set of DFG nodes.
         */
-        bool _build_sub_proc_new (GraphWithChanNames &, Sequence, std::unordered_set<int>&);
+        bool _build_sub_proc_new (GraphWithChanNames &, const DFG &d_in, Sequence, std::unordered_set<int>&);
         
         /*
             Construct a sub-process from a set of DFG nodes, 
             where all the nodes are basic nodes.
         */
-        void _build_basic_new (GraphWithChanNames &, std::vector<int>);
+        void _build_basic_new (GraphWithChanNames &, const DFG &, std::vector<int>);
         
         /*
             Check if all nodes are basic nodes.
         */
-        bool _all_basic (std::vector<int>);
+        bool _all_basic (const DFG &, std::vector<int>);
 
         /*
             Splice out set of blocks
