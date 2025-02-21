@@ -212,7 +212,7 @@ class DFG_Node {
             }
             break;
             case NodeType::Guard: {
-                ss << "guard " << g.first << std::endl;
+                ss << "guard " << g.first;
             }
             break;
             case NodeType::SelPhi: {
@@ -223,7 +223,7 @@ class DFG_Node {
                     first = false;
                     ss << strofid(id);
                 }
-                ss << ");" << std::endl;
+                ss << ")";
             }
             break;
             case NodeType::SelPhiInv: {
@@ -234,11 +234,11 @@ class DFG_Node {
                     ss << strofid(id);
                     first = false;
                 }
-                ss << ") = phi_inv(" << strofid(phi_inv.pre_id) <<");" << std::endl;
+                ss << ") = phi_inv(" << strofid(phi_inv.pre_id) <<")";
             }
             break;
             case NodeType::LoopLoopPhi: {
-                ss << "(" << strofid(llp.post_id) << ", " << strofid(llp.bodyin_id) << ") = phiL(" << strofid(llp.pre_id) << ", " << strofid(llp.bodyout_id) << ");" << std::endl;
+                ss << "(" << strofid(llp.post_id) << ", " << strofid(llp.bodyin_id) << ") = phiL(" << strofid(llp.pre_id) << ", " << strofid(llp.bodyout_id) << ")";
             }
             break;
             default:
@@ -253,6 +253,8 @@ class DFG_Node {
 */
 static DFG_Node bot(-1);
 
+// TODO: Wrap node_id int in its own class for type-safety
+
 /*
     Class implementing the data-dependence graph.
     @param nodes Vector of DFG nodes
@@ -264,14 +266,15 @@ class DFG {
         std::vector<std::unique_ptr<DFG_Node>> nodes;
         std::vector<std::vector<int>> adj;
         std::unordered_map<int, int> sccs;
+        std::unordered_map<VarId, int> vardefmap;
         int id;
 
-        DFG () :
-        nodes {}, adj {}
+        DFG ()
         {
             nodes.clear();
             adj.clear();
             sccs.clear();
+            vardefmap.clear();
             id = 0;
         }
 
@@ -593,6 +596,7 @@ class Projection : protected ChoppingBlock {
         */
         std::unordered_map<UnionFind<int>::id, std::vector<int>> _compute_connected_components (const DFG &);
 
+        void build_vardefmap (DFG &);
         /*
             Insert distributed assignment of 
             guard variables before selections
@@ -659,7 +663,7 @@ class Projection : protected ChoppingBlock {
         /*
             Copy insertion strategy: latency cost-based.
         */
-        void _insert_copies_v4 (const GraphWithChanNames &, DFG &);
+        void _insert_copies_v4 (GraphWithChanNames &, DFG &);
 
         int _heuristic1 (DFG &, const DFG_Node &, int);
         int _heuristic2 (DFG &, const DFG_Node &, int);
