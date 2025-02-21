@@ -54,7 +54,8 @@ void Projection::step1(GraphWithChanNames &g_in, DFG &d_in)
 void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
 {
     d_in.clear();
-    ChpOptimize::putIntoNewStaticTokenForm(g_in.graph);
+    if (!g_in.graph.is_static_token_form) 
+        ChpOptimize::putIntoNewStaticTokenForm(g_in.graph);
     _build_graph(g_in.graph.m_seq, d_in);
 
     // SCC aux. structures
@@ -83,14 +84,18 @@ void Projection::project()
     
     // Copy-insertion strategy
     bool _ins = false;
-    _insert_copies_v3 (*g, dfg1, g->graph.m_seq, _compute_connected_components(dfg1).size(), 1, _ins);
-    // _insert_copies_v4 (*g, dfg1);
+    if (1) {
+        _insert_copies_v3 (*g, dfg1, g->graph.m_seq, _compute_connected_components(dfg1).size(), 1, _ins);
+    }
+    else {
+        // ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
+        _insert_copies_v4 (*g, dfg1);
+    }
     
     dfg1.clear();
     _build_graph(g->graph.m_seq, dfg1);
 
     // Construct sub-processes
-
     ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
     _build_procs (*g, dfg1);
     // ChpOptimize::putIntoNewStaticTokenForm(g->graph);
@@ -98,7 +103,7 @@ void Projection::project()
 
 /*
     This is the brute-force bit.
-    Exponential in no. of SCC edges (at least lol).
+    Exponential in no. of SCC edges, at least (lol).
     Checks every possible subset of SCC-edges that can be cut.
     Picks the one with minimum maximum-latency cost
 */
@@ -110,7 +115,9 @@ void Projection::_insert_copies_v4 (const GraphWithChanNames &g, DFG &d_in)
     auto g_copy = deep_copy_graph(g,cc,vv);
     DFG d_loc;
     step2(g_copy, d_loc);
+    ChpOptimize::takeOutOfNewStaticTokenForm(g_copy.graph);
 
+    // get candidate edges
     auto cand_edges = _candidate_edges(d_loc);
     std::vector<std::pair<IntPair, std::vector<IntPair>>> edges (cand_edges.begin(), cand_edges.end());
     auto sz = cand_edges.size();
@@ -120,7 +127,9 @@ void Projection::_insert_copies_v4 (const GraphWithChanNames &g, DFG &d_in)
     std::vector<IntPair> best_edges_subset = {};
 
     // iterate over all possible subsets
-    for (int mask=0; mask<(1<<sz); mask++)
+    fprintf(stdout, "\n\n// subsets to check: %d\n\n", (1<<sz));
+    for (int mask=0; mask<2; mask++)
+    // for (int mask=0; mask<(1<<sz); mask++)
     {
         std::vector<IntPair> edges_subset = {};
         // pick the subset 
@@ -132,17 +141,18 @@ void Projection::_insert_copies_v4 (const GraphWithChanNames &g, DFG &d_in)
 
         fprintf (stdout, "\nchp 1 -----\n");
         print_chp (std::cout, g_copy.graph);
+        // d_loc.print_adj(stdout);
         fprintf (stdout, "\nchp 1 -----\n");
 
         // delete edges in this subset
+        // only do single-var defining nodes
         std::unordered_map<VarId, VarId> old_to_new = {};
         for ( auto e : edges_subset ) {
-            d_loc.delete_edge (e.first, e.second);
-            // Actually insert copies corresponding to this edge deletion
             const auto &node = d_loc.find(e.first);
             auto vars = get_defs(node);
-            Assert(vars.size()<=1, "hm");
             if (vars.size()==1) {
+                d_loc.delete_edge (e.first, e.second);
+                // Actually insert copies corresponding to this edge deletion
                 auto newvar = _insert_copy (g_copy, d_loc, e.first, vars[0]);
                 old_to_new.insert({vars[0],newvar});
                 fprintf (stdout, "\n\ninserting copy: %llu, %llu \n", vars[0].m_id, newvar.m_id);
@@ -151,32 +161,42 @@ void Projection::_insert_copies_v4 (const GraphWithChanNames &g, DFG &d_in)
 
         fprintf (stdout, "\nchp after copy insertion -----\n");
         print_chp (std::cout, g_copy.graph);
+        // d_loc.print_adj(stdout);
         fprintf (stdout, "\nchp after copy insertion -----\n");
 
         // build the subprocesses and see what the cost is
         _build_procs(g_copy, d_loc);
-        fprintf (stdout, "\n\n");
-        fprintf (stdout, "got here\n\n");
         c.add_procs(procs);
         auto cost = c.get_max_latency_cost();
         if (cost < min_max_cost) {
             min_max_cost = cost;
             best_edges_subset = edges_subset;
         }
-        // ChpOptimize::putIntoNewStaticTokenForm(g.graph);
 
         // add edges back
+        // only do single-var defining nodes
         for ( auto e : edges_subset ) {
-            d_loc.add_edge (e.first, e.second);
-            // Un-insert the copy corresponding to this edge
             const auto &node = d_loc.find(e.first);
             auto vars = get_defs(node);
-            Assert(vars.size()<=1, "hm");
             if (vars.size()==1) {
+                d_loc.add_edge (e.first, e.second);
+                // Un-insert the copy corresponding to this edge
                 _uninsert_copy (g_copy, d_loc, e.first, old_to_new[vars[0]], vars[0]);
             }
         }
     }
+    fprintf(stdout, "\n\n// min. max. cost: %lf", min_max_cost);
+    fprintf(stdout, "\n\n// edges to break: %d", int(best_edges_subset.size()));
+    fprintf(stdout, "\n\n// vars to copy: ");
+    for ( const auto &e : best_edges_subset ) {
+        const auto &node = d_loc.find(e.first);
+        auto vars = get_defs(node);
+        Assert(vars.size()<=1, "hm");
+        if (vars.size()==1) {
+            fprintf(stdout, "v%llu, ", vars[0].m_id);
+        }
+    }
+
 }
 
 void Projection::_uninsert_copy (GraphWithChanNames &gg, const DFG &d_in, int from, VarId copyvar, VarId origvar)
@@ -261,10 +281,10 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
         procs.push_back(tmpact);
 
+        // fprintf(stdout, "\n\nnum_subgraphs : %d, tmp_sgs: %d\n", num_subgraphs, int(tmp_sgs.size()));
         hassert (num_subgraphs == tmp_sgs.size());
     }
     hassert (marker_node_ids.size() == num_subgraphs);
-    // ChpOptimize::putIntoNewStaticTokenForm(gx.graph);
 }
 
 bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, const DFG &d_in, Sequence seq, std::unordered_set<int> &s)
