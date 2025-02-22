@@ -58,15 +58,10 @@ void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
         ChpOptimize::putIntoNewStaticTokenForm(g_in.graph);
     _build_graph(g_in.graph.m_seq, d_in);
 
-    // SCC aux. structures
-    std::vector<std::vector<int>> adj_cond, comps;
-    std::vector<bool> visited;
-    adj_cond.clear(); comps.clear(); visited.clear();
     hassert (d_in.id==d_in.nodes.size());
-
+    
     // Compute SCCs
-    d_in.scc(comps, adj_cond, visited);
-    d_in.build_sccs(comps);
+    d_in.build_sccs();
 }
 
 void Projection::project()

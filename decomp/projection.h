@@ -290,6 +290,7 @@ class DFG {
             nodes.clear();
             adj.clear();
             sccs.clear();
+            vardefmap.clear();
             id = 0;
             sccs_built = false;
         }
@@ -476,8 +477,8 @@ class DFG {
             runs depth first search starting at vertex v.
             each visited vertex is appended to the output vector when dfs leaves it.
         */
-        void dfs (int v, std::vector<std::vector<int>> const& _adj, 
-                std::vector<int> &output, std::vector<bool> &visited) {
+        void dfs (int v, const std::vector<std::vector<int>> &_adj, 
+                std::vector<int> &output, std::vector<bool> &visited) const {
             hassert(v>=0);
             visited[v] = true;
             for (auto u : _adj[v])
@@ -491,16 +492,15 @@ class DFG {
             output: components -- the strongy connected components in G
             output: adj_cond -- adjacency list of G^SCC (by root vertices)
         */
-        void scc(std::vector<std::vector<int>> &comps,
+        void scc_helper(std::vector<std::vector<int>> &comps,
                     std::vector<std::vector<int>> &adj_cond,
-                    std::vector<bool> &visited) {
+                    std::vector<bool> &visited) const {
             int nv = adj.size();
             comps.clear(), adj_cond.clear(), visited.clear();
 
-            std::vector<int> order; // will be a sorted list of G's vertices by exit time
-            for (int i=0; i<nv; i++) {
-                visited.push_back(false);
-            }
+            // will be a sorted list of G's vertices by exit time
+            std::vector<int> order; 
+            visited.assign(nv, false);
 
             // first series of depth first searches
             for ( const auto &n : nodes )
@@ -510,13 +510,14 @@ class DFG {
             // create adjacency list of G^T
             std::vector<std::vector<int>> adj_rev(nv);
             for ( const auto &v : nodes )
-                for (auto u : adj[v->id])
+                for (auto u : adj.at(v->id))
                     adj_rev[u].push_back(v->id);
 
             visited.assign(nv, false);
             reverse(order.begin(), order.end());
 
-            std::vector<int> roots(nv, -1); // gives the root vertex of a vertex's SCC
+            // gives the root vertex of a vertex's SCC
+            std::vector<int> roots(nv, -1); 
 
             // second series of depth first searches
             for (auto v : order)
@@ -540,8 +541,12 @@ class DFG {
         /*
             Build strongly-connected components map
         */
-        void build_sccs (const std::vector<std::vector<int>> &comps)
-        {
+        void build_sccs ()
+        {   
+            std::vector<std::vector<int>> adj_cond, comps;
+            std::vector<bool> visited;
+            adj_cond.clear(); comps.clear(); visited.clear();
+            scc_helper (comps, adj_cond, visited);
             int i=0;
             for ( const auto &comp : comps ) {
                 for ( const auto n : comp ) {
