@@ -201,9 +201,9 @@ class DFG_Node {
         /*
             Print the DFG Node
         */
-        void print (std::ostream &ss)
+        void print (std::ostream &ss) const
         {
-            auto strofid = [&](OptionalVarId id) {
+            auto strofid = [&](const OptionalVarId &id) {
                 return id ? "v" + std::to_string(((*id).m_id)) : "vNULL";
             };
             switch (t) {
@@ -211,8 +211,11 @@ class DFG_Node {
                 ChpOptimize::print_chp_block(ss, b);
             }
             break;
+            case NodeType::LoopGuard: {
+                ss << "lguard";
+            } 
             case NodeType::Guard: {
-                ss << "guard " << g.first;
+                ss << "guard: " << g.first;
             }
             break;
             case NodeType::SelPhi: {
@@ -268,6 +271,7 @@ class DFG {
         std::unordered_map<int, int> sccs;
         std::unordered_map<VarId, int> vardefmap;
         int id;
+        bool sccs_built;
 
         DFG ()
         {
@@ -276,6 +280,7 @@ class DFG {
             sccs.clear();
             vardefmap.clear();
             id = 0;
+            sccs_built = false;
         }
 
         /*
@@ -286,6 +291,7 @@ class DFG {
             adj.clear();
             sccs.clear();
             id = 0;
+            sccs_built = false;
         }
 
         int gen_id () {
@@ -298,6 +304,7 @@ class DFG {
         void add_node (DFG_Node n) {
             nodes.push_back(std::make_unique<DFG_Node> (n));
             adj.push_back({});
+            sccs_built = false;
         }
 
         /*
@@ -308,6 +315,7 @@ class DFG {
             Assert (from>=0 && from<adj.size(), "invalid from node");
             Assert (to>=0 && to<adj.size(), "invalid to node");
             adj[from].push_back(to);
+            sccs_built = false;
         }
 
         /*
@@ -318,6 +326,7 @@ class DFG {
             Assert (from>=0 && from<adj.size(), "invalid from node");
             Assert (to>=0 && to<adj.size(), "invalid to node");
             adj[from].erase(std::remove(adj[from].begin(), adj[from].end(), to), adj[from].end());
+            sccs_built = false;
         }
 
         /*
@@ -344,7 +353,7 @@ class DFG {
         /*
             Check if a node with the given Block* exists in the DFG.
         */
-        bool contains (Block *b) const {
+        bool contains (const Block *b) const {
             for ( const auto &n1 : nodes ) {
                 if (b==(n1->b)) return true;
             }
@@ -364,7 +373,7 @@ class DFG {
             return bot;
        }
 
-        const DFG_Node &find (Block *b) const {
+        const DFG_Node &find (const Block *b) const {
             hassert (b->type()==BlockType::Basic);
             for ( const auto &n1 : nodes ) {
                 if (b == n1->b) {
@@ -374,7 +383,7 @@ class DFG {
             return bot;
         }
 
-        const DFG_Node &find (Block *b, Block::Variant_Par::PhiSplit ps) const {
+        const DFG_Node &find (const Block *b, const Block::Variant_Par::PhiSplit &ps) const {
             hassert (b->type()==BlockType::Par);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::PllPhiInv) 
@@ -384,7 +393,7 @@ class DFG {
             }
             return bot;
         }
-        const DFG_Node &find (Block *b, Block::Variant_Par::PhiMerge pm) const {
+        const DFG_Node &find (const Block *b, const Block::Variant_Par::PhiMerge &pm) const {
             hassert (b->type()==BlockType::Par);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::PllPhi) 
@@ -394,7 +403,7 @@ class DFG {
             }
             return bot;
         }
-        const DFG_Node &find (Block *b, Block::Variant_Select::PhiSplit ps) const {
+        const DFG_Node &find (const Block *b, const Block::Variant_Select::PhiSplit &ps) const {
             hassert (b->type()==BlockType::Select);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::SelPhiInv) 
@@ -404,7 +413,7 @@ class DFG {
             }
             return bot;
         }
-        const DFG_Node &find (Block *b, Block::Variant_Select::PhiMerge pm) const {
+        const DFG_Node &find (const Block *b, const Block::Variant_Select::PhiMerge &pm) const {
             hassert (b->type()==BlockType::Select);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::SelPhi) 
@@ -414,7 +423,7 @@ class DFG {
             }
             return bot;
         }
-        const DFG_Node &find (Block *b, std::pair<int, IRGuard> g) const {
+        const DFG_Node &find (const Block *b, const std::pair<int, IRGuard> &g) const {
             hassert (b->type()==BlockType::Select);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::Guard) 
@@ -427,7 +436,7 @@ class DFG {
         /*
             Print the DFG
         */
-        void print_adj (FILE *fp) {
+        void print_adj (FILE *fp) const {
             fprintf (fp, "\n/* ------ adj list ------\n");
             for (int i=0;i<adj.size();i++) {
                 fprintf(fp, "\n %d (type: %d): (", nodes[i]->id, int(nodes[i]->t));
@@ -440,9 +449,34 @@ class DFG {
             fprintf (fp, "\n\n   ------ adj list ------ */\n");
         }
 
-        // runs depth first search starting at vertex v.
-        // each visited vertex is appended to the output vector when dfs leaves it.
-        void dfs(int v, std::vector<std::vector<int>> const& _adj, 
+        /*
+            Use Union-Find to compute weakly
+            connected components in the DFG
+        */
+        std::unordered_map<UnionFind<int>::id, std::vector<int>> get_wccs () const {
+            std::unordered_map<UnionFind<int>::id, std::vector<int>> wccs = {};
+
+            ChpOptimize::UnionFind<int> uf;
+            for (int i=0; i<adj.size(); i++) {
+                for (int j=0; j<adj.at(i).size(); j++) {
+                    uf.union_(nodes.at(i)->id,adj.at(i).at(j));
+                }
+            }
+            for ( const auto &n : nodes ) {
+                auto ufn = uf.find(n->id);
+                if (!wccs.contains(ufn)) {
+                    wccs.insert({ufn,{}});
+                }
+                wccs[ufn].push_back(n->id);
+            } 
+            return wccs;
+        }
+
+        /*
+            runs depth first search starting at vertex v.
+            each visited vertex is appended to the output vector when dfs leaves it.
+        */
+        void dfs (int v, std::vector<std::vector<int>> const& _adj, 
                 std::vector<int> &output, std::vector<bool> &visited) {
             hassert(v>=0);
             visited[v] = true;
@@ -452,9 +486,11 @@ class DFG {
             output.push_back(v);
         }
 
-        // input: adj -- adjacency list of G
-        // output: components -- the strongy connected components in G
-        // output: adj_cond -- adjacency list of G^SCC (by root vertices)
+        /*
+            input: adj -- adjacency list of G
+            output: components -- the strongy connected components in G
+            output: adj_cond -- adjacency list of G^SCC (by root vertices)
+        */
         void scc(std::vector<std::vector<int>> &comps,
                     std::vector<std::vector<int>> &adj_cond,
                     std::vector<bool> &visited) {
@@ -513,6 +549,43 @@ class DFG {
                 }
                 i++;
             }
+            sccs_built = true;
+        }
+
+        /*
+            Find the SCC ID of a given node_id
+        */
+       int find_scc_id (int n1) const
+        {
+            Assert (n1!=-1, "Invalid node");
+            Assert (contains(n1), "Node does not exist");
+            Assert (sccs_built, "SCCs not built");
+            Assert (sccs.contains(n1), "Node not in SCCs? sth went wrong");
+            return sccs.at(n1);
+        }
+
+        /*
+            Check if two nodes are in the same SCC
+        */
+        bool in_same_scc (int n1, int n2) const
+        {
+            int scc1 = find_scc_id(n1);
+            int scc2 = find_scc_id(n2);
+            return (scc1==scc2);
+        }
+
+        /*
+            Get the complete SCC for a given node.
+            Returns vector of node_id's
+        */
+        std::vector<int> find_scc (int n1) const
+        {
+            std::vector<int> ret = {};
+            int scc_id = find_scc_id (n1);
+            for ( const auto &x : sccs ) {
+                if (x.second==scc_id) ret.push_back(x.first);
+            }
+            return ret;
         }
 };
 
@@ -536,7 +609,6 @@ class Projection : protected ChoppingBlock {
             {
                 seqs.clear();
                 procs.clear();
-                subgraphs.clear();
                 dfg1.clear();
                 dfg2.clear();
             }
@@ -575,7 +647,6 @@ class Projection : protected ChoppingBlock {
 
         std::vector<Sequence> seqs;
         std::vector<act_chp_lang_t *> procs;
-        std::unordered_map<UnionFind<int>::id, std::vector<int>> subgraphs;
 
         void step1(GraphWithChanNames &, DFG &);
         void step2(GraphWithChanNames &, DFG &);
@@ -589,12 +660,6 @@ class Projection : protected ChoppingBlock {
         void _build_graph (const Sequence &, DFG &);
         void _build_graph_nodes (const Sequence &, DFG &);
         void _build_graph_edges (DFG &);
-
-        /*
-            Use Union-Find to compute weakly
-            connected components in the DFG
-        */
-        std::unordered_map<UnionFind<int>::id, std::vector<int>> _compute_connected_components (const DFG &);
 
         void build_vardefmap (DFG &);
         /*
@@ -670,29 +735,7 @@ class Projection : protected ChoppingBlock {
         int _heuristic3 (DFG &, const DFG_Node &, int);
 
         std::unordered_map<IntPair, std::vector<IntPair>> _candidate_edges (const DFG &);
-
-        /*
-            Check if two nodes are in the same
-            strongly-connected component in the DDG
-        */
-        bool _in_same_scc (const DFG &, int, int);
         
-        /*
-            Find SCC of a given node
-        */
-        int _find_scc (const DFG &, int n1);
-        /*
-            Find SCC of a given node
-        */
-        std::vector<int>  find_component (DFG_Node *);
-
-        /*
-            Find all edges in same group as this edge
-            group_ij: set of all edges that go from SCC_i to SCC_j
-        */
-        std::pair<std::vector<int>, std::vector<int>>  find_components (const DFG &, int, int);
-
-
         /*
             Construct a sub-process from a set of DFG nodes.
         */

@@ -85,7 +85,7 @@ void Projection::project()
     // Copy-insertion strategy
     if (0) {
         bool _ins = false;
-        _insert_copies_v3 (*g, dfg1, g->graph.m_seq, _compute_connected_components(dfg1).size(), 1, _ins);
+        _insert_copies_v3 (*g, dfg1, g->graph.m_seq, dfg1.get_wccs().size(), 1, _ins);
     }
     else {
         _insert_copies_v4 (*g, dfg1);
@@ -228,8 +228,8 @@ std::unordered_map<IntPair, std::vector<IntPair>> Projection::_candidate_edges (
     int i=0;
     for ( const auto &src : d_in.adj ) {
         for ( const auto &dest : src ) {
-            auto scc1 = _find_scc(d_in, i);
-            auto scc2 = _find_scc(d_in, dest);
+            auto scc1 = d_in.find_scc_id(i);
+            auto scc2 = d_in.find_scc_id(dest);
             if (scc1!=scc2) {
                 if (!ret.contains(IntPair(scc1,scc2)))
                     ret.insert({IntPair(scc1,scc2),{}});
@@ -246,7 +246,7 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
     procs.clear();
     // ChpOptimize::takeOutOfNewStaticTokenForm(gx.graph);
 
-    int num_subgraphs = _compute_connected_components(d_in).size();
+    int num_subgraphs = d_in.get_wccs().size();
     std::unordered_set<int> marker_node_ids = {};
 
     DFG d_loc;
@@ -261,12 +261,12 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
 
         d_loc.clear();
         _build_graph(g1.graph.m_seq, d_loc);
-        auto tmp_sgs = _compute_connected_components(d_loc);
+        auto tmp_sgs = d_loc.get_wccs();
 
         auto itr = tmp_sgs.begin();
         while ((marker_node_ids.contains((*itr).second[0]))) 
         { itr++; }
-        hassert (itr != subgraphs.end());
+        hassert (itr != tmp_sgs.end());
         marker_node_ids.insert((*itr).second[0]);
 
         if (_all_basic(d_loc, (*itr).second)) {
@@ -764,28 +764,6 @@ void Projection::_build_graph_nodes (const Sequence &seq, DFG &d_in)
     }
 }
 
-std::unordered_map<UnionFind<int>::id, std::vector<int>>
-Projection::_compute_connected_components (const DFG &d_in)
-{
-    std::unordered_map<UnionFind<int>::id, std::vector<int>> subgs;
-    ChpOptimize::UnionFind<int> uf;
-    for (int i=0; i<d_in.adj.size(); i++) {
-        for (int j=0; j<d_in.adj[i].size(); j++) {
-            uf.union_(d_in.nodes[i]->id,d_in.adj[i][j]);
-        }
-    }
-
-    subgs.clear();
-    for ( const auto &n : d_in.nodes ) {
-        auto ufn = uf.find(n->id);
-        if (!subgs.contains(ufn)) {
-            subgs.insert({ufn,{}});
-        }
-        subgs[ufn].push_back(n->id);
-    } 
-    return subgs;
-}
-
 void Projection::_insert_guard_comms (GraphWithChanNames &g_in, DFG &d_in)
 {
     std::vector<std::pair<int, int>> to_add;
@@ -972,53 +950,15 @@ void Projection::_insert_copies_v1 (GraphWithChanNames &gg, Sequence seq)
 }
 #endif
 
-bool Projection::_in_same_scc (const DFG &d_in, int n1, int n2)
-{
-    hassert (n1!=-1);
-    hassert (n2!=-1);
-
-    hassert (d_in.sccs.contains(n1));
-    hassert (d_in.sccs.contains(n2));
-
-    return (d_in.sccs.at(n1)==d_in.sccs.at(n2));
-}
-
-int Projection::_find_scc (const DFG &d_in, int n1)
-{
-    hassert (n1!=-1);
-    hassert (d_in.sccs.contains(n1));
-    return d_in.sccs.at(n1);
-}
-
-std::pair<std::vector<int>, std::vector<int>> Projection::find_components (const DFG &d_in, int n1, int n2)
-{
-    std::vector<int> c1 = {};
-    std::vector<int> c2 = {};
-    
-    hassert (d_in.sccs.contains(n1));
-    hassert (d_in.sccs.contains(n2));
-
-    auto r1 = d_in.sccs.at(n1);
-    auto r2 = d_in.sccs.at(n2);
-    hassert (r1!=r2);
-
-    for ( const auto &x : d_in.sccs ) {
-        if (x.second==r1) c1.push_back(x.first);
-        if (x.second==r2) c2.push_back(x.first);
-    }
-
-    return {c1,c2};
-}
-
 int Projection::_heuristic1(DFG &d_in, const DFG_Node &n, int nwcc)
 {
     auto dest_nodes = d_in.adj[n.id];
     for (int i=0;i<dest_nodes.size();i++) {
-        if (!_in_same_scc(d_in, n.id,dest_nodes[i])) {
+        if (!d_in.in_same_scc(n.id,dest_nodes[i])) {
 
             d_in.delete_edge(n.id,dest_nodes[i]);
 
-            auto tmp = _compute_connected_components(d_in);
+            auto tmp = d_in.get_wccs();
 
             d_in.add_edge(n.id,dest_nodes[i]);
 
@@ -1043,11 +983,11 @@ int Projection::_heuristic2(DFG &d_in, const DFG_Node &n, int nwcc)
     }
 
     for (int i=0;i<src_nodes.size();i++) {
-        if (!_in_same_scc(d_in, n.id,src_nodes[i])) {
+        if (!d_in.in_same_scc(n.id,src_nodes[i])) {
             // dfg.print_adj(stdout);
 
             d_in.delete_edge(src_nodes[i],n.id);
-            auto tmp = _compute_connected_components(d_in);
+            auto tmp = d_in.get_wccs();
 
             d_in.print_adj(stdout);
             d_in.add_edge(src_nodes[i],n.id);
@@ -1066,9 +1006,11 @@ int Projection::_heuristic3(DFG &d_in, const DFG_Node &n, int nwcc)
     auto dest_nodes = d_in.adj[n.id];
     std::vector<std::pair<int, int>> reconnect = {};
     for (int i=0;i<dest_nodes.size();i++) {
-        if (!_in_same_scc(d_in, n.id,dest_nodes[i])) {
+        if (!d_in.in_same_scc(n.id,dest_nodes[i])) {
 
-            auto [c1, c2] = find_components(d_in, n.id,dest_nodes[i]);
+            // auto [c1, c2] = find_components(d_in, n.id,dest_nodes[i]);
+            auto c1 = d_in.find_scc(n.id);
+            auto c2 = d_in.find_scc(dest_nodes[i]);
             // fprintf(stdout, "\n// CHECKING\n");
 
             // delete ALL edges from SCC_i to SCC_j
@@ -1082,7 +1024,7 @@ int Projection::_heuristic3(DFG &d_in, const DFG_Node &n, int nwcc)
             }
 
             // now check if |WCC| has increased
-            auto tmp = _compute_connected_components(d_in);
+            auto tmp = d_in.get_wccs();
 
             // add back the original edges from SCC_i to SCC_j
             for ( auto x : reconnect ) {
