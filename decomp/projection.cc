@@ -89,8 +89,9 @@ void Projection::project()
     // Construct sub-processes
     dfg1.clear();
     _build_graph(g->graph.m_seq, dfg1);
-    ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
     _build_procs (*g, dfg1);
+
+    ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
 }
 
 /*
@@ -118,26 +119,91 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
     // get candidate edges
     auto cand_edges = _candidate_edges(d_loc);
     std::vector<std::pair<IntPair, std::vector<IntPair>>> edges (cand_edges.begin(), cand_edges.end());
-    auto sz = cand_edges.size();
+    auto sz_edges = cand_edges.size();
 
     // initialize cost-related stuff
     ChpCost c(s);
     double min_max_cost = std::numeric_limits<double>::max();
     std::vector<IntPair> best_edges_subset = {};
+    std::vector<int> best_nodes_subset = {};
     std::vector<double> best_costs = {};
+    int node_or_edge = -1; // 0 for nodewise-cut, 1 for edgewise-cut
 
-    fprintf(stdout, "\n\n// subsets to check: %llu\n\n", (1ULL<<sz));
+    auto sz_nodes = d_loc.nodes.size();
+    fprintf(stdout, "\n\n// node-copy subsets to check: %llu\n\n", 1ULL<<sz_nodes);
+    // unsigned long long max_itr = 1024*1024*1024;
+    unsigned long long max_itr_node = 8;
+    unsigned long long n_itr_node = std::min(max_itr_node, 1ULL<<sz_nodes);
+
+    auto adj_save = d_loc.adj;
+    // node-wise copies ------------------------------------
+    for (unsigned long long mask=0; mask<n_itr_node; mask++)
+    {
+        std::vector<int> nodes_subset = {};
+        for (int i = 0; i < sz_edges; i++) {
+            if (mask & (1 << i)) {
+                nodes_subset.push_back(i);
+            }
+        }
+
+        // delete outgoing edges from nodes in this subset
+        // only do single-var defining nodes
+        std::unordered_map<VarId, VarId> old_to_new = {};
+        for ( auto n_id : nodes_subset ) {
+            const auto &node = d_loc.find(n_id);
+            auto vars = get_defs(node);
+            if (vars.size()==1) {
+                d_loc.delete_all_out_edges(n_id);
+                // Actually insert copies corresponding to this 
+                Assert (!old_to_new.contains(vars[0]), "STF violation"); 
+                auto newvar = _insert_node_copy (g_copy, d_loc, n_id, vars[0]);
+                fprintf(stdout, "\n// inserting copy oldvar: %llu, newvar: %llu", vars[0].m_id, newvar.m_id);
+                old_to_new.insert({vars[0],newvar});
+            }
+        }
+
+        // build the subprocesses and check what the cost is
+        _build_procs(g_copy, d_loc);
+        c.clear();
+        c.add_procs(procs);
+        auto cost = c.get_max_latency_cost();
+        fprintf(stdout, "\n// max latency for this cut: %lf \n", cost);
+        if (cost < min_max_cost) {
+            min_max_cost = cost;
+            best_nodes_subset = nodes_subset;
+            best_costs = c.get_latency_costs();
+            node_or_edge = 0;
+        }
+
+        // Un-insert copies
+        for ( auto n_id : nodes_subset ) {
+            const auto &node = d_loc.find(n_id);
+            auto vars = get_defs(node);
+            if (vars.size()==1) {
+                Assert (old_to_new.contains(vars[0]), "Hmm"); 
+                _uninsert_node_copy (g_copy, d_loc, n_id, old_to_new[vars[0]], vars[0]);
+                old_to_new.erase(vars[0]);
+            }
+        }
+        // add edges back
+        d_loc.adj = adj_save;
+    }
+    // node-wise copies ------------------------------------
+
+    // hassert (false);
+
+    fprintf(stdout, "\n\n// edge-copy subsets to check: %llu\n\n", (1ULL<<sz_edges));
     // unsigned long long max_itr = 1024*1024*1024;
     unsigned long long max_itr = 2;
-    unsigned long long n_itr = std::min(max_itr, 1ULL<<sz);
+    unsigned long long n_itr = std::min(max_itr, 1ULL<<sz_edges);
 
-    // iterate over all possible subsets
+    // iterate over all possible edge subsets
     for (unsigned long long mask=0; mask<n_itr; mask++)
     {
         fprintf(stdout, "\n\n// checking number : %llu\n", mask);
         std::vector<IntPair> edges_subset = {};
         // pick the edges in this subset 
-        for (int i = 0; i < sz; i++) {
+        for (int i = 0; i < sz_edges; i++) {
             if (mask & (1 << i)) {
                 edges_subset.insert(edges_subset.end(), edges[i].second.begin(), edges[i].second.end());
             }
@@ -152,12 +218,11 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
             if (vars.size()==1) {
                 d_loc.delete_edge (e.first, e.second);
                 // Actually insert copies corresponding to this edge deletion
-                auto newvar = _insert_copy (g_copy, d_loc, e.first, vars[0]);
-                // Insert copy bubble nodes
-                // TODO
-                // Need method for deleting node
-                // fprintf(stdout, "\n// inserting copy oldvar: %llu, newvar: %llu", vars[0].m_id, newvar.m_id);
-                old_to_new.insert({vars[0],newvar});
+                if (!old_to_new.contains(vars[0])) {
+                    auto newvar = _insert_node_copy (g_copy, d_loc, e.first, vars[0]);
+                    fprintf(stdout, "\n// inserting copy oldvar: %llu, newvar: %llu", vars[0].m_id, newvar.m_id);
+                    old_to_new.insert({vars[0],newvar});
+                }
             }
         }
 
@@ -181,7 +246,10 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
             if (vars.size()==1) {
                 d_loc.add_edge (e.first, e.second);
                 // Un-insert the copy corresponding to this edge
-                _uninsert_copy (g_copy, d_loc, e.first, old_to_new[vars[0]], vars[0]);
+                if (old_to_new.contains(vars[0])) {
+                    _uninsert_node_copy (g_copy, d_loc, e.first, old_to_new[vars[0]], vars[0]);
+                    old_to_new.erase(vars[0]);
+                }
             }
         }
     }
@@ -200,13 +268,13 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
             fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
             Assert(d_in.vardefmap.contains(var_in_old_g), "Var not in vardefmap");
             auto node_id = d_in.vardefmap[var_in_old_g];
-            _insert_copy (g, d_in, node_id, var_in_old_g);
+            _insert_node_copy (g, d_in, node_id, var_in_old_g);
         }
     }
     fprintf(stdout, "\n");
 }
 
-void Projection::_uninsert_copy (GraphWithChanNames &gg, const DFG &d_in, int from, VarId copyvar, VarId origvar)
+void Projection::_uninsert_node_copy (GraphWithChanNames &gg, const DFG &d_in, int from, VarId copyvar, VarId origvar)
 {
     auto b_from = d_in.find(from).b;
     auto dist_assn = b_from->child();
@@ -250,13 +318,25 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
     procs.clear();
 
     int num_subgraphs = d_in.get_wccs().size();
+    DFG d_loc;
+    {
+        d_loc.clear();
+        _build_graph(gx.graph.m_seq, d_loc);
+        num_subgraphs = d_loc.get_wccs().size();
+        // fprintf(stdout, "\n\nD_TEST \n\n");
+        // d_loc.print_adj(stdout);
+        // print_chp(std::cout, gx.graph);
+        // print_subgraphs(stdout, d_loc.get_wccs());
+        // fprintf(stdout, "\n\n");
+        d_loc.clear();
+    }
     // fprintf(stdout, "\n\nD_IN \n\n");
     // d_in.print_adj(stdout);
     // print_chp(std::cout, gx.graph);
+    // print_subgraphs(stdout, d_in.get_wccs());
     // fprintf(stdout, "\n\n");
     std::unordered_set<int> marker_node_ids = {};
 
-    DFG d_loc;
     for (int i=0; i<num_subgraphs; i++)
     {
         std::unordered_map<ChanId, ChanId> cc;
@@ -273,6 +353,7 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
         // fprintf(stdout, "\n\nD_LOC \n\n");
         // d_loc.print_adj(stdout);
         // print_chp(std::cout, g1.graph);
+        // print_subgraphs(stdout, d_loc.get_wccs());
         // fprintf(stdout, "\n\n");
         auto itr = tmp_sgs.begin();
         while ((marker_node_ids.contains((*itr).second[0]))) 
@@ -290,6 +371,9 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
         }
 
         ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
+        // fprintf(stdout, "\n\nPROC_BUILD \n\n");
+        // print_chp(std::cout, g1.graph);
+        // fprintf(stdout, "\n\n");
         seqs.push_back(g1.graph.m_seq);
         std::vector<ActId *> tmp_names2;
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
@@ -297,9 +381,8 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
 
         // fprintf(stdout, "\n\n// num_subgraphs: %d, tmp_sgs: %d\n\n", num_subgraphs, int(tmp_sgs.size()));
         
-        // This actually need not hold, if the result of two copy-isnertions creates a buffer
-        // The entire wcc will then be invisible
-        // tmrw work on this to track all nodes fully
+        // HERE !!!
+        // Edge copy vs node copy
         hassert (num_subgraphs == tmp_sgs.size());
     }
     hassert (marker_node_ids.size() == num_subgraphs);
@@ -764,8 +847,8 @@ void Projection::_build_graph_nodes (const Sequence &seq, DFG &d_in)
 
         /*
             // Assuming top-level loop guard is always `true` 
-            dfg.add_node(DFG_Node (curr, curr->u_doloop().guard, dfg.gen_id()));
         */
+        d_in.add_node(DFG_Node (curr, curr->u_doloop().guard, d_in.gen_id()));
         for ( auto ophi : curr->u_doloop().out_phis ) {
             d_in.add_node(DFG_Node (curr, ophi, d_in.gen_id()));
         }
@@ -1185,7 +1268,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, DFG &d_in, Sequence 
                 auto vars = get_defs(n);
                 hassert (vars.size()<=1);
                 if (vars.size()==1 && (_heuristic3(d_in, n, nwcc)!=-1)) {
-                    _insert_copy(gg, d_in, n.id, vars[0]);
+                    _insert_node_copy(gg, d_in, n.id, vars[0]);
                     inserted = true;
                     return;
                 }
@@ -1193,7 +1276,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, DFG &d_in, Sequence 
                 if (d_in.contains(n1)) {
                     auto vars = get_defs(n1);
                     hassert (vars.size()==1);
-                    _insert_copy(gg, d_in, n1, vars[0]);
+                    _insert_node_copy(gg, d_in, n1, vars[0]);
                     inserted = true;
                     return;
                 }
@@ -1217,7 +1300,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, DFG &d_in, Sequence 
             const auto &n = d_in.find(curr, split);
             auto vars = get_defs(n);
             if (root==0 && _heuristic3(d_in, n, nwcc)!=-1) {
-                _insert_copy (gg, d_in, n.id, split.pre_id);
+                _insert_node_copy (gg, d_in, n.id, split.pre_id);
                 inserted = true;
                 return;
             }
@@ -1229,7 +1312,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, DFG &d_in, Sequence 
             auto n = d_in.find(curr, merge);
             auto vars = get_defs(n);
             if (root==0 && _heuristic3(d_in, n, nwcc)!=-1) {
-                _insert_copy (gg, d_in, n.id, merge.post_id);
+                _insert_node_copy (gg, d_in, n.id, merge.post_id);
                 inserted = true;
                 return;
             }
@@ -1250,7 +1333,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, DFG &d_in, Sequence 
     }
 }
 
-VarId Projection::_insert_copy (GraphWithChanNames &gg, const DFG &d_in, int from, VarId v)
+VarId Projection::_insert_node_copy (GraphWithChanNames &gg, const DFG &d_in, int from, VarId v)
 {
     Assert (d_in.contains(from), "Node not found");
     auto b_from = d_in.find(from).b;

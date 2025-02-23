@@ -212,7 +212,7 @@ class DFG_Node {
             }
             break;
             case NodeType::LoopGuard: {
-                ss << "lguard";
+                ss << "l";
             } 
             case NodeType::Guard: {
                 ss << "guard: " << g.first;
@@ -328,6 +328,23 @@ class DFG {
             Assert (to>=0 && to<adj.size(), "invalid to node");
             adj[from].erase(std::remove(adj[from].begin(), adj[from].end(), to), adj[from].end());
             sccs_built = false;
+        }
+
+        /*
+            Delete all outgoing edges from a node.
+        */
+        void delete_all_out_edges (int from) {
+            Assert (from>=0 && from<adj.size(), "invalid from node");
+            adj[from].clear();
+            sccs_built = false;
+        }
+
+        /*
+            Get all outgoing edges from a node
+        */
+        std::vector<int> get_out_edges (int from) const {
+            Assert (from>=0 && from<adj.size(), "invalid from node");
+            return adj.at(from);
         }
 
         /*
@@ -685,9 +702,11 @@ class Projection : protected ChoppingBlock {
             and flush the renaming downstream in the program. 
             Due to STF, it is sufficient to rename within the sequence.
         */
-        VarId _insert_copy (GraphWithChanNames &, const DFG &, int, VarId);
-        // void _insert_copy (GraphWithChanNames &, Sequence, int, VarId);
-        void _uninsert_copy (GraphWithChanNames &, const DFG &, int, VarId, VarId);
+        VarId _insert_node_copy (GraphWithChanNames &, const DFG &, int, VarId);
+        void _uninsert_node_copy (GraphWithChanNames &, const DFG &, int, VarId, VarId);
+
+        VarId _insert_edge_copy (GraphWithChanNames &, const DFG &, int, VarId);
+        void _uninsert_edge_copy (GraphWithChanNames &, const DFG &, int, VarId, VarId);
 
 
         /*
