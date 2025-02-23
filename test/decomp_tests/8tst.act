@@ -1,0 +1,39 @@
+import "8decomp.act";
+
+defproc test ()
+{
+    chan(int<8>) X1, X2, Y1, Y2, Px, Py;
+    decomp_dc8 m(X1, X2, Y1, Y2, Px, Py);
+    // le3 m(X1, X2, Y1, Y2, Px, Py);
+
+    int<8> px[7], py[7];
+
+    chp {
+        ( X1!0 , Y1!1 , X2!6, Y2!4 ) , 
+        ( Px?px[0]; Px?px[1]; Px?px[2]; Px?px[3]; Px?px[4]; Px?px[5]; Px?px[6] ) ,
+        ( Py?py[0]; Py?py[1]; Py?py[2]; Py?py[3]; Py?py[4]; Py?py[5]; Py?py[6] ) ;
+        log (px[0]," ",px[1]," ",px[2]," ",px[3]," ",px[4]," ",px[5]," ",px[6]);
+        log (py[0]," ",py[1]," ",py[2]," ",py[3]," ",py[4]," ",py[5]," ",py[6]);
+
+        [ px[0]=0 & py[0]=1 &
+          px[1]=1 & py[1]=1 &
+          px[2]=2 & py[2]=2 &
+          px[3]=3 & py[3]=2 &
+          px[4]=4 & py[4]=3 &
+          px[5]=5 & py[5]=3 &
+          px[6]=6 & py[6]=4
+            -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+
+/* 
+    0,1
+    1,1
+    2,2
+    3,2
+    4,3
+    5,3
+    6,4
+*/

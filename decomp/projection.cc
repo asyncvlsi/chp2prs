@@ -1,6 +1,6 @@
 /*************************************************************************
  *
- *  Copyright (c) 2024 Karthi Srinivasan
+ *  Copyright (c) 2024-2025 Karthi Srinivasan
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -59,7 +59,7 @@ void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
     _build_graph(g_in.graph.m_seq, d_in);
 
     hassert (d_in.id==d_in.nodes.size());
-    
+
     // Compute SCCs
     d_in.build_sccs();
 }
@@ -108,9 +108,12 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
     std::unordered_map<ChanId, ChanId> cc;
     std::unordered_map<VarId, VarId> vv;
     auto g_copy = deep_copy_graph(g,cc,vv);
+    std::unordered_map<VarId, VarId> vv_inv = {};
+    for ( const auto &v : vv ) {
+        vv_inv.insert({v.second,v.first});
+    }
     DFG d_loc;
     step2(g_copy, d_loc);
-    // ChpOptimize::takeOutOfNewStaticTokenForm(g_copy.graph);
 
     // get candidate edges
     auto cand_edges = _candidate_edges(d_loc);
@@ -123,13 +126,15 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
     std::vector<IntPair> best_edges_subset = {};
     std::vector<double> best_costs = {};
 
-    fprintf(stdout, "\n\n// subsets to check: %d\n\n", (1<<sz));
-    int max_itr = 2;
-    int n_itr = std::min(max_itr, 1<<sz);
+    fprintf(stdout, "\n\n// subsets to check: %llu\n\n", (1ULL<<sz));
+    // unsigned long long max_itr = 1024*1024*1024;
+    unsigned long long max_itr = 2;
+    unsigned long long n_itr = std::min(max_itr, 1ULL<<sz);
 
     // iterate over all possible subsets
-    for (int mask=0; mask<n_itr; mask++)
+    for (unsigned long long mask=0; mask<n_itr; mask++)
     {
+        fprintf(stdout, "\n\n// checking number : %llu\n", mask);
         std::vector<IntPair> edges_subset = {};
         // pick the edges in this subset 
         for (int i = 0; i < sz; i++) {
@@ -148,17 +153,20 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
                 d_loc.delete_edge (e.first, e.second);
                 // Actually insert copies corresponding to this edge deletion
                 auto newvar = _insert_copy (g_copy, d_loc, e.first, vars[0]);
+                // Insert copy bubble nodes
+                // TODO
+                // Need method for deleting node
                 // fprintf(stdout, "\n// inserting copy oldvar: %llu, newvar: %llu", vars[0].m_id, newvar.m_id);
                 old_to_new.insert({vars[0],newvar});
             }
         }
 
         // build the subprocesses and check what the cost is
-        ChpOptimize::takeOutOfNewStaticTokenForm(g_copy.graph);
         _build_procs(g_copy, d_loc);
-        ChpOptimize::putIntoNewStaticTokenForm(g_copy.graph);
+        c.clear();
         c.add_procs(procs);
         auto cost = c.get_max_latency_cost();
+        fprintf(stdout, "\n// max latency for this cut: %lf \n", cost);
         if (cost < min_max_cost) {
             min_max_cost = cost;
             best_edges_subset = edges_subset;
@@ -178,17 +186,18 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
         }
     }
 
-    fprintf(stdout, "\n// minimax cost: %lf\n", min_max_cost);
+    fprintf(stdout, "\n\n// minimax cost: %lf\n", min_max_cost);
     fprintf(stdout, "\n// edges to break: %d\n", int(best_edges_subset.size()));
     fprintf(stdout, "\n// vars to copy: ");
+
     for ( const auto &e : best_edges_subset ) {
         // use vardefmap to insert correct copies in original graph and finish
         const auto &node = d_loc.find(e.first);
         auto vars = get_defs(node);
         if (vars.size()==1) {
-            fprintf(stdout, "v%llu, ", vars[0].m_id);
-            Assert (vv.contains(vars[0]), "Var not in map");
-            auto var_in_old_g = vv[vars[0]];
+            Assert (vv_inv.contains(vars[0]), "Var not in map");
+            auto var_in_old_g = vv_inv[vars[0]];
+            fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
             Assert(d_in.vardefmap.contains(var_in_old_g), "Var not in vardefmap");
             auto node_id = d_in.vardefmap[var_in_old_g];
             _insert_copy (g, d_in, node_id, var_in_old_g);
@@ -239,25 +248,32 @@ std::unordered_map<IntPair, std::vector<IntPair>> Projection::_candidate_edges (
 void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
 {
     procs.clear();
-    // ChpOptimize::takeOutOfNewStaticTokenForm(gx.graph);
 
     int num_subgraphs = d_in.get_wccs().size();
+    // fprintf(stdout, "\n\nD_IN \n\n");
+    // d_in.print_adj(stdout);
+    // print_chp(std::cout, gx.graph);
+    // fprintf(stdout, "\n\n");
     std::unordered_set<int> marker_node_ids = {};
 
     DFG d_loc;
     for (int i=0; i<num_subgraphs; i++)
     {
-        std::vector<ActId *> tmp_names;
-
-        auto a1 = chp_graph_to_act (gx, tmp_names, s);
-        auto g1 = chp_graph_from_act (a1, s);
-
-        ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
+        std::unordered_map<ChanId, ChanId> cc;
+        std::unordered_map<VarId, VarId> vv;
+        auto g1 = deep_copy_graph(gx,cc,vv);
+        if (!g1.graph.is_static_token_form) {
+            fprintf(stdout, "\n// placing into stf.. \n");
+            ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
+        }
 
         d_loc.clear();
         _build_graph(g1.graph.m_seq, d_loc);
         auto tmp_sgs = d_loc.get_wccs();
-
+        // fprintf(stdout, "\n\nD_LOC \n\n");
+        // d_loc.print_adj(stdout);
+        // print_chp(std::cout, g1.graph);
+        // fprintf(stdout, "\n\n");
         auto itr = tmp_sgs.begin();
         while ((marker_node_ids.contains((*itr).second[0]))) 
         { itr++; }
@@ -279,6 +295,11 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
         procs.push_back(tmpact);
 
+        // fprintf(stdout, "\n\n// num_subgraphs: %d, tmp_sgs: %d\n\n", num_subgraphs, int(tmp_sgs.size()));
+        
+        // This actually need not hold, if the result of two copy-isnertions creates a buffer
+        // The entire wcc will then be invisible
+        // tmrw work on this to track all nodes fully
         hassert (num_subgraphs == tmp_sgs.size());
     }
     hassert (marker_node_ids.size() == num_subgraphs);
@@ -465,6 +486,7 @@ void Projection::build_vardefmap (DFG &d_in)
     for ( const auto &n : d_in.nodes ) {
         auto vars = get_defs(*n);
         for ( const auto &var : vars ) {
+            Assert (!(d_in.vardefmap.contains(var)), "Multiple nodes defining the same var? STF violation");
             d_in.vardefmap.insert({var,n->id});
         }
     }

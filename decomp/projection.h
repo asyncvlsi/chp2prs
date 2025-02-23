@@ -1,6 +1,6 @@
 /*************************************************************************
  *
- *  Copyright (c) 2024 Karthi Srinivasan
+ *  Copyright (c) 2024-2025 Karthi Srinivasan
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -30,7 +30,7 @@
 #include "../opt/static-tokens.h"
 #include "../opt/union-find.h"
 
-enum class NodeType { Basic, Guard, LoopGuard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
+enum class NodeType { Basic, Copy, Guard, LoopGuard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
 
 typedef std::pair<int,int> IntPair;
 
@@ -101,7 +101,7 @@ class DFG_Node {
         // Do not use !!
         DFG_Node (int idx) 
         {
-            t = NodeType::Basic;
+            t = NodeType::Copy;
             b = NULL;
             id = idx;
             set_n = -1;
