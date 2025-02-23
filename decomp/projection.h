@@ -705,8 +705,8 @@ class Projection : protected ChoppingBlock {
         VarId _insert_node_copy (GraphWithChanNames &, const DFG &, int, VarId);
         void _uninsert_node_copy (GraphWithChanNames &, const DFG &, int, VarId, VarId);
 
-        VarId _insert_edge_copy (GraphWithChanNames &, const DFG &, int, VarId);
-        void _uninsert_edge_copy (GraphWithChanNames &, const DFG &, int, VarId, VarId);
+        VarId _insert_edge_copy (GraphWithChanNames &, const DFG &, IntPair, VarId);
+        void _uninsert_edge_copy (GraphWithChanNames &, const DFG &, IntPair, VarId, VarId);
 
 
         /*

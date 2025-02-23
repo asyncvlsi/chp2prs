@@ -130,17 +130,18 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
     int node_or_edge = -1; // 0 for nodewise-cut, 1 for edgewise-cut
 
     auto sz_nodes = d_loc.nodes.size();
-    fprintf(stdout, "\n\n// node-copy subsets to check: %llu\n\n", 1ULL<<sz_nodes);
-    // unsigned long long max_itr = 1024*1024*1024;
-    unsigned long long max_itr_node = 8;
+    // unsigned long long max_itr_node = 1024*1024*1024;
+    unsigned long long max_itr_node = 16;
     unsigned long long n_itr_node = std::min(max_itr_node, 1ULL<<sz_nodes);
+    fprintf(stdout, "\n\n// node-copy subsets to check: %llu\n", 1ULL<<sz_nodes);
+    fprintf(stdout, "// iteration limit: %llu\n\n", n_itr_node);
 
     auto adj_save = d_loc.adj;
     // node-wise copies ------------------------------------
     for (unsigned long long mask=0; mask<n_itr_node; mask++)
     {
         std::vector<int> nodes_subset = {};
-        for (int i = 0; i < sz_edges; i++) {
+        for (int i = 0; i < sz_nodes; i++) {
             if (mask & (1 << i)) {
                 nodes_subset.push_back(i);
             }
@@ -190,15 +191,14 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
     }
     // node-wise copies ------------------------------------
 
-    // hassert (false);
-
-    fprintf(stdout, "\n\n// edge-copy subsets to check: %llu\n\n", (1ULL<<sz_edges));
     // unsigned long long max_itr = 1024*1024*1024;
-    unsigned long long max_itr = 2;
-    unsigned long long n_itr = std::min(max_itr, 1ULL<<sz_edges);
+    unsigned long long max_itr_edge = 8;
+    unsigned long long n_itr_edge = std::min(max_itr_edge, 1ULL<<sz_edges);
+    fprintf(stdout, "\n\n// edge-copy subsets to check: %llu\n", (1ULL<<sz_edges));
+    fprintf(stdout, "// iteration limit: %llu\n\n", n_itr_edge);
 
-    // iterate over all possible edge subsets
-    for (unsigned long long mask=0; mask<n_itr; mask++)
+    // edge-wise copies ------------------------------------
+    for (unsigned long long mask=0; mask<n_itr_edge; mask++)
     {
         fprintf(stdout, "\n\n// checking number : %llu\n", mask);
         std::vector<IntPair> edges_subset = {};
@@ -219,7 +219,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
                 d_loc.delete_edge (e.first, e.second);
                 // Actually insert copies corresponding to this edge deletion
                 if (!old_to_new.contains(vars[0])) {
-                    auto newvar = _insert_node_copy (g_copy, d_loc, e.first, vars[0]);
+                    auto newvar = _insert_edge_copy (g_copy, d_loc, e, vars[0]);
                     fprintf(stdout, "\n// inserting copy oldvar: %llu, newvar: %llu", vars[0].m_id, newvar.m_id);
                     old_to_new.insert({vars[0],newvar});
                 }
@@ -236,6 +236,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
             min_max_cost = cost;
             best_edges_subset = edges_subset;
             best_costs = c.get_latency_costs();
+            node_or_edge = 1;
         }
 
         // add edges back
@@ -247,30 +248,50 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
                 d_loc.add_edge (e.first, e.second);
                 // Un-insert the copy corresponding to this edge
                 if (old_to_new.contains(vars[0])) {
-                    _uninsert_node_copy (g_copy, d_loc, e.first, old_to_new[vars[0]], vars[0]);
+                    _uninsert_edge_copy (g_copy, d_loc, e, old_to_new[vars[0]], vars[0]);
                     old_to_new.erase(vars[0]);
                 }
             }
         }
     }
+    // edge-wise copies ------------------------------------
 
     fprintf(stdout, "\n\n// minimax cost: %lf\n", min_max_cost);
-    fprintf(stdout, "\n// edges to break: %d\n", int(best_edges_subset.size()));
     fprintf(stdout, "\n// vars to copy: ");
 
-    for ( const auto &e : best_edges_subset ) {
-        // use vardefmap to insert correct copies in original graph and finish
-        const auto &node = d_loc.find(e.first);
-        auto vars = get_defs(node);
-        if (vars.size()==1) {
-            Assert (vv_inv.contains(vars[0]), "Var not in map");
-            auto var_in_old_g = vv_inv[vars[0]];
-            fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
-            Assert(d_in.vardefmap.contains(var_in_old_g), "Var not in vardefmap");
-            auto node_id = d_in.vardefmap[var_in_old_g];
-            _insert_node_copy (g, d_in, node_id, var_in_old_g);
+    // do the better one -----------------------------------
+    Assert ((node_or_edge!=-1), "Copy insertion found nothing??");
+    if (node_or_edge) {
+        for ( const auto &e : best_edges_subset ) {
+            // use vardefmap to insert correct copies in original graph and finish
+            const auto &node = d_loc.find(e.first);
+            auto vars = get_defs(node);
+            if (vars.size()==1) {
+                Assert (vv_inv.contains(vars[0]), "Var not in map");
+                auto var_in_old_g = vv_inv[vars[0]];
+                fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
+                Assert(d_in.vardefmap.contains(var_in_old_g), "Var not in vardefmap");
+                auto node_id = d_in.vardefmap[var_in_old_g];
+                _insert_edge_copy (g, d_in, e, var_in_old_g);
+            }
+        }
+    } 
+    else {
+        for ( const auto &n_id : best_nodes_subset ) {
+            const auto &node = d_loc.find(n_id);
+            auto vars = get_defs(node);
+            if (vars.size()==1) {
+                Assert (vv_inv.contains(vars[0]), "Var not in map");
+                auto var_in_old_g = vv_inv[vars[0]];
+                fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
+                Assert(d_in.vardefmap.contains(var_in_old_g), "Var not in vardefmap");
+                auto node_id = d_in.vardefmap[var_in_old_g];
+                _insert_node_copy (g, d_in, node_id, var_in_old_g);
+            }
         }
     }
+    // do the better one -----------------------------------
+    
     fprintf(stdout, "\n");
 }
 
@@ -285,10 +306,38 @@ void Projection::_uninsert_node_copy (GraphWithChanNames &gg, const DFG &d_in, i
     auto rcv = dist_assn->u_par().branches.back().startseq->child();
     Assert (snd->type()==BlockType::Basic && snd->u_basic().stmt.type()==StatementType::Send, "send");
     Assert (rcv->type()==BlockType::Basic && rcv->u_basic().stmt.type()==StatementType::Receive, "recv");
+    Assert (rcv->u_basic().stmt.u_receive().var, "No receiving var");
+    Assert (*(rcv->u_basic().stmt.u_receive().var)==copyvar, "Not the correct dist_asn block?");
+    auto snd_ids = getIdsUsedByExpr(snd->u_basic().stmt.u_send().e);
+    Assert (snd_ids.contains(origvar), "Not the correct dist_asn block?");
 
     _splice_out_block (dist_assn);
 
     _replace_uses (gg, copyvar, origvar, snd, b_from);
+}
+
+void Projection::_uninsert_edge_copy (GraphWithChanNames &gg, const DFG &d_in, IntPair edge, VarId copyvar, VarId origvar)
+{
+    auto b_from = d_in.find(edge.first).b;
+    auto dist_assn = b_from->child();
+    // print_chp_block(std::cout, dist_assn);
+    Assert (dist_assn->type()==BlockType::Par, "par block");
+    Assert (dist_assn->u_par().branches.size()==2, "two par branches");
+    auto snd = dist_assn->u_par().branches.front().startseq->child();
+    auto rcv = dist_assn->u_par().branches.back().startseq->child();
+    Assert (snd->type()==BlockType::Basic && snd->u_basic().stmt.type()==StatementType::Send, "send");
+    Assert (rcv->type()==BlockType::Basic && rcv->u_basic().stmt.type()==StatementType::Receive, "recv");
+    Assert (rcv->u_basic().stmt.u_receive().var, "No receiving var");
+    Assert (*(rcv->u_basic().stmt.u_receive().var)==copyvar, "Not the correct dist_asn block?");
+    auto snd_ids = getIdsUsedByExpr(snd->u_basic().stmt.u_send().e);
+    Assert (snd_ids.contains(origvar), "Not the correct dist_asn block?");
+
+    _splice_out_block (dist_assn);
+
+    Assert (d_in.contains(edge.second), "Node not found");
+    auto b_to = d_in.find(edge.second).b;
+    
+    _replace_uses (gg, copyvar, origvar, snd, b_to->parent());
 }
 
 /*
@@ -323,18 +372,8 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
         d_loc.clear();
         _build_graph(gx.graph.m_seq, d_loc);
         num_subgraphs = d_loc.get_wccs().size();
-        // fprintf(stdout, "\n\nD_TEST \n\n");
-        // d_loc.print_adj(stdout);
-        // print_chp(std::cout, gx.graph);
-        // print_subgraphs(stdout, d_loc.get_wccs());
-        // fprintf(stdout, "\n\n");
         d_loc.clear();
     }
-    // fprintf(stdout, "\n\nD_IN \n\n");
-    // d_in.print_adj(stdout);
-    // print_chp(std::cout, gx.graph);
-    // print_subgraphs(stdout, d_in.get_wccs());
-    // fprintf(stdout, "\n\n");
     std::unordered_set<int> marker_node_ids = {};
 
     for (int i=0; i<num_subgraphs; i++)
@@ -342,19 +381,11 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
         std::unordered_map<ChanId, ChanId> cc;
         std::unordered_map<VarId, VarId> vv;
         auto g1 = deep_copy_graph(gx,cc,vv);
-        if (!g1.graph.is_static_token_form) {
-            fprintf(stdout, "\n// placing into stf.. \n");
-            ChpOptimize::putIntoNewStaticTokenForm(g1.graph);
-        }
+        Assert (g1.graph.is_static_token_form, "Input graph not in STF");
 
         d_loc.clear();
         _build_graph(g1.graph.m_seq, d_loc);
         auto tmp_sgs = d_loc.get_wccs();
-        // fprintf(stdout, "\n\nD_LOC \n\n");
-        // d_loc.print_adj(stdout);
-        // print_chp(std::cout, g1.graph);
-        // print_subgraphs(stdout, d_loc.get_wccs());
-        // fprintf(stdout, "\n\n");
         auto itr = tmp_sgs.begin();
         while ((marker_node_ids.contains((*itr).second[0]))) 
         { itr++; }
@@ -371,18 +402,12 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
         }
 
         ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
-        // fprintf(stdout, "\n\nPROC_BUILD \n\n");
-        // print_chp(std::cout, g1.graph);
-        // fprintf(stdout, "\n\n");
         seqs.push_back(g1.graph.m_seq);
         std::vector<ActId *> tmp_names2;
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
         procs.push_back(tmpact);
 
         // fprintf(stdout, "\n\n// num_subgraphs: %d, tmp_sgs: %d\n\n", num_subgraphs, int(tmp_sgs.size()));
-        
-        // HERE !!!
-        // Edge copy vs node copy
         hassert (num_subgraphs == tmp_sgs.size());
     }
     hassert (marker_node_ids.size() == num_subgraphs);
@@ -1342,6 +1367,9 @@ VarId Projection::_insert_node_copy (GraphWithChanNames &gg, const DFG &d_in, in
     var_to_actvar vtoa(s, gg.graph.id_pool());
     ActId *id = vtoa.chanMap(ci);
     gg.name_from_chan.insert({ci, id});
+
+    auto defvars = get_defs(d_in.find(from));
+    Assert (defvars.size()==1 && defvars[0]==v, "Node does not define this var?");
     
     auto send = gg.graph.blockAllocator().newBlock(
         Block::makeBasicBlock(Statement::makeSend(ci, 
@@ -1362,6 +1390,41 @@ VarId Projection::_insert_node_copy (GraphWithChanNames &gg, const DFG &d_in, in
     while (strt->type()!=BlockType::StartSequence) { strt = strt->parent(); }
 
     _replace_uses (gg, strt, v, copy_var, send, dist_assn);
+    return copy_var;
+}
+
+VarId Projection::_insert_edge_copy (GraphWithChanNames &gg, const DFG &d_in, IntPair edge, VarId v)
+{
+    Assert (d_in.contains(edge.first), "Node not found");
+    auto b_from = d_in.find(edge.first).b;
+
+    ChanId ci = gg.graph.id_pool().makeUniqueChan(gg.graph.id_pool().getBitwidth(v), false);
+    var_to_actvar vtoa(s, gg.graph.id_pool());
+    ActId *id = vtoa.chanMap(ci);
+    gg.name_from_chan.insert({ci, id});
+    
+    auto send = gg.graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeSend(ci, 
+        ChpExprSingleRootDag::makeVariableAccess(v, gg.graph.id_pool().getBitwidth(v)))));
+    
+    VarId copy_var = gg.graph.id_pool().makeUniqueVar(gg.graph.id_pool().getBitwidth(v), false);
+
+    auto recv = gg.graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeReceive(ci, copy_var)));
+
+    auto dist_assn = gg.graph.blockAllocator().newBlock(Block::makeParBlock());
+    dist_assn->u_par().branches.push_back(gg.graph.blockAllocator().newSequence({send}));
+    dist_assn->u_par().branches.push_back(gg.graph.blockAllocator().newSequence({recv}));
+
+    _splice_in_block_between (b_from, b_from->child(), dist_assn);
+    
+    Assert (d_in.contains(edge.second), "Node not found");
+    auto b_to = d_in.find(edge.second).b;
+
+    Block *strt = b_to;
+    while (strt->type()!=BlockType::StartSequence) { strt = strt->parent(); }
+
+    _replace_uses (gg, strt, v, copy_var, send, b_to->parent());
     return copy_var;
 }
 
