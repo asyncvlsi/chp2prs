@@ -2431,7 +2431,7 @@ act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
 			       std::vector<ActId *> &newnames,
 			       Scope *s) 
 {
-  var_to_actvar table(s, &gr.graph.id_pool());
+  var_to_actvar table(s, gr.graph.id_pool());
   act_dataflow *ret;
 
   for (auto &[x, v] : gr.name_from_chan) {

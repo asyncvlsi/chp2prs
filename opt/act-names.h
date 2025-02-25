@@ -31,7 +31,7 @@ namespace ChpOptimize {
   Namespace manager
 */
 struct var_to_actvar {
-  IdPool *id;
+  const IdPool &id;
   std::unordered_map<ChanId, ActId *> name_from_chan;
   std::unordered_map<VarId, ActId *> name_from_var;
   Scope *sc;
@@ -39,16 +39,16 @@ struct var_to_actvar {
 
   std::vector<ActId *> newvars;
 
-  var_to_actvar(Scope *s, IdPool *id_)
+  var_to_actvar(Scope *s, const IdPool &id_)
     : sc{s}, sc_var{0}, id{id_}, sc_chan{0} 
   {}
 
   bool isBool (const VarId &v) {
-    return id->getIsBool (v);
+    return id.getIsBool (v);
   }
   
   bool isBool (const ChanId &ch) {
-    return id->getIsBool (ch);
+    return id.getIsBool (ch);
   }
 
   ActId *chanMap (const ChanId &ch) {
@@ -71,7 +71,7 @@ struct var_to_actvar {
     }
     else {
       it = TypeFactory::Factory()->NewInt (sc, Type::NONE, 0,
-					   const_expr (id->getBitwidth(ch)));
+					   const_expr (id.getBitwidth(ch)));
     }
     it = TypeFactory::Factory()->NewChan (sc, Type::NONE, it, NULL);
     it = it->Expand (NULL, sc);
@@ -99,7 +99,7 @@ struct var_to_actvar {
     }
     else {
       it = TypeFactory::Factory()->NewInt (sc, Type::NONE, 0,
-					   const_expr (id->getBitwidth(v)));
+					   const_expr (id.getBitwidth(v)));
     }
     it = it->Expand (NULL, sc);
     sc->Add (buf, it);

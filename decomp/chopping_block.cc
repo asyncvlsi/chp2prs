@@ -147,7 +147,7 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
     }
 
     ChanId chan_id = g->graph.id_pool().makeUniqueChan(di->total_bitwidth_in, false);
-    var_to_actvar vtoa(s, &g->graph.id_pool());
+    var_to_actvar vtoa(s, g->graph.id_pool());
     ActId *id = vtoa.chanMap(chan_id);
     g->name_from_chan.insert({chan_id, id});
 
@@ -216,7 +216,7 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
     }
 
     ChanId chan_id = g->graph.id_pool().makeUniqueChan(di->total_bitwidth_out, false);
-    var_to_actvar vtoa(s, &g->graph.id_pool());
+    var_to_actvar vtoa(s, g->graph.id_pool());
     ActId *id = vtoa.chanMap(chan_id);
     g->name_from_chan.insert({chan_id, id});
 
@@ -1072,7 +1072,7 @@ std::pair<Block *, Block *> ChoppingBlock::_generate_pll_send_recv_and_seed_bran
     if (merge_needed) {
 
         ChanId send_chan = g->graph.id_pool().makeUniqueChan(di_pll->total_bitwidth_out, false);
-        var_to_actvar vtoa(s, &g->graph.id_pool());
+        var_to_actvar vtoa(s, g->graph.id_pool());
         ActId *id = vtoa.chanMap(send_chan);
         g->name_from_chan.insert({send_chan, id});
 
@@ -1106,7 +1106,7 @@ std::tuple<Block *, Block *, Block *> ChoppingBlock::_generate_split_merge_and_s
     if (ctrl_bw == 0) ctrl_bw = 1;
 
     ChanId ctrl_chan_id = g->graph.id_pool().makeUniqueChan(ctrl_bw, false);
-    var_to_actvar vtoa(s, &g->graph.id_pool());
+    var_to_actvar vtoa(s, g->graph.id_pool());
     ActId *id = vtoa.chanMap(ctrl_chan_id);
     g->name_from_chan.insert({ctrl_chan_id, id});
 
@@ -1236,7 +1236,7 @@ std::tuple<Block *, Block *, Block *> ChoppingBlock::_generate_split_merge_and_s
 
         // generate the send out of the merge
         ChanId merge_send_chan = g->graph.id_pool().makeUniqueChan(di_sel->total_bitwidth_out, false);
-        var_to_actvar vtoa(s, &g->graph.id_pool());
+        var_to_actvar vtoa(s, g->graph.id_pool());
         ActId *id = vtoa.chanMap(merge_send_chan);
         g->name_from_chan.insert({merge_send_chan, id});
 

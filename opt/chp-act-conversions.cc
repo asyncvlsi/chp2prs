@@ -543,10 +543,10 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 
 }
 
-act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr,
+act_chp_lang *chp_graph_to_act(const GraphWithChanNames &gr,
 			       std::vector<ActId *> &newnames,
 			       Scope *s) {
-  var_to_actvar table(s, &gr.graph.id_pool());
+  var_to_actvar table(s, gr.graph.id_pool());
 
   for (auto &[x, v] : gr.name_from_chan) {
     table.name_from_chan[x] = v;
@@ -562,6 +562,209 @@ act_chp_lang *chp_graph_to_act(GraphWithChanNames &gr,
   newnames = std::move (table.newvars);
   
   return l;
+}
+
+static std::unordered_map<ChanId, ChanId> cc;
+static std::unordered_map<VarId, VarId> vv;
+
+ChanId get_chan_id (const ChanId &ci, ChpGraph &g_new, const ChpGraph &g_old)
+{
+  if (cc.contains(ci))
+    return cc[ci];
+  ChanId co = g_new.id_pool().makeUniqueChan(
+                      g_old.id_pool().getBitwidth(ci), 
+                      g_old.id_pool().getIsBool(ci));
+  cc[ci] = co;
+  return co;
+}
+
+VarId get_var_id (const VarId &vi, ChpGraph &g_new, const ChpGraph &g_old)
+{
+  if (vv.contains(vi))
+    return vv[vi];
+  VarId vo = g_new.id_pool().makeUniqueVar(
+                      g_old.id_pool().getBitwidth(vi), 
+                      g_old.id_pool().getIsBool(vi));
+  vv[vi] = vo;
+  return vo;
+}
+
+template<typename ExprType> 
+ExprType deep_copy_expr (const ExprType &e, ChpGraph &g_new, const ChpGraph &g_old)
+{
+  auto e1 = ExprType::deep_copy(e);
+  auto used_vars = getIdsUsedByExpr(e1);
+  std::unordered_map<VarId, VarId> new_vars_map = {}; 
+  for ( auto var : used_vars ) {
+    new_vars_map.insert({var,get_var_id(var, g_new, g_old)});
+  }
+  ExprType::remapVars(e1, new_vars_map);
+  return e1;
+}
+
+Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_old)
+{
+  std::vector<Block *> blks = {};
+  Block *curr = seq.startseq->child();
+
+  auto remap_chan = [&](const ChanId &id) -> ChanId {
+    return get_chan_id(id, g_new, g_old);
+  };
+
+  auto remap_var = [&](const VarId &id) -> VarId {
+    return get_var_id(id, g_new, g_old);
+  };
+
+  auto remap_var_opt = [&](const OptionalVarId &id) -> OptionalVarId {
+    return (id) ? get_var_id(*(id), g_new, g_old) : OptionalVarId();
+  };
+
+  auto remap_vec = [&](const std::vector<VarId> &ids) -> std::vector<VarId> {
+    std::vector<VarId> ret = {};
+    for ( const auto &id : ids ) {
+      ret.push_back(remap_var(id));
+    }
+    return ret;
+  };
+
+  auto remap_vec_opt = [&](const std::vector<OptionalVarId> &ids) -> std::vector<OptionalVarId> {
+    std::vector<OptionalVarId> ret = {};
+    for ( const auto &id : ids ) {
+      ret.push_back(remap_var_opt(id));
+    }
+    return ret;
+  };
+
+  while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        switch (curr->u_basic().stmt.type()) {
+        case StatementType::Receive: {
+          const auto &recv = curr->u_basic().stmt;
+          ChanId ci = remap_chan(recv.u_receive().chan);
+          OptionalVarId vi = remap_var_opt(recv.u_receive().var);
+          auto _b = g_new.newBasicBlock(Statement::makeReceive(ci,vi));
+          blks.push_back(_b);
+        }
+        break;
+        case StatementType::Send: {
+          const auto &send = curr->u_basic().stmt;
+          ChanId ci = remap_chan(send.u_send().chan);
+          auto _b = g_new.newBasicBlock(Statement::makeSend(
+                    ci,deep_copy_expr<ChpExprSingleRootDag>(send.u_send().e, g_new, g_old)));
+          blks.push_back(_b);
+        }
+        break;
+        case StatementType::Assign: {
+          const auto &assns = curr->u_basic().stmt;
+          std::vector<VarId> new_assn_vars = {};
+          for (const auto &var : assns.u_assign().ids ) {
+            new_assn_vars.push_back(remap_var(var));
+          }
+          auto _b = g_new.newBasicBlock(Statement::makeAssignment(
+                    new_assn_vars,deep_copy_expr<ChpExprDag>(assns.u_assign().e, g_new, g_old)));
+          blks.push_back(_b);
+        }
+        break;
+        }
+    }
+    break;
+    case BlockType::Par: {
+        auto _b = g_new.newParBlock();
+        for (const auto &branch : curr->u_par().branches) {
+          _b->u_par().branches.push_back(deep_copy_seq(branch, g_new, g_old));
+        }
+        for (const auto &split : curr->u_par().splits) {
+          Block::Variant_Par::PhiSplit newsplit;
+          newsplit.pre_id = remap_var(split.pre_id);
+          newsplit.branch_ids = remap_vec_opt(split.branch_ids);
+          _b->u_par().splits.push_back(newsplit);
+        }
+        for (const auto &merge : curr->u_par().merges) {
+          Block::Variant_Par::PhiMerge newmerge;
+          newmerge.branch_ids = remap_vec_opt(merge.branch_ids);
+          newmerge.post_id = remap_var(merge.post_id);
+          _b->u_par().merges.push_back(newmerge);
+        }
+        blks.push_back(_b);
+    }
+    break;
+    case BlockType::Select: {
+        auto _b = g_new.newSelectBlock();
+        for (const auto &branch : curr->u_select().branches) {
+          _b->u_select().branches.push_back({deep_copy_seq(branch.seq, g_new, g_old),
+                    (branch.g.type()==IRGuardType::Else) ? IRGuard::makeElse() :
+                    IRGuard::makeExpression(deep_copy_expr<ChpExprSingleRootDag>(branch.g.u_e().e, g_new, g_old))});
+        }
+        for (const auto &split : curr->u_select().splits) {
+          Block::Variant_Select::PhiSplit newsplit;
+          newsplit.pre_id = remap_var(split.pre_id);
+          newsplit.branch_ids = remap_vec_opt(split.branch_ids);
+          _b->u_select().splits.push_back(newsplit);
+        }
+        for (const auto &merge : curr->u_select().merges) {
+          Block::Variant_Select::PhiMerge newmerge;
+          newmerge.branch_ids = remap_vec(merge.branch_ids);
+          newmerge.post_id = remap_var(merge.post_id);
+          _b->u_select().merges.push_back(newmerge);
+        }
+        blks.push_back(_b);
+    }
+    break;
+    case BlockType::DoLoop: {
+      auto _b = g_new.newDoLoopBlock();
+      _b->u_doloop().branch = deep_copy_seq(curr->u_doloop().branch, g_new, g_old);
+      _b->u_doloop().guard = deep_copy_expr<ChpExprSingleRootDag>(curr->u_doloop().guard, g_new, g_old);
+      for (const auto &iphi : curr->u_doloop().in_phis) {
+        Block::Variant_DoLoop::InPhi newiphi;
+        newiphi.bodyin_id = remap_var(iphi.bodyin_id);
+        newiphi.pre_id = remap_var(iphi.pre_id);
+        _b->u_doloop().in_phis.push_back(newiphi);
+      }
+      for (const auto &ophi : curr->u_doloop().out_phis) {
+        Block::Variant_DoLoop::OutPhi newophi;
+        newophi.bodyout_id = remap_var(ophi.bodyout_id);
+        newophi.post_id = remap_var(ophi.post_id);
+        _b->u_doloop().out_phis.push_back(newophi);
+      }
+      for (const auto &lphi : curr->u_doloop().loop_phis) {
+        Block::Variant_DoLoop::LoopPhi newlphi;
+        newlphi.bodyin_id = remap_var(lphi.bodyin_id);
+        newlphi.bodyout_id = remap_var(lphi.bodyout_id);
+        newlphi.pre_id = remap_var(lphi.pre_id);
+        newlphi.post_id = remap_var_opt(lphi.post_id);
+        _b->u_doloop().loop_phis.push_back(newlphi);
+      }
+      blks.push_back(_b);
+    }
+    break;
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+  }
+  return g_new.newSequence(blks);
+}
+
+GraphWithChanNames deep_copy_graph (
+      const GraphWithChanNames &g, 
+std::unordered_map<ChanId, ChanId> &cc_in,
+std::unordered_map<VarId, VarId> &vv_in
+)
+{
+  GraphWithChanNames ret;
+  cc.clear();
+  vv.clear();
+  ret.graph.m_seq = deep_copy_seq (g.graph.m_seq, ret.graph, g.graph);
+  for ( const auto &x : g.name_from_chan ) {
+    ret.name_from_chan.insert({get_chan_id(x.first, ret.graph, g.graph),x.second});
+  }
+  ret.graph.is_static_token_form = g.graph.is_static_token_form;
+  cc_in = std::move(cc);
+  vv_in = std::move(vv);
+  return ret;
 }
 
 } // namespace ChpOptimize
