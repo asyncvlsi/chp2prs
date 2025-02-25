@@ -59,7 +59,7 @@ void MultiChan::process_multichans()
         if (printt) _print_state_table (_st);
         Assert(alias_number == cbp.second.size(), "hmm");
         
-        // _re_encode_states ();
+        _re_encode_states ();
         if (printt) fprintf (fp, "\n ----- re-enc. -------\n");
         if (printt) _print_state_table (_st);
 
@@ -422,16 +422,16 @@ void MultiChan::_print_state_table (StateTable st)
                 fatal_error ("brr");
             break;
             case Cond::Guard:
-                fprintf(fp, "%d : guard : (\n", sr.curr);
+                fprintf(fp, "%d : guard : (", sr.curr);
                 print_chp_block (std::cout, sr.sel, 0);
-                fprintf(fp, " \n) : ");
+                fprintf(fp, " ) : ");
                 for ( auto x : sr.nexts )
                 {
                     fprintf(fp, "%d, ", x);
                 }
             break;
         }
-        fprintf (fp, "\n");
+        // fprintf (fp, "\n");
     }
     fprintf (fp, "\n-------------------- \n");
 }
@@ -539,13 +539,24 @@ void MultiChan::_replace_next_states (int old_st, int new_st)
 
 void MultiChan::_re_encode_states ()
 {
-    int alias_n = alias_number;
+    int alias_n_loc = alias_number;
+    //  use negative numbers temporarily to re-encode
+    int re_enc_st_tmp = -1;
     for ( auto &sr : _st )
     {
-        if ( sr.curr > alias_n ) 
+        if ( sr.curr > alias_n_loc ) 
         {   
-            auto x = _gen_alias_number ();
-            _re_encode_state (sr.curr, x);
+            _re_encode_state (sr.curr, re_enc_st_tmp);
+            re_enc_st_tmp--;
+        }
+    }
+    alias_n_loc++;
+    for ( auto &sr : _st )
+    {
+        if ( sr.curr < 0 )
+        {
+            _re_encode_state (sr.curr, alias_n_loc);
+            alias_n_loc++;
         }
     }
 }
@@ -581,7 +592,7 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
     for ( auto sr : st ) {
         if (sr.curr > stmax) stmax = sr.curr;
     }
-    auto alias_var_bw = log_2_round_up(stmax)+1;
+    auto alias_var_bw = log_2_round_up(stmax+1);
 
 
     auto alias_var = g->graph.id_pool().makeUniqueVar(alias_var_bw);
