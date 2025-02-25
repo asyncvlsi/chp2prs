@@ -135,14 +135,6 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
 */
 double ChpCost::expr_delay (Expr *e, int out_bw)
 {
-    const char *efile = "/dev/null";
-    const char *eblk_pfx = "eblk_";
-    const char *eblk_inp_pfx = "in_";
-    // create mapper object
-    ExternalExprOpt *eeo = new ExternalExprOpt("abc", bd, false, 
-                                                efile, eblk_inp_pfx, eblk_pfx);
-    Assert ((eeo), "Could not create mapper");
-
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
 
@@ -163,19 +155,13 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
         }
     }
 
-    config_set_int("expropt.verbose", 0);
-    config_set_int("expropt.abc_use_constraints", 1);
-    config_set_int("expropt.vectorize_all_ports", 1);
-
     // run abc, then v2act to create the combinational-logic-for-math process
     ExprBlockInfo *ebi = eeo->run_external_opt(0, out_bw, e, all_leaves, _inexprmap, _inwidthmap);
 
     Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
     
-    eeo->~ExternalExprOpt();
     ebi->~ExprBlockInfo();
-    eeo = NULL;
     ebi = NULL;
 
     // free all temporary data structures 

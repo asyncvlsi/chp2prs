@@ -35,6 +35,14 @@ class ChpCost {
             _s = s;
             procs = {};
             _expr_id = 0;
+            eeo = new ExternalExprOpt("abc", bd, false, 
+                                    "/dev/null", "eblk_", "in_");
+            Assert ((eeo), "Could not create mapper");
+
+            config_set_int("expropt.verbose", 0);
+            config_set_int("expropt.abc_use_constraints", 1);
+            config_set_int("expropt.vectorize_all_ports", 1);
+            
             send_delay = config_get_real("synth.ring.bundled.send_delay");
             recv_delay = config_get_real("synth.ring.bundled.recv_delay");
             assn_delay = config_get_real("synth.ring.bundled.assn_delay");
@@ -50,6 +58,11 @@ class ChpCost {
             double *tmp2 = config_get_table_real("synth.ring.bundled.or_delays");
             sel_delays = std::vector<double> (tmp,tmp+sel_sz);
             or_delays = std::vector<double> (tmp2,tmp2+sel_sz);
+        }
+
+        ~ChpCost ()
+        {
+            eeo->~ExternalExprOpt();
         }
 
         void clear();
@@ -74,6 +87,9 @@ class ChpCost {
         iHashtable *_inwidthmap;
 
         Scope *_s;
+
+        // mapper object
+        ExternalExprOpt *eeo;
 
         int _expr_id;
         
