@@ -708,6 +708,9 @@ class Projection : protected ChoppingBlock {
         VarId _insert_edge_copy (GraphWithChanNames &, const DFG &, IntPair, VarId);
         void _uninsert_edge_copy (GraphWithChanNames &, const DFG &, IntPair, VarId, VarId);
 
+        VarId _insert_dominator_copy (GraphWithChanNames &, const DFG &, IntPair, VarId);
+        void _uninsert_dominator_copy (GraphWithChanNames &, const DFG &, IntPair, VarId, VarId);
+
 
         /*
             Same as other overload, with option to specify where to place 
@@ -720,6 +723,10 @@ class Projection : protected ChoppingBlock {
             Rename `old_var` to `new_var`, but exclude `excl` and start after `start_after`
         */
         void _replace_uses (GraphWithChanNames &, VarId, VarId, Block *, Block *);
+        /*
+            Replace use only in this block
+        */
+        void _replace_use (GraphWithChanNames &, VarId, VarId, const DFG_Node &);
 
         /*
             Internal use only.

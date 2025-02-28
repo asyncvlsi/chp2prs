@@ -157,6 +157,7 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
 
     // run abc, then v2act to create the combinational-logic-for-math process
     ExprBlockInfo *ebi = eeo->run_external_opt(0, out_bw, e, all_leaves, _inexprmap, _inwidthmap);
+    // ExprBlockInfo *ebi = eeo->synth_expr(0, out_bw, e, all_leaves, _inexprmap, _inwidthmap);
 
     Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;

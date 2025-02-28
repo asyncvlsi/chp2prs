@@ -26,6 +26,7 @@
 
 #include "chopping_block.h"
 #include <act/expropt.h>
+// #include <act/expr_cache.h>
 
 class ChpCost {
     public:
@@ -37,6 +38,8 @@ class ChpCost {
             _expr_id = 0;
             eeo = new ExternalExprOpt("abc", bd, false, 
                                     "/dev/null", "eblk_", "in_");
+            // eeo = new ExprCache(false, "abc", bd, false, 
+                                    // "/dev/null");
             Assert ((eeo), "Could not create mapper");
 
             config_set_int("expropt.verbose", 0);
@@ -90,6 +93,7 @@ class ChpCost {
 
         // mapper object
         ExternalExprOpt *eeo;
+        // ExprCache *eeo;
 
         int _expr_id;
         
@@ -102,8 +106,6 @@ class ChpCost {
         int max_way;
         std::vector<double> or_delays;
         std::vector<double> sel_delays;
-
-
 
 };
 
