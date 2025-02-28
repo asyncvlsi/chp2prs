@@ -66,6 +66,7 @@ class ChpCost {
         ~ChpCost ()
         {
             eeo->~ExternalExprOpt();
+            // eeo->~ExprCache();
         }
 
         void clear();

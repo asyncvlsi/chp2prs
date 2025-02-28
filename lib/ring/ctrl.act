@@ -232,30 +232,30 @@ defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
 export template <pint CD>
 defproc ff_control (a1of1 go; bool clk1, clk2)
 {
-  std::cells::OR2X1 or;
-  std::cells::AND2X1 and;
+  std::cells::OR2X1 or1;
+  std::cells::AND2X1 and1;
   std::gates::ctree<2,false> c2;
 
   delay_line<CD+1> capture_delay_1;
   delay_line<CD> capture_delay_2;
 
-  or.A = go.r;
-  and.A = go.r;
+  or1.A = go.r;
+  and1.A = go.r;
 
-  capture_delay_1.in = or.Y;
-  capture_delay_1.out = and.B;
-  capture_delay_2.in = and.Y;
-  capture_delay_2.out = or.B;
+  capture_delay_1.in = or1.Y;
+  capture_delay_1.out = and1.B;
+  capture_delay_2.in = and1.Y;
+  capture_delay_2.out = or1.B;
 
-  or.B = c2.in[0];
-  and.B = c2.in[1];
+  or1.B = c2.in[0];
+  and1.B = c2.in[1];
   c2.out = go.a;
 
   std::cells::INVX1 inv_clk;
-  inv_clk.A = or.Y;
+  inv_clk.A = or1.Y;
 
   inv_clk.Y = clk1;
-  and.Y = clk2;
+  and1.Y = clk2;
 }
 
 // flip-flop without pulse generator
@@ -538,7 +538,7 @@ export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
   std::ideal_arbiter ia(pause.r, m1.a, u, p1.r);
   inverter pause_inv(u,_u);
 
-  std::cells::NOR2X1 and(_m1_r, _u, pause.a);
+  std::cells::NOR2X1 and1(_m1_r, _u, pause.a);
 
   prs {
       ~Reset & (~_m1_r & ~p1.r & ~p1.a) -> m1.a+ 
@@ -749,8 +749,8 @@ defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N])
   nds_two_way nds[M];
   // std::cells::INVX1 inv[M];
   std::cells::NOR2X1 nors[M];
-  std::cells::XOR2X1 xor;
-  std::cells::TIELOX1 tielo;
+  std::cells::XOR2X1 xor1;
+  std::cells::TIELOX1 tielo1;
   std::cells::INVX1 inv_loop;
   std::cells::NOR2X1 reset_nor;
   inv_loop.Y = reset_nor.B;
@@ -765,8 +765,8 @@ defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N])
               nors[i].Y = nds[i].gs[1]; )
 
   // first one
-  xor.B = m1.r;
-  xor.Y = nds[0].m1.r;
+  xor1.B = m1.r;
+  xor1.Y = nds[0].m1.r;
   m1.a = nds[0].m1.a;
  
   ( i : M-1 : nds[i].co[0] = co[i]; 
@@ -774,9 +774,9 @@ defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N])
 
   // last one
   nds[M-1].co[0] = co[M-1];
-  nds[M-1].co[1].a = tielo.Y;
+  nds[M-1].co[1].a = tielo1.Y;
   // nds[M-1].co[1].r = xor.A;
-  xor.A = reset_nor.Y;
+  xor1.A = reset_nor.Y;
   nds[M-1].co[1].r = inv_loop.A;
 }
 
