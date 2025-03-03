@@ -34,6 +34,8 @@ enum class NodeType { Basic, Copy, Guard, LoopGuard, LoopInPhi, LoopOutPhi, Loop
 
 typedef std::pair<int,int> IntPair;
 
+typedef std::unordered_map<VarId, Block *> CopyLocMap;
+
 template<> struct std::hash<IntPair> {
     size_t operator()(const IntPair &x) const {
         size_t seed = 0;
@@ -705,8 +707,8 @@ class Projection : protected ChoppingBlock {
         VarId _insert_node_copy (GraphWithChanNames &, const DFG &, int, VarId);
         void _uninsert_node_copy (GraphWithChanNames &, const DFG &, int, VarId, VarId);
 
-        VarId _insert_edge_copy (GraphWithChanNames &, const DFG &, IntPair, VarId);
-        void _uninsert_edge_copy (GraphWithChanNames &, const DFG &, IntPair, VarId, VarId);
+        VarId _insert_edge_copy (GraphWithChanNames &, const DFG &, IntPair, VarId, CopyLocMap &);
+        void _uninsert_edge_copy (GraphWithChanNames &, const DFG &, IntPair, VarId, VarId, CopyLocMap &);
 
         VarId _insert_dominator_copy (GraphWithChanNames &, const DFG &, IntPair, VarId);
         void _uninsert_dominator_copy (GraphWithChanNames &, const DFG &, IntPair, VarId, VarId);

@@ -131,7 +131,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
 
     auto sz_nodes = d_loc.nodes.size();
     // unsigned long long max_itr_node = 1024*1024*1024;
-    unsigned long long max_itr_node = 16;
+    unsigned long long max_itr_node = 0;
     unsigned long long n_itr_node = std::min(max_itr_node, 1ULL<<sz_nodes);
     fprintf(stdout, "\n\n// node-copy subsets to check: %llu\n", 1ULL<<sz_nodes);
     fprintf(stdout, "// iteration limit: %llu\n\n", n_itr_node);
@@ -192,7 +192,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
     // node-wise copies ------------------------------------
 
     // unsigned long long max_itr_edge = 1024*1024*1024;
-    unsigned long long max_itr_edge = 128;
+    unsigned long long max_itr_edge = 1024;
     unsigned long long n_itr_edge = std::min(max_itr_edge, 1ULL<<sz_edges);
     fprintf(stdout, "\n\n// edge-copy subsets to check: %llu\n", (1ULL<<sz_edges));
     fprintf(stdout, "// iteration limit: %llu\n\n", n_itr_edge);
@@ -212,6 +212,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
         // delete edges in this subset
         // only do single-var defining nodes
         std::unordered_map<VarId, VarId> old_to_new = {};
+        CopyLocMap clm = {};
         for ( auto e : edges_subset ) {
             const auto &node = d_loc.find(e.first);
             auto vars = get_defs(node);
@@ -220,7 +221,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
                 // Actually insert copies corresponding to this edge deletion
                 if (!old_to_new.contains(vars[0])) {
                     // auto newvar = _insert_dominator_copy (g_copy, d_loc, e, vars[0]);
-                    auto newvar = _insert_edge_copy (g_copy, d_loc, e, vars[0]);
+                    auto newvar = _insert_edge_copy (g_copy, d_loc, e, vars[0], clm);
                     fprintf(stdout, "\n// inserting copy oldvar: %llu, newvar: %llu", vars[0].m_id, newvar.m_id);
                     old_to_new.insert({vars[0],newvar});
                 }
@@ -250,7 +251,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
                 // Un-insert the copy corresponding to this edge
                 if (old_to_new.contains(vars[0])) {
                     // _uninsert_dominator_copy (g_copy, d_loc, e, old_to_new[vars[0]], vars[0]);
-                    _uninsert_edge_copy (g_copy, d_loc, e, old_to_new[vars[0]], vars[0]);
+                    _uninsert_edge_copy (g_copy, d_loc, e, old_to_new[vars[0]], vars[0], clm);
                     old_to_new.erase(vars[0]);
                 }
             }
@@ -264,6 +265,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
     // do the better one -----------------------------------
     Assert ((node_or_edge!=-1), "Copy insertion found nothing??");
     if (node_or_edge) {
+        CopyLocMap clm = {};
         for ( const auto &e : best_edges_subset ) {
             // use vardefmap to insert correct copies in original graph and finish
             const auto &node = d_loc.find(e.first);
@@ -274,7 +276,8 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
                 fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
                 Assert(d_in.vardefmap.contains(var_in_old_g), "Var not in vardefmap");
                 auto node_id = d_in.vardefmap[var_in_old_g];
-                _insert_dominator_copy (g, d_in, e, var_in_old_g);
+                // _insert_dominator_copy (g, d_in, e, var_in_old_g);
+                _insert_edge_copy (g, d_in, e, var_in_old_g, clm);
             }
         }
     } 
@@ -342,10 +345,12 @@ void Projection::_uninsert_dominator_copy (GraphWithChanNames &gg, const DFG &d_
     _replace_uses (gg, copyvar, origvar, snd, b_to->parent());
 }
 
-void Projection::_uninsert_edge_copy (GraphWithChanNames &gg, const DFG &d_in, IntPair edge, VarId copyvar, VarId origvar)
+void Projection::_uninsert_edge_copy (GraphWithChanNames &gg, const DFG &d_in, IntPair edge, VarId copyvar, VarId origvar, CopyLocMap &clm)
 {
     auto b_from = d_in.find(edge.first).b;
-    auto dist_assn = b_from->child();
+    // auto dist_assn = b_from->child();
+    Assert (clm.contains(copyvar), "what");
+    auto dist_assn = clm.at(copyvar);
     Assert (dist_assn->type()==BlockType::Par, "par block");
     Assert (dist_assn->u_par().branches.size()==2, "two par branches");
     auto snd = dist_assn->u_par().branches.front().startseq->child();
@@ -353,6 +358,12 @@ void Projection::_uninsert_edge_copy (GraphWithChanNames &gg, const DFG &d_in, I
     Assert (snd->type()==BlockType::Basic && snd->u_basic().stmt.type()==StatementType::Send, "send");
     Assert (rcv->type()==BlockType::Basic && rcv->u_basic().stmt.type()==StatementType::Receive, "recv");
     Assert (rcv->u_basic().stmt.u_receive().var, "No receiving var");
+    if (!(*(rcv->u_basic().stmt.u_receive().var)==copyvar)) {
+        fprintf(stdout, "\n\ncopyvar: %llu", copyvar.m_id);
+        fprintf(stdout, "\n\norigvar: %llu", origvar.m_id);
+        print_chp_block (std::cout, dist_assn);
+        print_chp(std::cout, gg.graph);
+    }
     Assert (*(rcv->u_basic().stmt.u_receive().var)==copyvar, "Not the correct dist_asn block?");
     auto snd_ids = getIdsUsedByExpr(snd->u_basic().stmt.u_send().e);
     Assert (snd_ids.contains(origvar), "Not the correct dist_asn block?");
@@ -1453,7 +1464,7 @@ VarId Projection::_insert_dominator_copy (GraphWithChanNames &gg, const DFG &d_i
     return copy_var;
 }
 
-VarId Projection::_insert_edge_copy (GraphWithChanNames &gg, const DFG &d_in, IntPair edge, VarId v)
+VarId Projection::_insert_edge_copy (GraphWithChanNames &gg, const DFG &d_in, IntPair edge, VarId v, CopyLocMap &clm)
 {
     Assert (d_in.contains(edge.first), "Node not found");
     auto b_from = d_in.find(edge.first).b;
@@ -1482,6 +1493,8 @@ VarId Projection::_insert_edge_copy (GraphWithChanNames &gg, const DFG &d_in, In
     auto b_to = d_in.find(edge.second).b;
 
     _replace_use (gg, v, copy_var, d_in.find(edge.second));
+
+    clm.insert({copy_var, dist_assn});
 
     return copy_var;
 }
