@@ -9,26 +9,35 @@ defproc receiver (chan?(int<2>) A, B; chan!(int<1>) C)
     chan(int<2>) ZS, ZR;
 
     chp {
-        top_decomp: (
-            qdi_itb:(x1:=0;*[XS!x1;XR?x1]) 
-            ,
-            qdi_itb:(y1:=0;*[YS!y1;YR?y1]) 
-            ,
-            qdi_itb:(z1:=0;*[ZS!z1;ZR?z1]) 
-            ,
-            (
+        // top_decomp: (
+        //     qdi_itb:(x1:=0;*[XS!x1;XR?x1]) 
+        //     ,
+        //     qdi_itb:(y1:=0;*[YS!y1;YR?y1]) 
+        //     ,
+        //     qdi_itb:(z1:=0;*[ZS!z1;ZR?z1]) 
+        //     ,
+        //     (
+        //     *[  
+        //         XS?x,YS?y,ZS?z;
+        //         [ x=0  -> A?y
+        //         []else -> B?z
+        //         ];
+        //         w:=int(y=1 & z=2);
+        //         C!w;
+        //         x:=x+1;
+        //         XR!x,YR!y,ZR!z
+        //     ]
+        //     )
+        // )
+            x:=0; y:=0; z:=0; 
             *[  
-                XS?x,YS?y,ZS?z;
                 [ x=0  -> A?y
                 []else -> B?z
                 ];
                 w:=int(y=1 & z=2);
                 C!w;
-                x:=x+1;
-                XR!x,YR!y,ZR!z
+                x:=x+1
             ]
-            )
-        )
     }
 }
 

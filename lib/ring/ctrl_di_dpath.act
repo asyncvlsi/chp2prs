@@ -228,8 +228,226 @@ defproc var_access(sdtvar<W> din; sdtexprchan<1> dout[W])
   conv.out = dout;
 }
 
+export template<pint W>
+defproc chan_access(sdtchan<W> C; Mx1of2<W> dout)
+{
+  C.d = dout;
+}
+
+export template<pint W>
+defproc probe_access(sdtchan<W> C; sdtexprchan<1> dout[1])
+{
+  bool _t, _f;
+  prs {
+    // dout.r & ( C.d.[0].t | C.d.d[0].f ) -> dout.d.d[0].f-
+    // ~dout.r -> dout.d.d[0].f+
+    // dout.d.d[0].f => dout.d.d[0].t-
+
+    dout[0].r & C.d.d[0].t -> _f-
+    ~dout[0].r -> _f+
+    dout[0].r & C.d.d[0].f -> _t-
+    ~dout[0].r -> _t+
+
+    _f => dout[0].d.d[0].f-
+    _t => dout[0].d.d[0].t-
+  }
+}
+
+export
+defproc dummy_probe_clause(bool? g[1]; bool! out[1]) {
+  { false : "wip" }; 
+  out = g;
+}
+
+export template<pint N; pint idx[N]; pint T>
+defproc probe_clause(sdtexprchan<1> g[N]; sdtexprchan<1> probe[T]; sdtexprchan<1> out[1]) {
+  pint tstval, tmp;
+  pint lo_idx[N];
+  tstval = 0;
+  tmp = 0;
+  *[ tmp < N ->
+    lo_idx[tmp] = tstval;
+    tstval = tstval + idx[tmp];
+    tmp = tmp + 1; ]
+  { T = tstval : "Inconsistent template parameters" };
+  
+  ( i : N : out[0].r = g[i].r; )
+  ( i : T : out[0].r = g[i].r; )
+
+  bool _out, _Reset;
+  prs {
+    // inverted Reset to initialize correctly
+    Reset => _Reset-
+
+     _Reset & 
+     (| i: N: g[i].d.d[0].t & 
+     ( & j: idx[i]: probe[j + lo_idx[i]].d.d[0].t | probe[j + lo_idx[i]].d.d[0].f )) -> _out-
+    ~_Reset | (& i: N: ~g[i].d.d[0].t) -> _out+
+    _out => out[0].d.d[0].t-
+  }
+  // this is okay since the output goes into an arbiter anyway 
+  _out = out[0].d.d[0].f;
+  
+  sizing{
+    leak_adjust <- 1;
+    p_n_mode <- 1;
+    _out{ -1 };
+    out[0].d.d[0].t{ -1 };
+    out[0].d.d[0].f{ -1 }
+  }
+}
+
+// N-way non-deterministic split ------
+
+defproc c1 (bool ctrl, ka, a, out)
+{
+    bool _out;
+    prs {
+        [after=0] a & ctrl -> _out-
+        [after=0] ~ka & ~ctrl -> _out+
+        [after=0] _out => out-
+    }
+}
+
+defproc c2 (bool A, B, ack, out)
+{
+    bool _out;
+    prs {
+        // ack -> _out-
+        // ~ack & ~A & ~B -> _out+
+        // _out => out-
+        [after=0] ack -> _out-
+        [after=0] ~ack & ~A & ~B -> _out+
+        [after=0] _out => out-
+    }
+}
+
+defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka) 
+{
+  bool _u, _v;
+  bool _Reset;
+
+  /* force exclusive low signals for simulation */
+  spec {
+    mk_excllo(_u,_v)
+  }
+  
+  std::cells::OR2X1 or_ka;
+  or_ka.A = u;
+  or_ka.B = v;
+  or_ka.Y = _ka;
+
+  prs {
+    // inverted Reset to initialize correctly
+    Reset => _Reset-
+    /* cross coupled nand gates, with kill tail NMOS */
+    [keeper=0] a & _v & _ki -> _u-
+    [keeper=0] ~a | ~_v | ~_Reset | ~_ki -> _u+
+    [keeper=0] b & _u & _ki -> _v-
+    [keeper=0] ~b | ~_u | ~_Reset | ~_ki -> _v+
+
+   /* output filter */
+    [keeper=0] _u<5> -> u-
+    [keeper=0] _v<5> -> v-
+    passp<10>(_u,_v,u)
+    passp<10>(_v,_u,v)
+
+
+  }
+  sizing {
+   leak_adjust <- 1;
+   _u{-1};
+   _v{-1}
+  }
+}
+
+defproc nds_two_way (bool gs[2]; a1of1 m1; a1of1 co[2])
+{
+  c1 ac1, bc1;
+  c2 c_ack;
+  killable_arbiter arb;
+  std::cells::OR2X1 or_ack;
+
+  bool _ka;
+  _ka = arb._ka;
+  m1.r = arb._ki;
+
+  ac1.ctrl = m1.r;
+  bc1.ctrl = m1.r;
+
+  ac1.a = gs[0];
+  bc1.a = gs[1];
+
+  ac1.ka = _ka;
+  bc1.ka = _ka;
+
+  ac1.out = arb.a;
+  bc1.out = arb.b;
+
+  ac1.out = c_ack.A;
+  bc1.out = c_ack.B;
+
+  co[0].a = or_ack.A;
+  co[1].a = or_ack.B;
+  c_ack.ack = or_ack.Y;
+  c_ack.out = m1.a;
+
+  arb.u = co[0].r;
+  arb.v = co[1].r;
+}
+
+
+// Round-robin non-deterministic split
+export template <pint N>
+defproc nds_split (sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+  { N>1 : "At least two-way non-deterministic selection" };
+
+  // No. of NDS blocks
+  pint M = N;
+
+  nds_two_way nds[M];
+  // std::cells::INVX1 inv[M];
+  std::cells::NOR2X1 nors[M];
+  std::cells::XOR2X1 xor1;
+  std::cells::TIELOX1 tielo1;
+  std::cells::INVX1 inv_loop;
+  std::cells::NOR2X1 reset_nor;
+  inv_loop.Y = reset_nor.B;
+  Reset = reset_nor.A;
+
+  // connect guards and inverted guards
+  // ( i : M : nds[i].gs[0] = gs[i]; 
+  //             // inv[i].A = gs[i];
+  //             nors[i].A = gs[i];
+  //             nors[i].B = Reset;
+  //             // inv[i].Y = nds[i].gs[1]; )
+  //             nors[i].Y = nds[i].gs[1]; )
+  ( i : M : nds[i].gs[0] = gs[i].d.d[0].t; 
+              // nors[i].A = gs[i].d.d[0].t;
+              // nors[i].B = Reset;
+              // nors[i].Y = nds[i].gs[1];
+            nds[i].gs[1] = gs[i].d.d[0].f; 
+              )
+
+  // first one
+  xor1.B = m1.r;
+  xor1.Y = nds[0].m1.r;
+  m1.a = nds[0].m1.a;
+ 
+  ( i : M-1 : nds[i].co[0] = co[i]; 
+              nds[i].co[1] = nds[i+1].m1; )
+
+  // last one
+  nds[M-1].co[0] = co[M-1];
+  nds[M-1].co[1].a = tielo1.Y;
+  // nds[M-1].co[1].r = xor.A;
+  xor1.A = reset_nor.Y;
+  nds[M-1].co[1].r = inv_loop.A;
+}
+
 export template <pint CD, PW, W, INIT_VAL>
-defproc capture_init(a1of1 go; Mx1of2<W> din; sdtvar<W> dout)
+defproc capture_init(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 {  
   // syn::var_init_val<W,INIT_VAL> var;
   syn::var_init<W,false> var;
@@ -245,7 +463,9 @@ defproc capture_init(a1of1 go; Mx1of2<W> din; sdtvar<W> dout)
   std::gates::ctree<2,false> write_sync;
   write_sync.in[0] = wp.in.a;
   write_sync.in[1] = go.r;
+  write_sync.in[1] = tx.r;
   write_sync.out = go.a;
+  write_sync.out = tx.a;
 }
 
 defproc celem2_r (bool in[2]; bool out)
