@@ -162,6 +162,8 @@ class RingSynth : public ActSynthesize {
       
       // for non-ssa style only
       if (dpath_style) expand_self_assignments (c, p);
+      // for qdi only
+      if (!bundled) make_receives_unique (c, p);
 
       ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
       b->run(p);

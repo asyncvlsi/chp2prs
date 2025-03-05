@@ -18,20 +18,27 @@ defproc sender (chan!(int<1>) A, B)
     chan(int<1>) XS, XR;
 
     chp {
-        top_decomp: (
-            qdi_itb:(x1:=0;*[XS!x1;XR?x1]) 
-            ,
-            (
-            *[
-                XS?x;
-                [ x=0  -> A!x
-                []else -> B!x
-                ];
-                x:=x+1;
-                XR!x
-            ]
-            )
-        )
+        // top_decomp: (
+        //     qdi_itb:(x1:=0;*[XS!x1;XR?x1]) 
+        //     ,
+        //     (
+        //     *[
+        //         XS?x;
+        //         [ x=0  -> A!x
+        //         []else -> B!x
+        //         ];
+        //         x:=x+1;
+        //         XR!x
+        //     ]
+        //     )
+        // )
+        x:=0;
+        *[
+            [ x=0  -> A!x
+            []else -> B!x
+            ];
+            x:=x+1
+        ]
     }
 }
 

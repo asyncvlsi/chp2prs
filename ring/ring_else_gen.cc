@@ -22,6 +22,8 @@
 
 #include "ring_else_gen.h"
 
+static int counter = 0;
+
 void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
 {
     listitem_t *li;
@@ -188,6 +190,92 @@ void expand_self_assignments (act_chp_lang_t *&c, Process *p)
     act_chp_gc_t *gc = c->u.gc;
     while (gc) {
       expand_self_assignments (gc->s, p);
+      gc = gc->next;
+    }
+  }
+  break;
+
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+}
+
+void make_receives_unique (act_chp_lang_t *&c, Process *p)
+{
+  Scope *s = p->CurScope();
+
+  switch (c->type) {
+
+  case ACT_CHP_SKIP:
+  case ACT_CHP_SEND:
+    break;
+  case ACT_CHP_RECV: {
+    Assert ( (TypeFactory::isDataType(c->u.comm.var->rootVx(s)->t)) , "not a data type?");
+    Assert ( (TypeFactory::isIntType(c->u.comm.var->rootVx(s)->t)) , "not int type?");
+    char nm[1024];
+    get_true_name (nm, c->u.comm.var, s, true);
+    int w = TypeFactory::bitWidth(c->u.assign.id->rootVx(s)->t);
+    InstType *it = TypeFactory::Factory()->NewInt (s, Type::NONE, 0, const_expr(w));
+    it = it->Expand(NULL, s);
+    std::string pref = "_tmp_";
+    pref.append(std::to_string(counter));
+    counter++;
+    pref.append("_");
+    pref.append(nm);
+    ActId *new_var = new ActId (pref.c_str());
+    s->Add (pref.c_str(), it);
+
+    act_chp_lang_t *assn = new act_chp_lang_t;
+    assn->type = ACT_CHP_ASSIGN;
+    assn->label = NULL;
+    assn->space = NULL;
+    assn->u.assign.id = c->u.comm.var;
+    Expr *e = new Expr;
+    e->type = E_VAR;
+    e->u.e.l = (Expr *)(new_var);
+    assn->u.assign.e = e;
+
+    c->u.comm.var = new_var;
+
+    list_t *ll = list_new();
+    list_append(ll, chp_expand(c, ActNamespace::Global(), s));
+    list_append(ll, assn);
+
+    c->type = ACT_CHP_SEMI;
+    c->u.semi_comma.cmd = ll;
+    }
+    break;
+  case ACT_CHP_ASSIGN:
+    break;
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {   
+      act_chp_lang_t *stmt = (act_chp_lang_t *) list_value (li);
+      make_receives_unique (stmt, p);
+    }
+    break;
+
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    make_receives_unique (gc->s, p);
+    Assert (!(gc->next), "more than one loop branch at top-level?");
+  }
+    break;
+  case ACT_CHP_SELECT_NONDET:
+  case ACT_CHP_SELECT:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    while (gc) {
+      make_receives_unique (gc->s, p);
       gc = gc->next;
     }
   }
