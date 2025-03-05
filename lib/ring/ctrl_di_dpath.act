@@ -229,9 +229,9 @@ defproc var_access(sdtvar<W> din; sdtexprchan<1> dout[W])
 }
 
 export template<pint W>
-defproc chan_access(sdtchan<W> C; Mx1of2<W> dout)
+defproc chan_access(sdtchan<W> C; sdtvar<W> dout)
 {
-  C.d = dout;
+  ( i : W : C.d.d[i] = dout.d[i]; )
 }
 
 export template<pint W>
@@ -272,7 +272,7 @@ defproc probe_clause(sdtexprchan<1> g[N]; sdtexprchan<1> probe[T]; sdtexprchan<1
   { T = tstval : "Inconsistent template parameters" };
   
   ( i : N : out[0].r = g[i].r; )
-  ( i : T : out[0].r = g[i].r; )
+  ( i : T : out[0].r = probe[i].r; )
 
   bool _out, _Reset;
   prs {
@@ -408,7 +408,7 @@ defproc nds_split (sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
 
   nds_two_way nds[M];
   // std::cells::INVX1 inv[M];
-  std::cells::NOR2X1 nors[M];
+  // std::cells::NOR2X1 nors[M];
   std::cells::XOR2X1 xor1;
   std::cells::TIELOX1 tielo1;
   std::cells::INVX1 inv_loop;
@@ -428,11 +428,13 @@ defproc nds_split (sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
               // nors[i].B = Reset;
               // nors[i].Y = nds[i].gs[1];
             nds[i].gs[1] = gs[i].d.d[0].f; 
+            xor1.Y = gs[i].r;
               )
 
   // first one
   xor1.B = m1.r;
   xor1.Y = nds[0].m1.r;
+  // xor1.Y = nds[0].
   m1.a = nds[0].m1.a;
  
   ( i : M-1 : nds[i].co[0] = co[i]; 
