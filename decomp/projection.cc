@@ -77,6 +77,10 @@ void Projection::project()
     // compute strongly-connected components info
     step2(*g, dfg1);
 
+    // fprintf (stdout, "\n\n");
+    // print_chp(std::cout, g->graph);
+    // fprintf (stdout, "\n\n");
+
     // Copy-insertion strategy
     if (0) {
         bool _ins = false;

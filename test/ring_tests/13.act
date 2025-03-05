@@ -9,7 +9,7 @@ defproc receiver (chan?(int<2>) A, B; chan!(int<1>) C)
             ];
             w:=int(y=1 & z=2);
             C!w;
-            x1:=x+1; x:=x1
+            x:=x+1
         ]
     }
 }

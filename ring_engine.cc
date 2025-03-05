@@ -42,8 +42,10 @@ class RingSynth : public ActSynthesize {
     if (!exprfile) {
       fatal_error ("Ring Synthesis: requires an expression file");
     }
-      config_set_string("expropt.act_cell_lib_bd_namespace","std::cells");
-      config_set_string("expropt.act_cell_lib_bd","${ACT_HOME}/act/std/cells.act");
+      // config_set_string("expropt.act_cell_lib_bd_namespace","std::cells");
+      config_set_string("synth.bundled.cell_lib_namespace","std::cells");
+      // config_set_string("expropt.act_cell_lib_bd","${ACT_HOME}/act/std/cells.act");
+      config_set_string("synth.bundled.cell_lib","${ACT_HOME}/act/std/cells.act");
     }
   
   void emitTopImports(ActPass *ap) {
@@ -157,6 +159,9 @@ class RingSynth : public ActSynthesize {
       Assert (c, "hmm no chp lol - something went wrong");
       mangle_init();
       fill_in_else_explicit (c, p, 1);
+      
+      // for non-ssa style only
+      if (dpath_style) expand_self_assignments (c, p);
 
       ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
       b->run(p);

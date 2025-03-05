@@ -119,3 +119,196 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
     }
     return;
 }
+
+void expand_self_assignments (act_chp_lang_t *&c, Process *p)
+{
+  Scope *s = p->CurScope();
+
+  switch (c->type) {
+
+  case ACT_CHP_SKIP:
+  case ACT_CHP_SEND:
+  case ACT_CHP_RECV:
+    break;
+  case ACT_CHP_ASSIGN:
+    if (_var_appears_in_expr(c->u.assign.e,c->u.assign.id)) {
+      Assert ( (TypeFactory::isDataType(c->u.assign.id->rootVx(s)->t)) , "not a data type?");
+      Assert ( (TypeFactory::isIntType(c->u.assign.id->rootVx(s)->t)) , "not int type?");
+      char nm[1024];
+      get_true_name (nm, c->u.assign.id, s, true);
+      int w = TypeFactory::bitWidth(c->u.assign.id->rootVx(s)->t);
+      InstType *it = TypeFactory::Factory()->NewInt (s, Type::NONE, 0, const_expr(w));
+      it = it->Expand(NULL, s);
+      std::string pref = "_tmp_";
+      pref.append(nm);
+      ActId *new_var = new ActId (pref.c_str());
+      s->Add (pref.c_str(), it);
+
+      act_chp_lang_t *assn = new act_chp_lang_t;
+      assn->type = ACT_CHP_ASSIGN;
+      assn->label = NULL;
+      assn->space = NULL;
+      assn->u.assign.id = c->u.assign.id;
+      Expr *e = new Expr;
+      e->type = E_VAR;
+      e->u.e.l = (Expr *)(new_var);
+      assn->u.assign.e = e;
+
+      c->u.assign.id = new_var;
+
+      list_t *ll = list_new();
+      list_append(ll, chp_expand(c, ActNamespace::Global(), s));
+      list_append(ll, assn);
+
+      c->type = ACT_CHP_SEMI;
+      c->u.semi_comma.cmd = ll;
+    }
+    break;
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {   
+      act_chp_lang_t *stmt = (act_chp_lang_t *) list_value (li);
+      expand_self_assignments (stmt, p);
+    }
+    break;
+
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    expand_self_assignments (gc->s, p);
+    Assert (!(gc->next), "more than one loop branch at top-level?");
+  }
+    break;
+  case ACT_CHP_SELECT_NONDET:
+  case ACT_CHP_SELECT:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    while (gc) {
+      expand_self_assignments (gc->s, p);
+      gc = gc->next;
+    }
+  }
+  break;
+
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+}
+
+bool _var_appears_in_expr (Expr *e, ActId *id)
+{
+  act_connection *uid;
+  ActId *i;
+  bool a1, a2, a3;
+  char str[1024], t[1024];
+  
+  if (!e) return false;
+  switch (e->type) {
+    /* binary */
+  case E_AND:
+  case E_OR:
+  case E_PLUS:
+  case E_MINUS:
+  case E_MULT:
+  case E_DIV:
+  case E_MOD:
+  case E_LSL:
+  case E_LSR:
+  case E_ASR:
+  case E_XOR:
+  case E_LT:
+  case E_GT:
+  case E_LE:
+  case E_GE:
+  case E_EQ:
+  case E_NE:
+    a1 = _var_appears_in_expr (e->u.e.l, id);
+    a2 = _var_appears_in_expr (e->u.e.r, id);
+    return a1 | a2;
+    break;
+    
+  case E_NOT:
+  case E_UMINUS:
+  case E_COMPLEMENT:
+    a1 = _var_appears_in_expr (e->u.e.l, id);
+    return a1;
+    break;
+
+  case E_QUERY:
+    a1 = _var_appears_in_expr (e->u.e.l, id);
+    a2 = _var_appears_in_expr (e->u.e.r->u.e.l, id);
+    a3 = _var_appears_in_expr (e->u.e.r->u.e.r, id);
+    return a1 | a2 | a3;
+    break;
+
+  case E_COLON:
+  case E_COMMA:
+    fatal_error ("Should have been handled elsewhere");
+    return false;
+    break;
+
+  case E_CONCAT:
+    do {
+      a1 = _var_appears_in_expr (e->u.e.l, id);
+      e = e->u.e.r;
+    } while (e && !a1);
+    return a1;
+    break;
+
+  case E_BITFIELD:
+    /* l is an Id */
+    // v = _var_getinfo ((ActId *)e->u.e.l);
+    // if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
+    //   v->nread++;
+    //   v->fcurexpr = 1;
+    // }
+    return id->isEqual((ActId *)(e->u.e.l));
+    break;
+
+  case E_TRUE:
+  case E_FALSE:
+  case E_INT:
+  case E_REAL:
+    return false;
+    break;
+
+  case E_VAR:
+  case E_PROBE:
+    return id->isEqual((ActId *)(e->u.e.l));
+    break;
+
+    // fatal_error ("Not handling probes right now");
+    // return false;
+    // break;
+
+  case E_BUILTIN_BOOL:
+  case E_BUILTIN_INT:
+    a1 = _var_appears_in_expr (e->u.e.l, id);
+    return a1;
+    break;
+    
+  case E_FUNCTION:
+    warning ("not handling functions");
+    return false;
+    e = e->u.fn.r;
+    while (e) {
+      _var_appears_in_expr (e->u.e.l, id);
+      e = e->u.e.r;
+    }
+    break;
+
+  case E_SELF:
+  default:
+    fatal_error ("Unknown expression type %d\n", e->type);
+    return false;
+    break;
+  }
+}

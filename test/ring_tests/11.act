@@ -20,7 +20,7 @@ defproc sender (chan!(int<1>) A, B)
             [ x=0  -> A!x
             []else -> B!x
             ];
-            x1:=x+1; x:=x1
+            x:=x+1
         ]
     }
 }

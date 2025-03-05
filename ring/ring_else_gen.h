@@ -44,3 +44,7 @@
  * 
 */
 void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root);
+
+void expand_self_assignments (act_chp_lang_t *&c, Process *p);
+
+bool _var_appears_in_expr (Expr *e, ActId *id);

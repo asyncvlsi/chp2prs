@@ -57,7 +57,6 @@ class RingEngine {
         // Internal functions
         void _construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v);
         void _print_var_info (FILE *fp, var_info *v);
-        bool _var_appears_in_expr (Expr *e, ActId *id);
         int _var_in_list (const char *name, list_t *l);
 
         // Save and restore state of var_infos 
