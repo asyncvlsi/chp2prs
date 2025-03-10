@@ -239,14 +239,10 @@ defproc probe_access(sdtchan<W> C; sdtexprchan<1> dout[1])
 {
   bool _t, _f;
   prs {
-    // dout.r & ( C.d.[0].t | C.d.d[0].f ) -> dout.d.d[0].f-
-    // ~dout.r -> dout.d.d[0].f+
-    // dout.d.d[0].f => dout.d.d[0].t-
-
-    dout[0].r & C.d.d[0].t -> _f-
-    ~dout[0].r -> _f+
-    dout[0].r & C.d.d[0].f -> _t-
+    dout[0].r & C.d.d[0].t -> _t-
     ~dout[0].r -> _t+
+    dout[0].r & C.d.d[0].f -> _f-
+    ~dout[0].r -> _f+
 
     _f => dout[0].d.d[0].f-
     _t => dout[0].d.d[0].t-
@@ -274,24 +270,31 @@ defproc probe_clause(sdtexprchan<1> g[N]; sdtexprchan<1> probe[T]; sdtexprchan<1
   ( i : N : out[0].r = g[i].r; )
   ( i : T : out[0].r = probe[i].r; )
 
-  bool _out, _Reset;
+  bool _out_t, _out_f, out_f, out_t, _Reset;
+  out_f = out[0].d.d[0].f;
+  out_t = out[0].d.d[0].t;
   prs {
     // inverted Reset to initialize correctly
     Reset => _Reset-
 
-     _Reset & 
      (| i: N: g[i].d.d[0].t & 
-     ( & j: idx[i]: probe[j + lo_idx[i]].d.d[0].t | probe[j + lo_idx[i]].d.d[0].f )) -> _out-
-    ~_Reset | (& i: N: ~g[i].d.d[0].t) -> _out+
-    _out => out[0].d.d[0].t-
+     ( & j: idx[i]: probe[j + lo_idx[i]].d.d[0].t | probe[j + lo_idx[i]].d.d[0].f )) -> _out_t-
+
+     (& i: N: g[i].d.d[0].f ) -> _out_f-
+
+     ~_Reset | (& i: N: ~g[i].d.d[0].t & ~g[i].d.d[0].f) -> _out_t+
+     
+     ~_Reset | ~_out_t -> _out_f+
+
+    _out_t => out_t-
+    _out_f => out_f-
   }
-  // this is okay since the output goes into an arbiter anyway 
-  _out = out[0].d.d[0].f;
   
   sizing{
     leak_adjust <- 1;
     p_n_mode <- 1;
-    _out{ -1 };
+    _out_t{ -1 };
+    _out_f{ -1 };
     out[0].d.d[0].t{ -1 };
     out[0].d.d[0].f{ -1 }
   }
