@@ -87,7 +87,8 @@ void Projection::project()
         _insert_copies_v3 (*g, dfg1, g->graph.m_seq, dfg1.get_wccs().size(), 1, _ins);
     }
     else {
-        _insert_copies_v4 (*g, dfg1);
+        // _insert_copies_v4 (*g, dfg1);
+        _insert_copies_v5 (*g, dfg1);
     }
     
     // Construct sub-processes
@@ -98,6 +99,7 @@ void Projection::project()
     ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
 }
 
+#if 1
 /*
     This is the brute-force bit.
     Exponential in no. of SCC edges, at least (lol).
@@ -303,6 +305,128 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
     
     fprintf(stdout, "\n");
 }
+#endif
+
+#if 1
+/*
+    This is the brute-force bit.
+    Exponential in no. of SCC edges, at least (lol).
+    Checks every possible subset of SCC-edges that can be cut.
+    Picks the one with minimum maximum-latency cost
+*/
+void Projection::_insert_copies_v5 (GraphWithChanNames &g, DFG &d_in)
+{
+    // build var to defining-node_id map
+    build_vardefmap(d_in);  
+
+    // make copy of graph
+    std::unordered_map<ChanId, ChanId> cc;
+    std::unordered_map<VarId, VarId> vv;
+    auto g_copy = deep_copy_graph(g,cc,vv);
+    std::unordered_map<VarId, VarId> vv_inv = {};
+    for ( const auto &v : vv ) {
+        vv_inv.insert({v.second,v.first});
+    }
+    DFG d_loc;
+    step2(g_copy, d_loc);
+
+    // get candidate edges
+    auto cand_edges = _candidate_edges(d_loc);
+    std::vector<std::pair<IntPair, std::vector<IntPair>>> edges (cand_edges.begin(), cand_edges.end());
+    auto sz_edges = cand_edges.size();
+
+    // initialize cost-related stuff
+    ChpCost c(s);
+    double min_max_cost = std::numeric_limits<double>::max();
+    std::vector<IntPair> best_edges_subset = {};
+    std::vector<double> best_costs = {};
+
+    unsigned long long max_itr_edge = 1024*1024*1024;
+    // unsigned long long max_itr_edge = 1024;
+    unsigned long long n_itr_edge = std::min(max_itr_edge, 1ULL<<sz_edges);
+    fprintf(stdout, "\n\n// edge-copy subsets to check: %llu\n", (1ULL<<sz_edges));
+    fprintf(stdout, "// iteration limit: %llu\n\n", n_itr_edge);
+
+    // edge-wise copies ------------------------------------
+    for (unsigned long long mask=0; mask<n_itr_edge; mask++)
+    {
+        fprintf(stdout, "\n\n// checking number : %llu\n", mask);
+        std::vector<IntPair> edges_subset = {};
+        // pick the edges in this subset 
+        for (int i = 0; i < sz_edges; i++) {
+            if (mask & (1 << i)) {
+                edges_subset.insert(edges_subset.end(), edges[i].second.begin(), edges[i].second.end());
+            }
+        }
+
+        // delete edges in this subset
+        // only do single-var defining nodes
+        std::unordered_map<VarId, VarId> old_to_new = {};
+        CopyLocMap clm = {};
+        for ( auto e : edges_subset ) {
+            const auto &node = d_loc.find(e.first);
+            auto vars = get_defs(node);
+            if (vars.size()==1) {
+                d_loc.delete_edge (e.first, e.second);
+                // Actually insert copies corresponding to this edge deletion
+                if (!old_to_new.contains(vars[0])) {
+                    auto newvar = _insert_edge_copy (g_copy, d_loc, e, vars[0], clm);
+                    fprintf(stdout, "\n// inserting copy oldvar: %llu, newvar: %llu", vars[0].m_id, newvar.m_id);
+                    old_to_new.insert({vars[0],newvar});
+                }
+            }
+        }
+
+        // build the subprocesses and check what the cost is
+        _build_procs(g_copy, d_loc);
+        c.clear();
+        c.add_procs(procs);
+        auto cost = c.get_max_latency_cost();
+        fprintf(stdout, "\n// max latency for this cut: %lf \n", cost);
+        if (cost < min_max_cost) {
+            min_max_cost = cost;
+            best_edges_subset = edges_subset;
+            best_costs = c.get_latency_costs();
+        }
+
+        // add edges back
+        // only do single-var defining nodes
+        for ( auto e : edges_subset ) {
+            const auto &node = d_loc.find(e.first);
+            auto vars = get_defs(node);
+            if (vars.size()==1) {
+                d_loc.add_edge (e.first, e.second);
+                // Un-insert the copy corresponding to this edge
+                if (old_to_new.contains(vars[0])) {
+                    _uninsert_edge_copy (g_copy, d_loc, e, old_to_new[vars[0]], vars[0], clm);
+                    old_to_new.erase(vars[0]);
+                }
+            }
+        }
+    }
+    // edge-wise copies ------------------------------------
+
+    fprintf(stdout, "\n\n// minimax cost: %lf\n", min_max_cost);
+    fprintf(stdout, "\n// vars to copy: ");
+
+        CopyLocMap clm = {};
+        for ( const auto &e : best_edges_subset ) {
+            // use vardefmap to insert correct copies in original graph and finish
+            const auto &node = d_loc.find(e.first);
+            auto vars = get_defs(node);
+            if (vars.size()==1) {
+                Assert (vv_inv.contains(vars[0]), "Var not in map");
+                auto var_in_old_g = vv_inv[vars[0]];
+                fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
+                Assert(d_in.vardefmap.contains(var_in_old_g), "Var not in vardefmap");
+                auto node_id = d_in.vardefmap[var_in_old_g];
+                _insert_edge_copy (g, d_in, e, var_in_old_g, clm);
+            }
+        }
+    
+    fprintf(stdout, "\n");
+}
+#endif
 
 void Projection::_uninsert_node_copy (GraphWithChanNames &gg, const DFG &d_in, int from, VarId copyvar, VarId origvar)
 {

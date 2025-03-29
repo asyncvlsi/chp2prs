@@ -41,6 +41,7 @@ bool propagateConstants(ChpGraph &graph);
 bool eliminateCopies(ChpGraph &graph);
 bool eliminateCopiesNew(ChpGraph &graph);
 bool eliminateDeadCode(ChpGraph &graph);
+bool parallelizeStatements(ChpGraph &graph);
 
 void uninlineBitfieldExprsHack(ChpGraph &graph);
 

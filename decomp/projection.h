@@ -762,6 +762,7 @@ class Projection : protected ChoppingBlock {
             Copy insertion strategy: latency cost-based.
         */
         void _insert_copies_v4 (GraphWithChanNames &, DFG &);
+        void _insert_copies_v5 (GraphWithChanNames &, DFG &);
 
         int _heuristic1 (DFG &, const DFG_Node &, int);
         int _heuristic2 (DFG &, const DFG_Node &, int);
