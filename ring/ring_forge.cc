@@ -797,7 +797,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
         vi = (var_info *)b->v;
         bw = vi->width;
-        expr_inst_id = _generate_expr_block(e,bw);
+        expr_inst_id = _generate_expr_block(e,bw,true);
         Assert ((c->space), "No latch info? (_generate_pipe_element)");
         if (init_latch == -1)
         {
@@ -891,7 +891,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                                             vi->name,latch_id,chan_name);
             }
             else { // function of variable(s) send
-                expr_inst_id = _generate_expr_block(e,bw);
+                expr_inst_id = _generate_expr_block(e,bw,true);
                 // connect output of math block to channel data
                 // fprintf (_fp,"\n");
                 // fprintf(_fp,"%s%d.out = %s.d;\n",expr_block_instance_prefix,expr_inst_id,chan_name);
@@ -1250,7 +1250,7 @@ int RingForge::_generate_gp_connect()
     generate combinational logic to implement functions.
     Currently supports only abc. 
 */
-int RingForge::_generate_expr_block(Expr *e, int out_bw)
+int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
 {
     // fprintf (fp, "// hello from expropt\n");
     // create mapper object
@@ -1335,7 +1335,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
         fprintf(_fp,"\n");
     }
 
-    _instantiate_expr_block (xid, all_leaves);
+    _instantiate_expr_block (xid, all_leaves, connect_inputs);
 
     // fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",int(std::ceil(delay_line_n*delay_multiplier)),xid);
     fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",delay_line_n,xid);
@@ -1363,7 +1363,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw)
     generate combinational logic to implement guard
     evaluators. Currently supports only abc. 
 */
-int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
+int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_inputs)
 {
     // create mapper object
     ExternalExprOpt *eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, _exprfile, 
@@ -1417,7 +1417,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
 
     if (verbose) fprintf(_fp, "\n// typical delay: %lfps",typ_delay_ps);
     fprintf(_fp,"\n");
-    _instantiate_expr_block (xid, all_leaves);
+    _instantiate_expr_block (xid, all_leaves, connect_inputs);
 
     eeo->~ExternalExprOpt();
     ebi->~ExprBlockInfo();
@@ -1442,7 +1442,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid)
     be used, so using block_id for naming the instance also. 
     I think this is actually fine. 
 */
-void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves)
+void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves, bool connect_inputs)
 {
     ihash_bucket_t *ib, *ibw;
     listitem_t *li;
@@ -1451,7 +1451,7 @@ void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves)
     fprintf(_fp,"%s%d %s%d;\n",expr_block_prefix,block_id,expr_block_instance_prefix,block_id);
     
     // connect inputs
-    for (li = list_first(all_leaves); li ; li = list_next(li))
+    for (li = list_first(all_leaves); li && connect_inputs; li = list_next(li))
     {
         Expr *e_var = (Expr *)list_value(li);
         ib = ihash_lookup (_inexprmap, (long)e_var);
@@ -1537,14 +1537,14 @@ int RingForge::_generate_probe_circuit (Expr *g, int xid)
             e1->type = E_INT;
             e1->u.ival.v = 1;
             // _emit_expr_const (eid, 1, 1, true);
-            _generate_expr_block_for_sel (e1,eid);
+            _generate_expr_block_for_sel (e1,eid,true);
             list_iappend (m, eid);
             list_iappend (data_gl, eid);
         }
         else {
             // _emit_one_guard_expr (tmp, m);
             int eid = _gen_expr_block_id ();
-            _generate_expr_block_for_sel (tmp,eid);
+            _generate_expr_block_for_sel (tmp,eid,true);
             // list_iappend (data_gl,
             //             list_ivalue (list_tail (m)));
             list_iappend (m, eid);
@@ -2201,7 +2201,7 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
             else
             {
                 expr_block_id = _gen_expr_block_id();
-                delay_n_sel = _generate_expr_block_for_sel (gc->g, expr_block_id);
+                delay_n_sel = _generate_expr_block_for_sel (gc->g, expr_block_id,true);
                 if (max_delay_n_sel < delay_n_sel) max_delay_n_sel = delay_n_sel;
             }
             _connect_guards_to_sel_split_input (sel_split_block_id, expr_block_id, i);
@@ -2528,7 +2528,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             else
             {   
                 expr_block_id = _gen_expr_block_id();
-                delay_n_sel = _generate_expr_block_for_sel (gc->g, expr_block_id);
+                delay_n_sel = _generate_expr_block_for_sel (gc->g, expr_block_id,true);
                 if (max_delay_n_sel < delay_n_sel) max_delay_n_sel = delay_n_sel;
             }
             _connect_guards_to_sel_split_input (sel_split_block_id, expr_block_id, i);

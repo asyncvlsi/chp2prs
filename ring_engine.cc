@@ -174,12 +174,12 @@ class RingSynth : public ActSynthesize {
       TinyForge *tf = new TinyForge (_pp->fp, p, c, b, bundled, dm, dpath_style, "", _ename);
 
       fprintf(stdout, "// %s : ",p->getName());
-      // if (tf->check_if_pipeable(c))
-      //   tf->run_forge();
-      // else
-      //   rf->run_forge();
       auto ss1 = high_resolution_clock::now();
-      rf->run_forge();
+      if (tf->check_if_pipeable(c))
+        tf->run_forge();
+      else
+        rf->run_forge();
+      // rf->run_forge();
       auto st1 = high_resolution_clock::now();
       auto d2 = duration_cast<microseconds>(st1 - ss1);
 
@@ -188,8 +188,9 @@ class RingSynth : public ActSynthesize {
         fprintf(stdout, "\n\n// forge duration: %lld microseconds \n\n", d2.count());
         fprintf(stdout, "// process ABC duration: %lld microseconds\n\n", rf->get_runtime());
         fprintf(stdout, "// process ABC I/O duration: %lld microseconds\n", rf->get_io_runtime());
-        fprintf(stdout, "\n\n");
+        fprintf(stdout, "\n");
       }
+      fprintf(stdout, "\n");
 #else
 
       chp_print(_pp->fp, c);

@@ -76,8 +76,8 @@ class RingForge : public RingEngine {
         // Datapath generation functions
         int _generate_single_latch (var_info *, latch_info *, long long);
         int _generate_single_latch_non_ssa (var_info *, long long);
-        int _generate_expr_block(Expr *, int);
-        int _generate_expr_block_for_sel(Expr *, int);
+        int _generate_expr_block(Expr *, int, bool);
+        int _generate_expr_block_for_sel(Expr *, int, bool);
         std::pair<int,int> _compute_merge_mux_info(latch_info_t *, int, std::vector<std::string>&);
         int _generate_probe_clause(list_t *, list_t *);
         int _generate_probe_circuit(Expr *, int);
@@ -94,7 +94,7 @@ class RingForge : public RingEngine {
         // expr block functions
         void _dagify (Expr *&);
         void _expr_collect_vars (Expr *, int);
-        void _instantiate_expr_block (int, list_t *);
+        void _instantiate_expr_block (int, list_t *, bool);
         void _print_list_of_vars (FILE *fp, list_t *);
         int _bitWidth (ActId *);
 

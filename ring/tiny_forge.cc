@@ -47,7 +47,10 @@ void TinyForge::run_forge ()
     lva->generate_live_var_info();
 
     construct_var_infos (_c);
-    _run_forge (_c, 1);
+    // _run_forge (_c, 1);
+    prog_signature.clear();
+    _build_prog_signature (_c, 1);
+    _run_forge_new (_c, prog_signature);
 }
 
 int TinyForge::_gen_term_inst_id()
@@ -152,6 +155,45 @@ bool TinyForge::_build_prog_signature (act_chp_lang_t *c, int root)
         break;
     }
     return false;
+}
+
+void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature)
+{
+    std::vector<Action> buf_s = {Action::Receive, Action::Send};
+    if (signature == buf_s) {
+        auto cc = (c->u.gc)->s;
+        listitem_t *li = (list_first (cc->u.semi_comma.cmd));
+        act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value (li);
+        act_chp_lang_t *stmt2 = (act_chp_lang_t *)list_value (list_next(li));
+
+        int lbw = _bitWidth(stmt1->u.comm.chan);
+        int rbw = _bitWidth(stmt2->u.comm.chan);
+        fprintf(_fp, "fblock_impl<%d,%d,%d,%d> fb_impl;\n", 
+                        lbw, rbw, 
+                        _compute_delay_line_param(capture_delay), 
+                        _compute_delay_line_param(pulse_width));
+        char lchan_name[1024];
+        char rchan_name[1024];
+        get_true_name (lchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
+        get_true_name (rchan_name, stmt2->u.comm.chan, _p->CurScope(), false);
+        fprintf(_fp, "fb_impl.L = %s;\n", lchan_name);
+        fprintf(_fp, "fb_impl.R = %s;\n", rchan_name);
+
+        if (stmt2->u.comm.e) {
+            int expr_inst_id = _generate_expr_block(stmt2->u.comm.e,rbw,false);
+            fprintf(_fp, "%s%d(fb_impl.ei);\n", 
+                            expr_block_instance_prefix,
+                            expr_inst_id);
+            fprintf(_fp, "fb_impl.eo = %s%d.out;\n", 
+                            expr_block_instance_prefix,
+                            expr_inst_id);
+            fprintf(_fp, "fb_impl.d_in  = delay_expr_%d.m1;\n", expr_inst_id);
+            fprintf(_fp, "fb_impl.d_out = delay_expr_%d.p1;\n", expr_inst_id);
+        }
+        else {
+            fprintf(_fp, "fb_impl.d_out = fb_impl.d_in;\n");
+        }
+    }
 }
 
 /*

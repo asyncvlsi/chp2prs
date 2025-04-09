@@ -31,8 +31,8 @@ enum class Term { Sink, Source };
 
 static const std::set<std::vector<Action>> valid_signatures = 
 {   
-    {Action::Send},
-    {Action::Receive},
+    // {Action::Send},
+    // {Action::Receive},
     {Action::Receive, Action::Send} // gotta figure out if need half/full buffer..
 };
 
@@ -63,5 +63,6 @@ class TinyForge : public RingForge {
         void _terminate_port (int, Port, Term);
 
         void _run_forge (act_chp_lang_t *, int);
+        void _run_forge_new (act_chp_lang_t *, std::vector<Action>);
 
 };
