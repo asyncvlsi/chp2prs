@@ -1,0 +1,4 @@
+*
+* Include .lib for all the devices
+*
+.lib '/Users/karthisrinivasan/Documents/act_tools/conf/tsmc65/crn65gplus_2d5_lk_v1d0.l' TT
