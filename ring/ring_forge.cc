@@ -229,7 +229,7 @@ void RingForge::run_forge ()
 bool RingForge::_structure_check (act_chp_lang_t *c)
 {
     if (c->type == ACT_CHP_LOOP || c->type == ACT_CHP_DOLOOP)
-        return true;
+        return _internal_loop_check (c->u.gc->s);
     
     if (c->type == ACT_CHP_SEMI)
     {
@@ -350,6 +350,7 @@ bool RingForge::_fill_in_ics (act_chp_lang_t *&c)
     for (listitem_t *li = list_first (ic_var_list); li; li = list_next (li)) 
     {
         hash_bucket_t *b = hash_lookup(var_infos, (const char *)(list_value(li)));
+        Assert (b, "no var info?");
         var_info *vi = (var_info *)b->v;
         ActId *id = vi->id;
 

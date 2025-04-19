@@ -205,6 +205,71 @@ void expand_self_assignments (act_chp_lang_t *&c, Process *p)
   }
 }
 
+void flatten_lists (act_chp_lang_t *&c, Process *p)
+{
+  Scope *s = p->CurScope();
+
+  switch (c->type) {
+
+  case ACT_CHP_SKIP:
+  case ACT_CHP_SEND:
+  case ACT_CHP_RECV:
+  case ACT_CHP_ASSIGN:
+    break;
+
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {   
+      act_chp_lang_t *stmt = (act_chp_lang_t *) list_value (li);
+      if (stmt->type == c->type) 
+      {
+        list_splice (c->u.semi_comma.cmd, li, stmt->u.semi_comma.cmd);
+        if (li==list_first(c->u.semi_comma.cmd)) 
+        {
+          list_delete_head(c->u.semi_comma.cmd);
+          li = list_first(c->u.semi_comma.cmd);
+        }
+        else 
+        {
+          listitem_t *ll = list_first(c->u.semi_comma.cmd);
+          while (ll->next != li) { ll = ll->next; }
+          list_delete_next(c->u.semi_comma.cmd, ll);
+          li = ll->next;
+        }  
+      }
+    }
+    break;
+
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    flatten_lists (gc->s, p);
+    Assert (!(gc->next), "more than one loop branch at top-level?");
+  }
+    break;
+  case ACT_CHP_SELECT_NONDET:
+  case ACT_CHP_SELECT:
+  {
+    act_chp_gc_t *gc = c->u.gc;
+    while (gc) {
+      flatten_lists (gc->s, p);
+      gc = gc->next;
+    }
+  }
+  break;
+
+  case ACT_CHP_FUNC:
+    /* ignore this---not synthesized */
+    break;
+
+  default:
+    fatal_error ("What?");
+    break;
+  }
+}
+
 void make_receives_unique (act_chp_lang_t *&c, Process *p)
 {
   Scope *s = p->CurScope();

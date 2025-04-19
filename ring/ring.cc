@@ -868,6 +868,7 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         // fprintf(stdout, "found a chan\n");
         _construct_var_info (c, id, v);
         if (v->iwrite>1 || v->iread>1) {
+          fprintf(stderr, "\nChan name: %s\n", v->name);
           fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
         }
         v->iread = 0;

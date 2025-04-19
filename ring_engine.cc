@@ -159,6 +159,7 @@ class RingSynth : public ActSynthesize {
       Assert (c, "hmm no chp lol - something went wrong");
       mangle_init();
       fill_in_else_explicit (c, p, 1);
+      flatten_lists (c, p);
       
       // for non-ssa style only
       if (dpath_style) expand_self_assignments (c, p);

@@ -49,4 +49,6 @@ void expand_self_assignments (act_chp_lang_t *&c, Process *p);
 
 void make_receives_unique (act_chp_lang_t *&c, Process *p);
 
+void flatten_lists (act_chp_lang_t *&c, Process *p);
+
 bool _var_appears_in_expr (Expr *e, ActId *id);
