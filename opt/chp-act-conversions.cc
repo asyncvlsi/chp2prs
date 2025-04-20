@@ -136,14 +136,14 @@ IRGuard new_irguard_from_expr(NameParsingIdPool &id_pool,
 //}
 
 Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
-                       NameParsingIdPool &id_pool) {
+                       NameParsingIdPool &id_pool, int mode) {
     switch (c->type) {
     case ACT_CHP_SEMI: {
         Block *entry = nullptr, *exit_b = nullptr;
         for (listitem_t *li = list_first(c->u.semi_comma.cmd); li;
              li = list_next(li)) {
             Sequence subseq = parse_into_ir(
-                (const act_chp_lang *)list_value(li), blockAllocator, id_pool);
+                (const act_chp_lang *)list_value(li), blockAllocator, id_pool, mode);
             if (!subseq.empty()) {
                 Block *sub_start = subseq.startseq->child();
                 Block *sub_end = subseq.endseq->parent();
@@ -172,7 +172,7 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
         for (listitem_t *li = list_first(c->u.semi_comma.cmd); li;
              li = list_next(li)) {
             Sequence subseq = parse_into_ir(
-                (const act_chp_lang *)list_value(li), blockAllocator, id_pool);
+                (const act_chp_lang *)list_value(li), blockAllocator, id_pool, mode);
             parallel->u_par().branches.push_back(subseq);
         }
         return blockAllocator.newSequence({parallel});
@@ -181,7 +181,7 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
     case ACT_CHP_SELECT: {
         Block *select = blockAllocator.newBlock(Block::makeSelectBlock());
         for (act_chp_gc_t *gc = c->u.gc; gc; gc = gc->next) {
-            Sequence subseq = parse_into_ir(gc->s, blockAllocator, id_pool);
+            Sequence subseq = parse_into_ir(gc->s, blockAllocator, id_pool, mode);
             select->u_select().branches.emplace_back(
                 subseq, new_irguard_from_expr(id_pool, gc->g));
         }
@@ -210,7 +210,7 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
 
         bool loop_already_has_else_branch = false;
         for (act_chp_gc_t *gc = c->u.gc; gc; gc = gc->next) {
-            Sequence subseq = parse_into_ir(gc->s, blockAllocator, id_pool);
+            Sequence subseq = parse_into_ir(gc->s, blockAllocator, id_pool, mode);
             IRGuard g = new_irguard_from_expr(id_pool, gc->g);
             if (g.type() == IRGuardType::Else)
                 loop_already_has_else_branch = true;
@@ -234,7 +234,7 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
         hassert(c->u.gc->next == nullptr); // check there is only 1 child
         act_chp_gc_t *gc = c->u.gc;
         Block *doloop = blockAllocator.newBlock(Block::makeDoLoopBlock());
-        Sequence subseq = parse_into_ir(gc->s, blockAllocator, id_pool);
+        Sequence subseq = parse_into_ir(gc->s, blockAllocator, id_pool, mode);
         doloop->u_doloop().branch = subseq;
         auto irguard = new_irguard_from_expr(id_pool, gc->g);
         hassert(irguard.type() ==
@@ -274,7 +274,7 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
                 std::make_unique<ChpExprSingleRootDag>(std::move(expr)), width);
         }
 
-        if (expr.root()->type() == IRExprTypeKind::Var) {
+        if (expr.root()->type() == IRExprTypeKind::Var || (mode==1)) {
             Block *send = blockAllocator.newBlock(Block::makeBasicBlock(
                 Statement::makeSend(chan_id, std::move(expr))));
             return blockAllocator.newSequence({send});
@@ -339,17 +339,17 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
 
 std::pair<Sequence, NameParsingIdPool>
 parse_ir_from_act(act_chp_lang *c, BlockAllocator &blockAllocator,
-                  Scope *scope) {
+                  Scope *scope, int mode) {
     NameParsingIdPool id_pool{scope};
     std::unordered_map<ChanId, std::string> name_from_chan;
-    auto graph = parse_into_ir(c, blockAllocator, id_pool);
+    auto graph = parse_into_ir(c, blockAllocator, id_pool, mode);
     return {graph, id_pool};
 }
 
-GraphWithChanNames chp_graph_from_act(act_chp_lang *lang, Scope *s) {
+GraphWithChanNames chp_graph_from_act(act_chp_lang *lang, Scope *s, int mode) {
     GraphWithChanNames graph_with_names;
     auto [seq, id_pool] =
-        parse_ir_from_act(lang, graph_with_names.graph.blockAllocator(), s);
+        parse_ir_from_act(lang, graph_with_names.graph.blockAllocator(), s, mode);
 
     graph_with_names.graph.m_seq = seq;
     graph_with_names.graph.id_pool() = std::move(id_pool.id_pool());

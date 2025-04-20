@@ -809,7 +809,7 @@ struct GraphWithChanNames {
     std::unordered_map<ChanId, ActId *> name_from_chan;
 };
   
-GraphWithChanNames chp_graph_from_act(act_chp_lang *lang, Scope *s);
+GraphWithChanNames chp_graph_from_act(act_chp_lang *lang, Scope *s, int mode = 0);
 act_chp_lang *chp_graph_to_act(const GraphWithChanNames &gr,
 			       std::vector<ActId *> &newnames,
 			       Scope *s);

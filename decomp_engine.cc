@@ -92,7 +92,7 @@ class Decomp : public ActSynthesize {
       fill_in_else_explicit (p->getlang()->getchp()->c, p, 1);
 
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
-						p->CurScope ());
+						p->CurScope (), 1);
 
       if (chpopt) {
         // ChpOptimize::optimize_chp_O2 (g.graph, p->getName(), false);
@@ -154,7 +154,7 @@ class Decomp : public ActSynthesize {
       std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
       for ( auto v : vs3 )
       {
-        auto _g = ChpOptimize::chp_graph_from_act (v, p->CurScope ());
+        auto _g = ChpOptimize::chp_graph_from_act (v, p->CurScope (), 1);
         // ChpOptimize::optimize_chp_O2 (_g.graph, p->getName(), false);
         ChpOptimize::optimize_chp_O0 (_g.graph, p->getName(), false);
         std::vector<ActId *> tmp_names2;
