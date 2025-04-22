@@ -142,12 +142,16 @@ void RingForge::_dagify (Expr *&e)
 #undef UNARY_OP
 }
 
-RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
-            ActBooleanizePass *bp, int bdpath,
+RingForge::RingForge ( FILE *fp, 
+            // Process *p, act_chp_lang_t *c,
+            // ActBooleanizePass *bp, 
+            int bdpath,
             int delay_margin, int dp_style,
             const char *circuit_library,
             const char *exprfile )
-    : RingEngine ( fp, p, c, bp, circuit_library, exprfile )
+    : RingEngine ( fp, 
+                    // p, c, bp, 
+                    circuit_library, exprfile )
 {
     ring_block_prefix = "block_";
     conn_block_prefix = "conn_z_";
@@ -194,6 +198,9 @@ RingForge::RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
     // _expr_block_id = 0;
     _mux_block_id = 0;
     _branch_id = 0;
+
+    eeo = new ExprCache("abc",  ((bundled==1)?bd:qdi), false, _exprfile);
+    Assert ((eeo), "Could not create mapper!");
 }
 
 long long RingForge::get_runtime()
@@ -1255,10 +1262,11 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
 {
     // fprintf (fp, "// hello from expropt\n");
     // create mapper object
-    ExternalExprOpt *eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, _exprfile, 
-                                                expr_block_input_prefix,
-                                                expr_block_prefix);
-    Assert ((eeo), "Could not create mapper");
+    // ExternalExprOpt *eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, _exprfile, 
+    //                                             expr_block_input_prefix,
+    //                                             expr_block_prefix);
+    // ExprCache *eeo = new ExprCache("abc",  ((bundled==1)?bd:qdi), false, _exprfile);
+    Assert ((eeo), "No mapper exists");
 
     // collect input vars info
     _inexprmap = ihash_new (0);
@@ -1270,6 +1278,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
     e = expr_dag(e);
 
+    _reset_expr_id();
     _expr_collect_vars (e, 1);
 
     // collect input vars in list
@@ -1311,7 +1320,8 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
 
 
     // run abc, then v2act to create the combinational-logic-for-math process
-    ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+    // ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+    ExprBlockInfo *ebi = eeo->synth_expr(out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
     runtime2 += de.count();
@@ -1336,15 +1346,16 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
         fprintf(_fp,"\n");
     }
 
-    _instantiate_expr_block (xid, all_leaves, connect_inputs);
+    _instantiate_expr_block (ebi->getID(), xid, all_leaves, connect_inputs);
 
     // fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",int(std::ceil(delay_line_n*delay_multiplier)),xid);
     fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",delay_line_n,xid);
     // fprintf (stdout, "\n// bye from expropt\n");
 
-    eeo->~ExternalExprOpt();
+    // eeo->~ExternalExprOpt();
+    // eeo->~ExprCache();
     ebi->~ExprBlockInfo();
-    eeo = NULL;
+    // eeo = NULL;
     ebi = NULL;
 
     // free all temporary data structures 
@@ -1367,10 +1378,12 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
 int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_inputs)
 {
     // create mapper object
-    ExternalExprOpt *eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, _exprfile, 
-                                                expr_block_input_prefix,
-                                                expr_block_prefix);
-    Assert ((eeo), "Could not create mapper");
+    // ExternalExprOpt *eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, _exprfile, 
+    //                                             expr_block_input_prefix,
+    //                                             expr_block_prefix);
+
+    // ExprCache *eeo = new ExprCache("abc",  ((bundled==1)?bd:qdi), false, _exprfile);
+    Assert ((eeo), "No mapper exists");
 
     // collect input vars info
     _inexprmap = ihash_new (0);
@@ -1380,6 +1393,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
     e = expr_dag(e);
     
+    _reset_expr_id();
     _expr_collect_vars (e, 1);
 
     // collect input vars in list
@@ -1403,7 +1417,8 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     int out_expr_width = 1;
 
     // run abc, then v2act to create the combinational-logic-for-math process
-    ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+    // ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+    ExprBlockInfo *ebi = eeo->synth_expr(out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
     
@@ -1418,11 +1433,12 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
 
     if (verbose) fprintf(_fp, "\n// typical delay: %lfps",typ_delay_ps);
     fprintf(_fp,"\n");
-    _instantiate_expr_block (xid, all_leaves, connect_inputs);
+    _instantiate_expr_block (ebi->getID(), xid, all_leaves, connect_inputs);
 
-    eeo->~ExternalExprOpt();
+    // eeo->~ExternalExprOpt();
+    // eeo->~ExprCache();
     ebi->~ExprBlockInfo();
-    eeo = NULL;
+    // eeo = NULL;
     ebi = NULL;
 
     // free all temporary data structures 
@@ -1443,13 +1459,13 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     be used, so using block_id for naming the instance also. 
     I think this is actually fine. 
 */
-void RingForge::_instantiate_expr_block (int block_id, list_t *all_leaves, bool connect_inputs)
+void RingForge::_instantiate_expr_block (std::string expr_id, int block_id, list_t *all_leaves, bool connect_inputs)
 {
     ihash_bucket_t *ib, *ibw;
     listitem_t *li;
 
     // generate instance
-    fprintf(_fp,"%s%d %s%d;\n",expr_block_prefix,block_id,expr_block_instance_prefix,block_id);
+    fprintf(_fp,"%s%s %s%d;\n",expr_block_prefix,expr_id.c_str(),expr_block_instance_prefix,block_id);
     
     // connect inputs
     for (li = list_first(all_leaves); li && connect_inputs; li = list_next(li))

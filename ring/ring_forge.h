@@ -29,8 +29,10 @@
 class RingForge : public RingEngine {
     public: 
 
-    RingForge ( FILE *fp, Process *p, act_chp_lang_t *c,
-            ActBooleanizePass *bp, int bdpath,
+    RingForge ( FILE *fp, 
+            // Process *p, act_chp_lang_t *c,
+            // ActBooleanizePass *bp, 
+            int bdpath,
             int delay_margin, int dp_style,
             const char *circuit_library,
             const char *exprfile);
@@ -39,7 +41,13 @@ class RingForge : public RingEngine {
         long long get_runtime();
         long long get_io_runtime();
 
+    ~RingForge () {
+        if (eeo) { eeo->~ExprCache(); eeo=NULL; }
+    }
+
     protected:
+
+        ExprCache *eeo;
 
         void _run_forge_helper (act_chp_lang_t *);
         bool _structure_check (act_chp_lang_t *);
@@ -94,7 +102,7 @@ class RingForge : public RingEngine {
         // expr block functions
         void _dagify (Expr *&);
         void _expr_collect_vars (Expr *, int);
-        void _instantiate_expr_block (int, list_t *, bool);
+        void _instantiate_expr_block (std::string, int, list_t *, bool);
         void _print_list_of_vars (FILE *fp, list_t *);
         int _bitWidth (ActId *);
 
@@ -135,6 +143,7 @@ class RingForge : public RingEngine {
         double pulse_width;
 
         int _delay_margin;
+        
         float delay_multiplier;
         int bundled;
         int datapath_style;

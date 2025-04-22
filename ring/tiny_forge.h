@@ -39,14 +39,20 @@ static const std::set<std::vector<Action>> valid_signatures =
 class TinyForge : public RingForge {
     public: 
 
-    TinyForge ( FILE *fp, Process *p, act_chp_lang_t *c,
-            ActBooleanizePass *bp, int bdpath,
+    TinyForge ( FILE *fp, 
+            // Process *p, act_chp_lang_t *c,
+            // ActBooleanizePass *bp, 
+            int bdpath,
             int delay_margin, int dp_style, 
             const char *circuit_library,
             const char *exprfile = "expr.act" );
 
-        void run_forge ();
+        void run_tiny_forge ();
         bool check_if_pipeable (act_chp_lang_t *);
+
+    ~TinyForge () {
+        if (eeo) { eeo->~ExprCache(); eeo=NULL; }
+    }
 
     protected:
 

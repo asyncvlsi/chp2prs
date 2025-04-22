@@ -57,6 +57,9 @@ class RingSynth : public ActSynthesize {
     int di_dpath = dp->getIntParam ("di_dpath");
     int ditest_dpath = dp->getIntParam ("ditest_dpath");
 
+    int dm = dp->getIntParam ("delay_margin");
+    int dpath_style = dp->getIntParam ("datapath_style");
+    tf = new TinyForge (_pp->fp, bundled_data, dm, dpath_style, "", _ename);
     /* print imports */
     // pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
     
@@ -130,6 +133,20 @@ class RingSynth : public ActSynthesize {
     return false;
   }
 
+  TinyForge *tf;
+
+  void emitFinal() {
+    _expr = fopen (_ename, "a");
+    if (!_expr) {
+      fatal_error ("Could not open %s for appending!", _ename);
+    }
+    fprintf (_expr, "}\n}\n");
+    fclose (_expr);
+    _expr = NULL;
+
+    tf->~TinyForge();
+  }
+
   void runSynth (ActPass *ap, Process *p) {
     pp_printf (_pp, "/* synthesis output */");
     pp_forced (_pp, 0);
@@ -171,24 +188,24 @@ class RingSynth : public ActSynthesize {
       Assert (b, "hmm b");
 
 #if 1
-      RingForge *rf = new RingForge (_pp->fp, p, c, b, bundled, dm, dpath_style, "", _ename);
-      TinyForge *tf = new TinyForge (_pp->fp, p, c, b, bundled, dm, dpath_style, "", _ename);
+      tf->set_p(p);
+      tf->set_c(c);
+      tf->set_bp(b);
 
       fprintf(stdout, "// %s : ",p->getName());
       auto ss1 = high_resolution_clock::now();
       if (tf->check_if_pipeable(c))
-        tf->run_forge();
+        tf->run_tiny_forge();
       else
-        rf->run_forge();
-      // rf->run_forge();
+        tf->run_forge();
       auto st1 = high_resolution_clock::now();
       auto d2 = duration_cast<microseconds>(st1 - ss1);
 
       int print_rt = dp->getIntParam ("run_time");
       if (print_rt) {
         fprintf(stdout, "\n\n// forge duration: %lld microseconds \n\n", d2.count());
-        fprintf(stdout, "// process ABC duration: %lld microseconds\n\n", rf->get_runtime());
-        fprintf(stdout, "// process ABC I/O duration: %lld microseconds\n", rf->get_io_runtime());
+        fprintf(stdout, "// process ABC duration: %lld microseconds\n\n", tf->get_runtime());
+        fprintf(stdout, "// process ABC I/O duration: %lld microseconds\n", tf->get_io_runtime());
         fprintf(stdout, "\n");
       }
       fprintf(stdout, "\n");

@@ -27,12 +27,16 @@
  */
 class RingEngine {
     public:
-        RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
-            ActBooleanizePass *bp, 
+        RingEngine ( FILE *fp, 
+            // Process *p, act_chp_lang_t *c,
+            // ActBooleanizePass *bp, 
             const char *circuit_library,
             const char *exprfile);
     
         // void run_forge ();
+        void set_p (Process *p) { _p = p; }
+        void set_c (act_chp_lang_t *c) { _c = c; }
+        void set_bp (ActBooleanizePass *bp) { _bp = bp; }
 
     protected:
         
@@ -123,6 +127,8 @@ class RingEngine {
         int _gen_expr_block_id ();
         int _gen_var_access_id ();
         int _gen_mux_block_id ();
+
+        void _reset_expr_id();
 
         unsigned int _branch_id;
 };

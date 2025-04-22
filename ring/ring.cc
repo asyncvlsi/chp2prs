@@ -22,15 +22,16 @@
 
 #include "ring.h"
 
-RingEngine::RingEngine ( FILE *fp, Process *p, act_chp_lang_t *c,
-            ActBooleanizePass *bp, 
+RingEngine::RingEngine ( FILE *fp, 
+            // Process *p, act_chp_lang_t *c,
+            // ActBooleanizePass *bp, 
             const char *circuit_library,
             const char *exprfile )
             {
                 _fp = fp;
-                _p = p;
-                _c = c;
-                _bp = bp;
+                // _p = p;
+                // _c = c;
+                // _bp = bp;
                 _circuit_library = Strdup(circuit_library);
                 _exprfile = Strdup(exprfile);
 
@@ -1028,8 +1029,12 @@ int RingEngine::_gen_sync_chan_id()
 
 int RingEngine::_gen_expr_id()
 {
-    _expr_id++;
-    return _expr_id;
+    return _expr_id++;
+}
+
+void RingEngine::_reset_expr_id()
+{
+  _expr_id = 0;
 }
 
 int RingEngine::_gen_var_access_id()

@@ -31,7 +31,8 @@
 #include <act/lang.h>
 #include <act/iter.h>
 #include <act/types.h>
-#include <act/expropt.h>
+// #include <act/expropt.h>
+#include <act/expr_cache.h>
 
 #include "ring_name_handling.h"
 #include "ring_else_gen.h"
