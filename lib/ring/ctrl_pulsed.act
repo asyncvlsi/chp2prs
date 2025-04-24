@@ -278,6 +278,13 @@ defproc capture(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
   }
 }
 
+export template <pint CD, PW, W>
+defproc capture_dummy(a1of1 go; bool din[W]; bool dout[W]; a1of1 tx)
+{
+  go.r = go.a;
+  din = dout;
+}
+
 export template <pint W>
 defproc var_access(bool din[W]; bool dout[W])
 {
@@ -367,6 +374,19 @@ defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
   spec {
     timing go.r+: dout < go.a+
   }
+}
+
+export template <pint CD, PW, W, INIT_VAL>
+defproc capture_init_new(a1of1 go; a1of1 go2; bool? din[W]; bool! dout[W]; a1of1 tx)
+{
+  capture_init<CD, PW, W, INIT_VAL> c1, c2;
+  din = c1.din;
+  dout = c2.dout;
+  c1.dout = c2.din;
+  tx = c1.tx;
+  tx = c2.tx;
+  go = c1.go;
+  go2 = c2.go;
 }
 
 export template <pint CD, PW, W, INIT_VAL>

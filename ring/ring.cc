@@ -530,6 +530,7 @@ void RingEngine::_print_latch_info_struct (FILE *fp, latch_info_t *l)
   fprintf (fp, "\n --------- \n");
   switch (l->type) {
   case LatchType::Latch: 
+  case LatchType::Alias: 
   {
     fprintf (fp, "type: latch \n");
     fprintf (fp, "latch ID: %d\n", l->latch_number);

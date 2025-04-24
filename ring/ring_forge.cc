@@ -696,8 +696,9 @@ static bool _guards_have_probes (act_chp_gc_t *gc)
 */
 int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long init_val=-1)
 {
-    Assert (l->type == LatchType::Latch, "generate latch for non-assignment?");
+    Assert ((l->type == LatchType::Latch) || (l->type == LatchType::Alias), "generate latch for non-assignment?");
     int latch_id = l->latch_number;
+    bool is_latch = (l->type == LatchType::Latch);
     static char buf[1024];
     if (v->iwrite < v->nwrite)
     {
@@ -707,13 +708,21 @@ int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long ini
         }
         else if (init_val == -1)
         {
-            fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
-                                                         _compute_delay_line_param(pulse_width), 
-                                                    v->width, capture_block_prefix, v->name,latch_id);
+            if (is_latch) {
+                fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+                                                            _compute_delay_line_param(pulse_width), 
+                                                        v->width, capture_block_prefix, v->name,latch_id);
+            }
+            else {
+                fprintf(_fp, "capture_dummy<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+                                                            _compute_delay_line_param(pulse_width), 
+                                                        v->width, capture_block_prefix, v->name,latch_id);
+            }
         }
         else
         {
-            fprintf(_fp, "capture_init<%d,%d,%d,%lli> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+            Assert (is_latch, "init val. latch but not real latch??");
+            fprintf(_fp, "capture_init_new<%d,%d,%d,%lli> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
                                                                    _compute_delay_line_param(pulse_width), 
                                                     v->width, init_val, capture_block_prefix, v->name,latch_id);
         }
@@ -1080,7 +1089,7 @@ int RingForge::_generate_pipe_element_custom(int bd_chan_id, int type, int width
      implementing loop-carried dependencies from 
     one iteration of the ring to the next. 
 */
-int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
+int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr)
 {
     int block_id;
     int first_latch_id, last_latch_id;
@@ -1119,8 +1128,17 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var)
                             capture_block_prefix,vi->name,first_latch_id
                             );
         // connect pipe block action port to latch go port
-        fprintf(_fp,"%s%d.zero = %s%s_%d.go;\n",ring_block_prefix,block_id,capture_block_prefix,
-                                            vi->name,first_latch_id);
+        if (itr==0) {
+            fprintf(_fp,"%s%d.zero = %s%s_%d.go;\n",ring_block_prefix,block_id,capture_block_prefix,
+                                                vi->name,first_latch_id);
+        }
+        else if (itr==1) {
+            fprintf(_fp,"%s%d.zero = %s%s_%d.go2;\n",ring_block_prefix,block_id,capture_block_prefix,
+                                                vi->name,first_latch_id);
+        }
+        else {
+            fatal_error ("what");
+        }
         break;
 
     default:
@@ -2441,24 +2459,28 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
 
 #if 1
             // new I.C. handling method -----
-            for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
+            for (int ii = 0; ii<2; ii++) 
             {
-                act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
-                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
+                for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
                 {
-                    Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
-                    id = stmt1->u.assign.id;
-                    char tname[1024];
-                    get_true_name(tname, id, _p->CurScope());
-                    hash_bucket_t *b = hash_lookup(var_infos, tname);
-                    vi = (var_info *)b->v;
-                    if (vi->fisbool==0) {
-                        block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id);
-                        _connect_pipe_elements (prev_block_id, block_id);
-                        prev_block_id = block_id;
+                    act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
+                    if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
+                    {
+                        Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
+                        id = stmt1->u.assign.id;
+                        char tname[1024];
+                        get_true_name(tname, id, _p->CurScope());
+                        hash_bucket_t *b = hash_lookup(var_infos, tname);
+                        vi = (var_info *)b->v;
+                        if (vi->fisbool==0) {
+                            block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id, ii);
+                            _connect_pipe_elements (prev_block_id, block_id);
+                            prev_block_id = block_id;
+                        }
                     }
                 }
             }
+
             if (!list_isempty(ic_list))
             {
                 _print_list_of_vars (stderr, ic_list);

@@ -197,7 +197,7 @@ void LiveVarAnalysis::_add_to_live_vars_lcd (ActId *id)
     } 
 }
 
-void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action)
+void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action, int is_latch)
 {
     if (!action) return;
     Assert (((action->type == ACT_CHP_ASSIGN)||
@@ -216,7 +216,7 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action)
     l_info = new latch_info_t;
     l_info->merge_mux_latch_number.clear();
     l_info->merge_mux_inputs.clear();
-    l_info->type = LatchType::Latch;
+    l_info->type = (is_latch==0) ? (LatchType::Alias) : (LatchType::Latch);
     l_info->live_vars = list_dup(req_vars);
 
     action->space = l_info;
@@ -290,7 +290,7 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
                 stmt = (act_chp_lang_t *)(list_value(li));
                 if (stmt->type == ACT_CHP_ASSIGN) {
                     _add_to_live_vars_lcd (stmt->u.assign.id);
-                    _tag_action_with_reqd_vars (stmt);
+                    _tag_action_with_reqd_vars (stmt, 1);
                 }
             }
             for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
@@ -358,17 +358,17 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
         // order important (!!)
         _remove_from_live_vars (c_t->u.assign.id);
         _add_to_live_vars (c_t->u.assign.e);
-        _tag_action_with_reqd_vars (c_t);
+        _tag_action_with_reqd_vars (c_t, 0);
         break;
         
     case ACT_CHP_RECV:
         _remove_from_live_vars (c_t->u.comm.var);
-        _tag_action_with_reqd_vars (c_t);
+        _tag_action_with_reqd_vars (c_t, 1);
         break;
 
     case ACT_CHP_SEND:
         _add_to_live_vars (c_t->u.comm.e);
-        _tag_action_with_reqd_vars (c_t);
+        _tag_action_with_reqd_vars (c_t, 0);
         break;
 
     case ACT_CHP_FUNC:

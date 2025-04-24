@@ -162,6 +162,36 @@ defproc capture(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 
 }
 
+// Need to figure out the correct way for the 
+// fake assignment trick for qdi
+export template <pint CD, PW, W>
+defproc capture_dummy(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
+{
+  syn::var_init<W,false> var;
+  var.v = dout;
+  
+  syn::expr::writeport<W> wp;
+  wp.wt = var.wt;
+  wp.wf = var.wf;
+  wp.var = dout;
+
+  wp.in.d = din;
+
+  two_to_four_brs tf;
+  tf.in = go;
+
+  std::gates::ctree<2,false> write_sync;
+  write_sync.in[0] = wp.in.a;
+  // write_sync.in[1] = go.r;
+  write_sync.in[1] = tf.out.r;
+  write_sync.in[1] = tx.r;
+  // write_sync.out = go.a;
+  write_sync.out = tf.out.a;
+  write_sync.out = tx.a;
+
+}
+
+
 export template <pint CD, PW, W, INIT_VAL, N>
 defproc capture_init_non_ssa(a1of1 go[N]; Mx1of2<W> din[N]; sdtvar<W> dout; a1of1 tx[N])
 {
@@ -180,10 +210,12 @@ defproc capture_init_non_ssa(a1of1 go[N]; Mx1of2<W> din[N]; sdtvar<W> dout; a1of
   ( i : N : tf[i].out.r = tx[i].r; )
   ( i : N : tf[i].out.a = tx[i].a; )
 
+  // ( i : N : tx[i] = go[i]; )
+
   std::gates::ctree<2,false> write_sync[N];
   ( i : N : write_sync[i].in[0] = wp.in.a; )
-  ( i : N : write_sync[i].in[1] = tf[i].out.r; )
-  ( i : N : write_sync[i].out = tf[i].out.a; )
+  ( i : N : write_sync[i].in[1] = tx[i].r; )
+  ( i : N : write_sync[i].out = tx[i].a; )
 
   bool _a[N];
   std::gates::ortree<N, false> ot[W];
@@ -473,6 +505,31 @@ defproc capture_init(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
   write_sync.out = tx.a;
 }
 
+// Need to figure out the correct way for the 
+// fake assignment trick for qdi
+export template <pint CD, PW, W, INIT_VAL>
+defproc capture_init_new(a1of1 go; a1of1 go2; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
+{  
+  go2.r = go2.a;
+  // syn::var_init_val<W,INIT_VAL> var;
+  syn::var_init<W,false> var;
+  var.v = dout;
+  
+  syn::expr::writeport<W> wp;
+  wp.wt = var.wt;
+  wp.wf = var.wf;
+  wp.var = dout;
+
+  wp.in.d = din;
+
+  std::gates::ctree<2,false> write_sync;
+  write_sync.in[0] = wp.in.a;
+  write_sync.in[1] = go.r;
+  write_sync.in[1] = tx.r;
+  write_sync.out = go.a;
+  write_sync.out = tx.a;
+}
+
 defproc celem2_r (bool in[2]; bool out)
 {
     prs {
@@ -538,24 +595,42 @@ defproc asym_c_brs (bool? A, B, C; bool! Y)
     }
 }
 
+// export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
+// {
+//     inverter im1r, izeroa;
+//     im1r.in = m1.r;
+//     izeroa.in = zero.a;
+
+//     asym_c_brs ac;
+//     ac.A = im1r.out;
+//     ac.B = zero.a;
+//     ac.C = m1.a;
+//     ac.Y = zero.r;
+
+//     m1.a = p1.r;
+
+//     prs {
+//         ~Reset & ( ~im1r.out & ~izeroa.out & ~p1.a ) -> m1.a+
+//         Reset | (  im1r.out &  izeroa.out &  p1.a ) -> m1.a-
+//     }
+// }
+
 export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
 {
-    inverter im1r, izeroa;
-    im1r.in = m1.r;
-    izeroa.in = zero.a;
 
-    asym_c_brs ac;
-    ac.A = im1r.out;
-    ac.B = zero.a;
-    ac.C = m1.a;
-    ac.Y = zero.r;
+  bool _m1_r;
+  inverter m1_inv(m1.r,_m1_r);
 
-    m1.a = p1.r;
+  zero.a = p1.r;
+  zero.r = m1.a;
 
-    prs {
-        ~Reset & ( ~im1r.out & ~izeroa.out & ~p1.a ) -> m1.a+
-        Reset | (  im1r.out &  izeroa.out &  p1.a ) -> m1.a-
-    }
+  prs {
+      ~Reset & (~_m1_r & ~zero.a & ~p1.a) -> zero.r+ 
+        Reset | (_m1_r &  zero.a &  p1.a) -> zero.r-
+  }
+  sizing { 
+      zero.r{-1} 
+  }
 }
 
 export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
@@ -597,6 +672,7 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 */
 
 /*
+*/
 export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 {
   bool _m1_r, _zero_r;
@@ -623,10 +699,8 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
       p1.r{-1} 
   }
 }
-*/
 
 /*
-*/
 export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 {
 
@@ -645,6 +719,7 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
       data.r{-1} 
   }
 }
+*/
 
 // ------------------------------------
 

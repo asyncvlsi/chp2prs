@@ -61,7 +61,7 @@ struct var_info {
   and live_var info.
 */
 
-enum class LatchType { Latch, Mux, ICs };
+enum class LatchType { Latch, Alias, Mux, ICs };
 
 typedef struct latch_info {
   // type of the struct
