@@ -35,7 +35,7 @@ static void usage(char *name)
   fprintf (stderr, "Options:\n");
   fprintf (stderr, " -h : help; display this message\n");
   fprintf (stderr, " -O : optimize CHP\n");
-  fprintf (stderr, " -F dataflow|sdt|ring : synthesis output format\n");
+  fprintf (stderr, " -F dataflow|sdt|ring|decomp : synthesis output format\n");
   fprintf (stderr, "        * dataflow : dataflow output\n");
   fprintf (stderr, "        * sdt : syntax-directed translation prs output\n");
   fprintf (stderr, "        * ring : ring-based synthesis prs output\n");
@@ -48,11 +48,11 @@ static void usage(char *name)
   fprintf (stderr, "        * bdp : bundled data (pulsed latches) [only ring]\n");
   fprintf (stderr, "        * di : delay insensitive [only ring]\n");
   fprintf (stderr, "        * ditest : delay insensitive - testing for signal forks with extra buffers - not synthesizable [only ring]\n");
-  fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI) [depricated use -C]\n");
+  fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI) [deprecated use -C]\n");
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
   fprintf (stderr, " -X : Enable projection during decomposition (w.i.p.) \n");
-  fprintf (stderr, " -P <int> : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3 (or) 4 (default 0) \n");
+  fprintf (stderr, " -P <int> : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3 (or) 4 (default 0) [deprecated] \n");
   fprintf (stderr, "      * 0 : Only necessary decomposition\n");
   fprintf (stderr, "      * 1 : Break at receives\n");
   fprintf (stderr, "      * 2 : Break at selections\n");
