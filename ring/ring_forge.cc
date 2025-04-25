@@ -485,6 +485,7 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
         generate_branched_ring (c,1,0,0);
     }
     else {
+        Assert (false, "Non-SSA style is deprecated");
         if ( _check_no_self_assignments(c, false) ) { 
             fprintf (stderr, "Self assignments detected (Non SSA-style datapath). \n");
             fprintf (stderr, "This is not currently supported with this datapath style.\n");
@@ -2011,6 +2012,7 @@ list_t *RingForge::_create_channel_accesses(list_t *ics)
 /*
     General synthesis for branched programs.
     Non-SSA style Datapath. 
+    [Deprecated]
 */
 int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int prev_block_id, int connect_prev)
 {

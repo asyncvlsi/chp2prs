@@ -40,7 +40,7 @@ static void usage(char *name)
   fprintf (stderr, "        * sdt : syntax-directed translation prs output\n");
   fprintf (stderr, "        * ring : ring-based synthesis prs output\n");
   fprintf (stderr, "        * decomp : decomposition - CHP-to-CHP\n");
-  fprintf (stderr, " -G : Non-SSA style datapath [only ring]\n");
+  fprintf (stderr, " -G : Non-SSA style datapath [only ring] [deprecated, no effect]\n");
   fprintf (stderr, " -C : qdi|bd|bd2|bdp|di|ditest: Circuit / Datapath family\n");
   fprintf (stderr, "        * qdi : quasi delay insensitive (default)\n");
   fprintf (stderr, "        * bd : bundled data (D flip-flops) \n");
@@ -149,7 +149,8 @@ int main(int argc, char **argv)
       break;
 
     case 'G':
-      non_ssa = true;
+      warning("Non-SSA style datapath choice is deprecated. This option has no effect.");
+      // non_ssa = true;
       break;
 
     case 't':
