@@ -2463,6 +2463,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             // new I.C. handling method -----
             for (int ii = 0; ii<2; ii++) 
             {
+                int n_lcd = 0;
+                list_t *lcd_blks = list_new();
                 for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
                 {
                     act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
@@ -2476,10 +2478,30 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                         vi = (var_info *)b->v;
                         if (vi->fisbool==0) {
                             block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id, ii);
-                            _connect_pipe_elements (prev_block_id, block_id);
-                            prev_block_id = block_id;
+                            list_iappend(lcd_blks, block_id);
+                            n_lcd++;
                         }
                     }
+                }
+                fprintf(_fp, "\n");
+                if (n_lcd>0) 
+                {
+                    pll_split_block_id = _generate_parallel_split(n_lcd);
+                    pll_merge_block_id = _generate_parallel_merge(n_lcd);
+                    _connect_pipe_elements (prev_block_id, pll_split_block_id);
+
+                    Assert(n_lcd==(list_length(lcd_blks)), "hmm");
+                    listitem_t *lcd_blk = list_first(lcd_blks);
+                    for (int jj=0; jj<n_lcd;jj++)
+                    {
+                        Assert (lcd_blk, "hmm");
+                        gp_con_id = _generate_gp_connect ();
+                        _connect_pll_split_outputs_to_pipe (pll_split_block_id, gp_con_id, jj);
+                        _connect_pipe_elements (gp_con_id, list_ivalue(lcd_blk));
+                        _connect_pipe_to_pll_merge_inputs (pll_merge_block_id, list_ivalue(lcd_blk), jj);
+                        lcd_blk = list_next(lcd_blk);
+                    }
+                    prev_block_id = pll_merge_block_id;
                 }
             }
 
@@ -2490,7 +2512,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             }
 #endif
 
-            _connect_pipe_elements(block_id, first_block_id);
+            _connect_pipe_elements(prev_block_id, first_block_id);
             break;
         }
         // regular synthesis
