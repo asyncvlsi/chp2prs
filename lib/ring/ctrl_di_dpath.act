@@ -61,7 +61,7 @@ defproc connect_inchan_to_ctrl (sdtchan<W> ch; a1of1 ctrl)
   bool x;
   x = ch.a;
   // to avoid actsim issue
-  // ctrl.a = ch.a;
+  ctrl.a = x;
 }
 
 export template<pint W>
@@ -135,37 +135,82 @@ defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
   m1.a = p1.a;
 }
 
+export template<pint W>
+defproc mywriteport(bool wt[W], wf[W]; a1of1 go; Mx1of2<W> in; sdtvar<W> var)
+{
+  bool _wt[W];
+  bool _wf[W];
+  bool _wack[W];
+
+  prs {
+
+    ( i : W : ~go.r               -> _wt[i]+ )
+    ( i : W : ~go.r               -> _wf[i]+ )
+    ( i : W :  go.r & in.d[i].t   -> _wt[i]- )
+    ( i : W :  go.r & in.d[i].f   -> _wf[i]- )
+
+    ( i : W : _wt[i] => wt[i]- )
+    ( i : W : _wf[i] => wf[i]- )
+
+    ( i : W : (wt[i] & var.d[i].t) | (wf[i] & var.d[i].f) -> _wack[i]- )
+    ( i : W : ~wt[i] & ~wf[i] -> _wack[i]+ )
+  }
+  
+  std::gates::ctree<W, false> wa(_wack);
+  
+  prs {
+    Reset | wa.out => go.a-
+  }
+}
+
+export template <pint CD, PW, W>
+defproc capture_old(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
+{
+  syn::var_init<W,false> var;
+  var.v = dout;
+  
+  syn::expr::writeport<W> wp;
+  wp.wt = var.wt;
+  wp.wf = var.wf;
+  wp.var = dout;
+
+  wp.in.d = din;
+
+  two_to_four_brs tf;
+  tf.in = go;
+
+  std::gates::ctree<2,false> write_sync;
+  write_sync.in[0] = wp.in.a;
+  // write_sync.in[1] = go.r;
+  write_sync.in[1] = tf.out.r;
+  write_sync.in[1] = tx.r;
+  // write_sync.out = go.a;
+  write_sync.out = tf.out.a;
+  write_sync.out = tx.a;
+}
+
 export template <pint CD, PW, W>
 defproc capture(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 {
   syn::var_init<W,false> var;
   var.v = dout;
   
-  syn::expr::writeport<W> wp;
+  mywriteport<W> wp;
   wp.wt = var.wt;
   wp.wf = var.wf;
   wp.var = dout;
 
-  wp.in.d = din;
+  wp.in = din;
 
   two_to_four_brs tf;
   tf.in = go;
-
-  std::gates::ctree<2,false> write_sync;
-  write_sync.in[0] = wp.in.a;
-  // write_sync.in[1] = go.r;
-  write_sync.in[1] = tf.out.r;
-  write_sync.in[1] = tx.r;
-  // write_sync.out = go.a;
-  write_sync.out = tf.out.a;
-  write_sync.out = tx.a;
-
+  tf.out = wp.go;
 }
 
 // Need to figure out the correct way for the 
 // fake assignment trick for qdi
 export template <pint CD, PW, W>
-defproc capture_dummy(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
+defproc capture_dummy_old(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 {
   syn::var_init<W,false> var;
   var.v = dout;
@@ -191,6 +236,24 @@ defproc capture_dummy(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 
 }
 
+export template <pint CD, PW, W>
+defproc capture_dummy(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
+{
+  syn::var_init<W,false> var;
+  var.v = dout;
+  
+  mywriteport<W> wp;
+  wp.wt = var.wt;
+  wp.wf = var.wf;
+  wp.var = dout;
+
+  wp.in = din;
+
+  two_to_four_brs tf;
+  tf.in = go;
+  tf.out = wp.go;
+  tf.out.r = tx.r;
+}
 
 export template <pint CD, PW, W, INIT_VAL, N>
 defproc capture_init_non_ssa(a1of1 go[N]; Mx1of2<W> din[N]; sdtvar<W> dout; a1of1 tx[N])
@@ -229,25 +292,6 @@ defproc capture_init_non_ssa(a1of1 go[N]; Mx1of2<W> din[N]; sdtvar<W> dout; a1of
     wp.in.d.d[i].t = ot[i].out;
   )
 }
-
-// export template <pint CD, PW, W>
-// defproc capture(a1of1 go; Mx1of2<W> din; sdtvar<W> dout)
-// {
-//   syn::var_init<W,false> var;
-//   var.v = dout;
-  
-//   syn::expr::writeport<W> wp;
-//   wp.wt = var.wt;
-//   wp.wf = var.wf;
-//   wp.var = dout;
-
-//   wp.in.d = din;
-
-//   std::gates::ctree<2,false> write_sync;
-//   write_sync.in[0] = wp.in.a;
-//   write_sync.in[1] = go.r;
-//   write_sync.out = go.a;
-// }
 
 export template <pint W>
 defproc var_access(sdtvar<W> din; sdtexprchan<1> dout[W])
@@ -486,8 +530,8 @@ defproc nds_split (sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
 export template <pint CD, PW, W, INIT_VAL>
 defproc capture_init(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 {  
-  // syn::var_init_val<W,INIT_VAL> var;
-  syn::var_init<W,false> var;
+  syn::var_init_val<W,INIT_VAL> var;
+  // syn::var_init<W,false> var;
   var.v = dout;
   
   syn::expr::writeport<W> wp;
@@ -508,11 +552,11 @@ defproc capture_init(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 // Need to figure out the correct way for the 
 // fake assignment trick for qdi
 export template <pint CD, PW, W, INIT_VAL>
-defproc capture_init_new(a1of1 go; a1of1 go2; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
+defproc capture_init_new_old(a1of1 go; a1of1 go2; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 {  
   go2.r = go2.a;
-  // syn::var_init_val<W,INIT_VAL> var;
-  syn::var_init<W,false> var;
+  syn::var_init_val<W,INIT_VAL> var;
+  // syn::var_init<W,false> var;
   var.v = dout;
   
   syn::expr::writeport<W> wp;
@@ -528,6 +572,27 @@ defproc capture_init_new(a1of1 go; a1of1 go2; Mx1of2<W> din; sdtvar<W> dout; a1o
   write_sync.in[1] = tx.r;
   write_sync.out = go.a;
   write_sync.out = tx.a;
+}
+
+export template <pint CD, PW, W, INIT_VAL>
+defproc capture_init_new(a1of1 go; a1of1 go2; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
+{
+  go2.r = go2.a;
+  // syn::var_init<W,false> var;
+  syn::var_init_val<W,INIT_VAL> var;
+  var.v = dout;
+  
+  mywriteport<W> wp;
+  wp.wt = var.wt;
+  wp.wf = var.wf;
+  wp.var = dout;
+
+  wp.in = din;
+
+  two_to_four_brs tf;
+  tf.in = go;
+  tf.out = wp.go;
+  tf.out.r = tx.r;
 }
 
 defproc celem2_r (bool in[2]; bool out)
@@ -634,6 +699,24 @@ export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
 }
 
 export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
+{
+
+  bool _m1_r;
+  inverter m1_inv(m1.r,_m1_r);
+
+  zero.a = p1.r;
+  zero.r = m1.a;
+
+  prs {
+      ~Reset & (~_m1_r & ~zero.a & ~p1.a) -> zero.r+ 
+        Reset | (_m1_r &  zero.a &  p1.a) -> zero.r-
+  }
+  sizing { 
+      zero.r{-1} 
+  }
+}
+
+export defproc elem_c_paa_c (a1of1 m1; a1of1 zero; a1of1 p1)
 {
 
   bool _m1_r;
@@ -921,7 +1004,7 @@ defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
     { N<=4 : "Upto four-way only for now" };
 
     { N>1 : "one way split, something whent wrong" };
-    capture<5, 6, 1> capt[N];
+    capture_dummy<5, 6, 1> capt[N];
     var_access<1> vax[N];
 
     ( i : N: capt[i].din = gs[i].d; )
@@ -1184,7 +1267,7 @@ defproc merge_mux_ohc_opt(bool? c[N]; sdtexprchan<1> din[N][W]; sdtvar<W> dout; 
   ( i : N : ( j : W : din[i][j].r = invs[i].out; ) ) 
 
   // TODO: Is a var on the output needed?
-  capture<1,1,W> capt;
+  capture_dummy<1,1,W> capt;
   capt.go.r = or_ctrl.out;
 
   ( j : W : capt.tx.r = ors[j].Y.r; )

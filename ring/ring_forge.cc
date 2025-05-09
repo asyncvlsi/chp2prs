@@ -1109,7 +1109,7 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr)
             fprintf(_fp,"\n// Pipe block for lcd. transmission.");
         }
         fprintf(_fp,"\n");
-        fprintf(_fp,"elem_c_paa %s%d;\n",ring_block_prefix,block_id);
+        fprintf(_fp,"elem_c_paa_c %s%d;\n",ring_block_prefix,block_id);
         char tname[1024];
         get_true_name(tname, var, _p->CurScope());
         b = hash_lookup(var_infos, tname);
@@ -1119,17 +1119,17 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr)
         last_latch_id = vi->latest_for_read;
         // connect last latch output to first latch input
         va_id = _gen_var_access_id();
-        fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,);\n",
-                                vi->width,var_access_prefix,va_id,
-                                capture_block_prefix,vi->name, last_latch_id);
-        fprintf(_fp, "connect_exprblk_assign<%d> %s_lcd_%d(%s%d.dout,%s%s_%d.din,%s%s_%d.tx);\n", 
-                            vi->width, expr_block_output_prefix, va_id,
-                            var_access_prefix,va_id,
-                            capture_block_prefix,vi->name,first_latch_id,
-                            capture_block_prefix,vi->name,first_latch_id
-                            );
-        // connect pipe block action port to latch go port
         if (itr==0) {
+            fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,);\n",
+                                    vi->width,var_access_prefix,va_id,
+                                    capture_block_prefix,vi->name, last_latch_id);
+            fprintf(_fp, "connect_exprblk_assign<%d> %s_lcd_%d(%s%d.dout,%s%s_%d.din,%s%s_%d.tx);\n", 
+                                vi->width, expr_block_output_prefix, va_id,
+                                var_access_prefix,va_id,
+                                capture_block_prefix,vi->name,first_latch_id,
+                                capture_block_prefix,vi->name,first_latch_id
+                                );
+            // connect pipe block action port to latch go port
             fprintf(_fp,"%s%d.zero = %s%s_%d.go;\n",ring_block_prefix,block_id,capture_block_prefix,
                                                 vi->name,first_latch_id);
         }
