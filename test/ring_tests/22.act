@@ -24,6 +24,15 @@ defproc src (chan!(int<4>) r)
 	}
 }
 
+template<pint V>
+defproc src1 (chan!(int<8>) r)
+{
+    int<8> v;
+	chp{
+		v:=V; *[ r!v; v:=v-1 ]
+	}
+}
+
 defproc snk (chan?(int<8>) l)
 {
 	int<8> x;
@@ -37,6 +46,7 @@ defproc testproc (chan?(int<4>) X1; chan!(int<8>) Y1)
   buf b(X1,Y1);
   
   src<3> i1(X1);
+//   src1<3> i1(Y1);
   // 3, 2, 1, 0   
   
   snk o1(Y1);
