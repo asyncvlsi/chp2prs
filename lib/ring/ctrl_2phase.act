@@ -81,17 +81,17 @@ defproc connect_inchan_to_ctrl (bd<W> ch; a1of1 ctrl)
 }
 
 export template<pint W>
+defproc connect_capture_din (bd<W> ch; bool d[W])
+{
+  ch.d = d;
+}
+
+export template<pint W>
 defproc connect_outchan_to_ctrl (bd<W> ch; a1of1 ctrl; bool e[W])
 {
   ch.r = ctrl.r;
   ch.a = ctrl.a;
   ch.d = e;
-}
-
-export template<pint W>
-defproc connect_capture_din (bd<W> ch; bool d[W])
-{
-  ch.d = d;
 }
 
 export template<pint W>
@@ -105,22 +105,108 @@ defproc connect_exprblk_dout (bool d[W]; bool e[W])
 {
   e = d;
 }
+
+export template<pint W>
+defproc connect_exprblk_assign (bool d[W]; bool e[W]; a1of1 tx)
+{
+  e = d;
+}
 // --------------------------------------------------------
 
 
-// Bundled Data Datapath Elements -------------------------
-// Some copied from dflowmap_netlist/dflow_std/qdigen.act
+// Delay lines --------------------------------------------
+template <pint N>
+defproc delay_line_0(bool? in; bool! out)
+{
+  { N >= Delay_Params[0] : "Param out of range for this delay line" };
+  { N <  Delay_Params[1] : "Param out of range for this delay line" };
+  pint N_loc = N - Delay_Params[0];
+
+  // put your delay line here in terms of N_loc
+  pint my_N = N_loc+Delay_Params[0];
+  std::cells::INVX1 invs[2*(my_N)];
+  invs[0].A = in;
+  ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
+  invs[2*my_N-1].Y = out;
+}
+
+// Change these when new delay line types are added -------
+template <pint N>
+defproc delay_line_1(bool? in; bool! out)
+{
+  { N >= Delay_Params[1] : "Param out of range for this delay line" };
+  { N <  Delay_Params[2] : "Param out of range for this delay line" };
+  pint N_loc = N - Delay_Params[1];
+
+  // put your delay line here in terms of N_loc
+  pint my_N = N_loc+Delay_Params[1];
+  std::cells::INVX1 invs[2*(my_N)];
+  invs[0].A = in;
+  ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
+  invs[2*my_N-1].Y = out;
+}
+
+template <pint N>
+defproc delay_line_2(bool? in; bool! out)
+{
+  { N >= Delay_Params[2] : "Param out of range for this delay line" };
+  { N <  Delay_Params[3] : "Param out of range for this delay line" };
+  pint N_loc = N - Delay_Params[2];
+
+  // put your delay line here in terms of N_loc
+  pint my_N = N_loc+Delay_Params[2];
+  std::cells::INVX1 invs[2*(my_N)];
+  invs[0].A = in;
+  ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
+  invs[2*my_N-1].Y = out;
+}
+
+template <pint N>
+defproc delay_line_3(bool? in; bool! out)
+{
+  { N >= Delay_Params[3] : "Param out of range for this delay line" };
+  { N <  Delay_Params[4] : "Param out of range for this delay line" };
+  pint N_loc = N - Delay_Params[3];
+
+  // put your delay line here in terms of N_loc
+  pint my_N = N_loc+Delay_Params[3];
+  std::cells::INVX1 invs[2*(my_N)];
+  invs[0].A = in;
+  ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
+  invs[2*my_N-1].Y = out;
+}
+// Change these when new delay line types are added -------
+
+template <pint T, N>
+defproc delay_selector(bool? in; bool! out)
+{
+  [ T=0 -> delay_line_0<N> d0(in,out);
+  []T=1 -> delay_line_1<N> d1(in,out);
+  []T=2 -> delay_line_2<N> d2(in,out);
+  []T=3 -> delay_line_3<N> d3(in,out);
+  []else-> { false : "Delay line type out of range" };
+  ]
+}
 
 export template <pint N>
 defproc delay_line(bool? in; bool! out)
 {
-  std::cells::INVX1 invs[2*N];
-  invs[0].A = in;
-  (i:2*N-1 : 
-    invs[i].Y = invs[i+1].A;
-  )
-  invs[2*N-1].Y = out;
+  [
+    ([]i:N_delay_line_types: N>=Delay_Params[i] & N<Delay_Params[i+1] -> delay_selector<i,N> dl(in,out); )
+    []N>=Delay_Params[N_delay_line_types] -> { false : "Delay line parameter out of range" };
+  ]
 }
+
+// export template <pint N>
+// defproc delay_line(bool? in; bool! out)
+// {
+//   std::cells::INVX1 invs[2*N];
+//   invs[0].A = in;
+//   (i:2*N-1 : 
+//     invs[i].Y = invs[i+1].A;
+//   )
+//   invs[2*N-1].Y = out;
+// }
 
 export template <pint N>
 defproc delay_line_chan(a1of1 m1; a1of1 p1)
@@ -130,6 +216,19 @@ defproc delay_line_chan(a1of1 m1; a1of1 p1)
   p1.r = d.out;
   m1.a = p1.a;
 }
+
+export template <pint N_d, N_mux>
+defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
+{
+  delay_line<N_d> d;
+  m1.r = d.in;
+  p1.r = d.out;
+  m1.a = p1.a;
+}
+// --------------------------------------------------------
+
+// Bundled Data Datapath Elements -------------------------
+// Some copied from dflowmap_netlist/dflow_std/qdigen.act
 
 export template <pint PW>
 defproc pulse(bool? in; bool! out)
@@ -155,7 +254,7 @@ defproc pulse(bool? in; bool! out)
 
 
 export template <pint CD, PW, W>
-defproc capture(a1of1 go; bool? din[W]; bool! dout[W])
+defproc capture(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
 {
   delay_line<CD> capture_delay;
   go.r = capture_delay.in;
@@ -180,6 +279,14 @@ defproc capture(a1of1 go; bool? din[W]; bool! dout[W])
   }
 }
 
+export template <pint CD, PW, W>
+defproc capture_dummy(a1of1 go; bool din[W]; bool dout[W]; a1of1 tx)
+{
+  go.r = go.a;
+  din = dout;
+}
+
+
 export template <pint W>
 defproc var_access(bool din[W]; bool dout[W])
 {
@@ -192,8 +299,47 @@ defproc chan_access(bd<W> C; bool dout[W])
   C.d = dout;
 }
 
+export template<pint W>
+defproc probe_access(bd<W> C; bool dout[1])
+{
+  C.r = dout[0];
+}
+
+export
+defproc dummy_probe_clause(bool? g[1]; bool! out[1]) {
+  out = g;
+}
+
+export template<pint N; pint idx[N]; pint T>
+defproc probe_clause(bool? g[N]; bool? probe[T]; bool! out[1]) {
+  pint tstval, tmp;
+  pint lo_idx[N];
+  tstval = 0;
+  tmp = 0;
+  *[ tmp < N ->
+    lo_idx[tmp] = tstval;
+    tstval = tstval + idx[tmp];
+    tmp = tmp + 1; ]
+  { T = tstval : "Inconsistent template parameters" };
+  bool _out, _Reset;
+  prs {
+    // inverted Reset to initialize correctly
+    Reset => _Reset-
+
+     _Reset & (| i: N: g[i] & (& j: idx[i]: probe[j + lo_idx[i]])) -> _out-
+    ~_Reset | (& i: N: ~g[i]) -> _out+
+    _out => out[0]-
+  }
+  sizing{
+    leak_adjust <- 1;
+    p_n_mode <- 1;
+    _out{- 1};
+    out[0]{- 1}
+  }
+}
+
 export template <pint CD, PW, W, INIT_VAL>
-defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])
+defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
 {
   delay_line<CD> capture_delay;
   go.r = capture_delay.in;
@@ -232,6 +378,19 @@ defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])
 }
 
 export template <pint CD, PW, W, INIT_VAL>
+defproc capture_init_new(a1of1 go; a1of1 go2; bool? din[W]; bool! dout[W]; a1of1 tx)
+{
+  capture_init<CD, PW, W, INIT_VAL> c1, c2;
+  din = c1.din;
+  dout = c2.dout;
+  c1.dout = c2.din;
+  tx = c1.tx;
+  tx = c2.tx;
+  go = c1.go;
+  go2 = c2.go;
+}
+
+export template <pint CD, PW, W, INIT_VAL>
 defproc itb_wrapper (bd<W> R_out; bd<W> S_in)
 {
   a1of1 m1, p1;
@@ -262,7 +421,7 @@ defproc itb_wrapper (bd<W> R_out; bd<W> S_in)
 
 // The Two Main Pipe Elements ---------
 
-defproc asym_c_brs (bool? A, B, C; bool! Y)
+export defproc asym_c_brs (bool? A, B, C; bool! Y)
 {
     prs {
         ~Reset & ( ~A & ~B & ~C ) -> Y+
@@ -292,6 +451,13 @@ export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
 
 export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
 {
+  m1.r = zero.r;
+  zero.a = p1.r;
+  p1.a = m1.a;
+}
+
+export defproc elem_c_paa_c (a1of1 m1; a1of1 zero; a1of1 p1)
+{
 
   bool _m1_r;
   inverter m1_inv(m1.r,_m1_r);
@@ -310,23 +476,31 @@ export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
 
 export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 {
-
-  bool _zero_r, _m1_r;
-  inverter zero_inv(zero.r,_zero_r);
+  bool _m1_r, _zero_r;
   inverter m1_inv(m1.r,_m1_r);
+  inverter zr_inv(zero.r,_zero_r);
 
-  zero.a = p1.r;
+  asym_c_brs ac;
+  ac.A = _m1_r;
+  ac.B = _zero_r;
+  ac.C = m1.a;
+  ac.Y = data.r;
+
+  bool _data_a;
+  inverter da_inv(data.a,_data_a);
   data.a = zero.a;
-  data.r = m1.a;
+  
+  m1.a = p1.r;
 
   prs {
-      ~Reset & (~_m1_r &  ~_zero_r & ~p1.a) -> data.r+ 
-        Reset | (_m1_r &   _zero_r &  p1.a) -> data.r-
+      ~Reset & (~_m1_r &  ~_data_a & ~p1.a) -> p1.r+ 
+        Reset | (_m1_r &   _data_a &  p1.a) -> p1.r-
   }
   sizing { 
-      data.r{-1} 
+      p1.r{-1} 
   }
 }
+
 // ------------------------------------
 
 // Skip element -----------------------
@@ -449,6 +623,150 @@ defproc selection_merge(a1of1 ci[N]; a1of1! p1)
 // ------------------------------------
 
 
+// N-way non-deterministic split ------
+
+defproc c1 (bool ctrl, ka, a, out)
+{
+    bool _out;
+    prs {
+        [after=0] a & ctrl -> _out-
+        [after=0] ~ka & ~ctrl -> _out+
+        [after=0] _out => out-
+    }
+}
+
+defproc c2 (bool A, B, ack, out)
+{
+    bool _out;
+    prs {
+        // ack -> _out-
+        // ~ack & ~A & ~B -> _out+
+        // _out => out-
+        [after=0] ack -> _out-
+        [after=0] ~ack & ~A & ~B -> _out+
+        [after=0] _out => out-
+    }
+}
+
+defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka) 
+{
+  bool _u, _v;
+  bool _Reset;
+
+  /* force exclusive low signals for simulation */
+  spec {
+    mk_excllo(_u,_v)
+  }
+  
+  std::cells::OR2X1 or_ka;
+  or_ka.A = u;
+  or_ka.B = v;
+  or_ka.Y = _ka;
+
+  prs {
+    // inverted Reset to initialize correctly
+    Reset => _Reset-
+    /* cross coupled nand gates, with kill tail NMOS */
+    [keeper=0] a & _v & _ki -> _u-
+    [keeper=0] ~a | ~_v | ~_Reset | ~_ki -> _u+
+    [keeper=0] b & _u & _ki -> _v-
+    [keeper=0] ~b | ~_u | ~_Reset | ~_ki -> _v+
+
+   /* output filter */
+    [keeper=0] _u<5> -> u-
+    [keeper=0] _v<5> -> v-
+    passp<10>(_u,_v,u)
+    passp<10>(_v,_u,v)
+
+
+  }
+  sizing {
+   leak_adjust <- 1;
+   _u{-1};
+   _v{-1}
+  }
+}
+
+defproc nds_two_way (bool gs[2]; a1of1 m1; a1of1 co[2])
+{
+  c1 ac1, bc1;
+  c2 c_ack;
+  killable_arbiter arb;
+  std::cells::OR2X1 or_ack;
+
+  bool _ka;
+  _ka = arb._ka;
+  m1.r = arb._ki;
+
+  ac1.ctrl = m1.r;
+  bc1.ctrl = m1.r;
+
+  ac1.a = gs[0];
+  bc1.a = gs[1];
+
+  ac1.ka = _ka;
+  bc1.ka = _ka;
+
+  ac1.out = arb.a;
+  bc1.out = arb.b;
+
+  ac1.out = c_ack.A;
+  bc1.out = c_ack.B;
+
+  co[0].a = or_ack.A;
+  co[1].a = or_ack.B;
+  c_ack.ack = or_ack.Y;
+  c_ack.out = m1.a;
+
+  arb.u = co[0].r;
+  arb.v = co[1].r;
+}
+
+// Round-robin non-deterministic split
+export template <pint N>
+defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+  { N>1 : "At least two-way non-deterministic selection" };
+
+  // No. of NDS blocks
+  pint M = N;
+
+  nds_two_way nds[M];
+  // std::cells::INVX1 inv[M];
+  std::cells::NOR2X1 nors[M];
+  std::cells::XOR2X1 xor1;
+  std::cells::TIELOX1 tielo1;
+  std::cells::INVX1 inv_loop;
+  std::cells::NOR2X1 reset_nor;
+  inv_loop.Y = reset_nor.B;
+  Reset = reset_nor.A;
+
+  // connect guards and inverted guards
+  ( i : M : nds[i].gs[0] = gs[i]; 
+              // inv[i].A = gs[i];
+              nors[i].A = gs[i];
+              nors[i].B = Reset;
+              // inv[i].Y = nds[i].gs[1]; )
+              nors[i].Y = nds[i].gs[1]; )
+
+  // first one
+  xor1.B = m1.r;
+  xor1.Y = nds[0].m1.r;
+  m1.a = nds[0].m1.a;
+ 
+  ( i : M-1 : nds[i].co[0] = co[i]; 
+              nds[i].co[1] = nds[i+1].m1; )
+
+  // last one
+  nds[M-1].co[0] = co[M-1];
+  nds[M-1].co[1].a = tielo1.Y;
+  // nds[M-1].co[1].r = xor.A;
+  xor1.A = reset_nor.Y;
+  nds[M-1].co[1].r = inv_loop.A;
+}
+
+// ------------------------------------
+
 // N-way loop construct ---------------
 // Last (N-th) guard must be the 'else' 
 // i.e. the case where the loop terminates
@@ -523,22 +841,22 @@ defproc doloop_wrapper (bool? g; a1of1? m1;
 // ------------------------------------
 
 // N : No. of inputs, W : Width of each input
-export template<pint N,W>
-defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
-{
-  // ands
-  std::cells::AND2X1 stage_1[N][W];
+// export template<pint N,W>
+// defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
+// {
+//   // ands
+//   std::cells::AND2X1 stage_1[N][W];
   
-  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
-  ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
+//   ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
+//   ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
 
-  // ors
-  std::gates::ortree<N, false> stage_2[W]; 
+//   // ors
+//   std::gates::ortree<N, false> stage_2[W]; 
 
-  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
-  ( j : W : stage_2[j].out = dout[j]; )
+//   ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
+//   ( j : W : stage_2[j].out = dout[j]; )
 
-}
+// }
 
 // N : No. of inputs, W : Width of each input
 export template<pint N,W>
@@ -561,12 +879,10 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
 
 }
 
-export defproc capture_bool (bool i; bool dout[1])
+export defproc   (bool i; bool dout[1])
 {
   i = dout[0];
 }
-
-// --------------------------------------------------------
 
 
 // Variables and Channels ---------------------------------
@@ -578,6 +894,43 @@ export defchan ring_chan <: bd () {}
 
 // --------------------------------------------------------
 
+// Custom Circuit Implementations for Small Programs
+
+
+/*
+ *    Implementation of *[ L?x; R!f(x) ]
+ *    LW : L-chan width
+ *    RW : R-chan width
+ *    CD : Capture delay
+ *    PW : Pulse width for latch
+ */
+
+export template <pint LW, RW, CD, PW>
+defproc fblock_impl (ring_chan<LW> L; ring_chan<RW> R; bool ei[LW]; bool eo[RW]; a1of1 d_in; a1of1 d_out)
+{
+  elem_c_ppa block_1;
+  connect_inchan_to_ctrl<LW> conn_z_2;
+  conn_z_2.ctrl = block_1.zero;
+  conn_z_2.ch = L;
+
+  capture<CD,PW,LW> latch_x_0;
+  latch_x_0.go = block_1.data;
+  latch_x_0.din = L.d;
+  latch_x_0.tx.a = L.a;
+
+  prs {
+    block_1.m1.a => block_1.m1.r-
+  }
+
+  connect_outchan_to_ctrl<RW> conn_z_3;
+  conn_z_3.ch = R;
+
+  var_access<LW> va_blk_1(latch_x_0.dout,ei);
+  connect_exprblk_dout<RW> conn_out_2(eo,conn_z_3.e);
+
+  d_in = block_1.p1;
+  d_out = conn_z_3.ctrl;
+}
   }
 
 }

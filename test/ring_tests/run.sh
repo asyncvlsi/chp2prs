@@ -70,6 +70,7 @@ do
         fi
         ok=1
         for opt in "-F ring -C bd" "-F ring -C bdp"
+        # for opt in "-F ring -C bd2"
 	do
         if [ $ok -eq 1 ]
         then
