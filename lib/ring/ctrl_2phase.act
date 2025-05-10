@@ -920,7 +920,7 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
   bool new_c[N];
   std::cells::XOR2X1 xors[N];
   
-  capture<5,6,1> capt1[N], capt2[N];
+  capture_init<5,6,1,0> capt1[N], capt2[N];
   ( i : N : capt1[i].din[0] = xors[i].Y;  )
   ( i : N : capt2[i].din = capt1[0].dout; )
   ( i : N : capt2[i].dout[0] = new_c[i];  )
