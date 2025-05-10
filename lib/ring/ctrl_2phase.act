@@ -220,7 +220,9 @@ defproc delay_line_chan(a1of1 m1; a1of1 p1)
 export template <pint N_d, N_mux>
 defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
 {
-  delay_line<N_d> d;
+  // testing mux delay multiplier
+  pint M = 10;
+  delay_line<M*N_d> d;
   m1.r = d.in;
   p1.r = d.out;
   m1.a = p1.a;
@@ -429,6 +431,7 @@ export defproc asym_c_brs (bool? A, B, C; bool! Y)
     }
 }
 
+/*
 export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
 {
     inverter im1r, izeroa;
@@ -447,6 +450,25 @@ export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
         ~Reset & ( ~im1r.out & ~izeroa.out & ~p1.a ) -> m1.a+
          Reset | (  im1r.out &  izeroa.out &  p1.a ) -> m1.a-
     }
+}
+*/
+
+export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
+{
+
+  bool _m1_r;
+  inverter m1_inv(m1.r,_m1_r);
+
+  zero.a = p1.r;
+  zero.r = m1.a;
+
+  prs {
+      ~Reset & (~_m1_r & ~zero.a & ~p1.a) -> zero.r+ 
+        Reset | (_m1_r &  zero.a &  p1.a) -> zero.r-
+  }
+  sizing { 
+      zero.r{-1} 
+  }
 }
 
 export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
@@ -474,6 +496,7 @@ export defproc elem_c_paa_c (a1of1 m1; a1of1 zero; a1of1 p1)
   }
 }
 
+/*
 export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 {
   bool _m1_r, _zero_r;
@@ -498,6 +521,27 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
   }
   sizing { 
       p1.r{-1} 
+  }
+}
+*/
+
+export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
+{
+
+  bool _zero_r, _m1_r;
+  inverter zero_inv(zero.r,_zero_r);
+  inverter m1_inv(m1.r,_m1_r);
+
+  zero.a = p1.r;
+  data.a = zero.a;
+  data.r = m1.a;
+
+  prs {
+      ~Reset & (~_m1_r &  ~_zero_r & ~p1.a) -> data.r+ 
+        Reset | (_m1_r &   _zero_r &  p1.a) -> data.r-
+  }
+  sizing { 
+      data.r{-1} 
   }
 }
 
@@ -598,14 +642,18 @@ defproc parallel_merge(a1of1 ci[N]; a1of1! p1)
 export template<pint N>
 defproc selection_split(bool? gs[N]; a1of1? m1; a1of1 co[N]) 
 {
-    capture_init<5, 6, N, 0> capt;
+    capture_init<5, 6, 1, 0> capt1[N], capt2[N];
     std::cells::XOR2X1 xors[N];
 
-    capt.go.r = m1.r;
+    ( i : N: capt1[i].go.r = m1.r; )
     ( i : N: xors[i].A = co[i].a; )
     ( i : N: xors[i].B = gs[i]; )
-    ( i : N: xors[i].Y = capt.din[i]; )
-    ( i : N: capt.dout[i] = co[i].r; )
+    ( i : N: xors[i].Y = capt1[i].din[0]; )
+    // ( i : N: capt1[i].dout[0] = co[i].r; )
+
+    ( i : N: capt2[i].dout[0] = co[i].r; )
+    ( i : N: capt2[i].din[0] = capt1[i].dout[0]; )
+    ( i : N: capt2[i].go.r = capt1[i].go.a; )
 
     std::gates::xortree<N, false> ort(, m1.a);
     ( i : N: ort.in[i] = co[i].a; )
@@ -860,26 +908,56 @@ defproc doloop_wrapper (bool? g; a1of1? m1;
 
 // N : No. of inputs, W : Width of each input
 export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
+defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 {
-  // nands
-  std::cells::NAND2X1 stage_1[N][W];
+  { N>1 : "Size two or greater merge mux only"};
+  
+  std::gates::xortree<N, false> xort(c);
+  delay_line<6> delay_xor;
+  delay_xor.in = xort.out;
+  
+  // last-changed detector (one-hot output) circuit ---
+  bool new_c[N];
+  std::cells::XOR2X1 xors[N];
+  
+  capture<5,6,1> capt1[N], capt2[N];
+  ( i : N : capt1[i].din[0] = xors[i].Y;  )
+  ( i : N : capt2[i].din = capt1[0].dout; )
+  ( i : N : capt2[i].dout[0] = new_c[i];  )
+  ( i : N : capt2[i].dout[0] = xors[i].A; )
+  ( i : N : c[i] = xors[i].B; )
+  ( i : N : capt1[i].go.a = capt2[i].go.r; )
+  ( i : N : capt1[i].go.r = delay_xor.out; )
+  // last-changed detector (one-hot output) circuit ---
+
+  // aoi's
+  std::cells::AOI22X1 stage_1[N/2][W];
+  [ (N%2)=1 -> std::cells::NAND2X1 last[W]; ]
   
   sigbuf<W> fanout_tree[N];
-  ( i : N : fanout_tree[i].in = c[i]; )
-  
-  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
-  ( i : N : ( j : W : stage_1[i][j].B = fanout_tree[i].out[j]; ) )
+  ( i : N : fanout_tree[i].in = new_c[i]; )
+
+  ( i : N/2 : ( j : W : stage_1[i][j].A = din[ 2*i   ][j];        
+                        stage_1[i][j].C = din[(2*i)+1][j]; ) ) 
+
+  ( i : N/2 : ( j : W : stage_1[i][j].B = fanout_tree[ 2*i   ].out[j];
+                        stage_1[i][j].D = fanout_tree[(2*i)+1].out[j]; ) )
+
+  [ (N%2)=1 -> ( j : W : last[j].A = din[N-1][j];
+                         last[j].B = fanout_tree[N-1].out[j]; ) 
+  ]
 
   // nands
-  std::gates::andtree<N, true> stage_2[W]; 
+  std::gates::andtree<(N+1)/2, true> stage_2[W]; 
 
-  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
-  ( j : W : stage_2[j].out = dout[j]; )
+  ( i : N/2 :  ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
+  [ (N%2)=1 -> ( j : W :       last[j].Y = stage_2[j].in[(N-1)/2]; ) 
+  ]
 
+  ( j : W : stage_2[j].out = dout[j]; ) 
 }
 
-export defproc   (bool i; bool dout[1])
+export defproc capture_bool (bool i; bool dout[1])
 {
   i = dout[0];
 }
