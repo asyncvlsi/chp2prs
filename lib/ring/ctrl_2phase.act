@@ -924,21 +924,25 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
   { N>1 : "Size two or greater merge mux only"};
   
   std::gates::xortree<N, false> xort(c);
-  delay_line<2> delay_xor;
+  delay_line<4> delay_xor;
   delay_xor.in = xort.out;
   
   // last-changed detector (one-hot output) circuit ---
   bool new_c[N];
   std::cells::XOR2X1 xors[N];
   
-  capture_init<5,6,1,0> capt1[N], capt2[N];
-  ( i : N : capt1[i].din[0] = xors[i].Y;  )
-  ( i : N : capt2[i].din = capt1[i].dout; )
-  ( i : N : capt2[i].dout[0] = new_c[i];  )
-  ( i : N : capt2[i].dout[0] = xors[i].A; )
-  ( i : N : c[i] = xors[i].B; )
-  ( i : N : capt1[i].go.a = capt2[i].go.r; )
-  ( i : N : capt1[i].go.r = delay_xor.out; )
+  capture_init<10,6,1,0> capt1[N], capt2[N];
+
+  ( i : N :
+            capt1[i].din[0] = c[i];
+            capt1[i].dout[0] = xors[i].A;
+            capt1[i].din[0]  = xors[i].B;
+            capt2[i].din[0]  = xors[i].Y;
+            capt2[i].dout[0] = new_c[i];
+            capt2[i].go.r = delay_xor.out;
+            capt2[i].go.a = capt1[i].go.r; 
+
+   )
   // last-changed detector (one-hot output) circuit ---
 
   // aoi's
