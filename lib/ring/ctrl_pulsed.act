@@ -455,7 +455,7 @@ export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
   p1.a = m1.a;
 }
 
-export defproc elem_c_paa_c (a1of1 m1; a1of1 zero; a1of1 p1)
+export defproc elem_c_paa_c_t (a1of1 m1; a1of1 zero; a1of1 p1)
 {
 
   bool _m1_r;
@@ -471,6 +471,23 @@ export defproc elem_c_paa_c (a1of1 m1; a1of1 zero; a1of1 p1)
   sizing { 
       zero.r{-1} 
   }
+}
+
+export template<pint N>
+defproc elem_c_paa_c (a1of1 m1; a1of1 zero[N]; a1of1 p1)
+{
+  elem_c_paa_c_t c_t;
+  c_t.m1 = m1;
+  c_t.p1 = p1;
+
+  std::gates::sigbuf<N> s;
+  std::gates::ctree<N, false> c;
+
+  s.in = c_t.zero.r;
+  ( i : N : s.out[i] = zero[i].r; )
+
+  c.out = c_t.zero.a;
+  ( i : N : c.in[i] = zero[i].a; )
 }
 
 /*

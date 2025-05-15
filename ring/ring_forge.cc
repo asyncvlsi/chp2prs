@@ -1085,12 +1085,23 @@ int RingForge::_generate_pipe_element_custom(int bd_chan_id, int type, int width
 }
 #endif
 
+int RingForge::_generate_pipe_element_lcd(int n)
+{
+    int block_id = _gen_block_id();
+    if (verbose) {
+                fprintf(_fp,"\n// Pipe block for lcd. transmission.");
+            }
+    fprintf(_fp,"\n");
+    fprintf(_fp,"elem_c_paa_c<%d> %s%d;\n",n,ring_block_prefix,block_id);
+    return block_id;
+}
+
 /*
     Similar to the previous, but used to pulse latch for
      implementing loop-carried dependencies from 
     one iteration of the ring to the next. 
 */
-int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr)
+int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr, int blk_id, int blk_port)
 {
     int block_id;
     int first_latch_id, last_latch_id;
@@ -1099,17 +1110,18 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr)
     char tname[1024];
     int va_id;
 
-    block_id = _gen_block_id();
+    // block_id = _gen_block_id();
+    block_id = blk_id;
     Assert (var, "no variable (_generate_pipe_element_lcd");
 
     switch(type)
     {
     case ACT_CHP_ASSIGN:
-        if (verbose) {
-            fprintf(_fp,"\n// Pipe block for lcd. transmission.");
-        }
-        fprintf(_fp,"\n");
-        fprintf(_fp,"elem_c_paa_c %s%d;\n",ring_block_prefix,block_id);
+        // if (verbose) {
+        //     fprintf(_fp,"\n// Pipe block for lcd. transmission.");
+        // }
+        // fprintf(_fp,"\n");
+        // fprintf(_fp,"elem_c_paa_c %s%d;\n",ring_block_prefix,block_id);
         char tname[1024];
         get_true_name(tname, var, _p->CurScope());
         b = hash_lookup(var_infos, tname);
@@ -1130,11 +1142,13 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr)
                                 capture_block_prefix,vi->name,first_latch_id
                                 );
             // connect pipe block action port to latch go port
-            fprintf(_fp,"%s%d.zero = %s%s_%d.go;\n",ring_block_prefix,block_id,capture_block_prefix,
+            fprintf(_fp,"%s%d.zero[%d] = %s%s_%d.go;\n",ring_block_prefix,block_id,
+                                                blk_port,capture_block_prefix,
                                                 vi->name,first_latch_id);
         }
         else if (itr==1) {
-            fprintf(_fp,"%s%d.zero = %s%s_%d.go2;\n",ring_block_prefix,block_id,capture_block_prefix,
+            fprintf(_fp,"%s%d.zero[%d] = %s%s_%d.go2;\n",ring_block_prefix,block_id,
+                                                blk_port,capture_block_prefix,
                                                 vi->name,first_latch_id);
         }
         else {
@@ -1149,6 +1163,7 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr)
     return block_id;
 }
 
+#if 0
 int RingForge::_generate_pipe_element_lcd(int type, const char *tname)
 {
     int block_id;
@@ -1186,6 +1201,7 @@ int RingForge::_generate_pipe_element_lcd(int type, const char *tname)
     }
     return block_id;
 }
+#endif
 
 int RingForge::_generate_pause_element()
 {   
@@ -2461,10 +2477,30 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
 
 #if 1
             // new I.C. handling method -----
-            for (int ii = 0; ii<2; ii++) 
+            int n_lcd = 0;
+            // Find actual no. of LCDs
+            for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) {
+                act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
+                if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP) {
+                    Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
+                    id = stmt1->u.assign.id;
+                    char tname[1024];
+                    get_true_name(tname, id, _p->CurScope());
+                    hash_bucket_t *b = hash_lookup(var_infos, tname);
+                    vi = (var_info *)b->v;
+                    if (vi->fisbool==0) {
+                        n_lcd++;
+                    }
+                }
+            }
+
+            for (int ii = 0; n_lcd>0 && ii<2; ii++) 
             {
-                int n_lcd = 0;
+                int pulser_id = _generate_pipe_element_lcd (n_lcd);
+                _connect_pipe_elements (prev_block_id, pulser_id);
+                prev_block_id = pulser_id;
                 list_t *lcd_blks = list_new();
+                int lcd_itr = 0;
                 for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
                 {
                     act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
@@ -2477,32 +2513,13 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                         hash_bucket_t *b = hash_lookup(var_infos, tname);
                         vi = (var_info *)b->v;
                         if (vi->fisbool==0) {
-                            block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id, ii);
+                            block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id, ii, pulser_id, lcd_itr);
+                            lcd_itr++;
                             list_iappend(lcd_blks, block_id);
-                            n_lcd++;
                         }
                     }
                 }
                 fprintf(_fp, "\n");
-                if (n_lcd>0) 
-                {
-                    pll_split_block_id = _generate_parallel_split(n_lcd);
-                    pll_merge_block_id = _generate_parallel_merge(n_lcd);
-                    _connect_pipe_elements (prev_block_id, pll_split_block_id);
-
-                    Assert(n_lcd==(list_length(lcd_blks)), "hmm");
-                    listitem_t *lcd_blk = list_first(lcd_blks);
-                    for (int jj=0; jj<n_lcd;jj++)
-                    {
-                        Assert (lcd_blk, "hmm");
-                        gp_con_id = _generate_gp_connect ();
-                        _connect_pll_split_outputs_to_pipe (pll_split_block_id, gp_con_id, jj);
-                        _connect_pipe_elements (gp_con_id, list_ivalue(lcd_blk));
-                        _connect_pipe_to_pll_merge_inputs (pll_merge_block_id, list_ivalue(lcd_blk), jj);
-                        lcd_blk = list_next(lcd_blk);
-                    }
-                    prev_block_id = pll_merge_block_id;
-                }
             }
 
             if (!list_isempty(ic_list))
