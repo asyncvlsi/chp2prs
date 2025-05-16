@@ -221,7 +221,7 @@ export template <pint N_d, N_mux>
 defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
 {
   // testing mux delay multiplier
-  pint M = 30;
+  pint M = R2P_MUX_DELAY_MULT;
   delay_line<M*N_d> d;
   m1.r = d.in;
   p1.r = d.out;
@@ -659,7 +659,7 @@ defproc parallel_merge(a1of1 ci[N]; a1of1! p1)
 export template<pint N>
 defproc selection_split(bool? gs[N]; a1of1? m1; a1of1 co[N]) 
 {
-    capture_init<5, 6, 1, 0> capt1[N], capt2[N];
+    capture_init<R2P_SEL_SPLIT_CD, R2P_SEL_SPLIT_PW, 1, 0> capt1[N], capt2[N];
     std::cells::XOR2X1 xors[N];
 
     ( i : N: capt1[i].go.r = m1.r; )
@@ -681,14 +681,14 @@ defproc selection_merge(a1of1 ci[N]; a1of1! p1)
 {
     std::gates::xortree<N, false> xort;
     ( i : N: xort.in[i] = ci[i].r; )
-    delay_line<6> delay_xor;
+    delay_line<R2P_SEL_MERGE_XOR_DELAY> delay_xor;
     delay_xor.in = xort.out;
     delay_xor.out = p1.r;
 
     // std::gates::sigbuf<N> s(p1.a);
     // ( i : N: s.out[i] = ci[i].a; )
 
-    capture_init<5, 6, 1, 0> capt1[N], capt2[N];
+    capture_init<R2P_SEL_MERGE_CD, R2P_SEL_MERGE_PW, 1, 0> capt1[N], capt2[N];
 
     ( i : N: capt1[i].go.r = p1.a; )
     ( i : N: capt1[i].din[0] = ci[i].r; )
@@ -948,7 +948,7 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
   bool new_c[N];
   std::cells::XOR2X1 xors[N];
   
-  capture_init<10,6,1,0> capt1[N], capt2[N];
+  capture_init<R2P_MERGE_MUX_CD,R2P_MERGE_MUX_PW,1,0> capt1[N], capt2[N];
 
   ( i : N :
             capt1[i].din[0] = c[i];
