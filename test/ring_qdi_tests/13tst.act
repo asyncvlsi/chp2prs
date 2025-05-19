@@ -1,0 +1,26 @@
+import globals;
+import "13.act";
+import "13_ring.act";
+
+defproc test()
+{
+  pint Wx = 1;
+  ring_testproc t;
+  bool at[Wx], af[Wx], aa;
+  ( i : Wx : at[i] = t.Y.d.d[i].t; )
+  ( i : Wx : af[i] = t.Y.d.d[i].f; )
+  aa = t.Y.a;
+  chp {
+      // a=6 
+      [at[0]=true & af[0]=false  & 
+      //  at[1]=true  & af[1]=false & 
+      //  at[2]=true  & af[2]=false & 
+      //  at[3]=false & af[3]=true  & 
+      //  at[4]=false & af[4]=true  & 
+      //  at[5]=false & af[5]=true  & 
+      //  at[6]=false & af[6]=true  & 
+      //  at[7]=false & af[7]=true  & 
+       aa=true
+       -> log("SUCCESS")]
+  }
+}

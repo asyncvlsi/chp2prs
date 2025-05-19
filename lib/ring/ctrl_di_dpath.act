@@ -181,6 +181,18 @@ defproc myreadport(sdtvar<W> var; sdtexprchan<W> out)
 
 }
 
+// single rail readport to only get true-rail of latched guards
+export defproc myreadport_sr(sdtvar<1> var; bool r; bool d) 
+{
+  bool xout;
+
+  prs {
+    r => xout-
+    ~xout & ~var.d[0].f -> d+
+     xout -> d- 
+  }
+}
+
 export template <pint CD, PW, W>
 defproc capture(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 {
@@ -200,9 +212,22 @@ defproc capture(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 export template <pint CD, PW, W>
 defproc capture_dummy(a1of1 go; Mx1of2<W> din; sdtvar<W> dout; a1of1 tx)
 {
-  go.r = go.a;
-  tx.r = tx.a;
-  din.d = dout.d;
+  syn::var_init<W,false> var;
+  var.v = dout;
+  
+  mywriteport<W> wp;
+  wp.wt = var.wt;
+  wp.wf = var.wf;
+  wp.var = var.v;
+
+  wp.in = din;
+
+  go = wp.go;
+
+
+  go.r = tx.r;
+  // go.r = go.a;
+  // din.d = dout.d;
 }
 
 export template <pint W>
@@ -214,6 +239,14 @@ defproc var_access(sdtvar<W> din; sdtexprchan<1> dout[W])
   syn::expr::wrap_to_array<W> conv;
   conv.in = read.out;
   conv.out = dout;
+}
+
+export defproc var_access_sr(sdtvar<1> din; bool r; bool d)
+{
+  myreadport_sr read;
+  din = read.var;
+  r   = read.r;
+  d   = read.d;
 }
 
 export template<pint W>
@@ -505,9 +538,27 @@ export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
 
 export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
 {
-  m1.r = zero.r;
-  zero.a = p1.r;
-  p1.a = m1.a;
+  bool _m1_r;
+  inverter m1_inv(m1.r,_m1_r);
+
+  two_to_four_brs tf;
+
+  tf.in.r = m1.a;
+  tf.in.a = p1.r;
+
+  tf.out.r = zero.r;
+  tf.out.a = zero.a;
+
+  prs {
+      ~Reset & (~_m1_r & ~tf.in.a & ~p1.a) -> tf.in.r+ 
+        Reset | (_m1_r &  tf.in.a &  p1.a) -> tf.in.r-
+  }
+  sizing { 
+      tf.in.r{-1} 
+  }
+  // m1.r = zero.r;
+  // zero.a = p1.r;
+  // p1.a = m1.a;
 }
 
 export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
@@ -714,84 +765,23 @@ defproc selection_split_new(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N])
 export template<pint N>
 defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
 {
-
-    { N<=4 : "Upto four-way only for now" };
-
+    // { N<=4 : "Upto four-way only for now" };
     { N>1 : "one way split, something whent wrong" };
-    capture_dummy<5, 6, 1> capt[N];
-    var_access<1> vax[N];
+    capture<5, 6, 1> capt[N];
+    ( i : N : capt[i].go.r = m1.r; )
 
-    ( i : N: capt[i].din = gs[i].d; )
-    // ( i : N: gs[i].r = m1.r; )
-    ( i : N: gs[i].r = capt[i].tx.r; )
-    ( i : N: capt[i].go.r = m1.r; )
+    connect_exprblk_assign<1> conn[N];
+    ( i : N : conn[i].e[0] = gs[i]; 
+              conn[i].d = capt[i].din;
+              conn[i].tx.r = capt[i].go.r; )
 
+    var_access_sr vax[N];
     ( i : N: capt[i].dout = vax[i].din; )
 
     std::gates::ctree<N,false> c_w;
     ( i : N: capt[i].go.a = c_w.in[i]; )
-    ( i : N: c_w.out = vax[i].dout[0].r; )
-    // ( i : N: capt[i].go.a = vax[i].dout[0].r; )
-    // ( i : N: co[i].r = vax[i].dout[0].d.d[0].t; )
-
-    // acelem3_r celems[2];
-    acelem_r<N-1> celems[N];
-    [N=2->
-      //acelem_r<1> celems[2];
-
-      celems[0].in_t = vax[0].dout[0].d.d[0].t; 
-      celems[0].in_f = vax[0].dout[0].d.d[0].f;
-      celems[0].in[0] = vax[1].dout[0].d.d[0].f;
-
-      celems[1].in_t = vax[1].dout[0].d.d[0].t; 
-      celems[1].in_f = vax[1].dout[0].d.d[0].f;
-      celems[1].in[0] = vax[0].dout[0].d.d[0].f;
-    []N=3->
-      //acelem_r<2> celems[3];
-
-      celems[0].in_t = vax[0].dout[0].d.d[0].t; 
-      celems[0].in_f = vax[0].dout[0].d.d[0].f;
-      celems[0].in[0] = vax[1].dout[0].d.d[0].f;
-      celems[0].in[1] = vax[2].dout[0].d.d[0].f;
-
-      celems[1].in_t = vax[1].dout[0].d.d[0].t; 
-      celems[1].in_f = vax[1].dout[0].d.d[0].f;
-      celems[1].in[0] = vax[0].dout[0].d.d[0].f;
-      celems[1].in[1] = vax[2].dout[0].d.d[0].f;
-
-      celems[2].in_t = vax[2].dout[0].d.d[0].t; 
-      celems[2].in_f = vax[2].dout[0].d.d[0].f;
-      celems[2].in[0] = vax[0].dout[0].d.d[0].f;
-      celems[2].in[1] = vax[1].dout[0].d.d[0].f;
-    []N=4->
-      //acelem_r<3> celems[4];
-
-      celems[0].in_t = vax[0].dout[0].d.d[0].t; 
-      celems[0].in_f = vax[0].dout[0].d.d[0].f;
-      celems[0].in[0] = vax[1].dout[0].d.d[0].f;
-      celems[0].in[1] = vax[2].dout[0].d.d[0].f;
-      celems[0].in[2] = vax[3].dout[0].d.d[0].f;
-
-      celems[1].in_t = vax[1].dout[0].d.d[0].t; 
-      celems[1].in_f = vax[1].dout[0].d.d[0].f;
-      celems[1].in[0] = vax[0].dout[0].d.d[0].f;
-      celems[1].in[1] = vax[2].dout[0].d.d[0].f;
-      celems[1].in[2] = vax[3].dout[0].d.d[0].f;
-
-      celems[2].in_t = vax[2].dout[0].d.d[0].t; 
-      celems[2].in_f = vax[2].dout[0].d.d[0].f;
-      celems[2].in[0] = vax[0].dout[0].d.d[0].f;
-      celems[2].in[1] = vax[1].dout[0].d.d[0].f;
-      celems[2].in[2] = vax[3].dout[0].d.d[0].f;
-
-      celems[3].in_t = vax[3].dout[0].d.d[0].t; 
-      celems[3].in_f = vax[3].dout[0].d.d[0].f;
-      celems[3].in[0] = vax[0].dout[0].d.d[0].f;
-      celems[3].in[1] = vax[1].dout[0].d.d[0].f;
-      celems[3].in[2] = vax[2].dout[0].d.d[0].f;
-    ]
-
-    ( i : N : co[i].r = celems[i].out; )
+    ( i : N: c_w.out = vax[i].r; )
+    ( i : N : co[i].r = vax[i].d; )
     
     std::gates::ortree<N, false> ort(, m1.a);
     ( i : N: ort.in[i] = co[i].a; )
