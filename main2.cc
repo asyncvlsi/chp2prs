@@ -42,9 +42,9 @@ static void usage(char *name)
   fprintf (stderr, "        * decomp : decomposition - CHP-to-CHP\n");
   fprintf (stderr, " -G : Non-SSA style datapath [only ring] [deprecated, no effect]\n");
   fprintf (stderr, " -C : qdi|bd|bd2|bdp|di|ditest: Circuit / Datapath family\n");
-  fprintf (stderr, "        * qdi : quasi delay insensitive (default)\n");
+  fprintf (stderr, "        * qdi : quasi delay insensitive (default) [w.i.p. for ring] \n");
   fprintf (stderr, "        * bd : bundled data (D flip-flops) \n");
-  fprintf (stderr, "        * bd2 : bundled data 2 phase handshake [only ring?]\n");
+  fprintf (stderr, "        * bd2 : bundled data 2 phase handshake [only ring]\n");
   fprintf (stderr, "        * bdp : bundled data (pulsed latches) [only ring]\n");
   fprintf (stderr, "        * di : delay insensitive [only ring]\n");
   fprintf (stderr, "        * ditest : delay insensitive - testing for signal forks with extra buffers - not synthesizable [only ring]\n");
@@ -52,7 +52,7 @@ static void usage(char *name)
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
   fprintf (stderr, " -X : Enable projection during decomposition (w.i.p.) \n");
-  fprintf (stderr, " -P <int> : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3 (or) 4 (default 0) [deprecated] \n");
+  fprintf (stderr, " -P <int> : Parallelism level for decomposition: 0/1/2/3/4 (default 0) [deprecated] \n");
   fprintf (stderr, "      * 0 : Only necessary decomposition\n");
   fprintf (stderr, "      * 1 : Break at receives\n");
   fprintf (stderr, "      * 2 : Break at selections\n");
