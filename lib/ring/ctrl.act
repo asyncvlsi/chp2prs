@@ -128,6 +128,11 @@ defproc delay_line_0(bool? in; bool! out)
   invs[0].A = in;
   ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
   invs[2*my_N-1].Y = out;
+
+  spec {
+    timing in+ : out+ < in-  
+    timing in- : out- < in+  
+  }
 }
 
 // Change these when new delay line types are added -------
@@ -144,6 +149,11 @@ defproc delay_line_1(bool? in; bool! out)
   invs[0].A = in;
   ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
   invs[2*my_N-1].Y = out;
+    
+  spec {
+    timing in+ : out+ < in-  
+    timing in- : out- < in+  
+  }
 }
 
 template <pint N>
@@ -159,6 +169,11 @@ defproc delay_line_2(bool? in; bool! out)
   invs[0].A = in;
   ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
   invs[2*my_N-1].Y = out;
+      
+  spec {
+    timing in+ : out+ < in-  
+    timing in- : out- < in+  
+  }
 }
 
 template <pint N>
@@ -174,6 +189,11 @@ defproc delay_line_3(bool? in; bool! out)
   invs[0].A = in;
   ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
   invs[2*my_N-1].Y = out;
+      
+  spec {
+    timing in+ : out+ < in-  
+    timing in- : out- < in+  
+  }
 }
 // Change these when new delay line types are added -------
 
@@ -408,6 +428,10 @@ defproc capture_init_new(a1of1 go; a1of1 go2; bool? din[W]; bool! dout[W]; a1of1
   tx = c2.tx;
   go = c1.go;
   go2 = c2.go;
+  
+  spec {
+    timing go.r+ : go.a+ < go2.r+
+  }
 }
 
 export template <pint CD, PW, W, INIT_VAL>

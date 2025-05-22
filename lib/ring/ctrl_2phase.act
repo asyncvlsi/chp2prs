@@ -128,6 +128,11 @@ defproc delay_line_0(bool? in; bool! out)
   invs[0].A = in;
   ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
   invs[2*my_N-1].Y = out;
+
+  spec {
+    timing in+ : out+ < in-  
+    timing in- : out- < in+  
+  }
 }
 
 // Change these when new delay line types are added -------
@@ -144,6 +149,11 @@ defproc delay_line_1(bool? in; bool! out)
   invs[0].A = in;
   ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
   invs[2*my_N-1].Y = out;
+
+  spec {
+    timing in+ : out+ < in-  
+    timing in- : out- < in+  
+  }
 }
 
 template <pint N>
@@ -159,6 +169,11 @@ defproc delay_line_2(bool? in; bool! out)
   invs[0].A = in;
   ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
   invs[2*my_N-1].Y = out;
+
+  spec {
+    timing in+ : out+ < in-  
+    timing in- : out- < in+  
+  }
 }
 
 template <pint N>
@@ -174,6 +189,11 @@ defproc delay_line_3(bool? in; bool! out)
   invs[0].A = in;
   ( i : 2*my_N-1 : invs[i].Y = invs[i+1].A; )
   invs[2*my_N-1].Y = out;
+
+  spec {
+    timing in+ : out+ < in-  
+    timing in- : out- < in+  
+  }
 }
 // Change these when new delay line types are added -------
 
@@ -390,6 +410,10 @@ defproc capture_init_new(a1of1 go; a1of1 go2; bool? din[W]; bool! dout[W]; a1of1
   tx = c2.tx;
   go = c1.go;
   go2 = c2.go;
+      
+  spec {
+    timing go.r+ : go.a+ < go2.r+
+  }
 }
 
 export template <pint CD, PW, W, INIT_VAL>
@@ -674,6 +698,11 @@ defproc selection_split(bool? gs[N]; a1of1? m1; a1of1 co[N])
 
     std::gates::xortree<N, false> ort(, m1.a);
     ( i : N: ort.in[i] = co[i].a; )
+
+    ( i : N :
+    spec {
+       timing gs[i] : xors[i].Y < m1.r
+    } )
 }
 
 export template<pint N>
@@ -695,6 +724,12 @@ defproc selection_merge(a1of1 ci[N]; a1of1! p1)
     ( i : N: capt2[i].din[0] = capt1[i].dout[0]; )
     ( i : N: capt2[i].dout[0] = ci[i].a; )
     ( i : N: capt2[i].go.r = capt1[i].go.a; )
+
+    // this is trivially true but i'll leave it in
+    ( i : N :
+    spec {
+       timing ci[i].r : capt1[i].din[0] < p1.r
+    } )
 }
 // ------------------------------------
 
@@ -941,7 +976,7 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
   { N>1 : "Size two or greater merge mux only"};
   
   std::gates::xortree<N, false> xort(c);
-  delay_line<4> delay_xor;
+  delay_line<R2P_MERGE_MUX_DELAY> delay_xor;
   delay_xor.in = xort.out;
   
   // last-changed detector (one-hot output) circuit ---
@@ -958,7 +993,6 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
             capt2[i].dout[0] = new_c[i];
             capt2[i].go.r = delay_xor.out;
             capt2[i].go.a = capt1[i].go.r; 
-
    )
   // last-changed detector (one-hot output) circuit ---
 
