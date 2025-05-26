@@ -1834,6 +1834,7 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
         char tname[1024];
         get_true_name(tname, var, _p->CurScope());
         b = hash_lookup(var_infos, tname);
+        Assert (b, "no var info?");
         // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
         vi = (var_info *)b->v;
         ihash_bucket_t *ib;
