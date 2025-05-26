@@ -163,7 +163,8 @@ defproc capture(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
 
   spec {
     timing go.r+: dout < go.a+
-    timing go.a-: din < go.r+
+    timing go.a-: din* < go.r*+
+    // 
   }
 }
 
@@ -262,7 +263,7 @@ defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
   
   spec {
     timing go.r+: dout < go.a+
-    timing go.a-: din < go.r+
+    timing go.a-: din* < go.r*+
   }
 }
 
@@ -834,6 +835,7 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 export template <pint CD, PW, W, INIT_VAL, N>
 defproc capture_init_non_ssa(a1of1 go[N]; bool? din[N][W]; bool! dout[W]; a1of1 tx[N])
 {
+  { false : "unused" };
   // TODO: get this from simulation
   pint scale = 1;
 

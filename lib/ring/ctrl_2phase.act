@@ -168,7 +168,7 @@ defproc capture(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
     timing go.r-: dout < go.a-
     
     timing go.a-: din < go.r+
-    timing go.a+: din < go.r-
+    timing go.a+: din* < go.r*-
   }
 }
 
@@ -269,8 +269,8 @@ defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
     timing go.r+: dout < go.a+
     timing go.r-: dout < go.a-
 
-    timing go.a-: din < go.r+
-    timing go.a+: din < go.r-
+    timing go.a-: din* < go.r*+
+    timing go.a+: din* < go.r*-
   }
 }
 
