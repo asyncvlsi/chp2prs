@@ -201,6 +201,14 @@ defproc probe_access(bd<W> C; bool dout[1])
   C.r = dout[0];
 }
 
+export template<pint W>
+defproc probe_access_neg(bd<W> C; bool dout[1])
+{
+  prs {
+    C.r => dout[0]-
+  }
+}
+
 export
 defproc dummy_probe_clause(bool? g[1]; bool! out[1]) {
   out = g;
@@ -743,6 +751,49 @@ defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N])
   // nds[M-1].co[1].r = xor.A;
   xor1.A = reset_nor.Y;
   nds[M-1].co[1].r = inv_loop.A;
+}
+
+// Non-deterministic split for stable guards
+export template <pint N>
+defproc nds_split_stable (bool? gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+  { N>1 : "At least two-way non-deterministic selection" };
+
+  // No. of NDS blocks = (Selection_way - 1)
+  pint M = N-1;
+
+  bool _r0, r0;
+
+  nds_two_way nds[M];
+  std::cells::NOR2X1 nors[M];
+
+  // first one
+  nds[0].m1.a = m1.a;
+  nds[0].m1.r = r0;
+
+  // evaluation trigger
+  prs {
+    ~m1.r -> _r0+
+    m1.r & (|i : N : gs[i] ) -> _r0- 
+    _r0 => r0-
+  }
+
+  // chain 'em
+  ( i : M-1 : nds[i].co[0] = co[i]; 
+              nds[i].co[1] = nds[i+1].m1; )
+
+  // connect guards and inverted guards for all except last
+  ( i : M-1 : nors[i].A = gs[i];
+              nors[i].B = Reset;
+              nors[i].Y = nds[i].gs[1];
+              nds[i].gs[0] = gs[i]; )
+
+  // last one
+  nds[M-1].gs[0] = gs[M-1];
+  nds[M-1].gs[1] = gs[M];
+  nds[M-1].co[0] = co[M-1];
+  nds[M-1].co[1] = co[M];
+
 }
 
 // ------------------------------------

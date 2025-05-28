@@ -68,6 +68,7 @@ class RingForge : public RingEngine {
         int _generate_parallel_merge(int);
         int _generate_selection_split(int);
         int _generate_nds_split(int);
+        int _generate_nds_split_stable(int);
         int _generate_selection_merge(int);
         int _generate_init_cond_itb(int, int, int, int);
         int _generate_pipe_element_custom(int, int, int, ActId *);
@@ -77,6 +78,7 @@ class RingForge : public RingEngine {
         int _generate_loop_wrapper();
         int _generate_doloop_wrapper();
         int _generate_probe_access(ActId *);
+        int _generate_probe_access_neg(ActId *);
 
         // TODO: Do this properly later
         void _generate_qdi_itb(act_chp_lang_t *);

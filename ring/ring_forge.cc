@@ -690,6 +690,24 @@ static bool _guards_have_probes (act_chp_gc_t *gc)
   return false;
 }
 
+static bool _expr_has_negated_probe (Expr *e)
+{
+    return bool(act_expr_has_neg_probes(e));
+}
+
+static bool _guards_have_negated_probes (act_chp_gc_t *gc)
+{
+  while (gc) {
+    if (gc->g) {
+      if (_expr_has_negated_probe (gc->g)) {
+	    return true;
+      }
+    }
+    gc = gc->next;
+  }
+  return false;
+}
+
 /*
     Generate a data capture element for a given variable.
     If provided with an initial value, generate a data capture
@@ -1267,6 +1285,16 @@ int RingForge::_generate_nds_split(int n)
 }
 
 /*
+    Generate a non-deterministic selection split (stable-guard version) block for branches
+*/
+int RingForge::_generate_nds_split_stable(int n)
+{
+    int block_id = _gen_block_id();
+    fprintf(_fp,"nds_split_stable<%d> %s%d;\n", n, ring_block_prefix, block_id);
+    return block_id;
+}
+
+/*
     Generate a selection merge block for branches
 */
 int RingForge::_generate_selection_merge(int n)
@@ -1593,6 +1621,16 @@ int RingForge::_generate_probe_circuit (Expr *g, int xid)
             list_iappend (m, eid);
             list_iappend (data_gl, eid);
         }
+        else if (tmp->type == E_NOT && tmp->u.e.l->type == E_PROBE) {
+            int eid = _gen_expr_block_id ();
+            Expr *e1 = new Expr;
+            e1->type = E_INT;
+            e1->u.ival.v = 1;
+            // _emit_expr_const (eid, 1, 1, true);
+            _generate_expr_block_for_sel (e1,eid,true);
+            list_iappend (m, eid);
+            list_iappend (data_gl, eid);
+        }
         else {
             // _emit_one_guard_expr (tmp, m);
             int eid = _gen_expr_block_id ();
@@ -1629,6 +1667,10 @@ int RingForge::_generate_probe_circuit (Expr *g, int xid)
         }
         if (tmp->type == E_PROBE) {
             int pid = _generate_probe_access ((ActId *)tmp->u.e.l);
+            list_iappend (pl, pid);
+        }
+        else if (tmp->type == E_NOT && tmp->u.e.l->type == E_PROBE) {
+            int pid = _generate_probe_access_neg ((ActId *)((tmp->u.e.l)->u.e.l));
             list_iappend (pl, pid);
         }
 
@@ -1710,6 +1752,21 @@ int RingForge::_generate_probe_access (ActId *chan)
     int w = vi->width;
     int pid = _gen_var_access_id();
     fprintf (_fp, "probe_access<%d> probe_%d(",w,pid);
+    chan->Print(_fp);
+    fprintf (_fp, ");\n");
+    return pid;
+}
+
+int RingForge::_generate_probe_access_neg (ActId *chan)
+{
+    char tname[1024];
+    get_true_name(tname, chan, _p->CurScope());
+    hash_bucket_t *b = hash_lookup(var_infos, tname);
+    Assert (b, "var not found?");
+    var_info *vi = (var_info *)b->v;
+    int w = vi->width;
+    int pid = _gen_var_access_id();
+    fprintf (_fp, "probe_access_neg<%d> probe_%d(",w,pid);
     chan->Print(_fp);
     fprintf (_fp, ");\n");
     return pid;
@@ -2586,12 +2643,16 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         fprintf (_fp, "\n");
         if (verbose) fprintf (_fp, "// %d-way selection merge", gc_len);
         fprintf (_fp, "\n");
-        if (_guards_have_probes(gc)) {
+        if (!(_guards_have_probes(gc))) {
+            sel_split_block_id = _generate_selection_split(gc_len);
+        }
+        else if (!(_guards_have_negated_probes(gc))){
             have_probes = true;
-            sel_split_block_id = _generate_nds_split(gc_len);
+            sel_split_block_id = _generate_nds_split_stable(gc_len);
         }
         else {
-            sel_split_block_id = _generate_selection_split(gc_len);
+            have_probes = true;
+            sel_split_block_id = _generate_nds_split(gc_len);
         }
 
         sel_merge_block_id = _generate_selection_merge(gc_len);
