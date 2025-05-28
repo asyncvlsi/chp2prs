@@ -565,10 +565,10 @@ int RingForge::_compute_delay_line_param(double delay)
     double theta = (right-delay)/(right-left);
     Assert ((theta>=0 && theta<=1), "What");
 
-    int n = std::ceil( theta*dparams[itr-1] + (1-theta)*dparams[itr] );
+    int n = std::ceil( theta*dparams[itr-1] + (1-theta)*dparams[itr] - 0.001 );
     Assert ((n>=dparams[itr-1] && n<=dparams[itr]), "Delay PWL curve non-monotonic?");
 
-    return int(std::ceil(n*delay_multiplier))+1;
+    return int(std::ceil(n*delay_multiplier));
 }
 
 unsigned long act_expr_getconst_long (Expr *e)
