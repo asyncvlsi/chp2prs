@@ -162,6 +162,9 @@ bool TinyForge::_build_prog_signature (act_chp_lang_t *c, int root)
 void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature)
 {
     std::vector<Action> buf_s = {Action::Receive, Action::Send};
+    std::vector<Action> src_s = {Action::Send};
+    std::vector<Action> snk_s = {Action::Receive};
+
     if (signature == buf_s) {
         auto cc = (c->u.gc)->s;
         listitem_t *li = (list_first (cc->u.semi_comma.cmd));
@@ -195,6 +198,37 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
         else {
             fprintf(_fp, "fb_impl.d_out = fb_impl.d_in;\n");
         }
+    }
+    else if (signature == src_s) {
+        auto stmt1 = (c->u.gc)->s;
+        Assert (stmt1->type == ACT_CHP_SEND, "Const-source statement not a send?");
+        int rbw = _bitWidth(stmt1->u.comm.chan);
+        auto e = stmt1->u.comm.e;
+        Assert (e->type == E_INT, "Constants only as const-source send value");
+        long long ival = e->u.ival.v;
+        fprintf(_fp, "const_src_impl<%d,%lld> cs_impl;\n", 
+                        rbw, ival);
+        char rchan_name[1024];
+        get_true_name (rchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
+        fprintf(_fp, "cs_impl.R = %s;\n", rchan_name);
+    }
+    else if (signature == snk_s) {
+        auto stmt1 = (c->u.gc)->s;
+        Assert (stmt1->type == ACT_CHP_RECV, "Sink stmt not a recv?");
+        int lbw = _bitWidth(stmt1->u.comm.chan);
+        if (stmt1->u.comm.var) {
+            fprintf(_fp, "snk_impl<%d,%d, %d, true> ss_impl;\n", lbw, 
+                            _compute_delay_line_param(capture_delay), 
+                            _compute_delay_line_param(pulse_width));
+        }
+        else {
+            fprintf(_fp, "snk_impl<%d,%d, %d, false> ss_impl;\n", lbw, 
+                            _compute_delay_line_param(capture_delay), 
+                            _compute_delay_line_param(pulse_width));
+        }
+        char lchan_name[1024];
+        get_true_name (lchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
+        fprintf(_fp, "ss_impl.L = %s;\n", lchan_name);
     }
 }
 

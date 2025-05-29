@@ -349,6 +349,23 @@ export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
         ~Reset & ( ~im1r.out & ~izeroa.out & ~p1.a ) -> m1.a+
          Reset | (  im1r.out &  izeroa.out &  p1.a ) -> m1.a-
     }
+    spec {
+      // timing p1.a- -> m1.a+
+      // timing p1.a+ -> m1.a-
+
+      // timing izeroa.out- -> m1.a+
+      // timing izeroa.out+ -> m1.a-
+
+      timing im1r.out- -> m1.a+
+      // timing im1r.out+ -> m1.a-
+
+      // timing ac.A- -> ac.Y+
+
+      // timing ac.C- -> ac.Y+
+      // timing ac.C+ -> ac.Y-
+
+      // timing ac.B- -> ac.Y+
+    }
 }
 
 export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
@@ -439,6 +456,24 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
   }
   sizing { 
       p1.r{-1} 
+  } 
+  spec {
+    // timing _m1_r+ -> p1.r-
+    // timing _m1_r- -> p1.r+
+    // timing _data_a+ -> p1.r-
+    // timing _data_a- -> p1.r+
+    // timing p1.a- -> p1.r+
+    // timing ac.A- -> ac.Y+
+    // timing ac.C- -> ac.Y+
+    // timing ac.C+ -> ac.Y-
+    // timing ac.B- -> ac.Y+
+    // timing ac.B+ -> ac.Y-
+    timing da_inv.in- -> da_inv.out+
+    timing da_inv.in+ -> da_inv.out-
+    timing zr_inv.in- -> zr_inv.out+
+    timing zr_inv.in+ -> zr_inv.out-
+    timing m1_inv.in- -> m1_inv.out+
+    timing m1_inv.in+ -> m1_inv.out-
   }
 }
 
@@ -487,6 +522,13 @@ export defproc elem_c_itb (a1of1 m1; a1of1 p1)
     }
 
     inverter m1_inv(p1.r,m1.a);
+
+    spec {
+      timing m1.r+ -> p1.r-
+      timing m1.r- -> p1.r+
+      timing p1.r- -> m1.a+
+      timing p1.r+ -> m1.a-
+    }
 }
 
 // ------------------------------------
@@ -993,6 +1035,57 @@ defproc fblock_impl (ring_chan<LW> L; ring_chan<RW> R; bool ei[LW]; bool eo[RW];
   d_in = block_1.p1;
   d_out = conn_z_3.ctrl;
 }
+
+/*
+ *    Implementation of *[ R!k ]
+ *    RW : R-chan width
+ *    K  : Constant-value
+ */
+export template <pint RW, K>
+defproc const_src_impl (ring_chan<RW> R)
+{
+
+  { K >= 0 : "Only non-negative values in const-source" };
+  { K <= (1<<RW)-1 : "Const. value out of bounds" };
+
+  std::cells::NOR2X1 ctrl;
+  ctrl.A = Reset;
+  ctrl.B = R.a;
+  ctrl.Y = R.r;
+
+  pint ival = K;
+  pint j = 0;
+
+  *[ j < RW -> [ (ival%2) = 0 -> std::cells::TIELOX1 x_lo[j..j];                         
+                                x_lo[j].Y = R.d[j];
+
+             [] (ival%2) = 1 -> std::cells::TIEHIX1 x_hi[j..j];                         
+                                x_hi[j].Y = R.d[j];
+
+              ]; j = j + 1; ival = ival >> 1;
+  ]
+}
+
+/*
+ *    Implementation of *[ L?x ]
+ *    LW : L-chan width
+ *    LATCH : Whether to latch value 
+ *            L?x -> true
+ *            L?  -> false
+ */
+export template <pint LW, CD, PW; pbool LATCH>
+defproc snk_impl (ring_chan<LW> L)
+{
+  [ LATCH ->  capture<CD, PW, LW> capt;
+              capt.go.r = L.r;
+              capt.go.a = L.a;
+              capt.din = L.d;
+
+  [] else -> L.r = L.a;
+  ]
+}
+
+
   }
 
 }

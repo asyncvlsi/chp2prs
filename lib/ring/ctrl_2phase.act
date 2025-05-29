@@ -968,6 +968,56 @@ defproc fblock_impl (ring_chan<LW> L; ring_chan<RW> R; bool ei[LW]; bool eo[RW];
   d_in = block_1.p1;
   d_out = conn_z_3.ctrl;
 }
+
+/*
+ *    Implementation of *[ R!k ]
+ *    RW : R-chan width
+ *    K  : Constant-value
+ */
+export template <pint RW, K>
+defproc const_src_impl (ring_chan<RW> R)
+{
+
+  { K >= 0 : "Only non-negative values in const-source" };
+  { K <= (1<<RW)-1 : "Const. value out of bounds" };
+
+  std::cells::NOR2X1 ctrl;
+  ctrl.A = Reset;
+  ctrl.B = R.a;
+  ctrl.Y = R.r;
+
+  pint ival = K;
+  pint j = 0;
+
+  *[ j < RW -> [ (ival%2) = 0 -> std::cells::TIELOX1 x_lo[j..j];                         
+                                x_lo[j].Y = R.d[j];
+
+             [] (ival%2) = 1 -> std::cells::TIEHIX1 x_hi[j..j];                         
+                                x_hi[j].Y = R.d[j];
+
+              ]; j = j + 1; ival = ival >> 1;
+  ]
+}
+
+/*
+ *    Implementation of *[ L?x ]
+ *    LW : L-chan width
+ *    LATCH : Whether to latch value 
+ *            L?x -> true
+ *            L?  -> false
+ */
+export template <pint LW, CD, PW; pbool LATCH>
+defproc snk_impl (ring_chan<LW> L)
+{
+  [ LATCH ->  capture<CD, PW, LW> capt;
+              capt.go.r = L.r;
+              capt.go.a = L.a;
+              capt.din = L.d;
+
+  [] else -> L.r = L.a;
+  ]
+}
+
   }
 
 }
