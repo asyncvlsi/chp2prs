@@ -23,11 +23,6 @@
 // CMOS implementable versions of the pipeline elements
 // Bundled Data Datapath
 
-import globals;
-import std;
-open std::channel;
-open std::gates;
-
 namespace syn {
   
   export namespace ring_pulsed {
@@ -356,7 +351,7 @@ export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
       // timing izeroa.out- -> m1.a+
       // timing izeroa.out+ -> m1.a-
 
-      timing im1r.out- -> m1.a+
+      // timing im1r.out- -> m1.a+
       // timing im1r.out+ -> m1.a-
 
       // timing ac.A- -> ac.Y+
@@ -457,7 +452,6 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
   sizing { 
       p1.r{-1} 
   } 
-  spec {
     // timing _m1_r+ -> p1.r-
     // timing _m1_r- -> p1.r+
     // timing _data_a+ -> p1.r-
@@ -468,13 +462,14 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
     // timing ac.C+ -> ac.Y-
     // timing ac.B- -> ac.Y+
     // timing ac.B+ -> ac.Y-
-    timing da_inv.in- -> da_inv.out+
-    timing da_inv.in+ -> da_inv.out-
-    timing zr_inv.in- -> zr_inv.out+
-    timing zr_inv.in+ -> zr_inv.out-
-    timing m1_inv.in- -> m1_inv.out+
-    timing m1_inv.in+ -> m1_inv.out-
-  }
+  // spec {
+    // timing da_inv.in- -> da_inv.out+
+    // timing da_inv.in+ -> da_inv.out-
+    // timing zr_inv.in- -> zr_inv.out+
+    // timing zr_inv.in+ -> zr_inv.out-
+    // timing m1_inv.in- -> m1_inv.out+
+    // timing m1_inv.in+ -> m1_inv.out-
+  // }
 }
 
 // ------------------------------------
@@ -523,12 +518,12 @@ export defproc elem_c_itb (a1of1 m1; a1of1 p1)
 
     inverter m1_inv(p1.r,m1.a);
 
-    spec {
-      timing m1.r+ -> p1.r-
-      timing m1.r- -> p1.r+
-      timing p1.r- -> m1.a+
-      timing p1.r+ -> m1.a-
-    }
+    // spec {
+      // timing m1.r+ -> p1.r-
+      // timing m1.r- -> p1.r+
+      // timing p1.r- -> m1.a+
+      // timing p1.r+ -> m1.a-
+    // }
 }
 
 // ------------------------------------

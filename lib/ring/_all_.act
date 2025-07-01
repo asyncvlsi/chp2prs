@@ -20,7 +20,12 @@
  **************************************************************************
  */
 
+import globals;
+import std;
+open std::gates;
 import std::cells;
+import std::channel;
+open std::channel;
 
 import "syn/ring/common.act";
 

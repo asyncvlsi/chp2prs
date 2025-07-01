@@ -23,10 +23,7 @@
 // CMOS implementable versions of the pipeline elements
 // QDI Datapath
 
-import globals;
-import std; 
-open std::channel;
-open std::gates;
+import "syn/qdi/_all_.act";
 
 namespace syn {
   

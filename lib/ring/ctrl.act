@@ -23,10 +23,10 @@
 // CMOS implementable versions of the pipeline elements
 // Bundled Data Datapath
 
-import globals;
-import std;
-open std::channel;
-open std::gates;
+// import globals;
+// import std;
+// open std::channel;
+// open std::gates;
 
 namespace syn {
   

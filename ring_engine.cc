@@ -43,9 +43,9 @@ class RingSynth : public ActSynthesize {
       fatal_error ("Ring Synthesis: requires an expression file");
     }
       // config_set_string("expropt.act_cell_lib_bd_namespace","std::cells");
-      // config_set_string("synth.bundled.cell_lib_namespace","std::cells");
+      config_set_string("synth.bundled.cell_lib_namespace","std::cells");
       // config_set_string("expropt.act_cell_lib_bd","${ACT_HOME}/act/std/cells.act");
-      // config_set_string("synth.bundled.cell_lib","${ACT_HOME}/act/std/cells.act");
+      config_set_string("synth.bundled.cell_lib","${ACT_HOME}/act/std/cells.act");
     }
   
   void emitTopImports(ActPass *ap) {

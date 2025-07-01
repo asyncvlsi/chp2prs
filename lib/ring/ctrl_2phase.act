@@ -23,11 +23,6 @@
 // CMOS implementable versions of the pipeline elements
 // Bundled Data Datapath
 
-import globals;
-import std;
-open std::channel;
-open std::gates;
-
 namespace syn {
   
   export namespace ring_2phase {
@@ -466,6 +461,16 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
   }
   sizing { 
       data.r{-1} 
+  }
+  spec {
+    timing _m1_r- -> data.r+
+    timing p1.a+ -> data.r-
+    // timing da_inv.in- -> da_inv.out+
+    // timing da_inv.in+ -> da_inv.out-
+    timing zero_inv.in- -> zero_inv.out+
+    timing zero_inv.in+ -> zero_inv.out-
+    timing m1_inv.in- -> m1_inv.out+
+    timing m1_inv.in+ -> m1_inv.out-
   }
 }
 
@@ -997,6 +1002,11 @@ defproc const_src_impl (ring_chan<RW> R)
 
               ]; j = j + 1; ival = ival >> 1;
   ]
+
+  spec {
+    timing ctrl.B- -> ctrl.Y+
+    timing ctrl.B+ -> ctrl.Y-
+  }
 }
 
 /*
