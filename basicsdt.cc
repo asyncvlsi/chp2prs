@@ -452,8 +452,13 @@ int BasicSDT::_emit_chan_to_probe (ActId *chid)
 
   Assert (_get_isinport (ch), "What?");
   
-  fprintf (output_stream, " syn::sdtchan_to_probe<%d> s_%d(", ch->width,
-	   idx);
+  if (ch->fisbool) {
+     fprintf (output_stream, " syn::sdtboolchan_to_probe s_%d(", idx);
+  }
+  else {
+     fprintf (output_stream, " syn::sdtchan_to_probe<%d> s_%d(", ch->width,
+    	      idx);
+  }
   ch->id->Print (output_stream);
   fprintf (output_stream, ");\n");
   return idx;
