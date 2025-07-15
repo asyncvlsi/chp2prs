@@ -108,6 +108,11 @@ int emit_refinement_header (FILE *fp, UserDef *u)
   fprintf(fp, "sdt_");
   ActNamespace::Act()->mfprintfproc (fp, u);
   fprintf (fp, " <: ");
+  if (u->getns() != ActNamespace::Global()) {
+    char *nsname = u->getns()->Name();
+    fprintf (fp, "%s::", nsname);
+    FREE (nsname);
+  }
   u->printActName (fp);
   fprintf (fp, " ()\n");
 
