@@ -933,7 +933,6 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
 	  fprintf (fp, " %s;\n", vx->getName());
 	}
 	else if (TypeFactory::isStructure (vx->t)) {
-	  OVERRIDE_OPEN;
 	  fprintf (fp, " sdt_");
 	  Data *d = dynamic_cast <Data *> (vx->t->BaseType());
 	  Assert (d, "Why am I here?");
