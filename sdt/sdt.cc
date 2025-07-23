@@ -570,7 +570,7 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
     
   case E_LSL:
     BINARY_OP;
-    *width = lw + (1 << rw);
+    *width = lw + (1 << rw) - 1;
     _emit_expr_binary (id, *width, e->type, lid, lw, rid, rw);
     break;
     

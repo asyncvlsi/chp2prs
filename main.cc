@@ -102,6 +102,11 @@ int emit_refinement_header (FILE *fp, UserDef *u)
   fprintf(fp, "sdt_");
   ActNamespace::Act()->mfprintfproc (fp, u);
   fprintf (fp, " <: ");
+  if (u->getns() != ActNamespace::Global()) {
+    char *nsname = u->getns()->Name();
+    fprintf (fp, "%s::", nsname);
+    FREE (nsname);
+  }
   u->printActName (fp);
   fprintf (fp, " ()\n");
 
@@ -178,6 +183,19 @@ static void _struct_check (void *cookie, Data *d)
   emit_refinement_header (fp, d);
 
   fprintf (fp, "}\n");
+
+  if (TypeFactory::isValidChannelDataType (d)) {
+    fprintf (fp, "defchan sdt_chan");
+    ActNamespace::Act()->mfprintfproc (fp, d);
+    fprintf (fp, " <: chan(");
+    if (d->getns() != ActNamespace::Global()) {
+      char *nsname = d->getns()->Name();
+      fprintf (fp, "%s::", nsname);
+      FREE (nsname);
+    }
+    d->printActName (fp);
+    fprintf (fp, ") (syn::sdtchan<%d> x) { }\n", TypeFactory::totBitWidth (d));
+  }
 }
 
 int main(int argc, char **argv)

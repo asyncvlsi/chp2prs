@@ -412,6 +412,13 @@ namespace syn {
     ch.a = probe.a;
   }
 
+  export
+  defproc sdtboolchan_to_probe(sdtboolchan ch; sdtchan<1> probe) {
+    ch.x.r = probe.r;
+    ch.x.d[0] = probe.d[0];
+    ch.x.a = probe.a;
+  }
+
   export template<pint N; pint idx[N]; pint T>
   defproc probed_clause(r1of2 g[N]; sdtchan<1> probe[T]; bool! out) {
     pint tstval, tmp;

@@ -180,6 +180,9 @@ namespace syn {
   export template<pint W>
   defproc sdtchan_to_probe(sdtchan<W> ch; sdtchan<1> probe);
 
+  export 
+  defproc sdtboolchan_to_probe(sdtboolchan ch; sdtchan<1> probe);
+
   export template<pint N, M>
   defproc probed_select(a1of1 c; r1of2 g[M]; bool probe_out[N]; a1of1 s[N]) {
     /* evaluate guards */
