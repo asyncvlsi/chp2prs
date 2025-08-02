@@ -73,8 +73,8 @@ do
 	do
         if [ $ok -eq 1 ]
         then
-        $ACTTOOL -F decomp -O -p testproc $i > runs/${orig}decomp.act  2>runs/$i.t.dc.stderr
-	$ACTTOOL -ref=1 $opt -E abc -e runs/${orig}_expr.act -p decomp_testproc runs/${orig}decomp.act > runs/${orig}_ring.act  2>runs/$i.t.syn.stderr
+        $ACTTOOL -F decomp -O -p testproc -o runs/${orig}decomp.act $i > /dev/null 2>runs/$i.t.dc.stderr
+	$ACTTOOL -ref=1 $opt -E abc -e runs/${orig}_expr.act -p decomp_testproc -o runs/${orig}_ring.act runs/${orig}decomp.act > /dev/null 2>runs/$i.t.syn.stderr
         if test -s runs/$i.t.dc.stderr 
         then
                 echo 
