@@ -1,12 +1,24 @@
+deftype pair(int x, y) {}
+
+function testme (pair p) : pair
+{
+  chp {
+    self := p
+  }
+}
+
 defproc gcd4(chan?(int) X, Y; chan!(int) O) {
-  int p[2];
+  pair p;
 
   chp {
     *[
-      X?p[0],
-      Y?p[1];
-      *[  ([]i:2: p[i] > p[(i+1)%2] ->  p[i] := p[i] - p[(i+1)%2]) ];
-      O!p[0]
+      X?p.x,
+      Y?p.y;
+      p.x := testme(p).x;
+      *[  p.x > p.y ->  p.x := p.x - p.y
+      [] p.y > p.x ->  p.y := p.y - p.x
+      ];
+      O!p.x
     ]
   }
 }

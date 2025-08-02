@@ -72,7 +72,8 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
       ihash_bucket_t *bucket_w = ihash_lookup(_inwidthmap, (long) list_value (li));
       if (bucket_w->i > 1){
         int new_id = _gen_expr_id();
-        _emit_expr_array_wrap(new_id, bucket_id->i, bucket_w->i);
+        _emit_expr_array_wrap(new_id, bucket_id->i < 0 ?
+			      -bucket_id->i : bucket_id->i, bucket_w->i);
         bucket_id->i = new_id;
       }
     }
@@ -144,7 +145,8 @@ void ExternOptSDT::_emit_bd_ctl_bypass (int id, list_t *all_leaves, double delay
   int number_of_leaves = 0;
   for (li = list_first (all_leaves); li; li = list_next (li))
   {
-    fprintf(output_stream, "   e%u.out.r = e%u.out.r;\n", ihash_lookup(_inexprmap, (long) list_value (li))->i, id);
+    int idx = ihash_lookup(_inexprmap, (long) list_value (li))->i;
+    fprintf(output_stream, "   e%u.out.r = e%u.out.r;\n", idx >= 0 ? idx : -idx, id);
     number_of_leaves++;
   }
   if (number_of_leaves > 0) 
@@ -171,7 +173,10 @@ void ExternOptSDT::_emit_bd_ctl_bypass (int id, list_t *all_leaves, double delay
     fprintf(output_stream, "   syn::delay<%d> delayblk%u (ackmerge%u.out, e%u.out.a);\n", stages, id, id, id);
     for (li = list_first (all_leaves); li; li = list_next (li))
     {
-      fprintf(output_stream, "   e%u.out.a = ackmerge%u.in[%u];\n", ihash_lookup(_inexprmap, (long) list_value (li))->i, id, index);
+      int idx;
+      idx = ihash_lookup(_inexprmap, (long) list_value (li))->i;
+      fprintf(output_stream, "   e%u.out.a = ackmerge%u.in[%u];\n", idx >= 0 ?
+	      idx : -idx, id, index);
       index++;
     }
   }
@@ -192,10 +197,16 @@ void ExternOptSDT::_emit_expr_block (int id, int blkid, list_t *exprs)
       fprintf (output_stream, ", ");
     }
     // qdi and bd have different channel and wire names
-    if (bundled_data != 1) fprintf (output_stream, "e%d.out", ihash_lookup(_inexprmap, (long) list_value (li))->i);
+    if (bundled_data != 1) {
+      int idx;
+      idx = ihash_lookup(_inexprmap, (long) list_value (li))->i;
+      fprintf (output_stream, "e%d.out", idx >= 0 ? idx : -idx);
+    }
     else
     {
-       fprintf (output_stream, "e%d.out.d", ihash_lookup(_inexprmap, (long) list_value (li))->i);
+      int idx;
+      idx = ihash_lookup(_inexprmap, (long) list_value (li))->i;
+      fprintf (output_stream, "e%d.out.d", idx >= 0 ? idx : -idx);
       // if the signal is 1 bit wide provide the actuall wire not the array
       if (ihash_lookup(_inwidthmap, (long) list_value (li))->i == 1) fprintf (output_stream, "[0]");
     }
@@ -548,19 +559,22 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
     if (collect_phase) {
       varmap_info *v;
       ihash_bucket_t *b;
-      ihash_bucket_t *b_width;
       v = _var_getinfo ((ActId *)e->u.e.l);
-      if (!ihash_lookup (_inexprmap, (long)e)) {
-        b = ihash_add (_inexprmap, (long)e);
-        b->i = _gen_expr_id ();
-        b_width = ihash_add (_inwidthmap, (long) e);
-        b_width->i = v->width;
+      if (ihash_lookup (_inwidthmap, (long)e) == NULL) {
+	b = ihash_add (_inexprmap, (long)e);
+	b->i = _gen_expr_id ();
+	ihash_bucket_t *b_width;
+	b_width = ihash_add (_inwidthmap, (long) e);
+	b_width->i = v->width;
       }
     }
     else {
       ihash_bucket_t *b;
       b = ihash_lookup (_inexprmap, (long)e);
-      _emit_var_read (b->i, (ActId *)e->u.e.l);
+      if (b->i >= 0) {
+	_emit_var_read (b->i, (ActId *)e->u.e.l);
+	b->i = -b->i;
+      }
     }
     break;
 
