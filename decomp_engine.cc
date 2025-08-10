@@ -55,7 +55,11 @@ class Decomp : public ActSynthesize {
     _expr = NULL;
   }
 
-  bool overrideTypes() { return false; }
+  bool overrideTypes() { return true; }
+
+  bool skipOverride (ValueIdx *vx) {
+    return true;
+  }
 
   void typeInt (char *buf, int sz, int bitwidth) {
     snprintf (buf, sz, "int<%d>", bitwidth);
