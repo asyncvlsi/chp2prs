@@ -160,17 +160,27 @@ void SDTEngine::_run_sdt_helper (int id, act_chp_lang_t *c)
       Expr *e;
       int eid, vid;
       e = c->u.comm.e;
-      if (e) {
-	_emit_expr (&eid, bitWidth (c->u.comm.chan), e);
+
+      if (e && bitWidth (c->u.comm.chan) == -1) {
+	/* special case: send a structure */
+	Assert (e->type == E_VAR, "What?");
+	eid = _gen_expr_id ();
+	_emit_var_read_struct (eid, (ActId *)e->u.e.l);
+	_emit_transfer (id, eid, c->u.comm.chan);
       }
       else {
-	Expr *tmpe;
-	NEW (tmpe, Expr);
-	tmpe->type = E_FALSE;
-	_emit_expr (&eid, bitWidth (c->u.comm.chan), tmpe);
-	FREE (tmpe);
+	if (e) {
+	  _emit_expr (&eid, bitWidth (c->u.comm.chan), e);
+	}
+	else {
+	  Expr *tmpe;
+	  NEW (tmpe, Expr);
+	  tmpe->type = E_FALSE;
+	  _emit_expr (&eid, bitWidth (c->u.comm.chan), tmpe);
+	  FREE (tmpe);
+	}
+	_emit_transfer (id, eid, c->u.comm.chan);
       }
-      _emit_transfer (id, eid, c->u.comm.chan);
     }
     break;
 

@@ -250,6 +250,11 @@ void BasicSDT::_emit_var_read (int eid, ActId *id)
   if (_isdynamic_var) return;
   
   varmap_info *v = _var_getinfo (id);
+
+  if (!v) {
+    warning ("Channels with structures not supported yet.");
+    return;
+  }
   
   fprintf (output_stream, "  syn::expr::nullint<%d> e%d(var_",
 	   v->width, eid);
@@ -257,13 +262,88 @@ void BasicSDT::_emit_var_read (int eid, ActId *id)
   fprintf (output_stream, ".out[%d]);\n", v->iread++);
 }
 
+void BasicSDT::_emit_var_read_struct (int eid, ActId *id)
+{
+  if (_isdynamic_var) return;
+  
+  varmap_info *v = _var_getinfo (id);
+  Assert (!v, "What!");
+
+  Data *d;
+  ActId **res;
+  int *types;
+  int nb, ni;
+
+  InstType *it = P->CurScope()->localLookup (id, NULL);
+  Assert (it, "Hmm");
+  Assert (TypeFactory::isStructure (it), "Hmm");
+  d = dynamic_cast<Data *>(it->BaseType());
+
+  int w = TypeFactory::totBitWidth (d);
+
+  d->getStructCount (&nb, &ni);
+  res = d->getStructFields (&types);
+  FREE (types);
+
+  int stmt_id = _gen_inst_id ();
+
+  fprintf (output_stream, "   sdtexprchan<%d> s_%d;\n", w, stmt_id);
+
+  int comb_id = _gen_inst_id ();
+
+  fprintf (output_stream, "   syn::expr::read_combine<%d,%d> s_%d(s_%d);\n",
+	   w, nb + ni, comb_id, stmt_id);
+
+  int pos = 0;
+  ActId *tail = id->Tail ();
+  for (int i=0; i < ni + nb; i++) {
+    int sz;
+    InstType *xit;
+    Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+
+    int lw = TypeFactory::bitWidth (xit);
+
+    tail->Append (res[i]);
+    varmap_info *localv = _var_getinfo (tail);
+    tail->prune ();
+    
+    int data_id, sync_id;
+
+    fprintf (output_stream, "   syn::expr::read_data<%d,%d,%d> s_%d(s_%d,var_",
+	     w, lw, pos, data_id = _gen_inst_id (), stmt_id);
+    _emit_mangled_id (output_stream, localv->id);
+    fprintf (output_stream, ".out[%d]);\n", localv->iread++);
+
+    pos += lw;
+
+    fprintf (output_stream, "   syn::expr::read_sync<%d> s_%d(s_%d.port);\n",
+	     lw, sync_id = _gen_inst_id (), data_id);
+
+    fprintf (output_stream, "   s_%d.sync[%d] = s_%d.sync;\n",
+	     comb_id, i, sync_id);
+    delete res[i];
+    delete xit;
+  }
+  FREE (res);
+
+  fprintf (output_stream,   " syn::expr::nullint<%d> e%d(s_%d);\n",
+	   w, eid, stmt_id);
+}
+
+
 void BasicSDT::_emit_transfer (int cid, int eid, ActId *id)
 {
   if (_isdynamic_var) return;
   
   varmap_info *ch = _var_getinfo (id);
+  int ch_width = ch->width;
+
+  if (ch_width < 0) {
+    ch_width = TypeFactory::totBitWidth (P->CurScope()->localLookup (id, NULL));
+  }
+  
   fprintf (output_stream, "   syn::transfer<%d> s_%d(c%d, e%d.out,",
-	   ch->width, _gen_inst_id(), cid, eid);
+	   ch_width, _gen_inst_id(), cid, eid);
 
   if (ch->fischan) {
     /* pick the channel mux */
@@ -280,9 +360,83 @@ void BasicSDT::_emit_transfer (int cid, int eid, ActId *id)
   fprintf (output_stream, ");\n");
 }
 
+static int _real_width (Process *P, ActId *id, bool ischan = false)
+{
+  InstType *xit = P->CurScope()->localLookup (id, NULL);
+  Assert (xit, "Hmm");
+  if (ischan) {
+    Assert (TypeFactory::isChanType (xit), "Hmm!");
+    xit = TypeFactory::getChanDataType (xit);
+    Assert (xit, "What?");
+  }
+  else {
+    Assert (!TypeFactory::isChanType (xit), "Hmm!");
+  }
+  return TypeFactory::totBitWidth (xit);
+}
+
+/* emit structure aliases against a flat variable */
+void BasicSDT::_emit_recv_split (int stmt_id, ActId *id)
+{
+  Data *d;
+  ActId **res;
+  int *types;
+  int nb, ni;
+
+  InstType *it = P->CurScope()->localLookup (id, NULL);
+  Assert (it, "Hmm");
+  Assert (TypeFactory::isStructure (it), "Hmm");
+  d = dynamic_cast<Data *>(it->BaseType());
+
+  int w = TypeFactory::totBitWidth (d);
+
+  d->getStructCount (&nb, &ni);
+  res = d->getStructFields (&types);
+  FREE (types);
+
+  int comb_id = _gen_inst_id ();
+
+  fprintf (output_stream, "   syn::recvport_combine<%d,%d> s_%d(s_%d);\n",
+	   w, nb + ni, comb_id, stmt_id);
+
+  int pos = 0;
+  ActId *tail = id->Tail ();
+  for (int i=0; i < ni + nb; i++) {
+    int sz;
+    InstType *xit;
+    Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+
+    int lw = TypeFactory::bitWidth (xit);
+
+    tail->Append (res[i]);
+    varmap_info *localv = _var_getinfo (tail);
+    tail->prune ();
+    
+    int data_id, sync_id;
+
+    fprintf (output_stream, "   syn::recvport_data<%d,%d,%d> s_%d(s_%d,var_",
+	     w, lw, pos, data_id = _gen_inst_id (), stmt_id);
+    _emit_mangled_id (output_stream, localv->id);
+    fprintf (output_stream, ".in[%d]);\n", localv->iwrite++);
+
+    pos += lw;
+
+    fprintf (output_stream, "   syn::recvport_sync<%d> s_%d(s_%d.port);\n",
+	     lw, sync_id = _gen_inst_id (), data_id);
+
+    fprintf (output_stream, "   s_%d.sync[%d] = s_%d.sync;\n",
+	     comb_id, i, sync_id);
+    delete res[i];
+    delete xit;
+  }
+  FREE (res);
+}
+
 void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
 {
   if (_isdynamic_var) return;
+
+  int v_width, ch_width;
   
   varmap_info *v;
   if (!id) {
@@ -290,8 +444,15 @@ void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
   }
   else {
     v = _var_getinfo (id);
+    if (!v) {
+      v_width = _real_width (P, id, false);
+    }
+    else {
+      v_width = v->width;
+    }
   }
   varmap_info *ch = _var_getinfo (chid);
+  ch_width = ch->width;
   int c;
   if (ch->nread > 1) {
     list_t *tmp = list_new ();
@@ -302,24 +463,43 @@ void BasicSDT::_emit_recv (int cid, ActId *chid, ActId *id)
     c = list_ivalue (list_next (list_first (tmp)));
     list_free (tmp);
   }
+
+  if (ch_width < 0) {
+    ch_width = _real_width (P, ch->id, true);
+  }
+
+  int stmt_id = -1;
   if (!id) {
-    fprintf (output_stream, "   syn::recvport_drop<%d> s_%d(c%d,", ch->width, _gen_inst_id(), cid);
+    fprintf (output_stream, "   syn::recvport_drop<%d> s_%d(c%d,", ch_width,
+	     _gen_inst_id(), cid);
   }
   else {
-    fprintf (output_stream, "   syn::recvport<%d,%d> s_%d(c%d,", ch->width,
-	     v->width,
-	     _gen_inst_id(), cid);
+    if (!v) {
+      stmt_id = _gen_inst_id ();
+      fprintf (output_stream, "   syn::sdtchan<%d> s_%d;\n", ch_width, stmt_id);
+    }
+    fprintf (output_stream, "   syn::recvport<%d,%d> s_%d(c%d,", ch_width,
+	     v_width, _gen_inst_id(), cid);
   }
   Assert (_get_isinport (ch), "What?");
   _emit_mangled_id (output_stream, ch->id);
   fprintf (output_stream, "_muxi.m[%d]", ch->iread++);
   if (id) {
-    fprintf (output_stream, ",");
-    fprintf (output_stream, "var_");
-    _emit_mangled_id (output_stream, v->id);
-    fprintf (output_stream, ".in[%d]", v->iwrite++);
+    if (v) {
+      fprintf (output_stream, ",");
+      fprintf (output_stream, "var_");
+      _emit_mangled_id (output_stream, v->id);
+      fprintf (output_stream, ".in[%d]);", v->iwrite++);
+    }
+    else {
+      fprintf (output_stream, ",s_%d);\n", stmt_id);
+      // now take this channel and split it!
+      _emit_recv_split (stmt_id, id);
+    }
   }
-  fprintf (output_stream, ");\n");
+  else {
+    fprintf (output_stream, ");\n");
+  }
   if (ch->nread > 1) {
     fprintf (output_stream, "   ");
     _emit_mangled_id (output_stream, ch->id);
@@ -561,21 +741,36 @@ void BasicSDT::_emit_doloop (int cid, int guard, int stmt)
 	   _gen_inst_id(), cid, guard, stmt);
 }
 
+
 void BasicSDT::_emit_channel_mux (varmap_info *v)
 {
   if (_isdynamic_var) return;
   
+  int struct_flag = -1;
+
+  if (!v->fisbool && v->width == -1) {
+    struct_flag = _real_width (P, v->id, true);
+  }
+
   Assert (v->fischan, "What?");
   if (v->nread > 0) {
     if (v->fisbool) {
       fprintf (output_stream, "   syn::mux_bool_inport<%d> ", v->nread);
     }
     else {
-      fprintf (output_stream, "   syn::muxinport<%d,%d> ", v->width, v->nread);
+      if (struct_flag > 0) {
+	fprintf (output_stream, "   syn::muxinport<%d,%d> ", struct_flag, v->nread);
+      }
+      else {
+	fprintf (output_stream, "   syn::muxinport<%d,%d> ", v->width, v->nread);
+      }
     }
     _emit_mangled_id (output_stream, v->id);
     fprintf (output_stream, "_muxi(");
     v->id->Print (output_stream);
+    if (struct_flag > 0) {
+      fprintf (output_stream, ".x");
+    }
     fprintf (output_stream, ");\n");
   }
   if (v->nwrite > 0) {
@@ -583,11 +778,19 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
       fprintf (output_stream, "   syn::mux_bool_outport<%d> ", v->nwrite);
     }
     else {
-      fprintf (output_stream, "   syn::muxoutport<%d,%d> ", v->width, v->nwrite);
+      if (struct_flag > 0) {
+	fprintf (output_stream, "   syn::muxoutport<%d,%d> ", struct_flag, v->nwrite);
+      }
+      else {
+	fprintf (output_stream, "   syn::muxoutport<%d,%d> ", v->width, v->nwrite);
+      }
     }
     _emit_mangled_id (output_stream, v->id);
     fprintf (output_stream, "_muxo(");
     v->id->Print (output_stream);
+    if (struct_flag > 0) {
+      fprintf (output_stream, ".x");
+    }
     fprintf (output_stream, ");\n");
   }
 }
@@ -595,24 +798,49 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
 void BasicSDT::_emit_variable_mux (varmap_info *v)
 {
   if (_isdynamic_var) return;
+
+  int struct_flag = -1;
   
   char tmpbuf[4096];
+
+  if (!v->fisbool && v->width == -1) {
+    struct_flag = _real_width (P, v->id, false);
+  }
+
   /* if you need a mux for accessing variables, add it here */
   if (!v->fisbool) {
     // zero length arrays are not allowed, this is for simulation only, writing but not reading would not make sense in a real chip
     if (v->nread == 0) {
-      fprintf (output_stream, "   syn::var_int_in_ports<%d,%d> var_", v->width, v->nwrite);
+      if (struct_flag > 0) {
+	fprintf (output_stream, "   syn::var_int_in_ports<%d,%d> var_", struct_flag,
+		 v->nwrite);
+      }
+      else {
+	fprintf (output_stream, "   syn::var_int_in_ports<%d,%d> var_", v->width, v->nwrite);
+      }
       v->id->sPrint (tmpbuf, 4096);
       warning("Process `%s': variable `%s' is written but never read; hope you know what you're doing!", P ? P->getName() : "-toplevel-", tmpbuf);
     }
     else if (v->nwrite == 0) {
-      fprintf (output_stream, "   syn::var_int_out_ports<%d,%d> var_", v->width, v->nread);
+      if (struct_flag > 0) {
+	fprintf (output_stream, "   syn::var_int_out_ports<%d,%d> var_", struct_flag,
+		 v->nread);
+      }
+      else {
+	fprintf (output_stream, "   syn::var_int_out_ports<%d,%d> var_", v->width, v->nread);
+      }
       v->id->sPrint (tmpbuf, 4096);
       warning("Process `%s': variable `%s' is read but never written; hope you know what you're doing!", P ? P->getName() : "-toplevel-", tmpbuf);
     }
     else {
-      fprintf (output_stream, "   syn::var_int_ports<%d,%d,%d> var_",
-	       v->width, v->nwrite, v->nread);
+      if (struct_flag > 0) {
+	fprintf (output_stream, "   syn::var_int_ports<%d,%d,%d> var_",
+		 struct_flag, v->nwrite, v->nread);
+      }
+      else {
+	fprintf (output_stream, "   syn::var_int_ports<%d,%d,%d> var_",
+		 v->width, v->nwrite, v->nread);
+      }
     }
   }
   else {
@@ -634,6 +862,10 @@ void BasicSDT::_emit_variable_mux (varmap_info *v)
   }
   _emit_mangled_id (output_stream, v->id);
   fprintf (output_stream, "(");
+  if (struct_flag > 0) {
+    //fprintf (output_stream, "%s_alias", v->id->getName());
+    fprintf (output_stream, "/*XXX*/");
+  }
   v->id->Print (output_stream);
   fprintf (output_stream, ");\n");
 }
@@ -772,6 +1004,43 @@ BasicSDT::BasicSDT (int isbundled, int isopt, FILE *fpout, const char *ef)
 }
 
 
+/* emit structure aliases against a flat variable */
+void _emit_var_aliases (FILE *fp, const char *nm, Data *d)
+{
+  ActId **res;
+  int *types;
+  int nb, ni;
+
+  int w = TypeFactory::totBitWidth (d);
+
+  d->getStructCount (&nb, &ni);
+  res = d->getStructFields (&types);
+  FREE (types);
+
+  int pos = 0;
+
+  for (int i=0; i < ni + nb; i++) {
+    int sz;
+    InstType *xit;
+    Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+
+    fprintf (fp, "   var_alias_slice<%d,%d,%d> %s_alias_%d(%s_alias,%s.",
+	     w, pos, pos + TypeFactory::bitWidth (xit)-1, nm, i, nm, nm);
+    res[i]->Print (fp);
+    fprintf (fp, ");  // field %d, name: ", i);
+    res[i]->Print (fp);
+    fprintf (fp, "; type: ");
+    xit->Print (fp);
+    fprintf (fp, "\n");
+
+    pos += TypeFactory::bitWidth (xit);
+    delete xit;
+  }
+}
+
+
+
+
 
 /* Recursively called fn to handle different chp statement types */
 
@@ -807,6 +1076,7 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
   
   /* iterate through Scope Hashtable to find all chp variables */
   ActInstiter iter(p->CurScope());
+  list_t *alias_vx = list_new ();
   for (iter = iter.begin(); iter != iter.end(); iter++) {
     ValueIdx *vx = *iter;
     if (special_vx) {
@@ -838,6 +1108,13 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
       if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
 	fprintf(fp, "  syn::sdtboolchan %s;\n", vx->getName());
       }
+      else if (bw == -1) {
+	InstType *xit = TypeFactory::getChanDataType (vx->t);
+	Assert (TypeFactory::isStructure (xit), "What?!");
+	fprintf(fp, "  sdt_chan");
+	ActNamespace::Act()->mfprintfproc (fp, dynamic_cast<UserDef *>(xit->BaseType()));
+	fprintf(fp, " %s;\n", vx->getName());
+      }
       else {
 	fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
       }
@@ -854,7 +1131,7 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
     }
     else if (TypeFactory::isProcessType (vx->t)) {
       OVERRIDE_OPEN;
-      fprintf (fp, " sdt_");
+      fprintf (fp, "  sdt_");
       Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
       Assert (proc, "Why am I here?");
       ActNamespace::Act()->mfprintfproc (fp, proc);
@@ -862,11 +1139,12 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
     }
     else if (TypeFactory::isStructure (vx->t)) {
       OVERRIDE_OPEN;
-      fprintf (fp, " sdt_");
+      fprintf (fp, "  sdt_");
       Data *d = dynamic_cast <Data *> (vx->t->BaseType());
       Assert (d, "Why am I here?");
       ActNamespace::Act()->mfprintfproc (fp, d);
       fprintf (fp, " %s;\n", vx->getName());
+      list_append (alias_vx, vx);
     }
   }
   /* end param declaration */
@@ -878,8 +1156,21 @@ bool BasicSDT::write_process_definition(FILE *fp, Process * p)
   }
 
   if (p->getlang() && p->getlang()->getchp()) {
+    listitem_t *al;
     fprintf (fp, " refine {\n");
+#if 0
+    for (al = list_first (alias_vx); al; al = list_next (al)) {
+      ValueIdx *vx = (ValueIdx *) list_value (al);
+      Data *d = dynamic_cast <Data *> (vx->t->BaseType());
+      Assert (d, "What?");
+      fprintf (fp, "   syn::sdtvar<%d> %s_alias;\n", TypeFactory::totBitWidth (d),
+	       vx->getName ());
+      _emit_var_aliases (fp, vx->getName(), d);
+    }
+#endif
   }
+
+  list_free (alias_vx);
 
   if (special_vx) {
     /* these are fresh instances introduced during decomposition;
@@ -1172,9 +1463,38 @@ void BasicSDT::_construct_varmap_expr (Expr *e)
       return;
     }
     v = _var_getinfo ((ActId *)e->u.e.l);
-    if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
-      v->nread++;
-      v->fcurexpr = 1;
+    if (v) {
+      if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
+	v->nread++;
+	v->fcurexpr = 1;
+      }
+    }
+    else {
+      InstType *it = P->CurScope()->FullLookup ((ActId *)e->u.e.l, NULL);
+      Assert (it, "What?");
+      Data *d = dynamic_cast<Data *> (it->BaseType());
+      Assert (d && TypeFactory::isStructure (d), "Hmm");
+      ActId *tid = ((ActId *)e->u.e.l)->Clone ();
+      int *types;
+      int ni, nb;
+      d->getStructCount (&nb, &ni);
+      ActId **fields = d->getStructFields (&types);
+      ActId *tail;
+      FREE (types);
+
+      tail = tid->Tail ();
+      for (int i=0; i < nb + ni; i++) {
+	tail->Append (fields[i]);
+	v = _var_getinfo (tid);
+	if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
+	  v->nread++;
+	  v->fcurexpr = 1;
+	}
+	tid = ((ActId *)e->u.e.l)->Clone ();
+	tail = tid->Tail ();
+      }
+      FREE (fields);
+      delete tid;
     }
     break;
 
@@ -1297,7 +1617,33 @@ void BasicSDT::_construct_varmap (act_chp_lang_t *c)
 	return;
       }
       v = _var_getinfo (c->u.comm.var);
-      v->nwrite++;
+      if (v) {
+	v->nwrite++;
+      }
+      else {
+	InstType *it = P->CurScope()->FullLookup (c->u.comm.var, NULL);
+	Assert (it, "What?");
+	Data *d = dynamic_cast<Data *> (it->BaseType());
+	Assert (d && TypeFactory::isStructure (d), "Hmm");
+	ActId *tid = c->u.comm.var->Clone ();
+	int *types;
+	int ni, nb;
+	d->getStructCount (&nb, &ni);
+	ActId **fields = d->getStructFields (&types);
+	ActId *tail;
+	FREE (types);
+
+	tail = tid->Tail ();
+	for (int i=0; i < nb + ni; i++) {
+	  tail->Append (fields[i]);
+	  v = _var_getinfo (tid);
+	  v->nwrite++;
+	  tid = c->u.comm.var->Clone ();
+	  tail = tid->Tail ();
+	}
+	FREE (fields);
+	delete tid;
+      }
     }
     break;
   case ACT_CHP_COMMA:
@@ -1375,6 +1721,12 @@ varmap_info *BasicSDT::_var_getinfo (ActId *id)
   
   c = id->Canonical (P->CurScope());
   Assert (c, "What?");
+
+  it = P->CurScope()->FullLookup (id, NULL);
+  if (TypeFactory::isStructure (it)) {
+    // don't add structures to the varmap!
+    return NULL;
+  }
   
   b = ihash_lookup (_varmap, (long)c);
   if (!b) {
@@ -1387,7 +1739,6 @@ varmap_info *BasicSDT::_var_getinfo (ActId *id)
     v->iread = 0;
     v->iwrite = 0;
     v->id = id;
-    it = P->CurScope()->FullLookup (id, NULL);
     if (id->Rest()) {
       it2 = P->CurScope()->Lookup (id->getName());
     }

@@ -99,6 +99,30 @@ namespace syn {
   }
 
   /**
+   * recvport_sync, _data, and _combine
+   *   - recvport_sync is used to extract the sync bool from the
+   * channel
+   *   - recvport_data is used to connect the sdtchan data fields to a
+   * subfield
+   *   - recvport_combine combines the sync signals for multiple
+   * channels
+   */
+  export template<pint W, Wport, Wstart>
+  defproc recvport_data(sdtchan<W> ch; sdtchan<Wport> port) {
+    { Wstart + Wport <= W : "Invalid width specifiers" };
+    (i:Wport: ch.d[Wstart+i] = port.d[i];)
+    ch.r = port.r;
+  }
+  export template<pint Wport>
+  defproc recvport_sync(sdtchan<Wport> port; bool sync) {
+    sync = port.a;
+  }
+  export template<pint W, N>
+  defproc recvport_combine(sdtchan<W> ch; bool sync[N]) {
+    std::gates::ctree<N, false> ct(sync, ch.a);
+  }
+
+  /**
  * recvport_drop is like recvport but does not actually write to any variable. This save a write in the case of a `L?`
  * without an associated variable
  */
@@ -499,6 +523,25 @@ namespace syn {
         _dB[i]{- 1};
         Bp.d[i]{- 1}
       )
+    }
+  }
+
+  export namespace expr {
+    /** This groups an sdtexpr channel of different widths into a
+	single one **/
+    export template<pint W, Wport, Wstart>
+    defproc read_data(sdtexprchan<W> ch; sdtexprchan<Wport> port) {
+      { Wstart + Wport <= W : "Invalid width specifiers" };
+      (i: Wport: ch.d[Wstart+i] = port.d[i];)
+      ch.r = port.r;
+    }
+    export template<pint Wport>
+    defproc read_sync(sdtexprchan<Wport> port; bool sync) {
+      sync = port.a;
+    }
+    export template<pint W, N>
+    defproc read_combine(sdtexprchan<W> ch; bool sync[N]) {
+      std::gates::ctree<N, false> ct(sync, ch.a);
     }
   }
 }

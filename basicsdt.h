@@ -153,10 +153,12 @@ class BasicSDT : public SDTEngine {
 
   /* id = variable port for this identifier */
   void _emit_var_read   (int eid, ActId *id);
+  void _emit_var_read_struct (int eid, ActId *id);
   
   void _emit_transfer (int cid, int eid, ActId *);
 
   void _emit_recv (int cid, ActId *chid, ActId *);
+  void _emit_recv_split (int stmt_id, ActId *);
 
   /*-- internal --*/
   void _emit_channel_mux (varmap_info *ch);

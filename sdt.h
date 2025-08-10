@@ -210,6 +210,8 @@ protected:
          v : the variable to be read
     --*/
   virtual void _emit_var_read   (int eid, ActId *v) = 0;
+
+  virtual void _emit_var_read_struct (int eid, ActId *v) = 0;
   
 
   

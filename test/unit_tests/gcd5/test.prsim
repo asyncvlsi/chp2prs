@@ -1,0 +1,23 @@
+set-channel-neutral "t.X.x" 32
+set t.O.a 0
+
+cycle
+system "echo 'reset completed'"
+status X
+set Reset 0
+mode run
+cycle
+
+set-channel-valid "t.X.x" 32 1179708
+cycle
+assert t.X.x.a 1
+
+set-channel-neutral "t.X.x" 32
+cycle
+assert-channel-valid "t.O" 32 6
+assert t.X.x.a 0
+
+set t.O.a 1
+cycle
+
+assert-channel-neutral "t.O" 32
