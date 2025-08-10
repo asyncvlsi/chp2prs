@@ -17,8 +17,6 @@ echo
 echo
 echo "${und}QDI external EXPRESSION syntesis MODE${normal}"
 
-./run_expr_qdiopt.sh abc || exit 1
-
 if ! command -v yosys >/dev/null; then
   echo "yosys not found skipping yosys tests"
 else

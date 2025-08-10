@@ -1384,5 +1384,21 @@ namespace syn {
         out.d.d[i] = in[i].d.d[0];
       )
     }
+
+    /** This groups an sdtexpr channel of different widths into a
+	single one **/
+    export template<pint W, Wport, Wstart>   
+    defproc read_data(sdtexprchan<W> ch; sdtexprchan<Wport> port) {
+      { Wstart + Wport <= W : "Invalid width specifiers" };
+      (i: Wport: ch.d.d[Wstart+i] = port.d.d[i];)
+    }
+    export template<pint Wport>
+    defproc read_sync(sdtexprchan<Wport> port; bool sync) {
+      sync = port.r;
+    }
+    export template<pint W, N>
+    defproc read_combine(sdtexprchan<W> ch; bool sync[N]) {
+      std::gates::sigbuf<N> buf(ch.r, sync);
+    }
   }
 }

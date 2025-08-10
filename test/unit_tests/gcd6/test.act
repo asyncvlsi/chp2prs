@@ -1,6 +1,6 @@
 deftype pair(int<16> x, y) {}
 
-defproc gcd5(chan?(pair) X; chan!(int) O) {
+defproc gcd6(chan?(pair) X; chan!(pair) O) {
   pair p;
 
   chp {
@@ -9,7 +9,7 @@ defproc gcd5(chan?(pair) X; chan!(int) O) {
       *[  p.x > p.y ->  p.x := p.x - p.y
       [] p.y > p.x ->  p.y := p.y - p.x
       ];
-      O!p.x
+      O!p
     ]
   }
 }

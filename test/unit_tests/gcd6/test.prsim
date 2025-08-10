@@ -1,5 +1,5 @@
 set-channel-neutral "t.X.x" 32
-set t.O.a 0
+set t.O.x.a 0
 
 cycle
 system "echo 'reset completed'"
@@ -14,10 +14,10 @@ assert t.X.x.a 1
 
 set-channel-neutral "t.X.x" 32
 cycle
-assert-channel-valid "t.O" 32 6
+assert-channel-valid "t.O.x" 32 393222
 assert t.X.x.a 0
 
-set t.O.a 1
+set t.O.x.a 1
 cycle
 
-assert-channel-neutral "t.O" 32
+assert-channel-neutral "t.O.x" 32
