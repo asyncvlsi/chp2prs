@@ -31,16 +31,16 @@ using namespace std::chrono;
 
 static void usage(char *name)
 {
-  fprintf (stderr, "Usage: %s [-OXbh] [-C <circuit family>] [-P <int>] [-e <file>] [-o <file>] [-E abc|yosys|genus] -p <proc> <actfile>\n", name);
+  fprintf (stderr, "Usage: %s [-OXh] [-C <circuit family>] [-e <file>] [-o <file>] [-E abc|yosys|genus] -p <proc> <actfile>\n", name);
   fprintf (stderr, "Options:\n");
   fprintf (stderr, " -h : help; display this message\n");
+  fprintf (stderr, " -p <proc> : name of the ACT process to be translated (the top-level process).");
   fprintf (stderr, " -O : optimize CHP\n");
   fprintf (stderr, " -F dataflow|sdt|ring|decomp : synthesis output format\n");
   fprintf (stderr, "        * dataflow : dataflow output\n");
   fprintf (stderr, "        * sdt : syntax-directed translation prs output\n");
   fprintf (stderr, "        * ring : ring-based synthesis prs output\n");
   fprintf (stderr, "        * decomp : decomposition - CHP-to-CHP\n");
-  fprintf (stderr, " -G : Non-SSA style datapath [only ring] [deprecated, no effect]\n");
   fprintf (stderr, " -C : qdi|bd|bd2|bdp|di|ditest: Circuit / Datapath family\n");
   fprintf (stderr, "        * qdi : quasi delay insensitive (default) [w.i.p. for ring] \n");
   fprintf (stderr, "        * bd : bundled data (D flip-flops) \n");
@@ -48,16 +48,9 @@ static void usage(char *name)
   fprintf (stderr, "        * bdp : bundled data (pulsed latches) [only ring]\n");
   fprintf (stderr, "        * di : delay insensitive [only ring]\n");
   fprintf (stderr, "        * ditest : delay insensitive - testing for signal forks with extra buffers - not synthesizable [only ring]\n");
-  fprintf (stderr, " -b : bundled-data datapath for SDT (default QDI) [deprecated use -C]\n");
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
   fprintf (stderr, " -X : Enable projection during decomposition (w.i.p.) \n");
-  fprintf (stderr, " -P <int> : Parallelism level for decomposition: 0/1/2/3/4 (default 0) [deprecated] \n");
-  fprintf (stderr, "      * 0 : Only necessary decomposition\n");
-  fprintf (stderr, "      * 1 : Break at receives\n");
-  fprintf (stderr, "      * 2 : Break at selections\n");
-  fprintf (stderr, "      * 3 : Break at minimum live variable points\n");
-  fprintf (stderr, "      * 4 : Break at assignments, receives and parallel branches\n");
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   fprintf (stderr, " -E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
@@ -99,7 +92,7 @@ int main(int argc, char **argv)
   bool run_time = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "RhtOGbXde:E:o:p:F:C:P:m:")) != -1) {
+  while ((ch = getopt (argc, argv, "htOXde:E:o:p:F:C:m:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -148,11 +141,6 @@ int main(int argc, char **argv)
       }
       break;
 
-    case 'G':
-      warning("Non-SSA style datapath choice is deprecated. This option has no effect.");
-      // non_ssa = true;
-      break;
-
     case 't':
       run_time = true;
       break;
@@ -185,10 +173,6 @@ int main(int argc, char **argv)
 
     case 'O':
       chpopt = true;
-      break;
-      
-    case 'b':
-      bundled = true;
       break;
       
     case 'e':
