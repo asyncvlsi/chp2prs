@@ -226,6 +226,9 @@ static int emit_refinement_header (ActSynthesize *syn,
 	    if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
 	      syn->typeBoolChan (buf, 10240);
 	    }
+      else if (TypeFactory::isPureStruct (TypeFactory::getChanDataType (vx->t))) {
+        syn->typeStructChan (buf, 10240, vx->t);
+      }
 	    else {
 	      syn->typeIntChan (buf, 10240, bw);
 	    }
@@ -326,6 +329,9 @@ static int emit_refinement_header (ActSynthesize *syn,
 	      if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
 		syn->typeBoolChan (buf, 10240);
 	      }
+        else if (TypeFactory::isPureStruct (TypeFactory::getChanDataType (vx->t))) {
+          syn->typeStructChan (buf, 10240, vx->t);
+        }
 	      else {
 		syn->typeIntChan (buf, 10240, bw);
 	      }
@@ -397,6 +403,9 @@ static int emit_refinement_header (ActSynthesize *syn,
 	    if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
 	      syn->typeBoolChan (buf, 10240);
 	    }
+      else if (TypeFactory::isPureStruct (TypeFactory::getChanDataType (vx->t))) {
+        syn->typeStructChan (buf, 10240, vx->t);
+      }
 	    else {
 	      syn->typeIntChan (buf, 10240, bw);
 	    }

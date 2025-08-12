@@ -111,6 +111,7 @@ class ActSynthesize {
   virtual void typeBool (char *buf, int sz) { buf[0] = '\0'; }
   virtual void typeIntChan (char *buf, int sz, int bitwidth) { buf[0] = '\0'; }
   virtual void typeBoolChan (char *buf, int sz) { buf[0] = '\0'; }
+  virtual void typeStructChan (char *buf, int sz, InstType *t) { buf[0] = '\0'; }
 
   /**
    * If you need to do something special for structures, implement it

@@ -133,6 +133,23 @@ class RingSynth : public ActSynthesize {
     return false;
   }
 
+  void processStruct (Data *d) {
+    int w = TypeFactory::totBitWidth (d);
+    Assert (w>=0, "What");
+    fprintf(_pp->fp, "\n// Total Bitwidth : %d\n", w);
+    char name[10240];
+    d->snprintActName(name, 10240);
+    fprintf(_pp->fp, "defchan chan_%s <: chan(%s) (ring_chan<%d> C) {}\n\n", name, name, w);
+  }
+
+  void typeStructChan (char *buf, int sz, InstType *t) {
+    InstType *td = TypeFactory::getChanDataType(t);
+    Assert (td, "What");
+    char name[10240];
+    td->sPrint(name, 10240);
+    snprintf (buf, sz, "chan_%s", name);
+  }
+
   TinyForge *tf;
 
   void emitFinal() {
@@ -194,7 +211,8 @@ class RingSynth : public ActSynthesize {
 
       fprintf(stdout, "// %s : ",p->getName());
       auto ss1 = high_resolution_clock::now();
-      if (tf->check_if_pipeable(c))
+      // if (tf->check_if_pipeable(c))
+      if (false)
         tf->run_tiny_forge();
       else
         tf->run_forge();
