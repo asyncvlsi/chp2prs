@@ -787,6 +787,81 @@ int RingForge::_generate_single_latch_non_ssa (var_info *v, long long init_val=0
     return latch_id;
 } 
 
+int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
+{
+    Data *d;
+    hash_bucket_t *b;
+    ActId **res;
+    int *types;
+    int nb, ni;
+    var_info *vi;
+    char tmpchan[1024];
+    get_true_name (tmpchan, chan, _p->CurScope(), false);
+    auto chan_name = strcat(tmpchan, ".C");
+
+    InstType *it = _p->CurScope()->localLookup (var, NULL);
+    Assert (it, "Hmm");
+    Assert (TypeFactory::isStructure (it), "Hmm");
+    d = dynamic_cast<Data *>(it->BaseType());
+    d->getStructCount (&nb, &ni);
+    res = d->getStructFields (&types);
+    FREE (types);
+
+    int pos = 0;
+    ActId *tail = var->Tail ();
+    for (int i=0; i < ni + nb; i++) 
+    {
+        int sz;
+        InstType *xit;
+        Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+
+        int lw = TypeFactory::bitWidth (xit);
+
+        tail->Append (res[i]);
+        char tname[1024];
+        get_true_name(tname, tail, _p->CurScope());
+        b = hash_lookup(var_infos, tname);
+        Assert (b, "No var info?");
+        vi = (var_info *)b->v;
+        tail->prune ();
+
+        // update var_info 
+        vi->nwrite++;
+        int latch_id = ++vi->latest_for_read;
+        vi->iwrite++;
+        
+        fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+                                                    _compute_delay_line_param(pulse_width), 
+                                                vi->width, capture_block_prefix, vi->name, latch_id);
+
+        fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
+                        vi->name,latch_id,ring_block_prefix,block_id);
+        fprintf(_fp, "%s%s_%d.din = %s.d[%d..%d];\n",capture_block_prefix,
+                                        vi->name,latch_id,chan_name, pos, pos+lw-1);
+        fprintf(_fp, "%s%s_%d.tx.a = %s.a;\n",capture_block_prefix,
+                                        vi->name,latch_id,chan_name);
+
+        pos += lw;
+
+        delete res[i];
+        delete xit;
+    }
+    return 0;
+}
+
+int RingForge::struct_bw (ActId *id)
+{
+    if (!id) return 1;
+
+    InstType *it = _p->CurScope()->localLookup (id, NULL);
+    Assert (it, "Hmm");
+    Assert (TypeFactory::isStructure (it), "Hmm");
+    Data *d = dynamic_cast<Data *>(it->BaseType());
+
+    int w = TypeFactory::totBitWidth (d);
+    return w;
+} 
+
 /*
     Generate a pipeline element for a given action, along
     with the necessary datapath elements. This is the main
@@ -797,9 +872,10 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
     ActId *chan;
     ActId *var = NULL;
     Expr *e = NULL;
+    bool is_struct = false;
     int block_id;
     int expr_inst_id;
-    char chan_name[1024];
+    char chan_name[10240];
     int latch_id;
     int bw;
     InstType *it;
@@ -959,11 +1035,19 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         // it = _p->CurScope()->Lookup(chan);
         // bw = TypeFactory::bitWidth(it);
         bw = _bitWidth(chan);
+        if (bw == -1) {
+            bw = struct_bw (var);
+            is_struct = true;
+            strcat (chan_name, ".C");
+        }
         fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
         fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
         fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
         
-        if (var) {
+        if (var && is_struct) {
+            handle_struct_recv (var, chan, block_id);
+        }
+        else if (var) {
             if (verbose) {
                 fprintf(_fp,"\n// Data for action: ");
                 chp_print(_fp,c);

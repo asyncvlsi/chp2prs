@@ -80,6 +80,8 @@ class RingForge : public RingEngine {
         int _generate_probe_access(ActId *);
         int _generate_probe_access_neg(ActId *);
 
+        int handle_struct_recv (ActId *, ActId *, int);
+        int struct_bw (ActId *);
         // TODO: Do this properly later
         void _generate_qdi_itb(act_chp_lang_t *);
 
