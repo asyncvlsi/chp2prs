@@ -139,7 +139,9 @@ class RingSynth : public ActSynthesize {
     fprintf(_pp->fp, "\n// Total Bitwidth : %d\n", w);
     char name[10240];
     d->snprintActName(name, 10240);
-    fprintf(_pp->fp, "defchan chan_%s <: chan(%s) (ring_chan<%d> C) {}\n\n", name, name, w);
+    const char *scn = config_get_string("synth.ring.struct_chan_name");;
+    fprintf(_pp->fp, "defchan chan_%s <: chan(%s) (ring_chan<%d> %s) {}\n\n", 
+                      name, name, w, scn);
   }
 
   void typeStructChan (char *buf, int sz, InstType *t) {

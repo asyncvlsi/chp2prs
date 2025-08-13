@@ -82,6 +82,7 @@ class RingForge : public RingEngine {
 
         int handle_struct_recv (ActId *, ActId *, int);
         int struct_bw (ActId *);
+        Expr *struct_to_int_concat(Expr *);
         // TODO: Do this properly later
         void _generate_qdi_itb(act_chp_lang_t *);
 
@@ -137,6 +138,9 @@ class RingForge : public RingEngine {
         // Channel name prefixes
         const char *sync_chan_name_prefix; 
         const char *init_cond_chan_prefix;
+
+        // Name of int port chan in impl. of struct chan
+        const char *struct_chan_name;
 
         // unsigned int invx1_delay_ps;
 

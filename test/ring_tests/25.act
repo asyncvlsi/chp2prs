@@ -1,0 +1,37 @@
+
+deftype kstr (
+    int<4> x;
+    int<4> y
+){}
+
+defproc src (chan!(kstr) C)
+{
+    kstr k;
+    chp {
+        *[ k := kstr(2); C!k ]
+    }
+}
+
+defproc snk (chan?(kstr) C)
+{
+    kstr x;
+    chp {
+        *[ C?x; log("x : ", x.x); log("y : ",x.y) ]
+    }
+}
+
+defproc kbuf (chan?(kstr) L; chan!(kstr) R)
+{
+    kstr k;
+    chp {
+        *[ L?k; k.x:=1; R!k ]
+    }
+}
+
+defproc testproc(chan!(kstr) Y)
+{
+    kbuf b;
+    snk sn(b.R);
+    src sr(b.L);
+	Y = b.R;
+}

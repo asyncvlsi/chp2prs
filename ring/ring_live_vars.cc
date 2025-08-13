@@ -50,13 +50,38 @@ void union_hashtable (Hashtable *H_acc, Hashtable *H_inc)
 void LiveVarAnalysis::_add_to_live_vars (ActId *id, bool mangle = true)
 {
     char tname[1024];
-    get_true_name(tname, id, p->CurScope(), mangle);
     hash_bucket_t *b;
-    b = hash_lookup(H_live, tname);
-    if (!b)
-    {
-        hash_add (H_live, tname);
-    } 
+    InstType *it = p->CurScope()->localLookup (id, NULL);
+
+    if (TypeFactory::isStructure(it)) {
+
+        Data *d = dynamic_cast<Data *>(it->BaseType());
+        int w = TypeFactory::totBitWidth (d);
+        int nb, ni;
+        int *types;
+        d->getStructCount (&nb, &ni);
+        Assert (nb==0, "No bools in struct!");
+        ActId **res = d->getStructFields (&types);
+        ActId *tail = id->Tail ();
+        for (int i=0; i < ni + nb; i++) {
+            int sz;
+            InstType *xit;
+            Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+            tail->Append (res[i]);
+            _add_to_live_vars (tail, mangle);
+            tail->prune ();
+            delete res[i];
+            delete xit;
+        }
+    }
+    else {
+        get_true_name(tname, id, p->CurScope(), mangle);
+        b = hash_lookup(H_live, tname);
+        if (!b)
+        {
+            hash_add (H_live, tname);
+        } 
+    }
 }
 
 void LiveVarAnalysis::_add_to_live_vars (Expr *e, bool mangle = true)
@@ -147,12 +172,7 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e, bool mangle = true)
   case E_BITFIELD:
   case E_VAR:
         var = (ActId *)e->u.e.l;
-        get_true_name(tname, var, p->CurScope(), mangle);
-        b = hash_lookup(H_live, tname);
-        if (!b)
-        {
-            hash_add (H_live, tname);
-        }
+        _add_to_live_vars (var, mangle);
     break;
 
   case E_PROBE:
@@ -171,15 +191,40 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e, bool mangle = true)
 #undef UNARY_OP
 }
 
-void LiveVarAnalysis::_remove_from_live_vars (ActId *id)
+void LiveVarAnalysis::_remove_from_live_vars (ActId *id, bool mangle=true)
 {
     char tname[1024];
     if (!id) return;
-    get_true_name (tname, id, p->CurScope());
-    if (hash_lookup (H_live, tname))
-    {
-        hash_delete (H_live, tname);
-        return;
+    InstType *it = p->CurScope()->localLookup (id, NULL);
+
+    if (TypeFactory::isStructure(it)) {
+
+        Data *d = dynamic_cast<Data *>(it->BaseType());
+        int w = TypeFactory::totBitWidth (d);
+        int nb, ni;
+        int *types;
+        d->getStructCount (&nb, &ni);
+        Assert (nb==0, "No bools in struct!");
+        ActId **res = d->getStructFields (&types);
+        ActId *tail = id->Tail ();
+        for (int i=0; i < ni + nb; i++) {
+            int sz;
+            InstType *xit;
+            Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+            tail->Append (res[i]);
+            _remove_from_live_vars (tail, mangle);
+            tail->prune ();
+            delete res[i];
+            delete xit;
+        }
+    }
+    else {
+        get_true_name (tname, id, p->CurScope());
+        if (hash_lookup (H_live, tname))
+        {
+            hash_delete (H_live, tname);
+            return;
+        }
     }
     // fatal_error ("Attempted to delete variable not in live-var list");
     return;

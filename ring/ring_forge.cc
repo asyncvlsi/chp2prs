@@ -171,6 +171,8 @@ RingForge::RingForge ( FILE *fp,
     sync_chan_name_prefix = "sync_";
     init_cond_chan_prefix = "C_init_";
 
+    struct_chan_name = config_get_string("synth.ring.struct_chan_name");
+
     // Bundled datapath parameters
     // invx1_delay_ps = config_get_int("synth.ring.bundled.invx1_delay_ps");
     verbose = config_get_int("synth.ring.verbose");
@@ -797,19 +799,24 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
     var_info *vi;
     char tmpchan[1024];
     get_true_name (tmpchan, chan, _p->CurScope(), false);
-    auto chan_name = strcat(tmpchan, ".C");
+    auto chan_name = strcat(tmpchan, ".");
+    strcat(chan_name, struct_chan_name);
 
     InstType *it = _p->CurScope()->localLookup (var, NULL);
     Assert (it, "Hmm");
     Assert (TypeFactory::isStructure (it), "Hmm");
     d = dynamic_cast<Data *>(it->BaseType());
     d->getStructCount (&nb, &ni);
+    Assert (nb==0, "No bools in struct!");
     res = d->getStructFields (&types);
     FREE (types);
 
     int pos = 0;
     ActId *tail = var->Tail ();
-    for (int i=0; i < ni + nb; i++) 
+    // need an extra celem for completion T_T
+    fprintf(_fp, "parallel_split<%d> c_compl;\n", (nb+ni));
+    fprintf(_fp, "c_compl.m1 = %s%d.data;\n", ring_block_prefix, block_id);
+    for (int i=ni+nb-1; i >=0; i--) 
     {
         int sz;
         InstType *xit;
@@ -834,8 +841,8 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
                                                     _compute_delay_line_param(pulse_width), 
                                                 vi->width, capture_block_prefix, vi->name, latch_id);
 
-        fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
-                        vi->name,latch_id,ring_block_prefix,block_id);
+        fprintf(_fp, "%s%s_%d.go = c_compl.co[%d];\n",capture_block_prefix,
+                        vi->name,latch_id,i);
         fprintf(_fp, "%s%s_%d.din = %s.d[%d..%d];\n",capture_block_prefix,
                                         vi->name,latch_id,chan_name, pos, pos+lw-1);
         fprintf(_fp, "%s%s_%d.tx.a = %s.a;\n",capture_block_prefix,
@@ -851,7 +858,7 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
 
 int RingForge::struct_bw (ActId *id)
 {
-    if (!id) return 1;
+    if (!id) return -1;
 
     InstType *it = _p->CurScope()->localLookup (id, NULL);
     Assert (it, "Hmm");
@@ -861,6 +868,45 @@ int RingForge::struct_bw (ActId *id)
     int w = TypeFactory::totBitWidth (d);
     return w;
 } 
+
+Expr *RingForge::struct_to_int_concat(Expr *e_in)
+{
+    auto d = act_expr_is_structure(_p->CurScope(), e_in);
+    Assert (d, "What?");
+    int nb, ni;
+    d->getStructCount (&nb, &ni);
+    Assert (nb==0, "No bools in struct!");
+    Assert (nb+ni>0, "Empty struct?!");
+    
+    int *typecodes;
+    ActId **xfield = d->getStructFields (&typecodes);
+
+    Expr *e, *f;
+    NEW (e, Expr);
+    e->type = E_CONCAT;
+    e->u.e.l =  NULL;
+    e->u.e.r = NULL;
+    f = e;
+    for (int i=0; i < nb + ni; i++) {
+      ActId *tid = ((ActId *)e_in->u.e.l)->Clone();
+      tid->Append (xfield[i]);
+      f->u.e.l = act_expr_var (tid);
+      if (i != (nb + ni - 1)) {
+        NEW (f->u.e.r, Expr);
+        f = f->u.e.r;
+        f->u.e.l = NULL;
+        f->u.e.r = NULL;
+        f->type = E_CONCAT;
+      }
+    }
+
+    if (verbose) {
+        fprintf(_fp, "\n// inlined struct expr: ");
+        print_uexpr(_fp, e);
+        fprintf(_fp, "\n");
+    }
+    return e;
+}
 
 /*
     Generate a pipeline element for a given action, along
@@ -887,7 +933,6 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
     switch(c->type)
     {
     case ACT_CHP_ASSIGN:
-        // TODO - finish
         e = c->u.assign.e;
         var = c->u.assign.id;
         if (verbose) {
@@ -971,7 +1016,6 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         chan = c->u.comm.chan;
         e = c->u.comm.e;
         get_true_name (chan_name, chan, _p->CurScope(), false);
-        // chan_name = chan->rootVx(p->CurScope())->getName();
         if (verbose) {
             fprintf(_fp,"\n// Pipe block for action: ");
             chp_print(_fp,c);
@@ -979,9 +1023,16 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_paa_send %s%d;\n",ring_block_prefix,block_id);
         if (e) {
-            // it = _p->CurScope()->Lookup(chan);
-            // bw = TypeFactory::bitWidth(it);
             bw = _bitWidth(chan);
+            if (bw == -1) {
+                Assert (e->type==E_VAR, "Structure send must be pure var, not a function");
+                bw = struct_bw ((ActId *)e->u.e.l);
+                is_struct = true;
+                strcat (chan_name, ".");
+                strcat (chan_name, struct_chan_name);
+                // compute explicit form of int() of struct
+                e = struct_to_int_concat(e);
+            }
             fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
                 fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
             if (verbose) {
@@ -989,33 +1040,15 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                 chp_print(_fp,c);
             }
             fprintf(_fp,"\n");
-            // if (e->type == E_VAR) { // pure variable send
-            if (false) { // pure variable send
-            fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
-                var = (ActId *)e->u.e.l;
-                char tname[1024];
-                get_true_name(tname, var, _p->CurScope());
-                b = hash_lookup(var_infos, tname);
-                vi = (var_info *)b->v;
-                latch_id = vi->latest_for_read;
-                Assert ((latch_id>=0),"variable read but never written? what...");
-                fprintf(_fp, "\n%s%s_%d.dout = %s.d;\n",capture_block_prefix,
-                                            vi->name,latch_id,chan_name);
-            }
-            else { // function of variable(s) send
-                expr_inst_id = _generate_expr_block(e,bw,true);
-                // connect output of math block to channel data
-                // fprintf (_fp,"\n");
-                // fprintf(_fp,"%s%d.out = %s.d;\n",expr_block_instance_prefix,expr_inst_id,chan_name);
-                fprintf(_fp,"connect_exprblk_dout<%d> %s%d(%s%d.out,%s%d.e);\n",bw,expr_block_output_prefix, expr_inst_id,
-                                                        expr_block_instance_prefix,expr_inst_id,
-                                                        conn_block_prefix,block_id);
+            expr_inst_id = _generate_expr_block(e,bw,true);
+            fprintf(_fp,"connect_exprblk_dout<%d> %s%d(%s%d.out,%s%d.e);\n",bw,expr_block_output_prefix, expr_inst_id,
+                                                    expr_block_instance_prefix,expr_inst_id,
+                                                    conn_block_prefix,block_id);
 
-                // connect to delay_line
-                fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
-                fprintf(_fp,"delay_expr_%d.p1 = %s%d.ctrl;\n",expr_inst_id,conn_block_prefix,block_id);
+            // connect to delay_line
+            fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
+            fprintf(_fp,"delay_expr_%d.p1 = %s%d.ctrl;\n",expr_inst_id,conn_block_prefix,block_id);
 
-            }
         }
         else { // dataless action
             fprintf(_fp,"%s%d.zero = %s;\n",ring_block_prefix,block_id, chan_name);
@@ -1038,7 +1071,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         if (bw == -1) {
             bw = struct_bw (var);
             is_struct = true;
-            strcat (chan_name, ".C");
+            strcat (chan_name, ".");
+            strcat (chan_name, struct_chan_name);
         }
         fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
         fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
