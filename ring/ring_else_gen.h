@@ -20,6 +20,9 @@
  **************************************************************************
  */
 
+#ifndef __ACT_RING_ELSE_GEN_H__
+#define __ACT_RING_ELSE_GEN_H__
+
 #include "reqs.h"
 
 /* 
@@ -52,3 +55,26 @@ void make_receives_unique (act_chp_lang_t *&c, Process *p);
 void flatten_lists (act_chp_lang_t *&c, Process *p);
 
 bool _var_appears_in_expr (Expr *e, ActId *id);
+
+// Assert but error print location is parent
+template <typename T>
+void kassert_t (const T &x, const char *xs, const char *msg,
+            const char *file, int line,
+            const std::source_location cl = std::source_location::current())
+{
+  if (!(x)) {
+    fprintf(stderr, "Assertion failed : %s\n", xs);
+    fprintf(stderr, "Message : %s\n", msg);
+    fprintf(stderr, "File: %s, Line: %u\n\n", file, line);
+    fprintf(stderr, "Caller: %s\n", cl.function_name());
+    fprintf(stderr, "Caller File: %s, Caller Line: %u \n", 
+              cl.file_name(), cl.line());
+    exit(4);
+  }
+}
+
+#define kassert(x, msg, cl) kassert_t(x, #x, msg, __FILE__, __LINE__, cl)
+
+#define call_with_loc(fn, arg) fn(arg, std::source_location::current())
+
+#endif

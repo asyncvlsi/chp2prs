@@ -753,11 +753,7 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
         int lw = TypeFactory::bitWidth (xit);
 
         tail->Append (res[i]);
-        char tname[1024];
-        get_true_name(tname, tail, _p->CurScope());
-        b = hash_lookup(var_infos, tname);
-        Assert (b, "No var info?");
-        vi = (var_info *)b->v;
+        vi = _get_var_info(tail);
         tail->prune ();
 
         // update var_info 
@@ -870,11 +866,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_paa %s%d;\n",ring_block_prefix,block_id);
 
-        char tname[1024];
-        get_true_name(tname, var, _p->CurScope());
-        b = hash_lookup(var_infos, tname);
-        Assert (b, "variable not found");
-        vi = (var_info *)b->v;
+        vi = _get_var_info(var);
         bw = vi->width;
         expr_inst_id = _generate_expr_block(e,bw,true);
         Assert ((c->space), "No latch info? (_generate_pipe_element)");
@@ -964,11 +956,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             handle_struct_recv (var, chan, block_id);
         }
         else if (var) {
-            char tname[1024];
-            get_true_name(tname, var, _p->CurScope());
-            b = hash_lookup(var_infos, tname);
-            Assert (b, "No var info?");
-            vi = (var_info *)b->v;
+            vi = _get_var_info(var);
             Assert ((c->space), "No latch info? (_generate_pipe_element)");
             if (init_latch == -1)
             {
@@ -1103,11 +1091,7 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr, int blk
     Assert (var, "no variable (_generate_pipe_element_lcd");
     Assert (type==ACT_CHP_ASSIGN, "LCD pipe block for non-assignment?");
 
-    char tname[1024];
-    get_true_name(tname, var, _p->CurScope());
-    b = hash_lookup(var_infos, tname);
-    Assert (b, "variable not found");
-    vi = (var_info *)b->v;
+    vi = _get_var_info(var);
     first_latch_id = 0;
     last_latch_id = vi->latest_for_read;
     // connect last latch output to first latch input
@@ -1645,11 +1629,7 @@ int RingForge::_generate_probe_clause (list_t *guards, list_t *probe_list)
 
 int RingForge::_generate_probe_access (ActId *chan)
 {
-    char tname[1024];
-    get_true_name(tname, chan, _p->CurScope());
-    hash_bucket_t *b = hash_lookup(var_infos, tname);
-    Assert (b, "var not found?");
-    var_info *vi = (var_info *)b->v;
+    var_info *vi = _get_var_info(chan);
     int w = vi->width;
     int pid = _gen_var_access_id();
     fprintf (_fp, "probe_access<%d> probe_%d(",w,pid);
@@ -1660,11 +1640,7 @@ int RingForge::_generate_probe_access (ActId *chan)
 
 int RingForge::_generate_probe_access_neg (ActId *chan)
 {
-    char tname[1024];
-    get_true_name(tname, chan, _p->CurScope());
-    hash_bucket_t *b = hash_lookup(var_infos, tname);
-    Assert (b, "var not found?");
-    var_info *vi = (var_info *)b->v;
+    var_info *vi = _get_var_info(chan);
     int w = vi->width;
     int pid = _gen_var_access_id();
     fprintf (_fp, "probe_access_neg<%d> probe_%d(",w,pid);
@@ -1762,13 +1738,7 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
   case E_VAR:
     if (collect_phase) {
         ActId *var = (ActId *)e->u.e.l;
-        var_info *vi;
-        hash_bucket_t *b;
-        char tname[1024];
-        get_true_name(tname, var, _p->CurScope());
-        b = hash_lookup(var_infos, tname);
-        Assert (b, "no var info?");
-        vi = (var_info *)b->v;
+        var_info *vi = _get_var_info(var);
         ihash_bucket_t *ib;
         ihash_bucket_t *b_width;
         if (!ihash_lookup (_inexprmap, (long)e)) 
@@ -2398,10 +2368,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                 if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP) {
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;
-                    char tname[1024];
-                    get_true_name(tname, id, _p->CurScope());
-                    hash_bucket_t *b = hash_lookup(var_infos, tname);
-                    vi = (var_info *)b->v;
+                    vi = _get_var_info(id);
                     if (vi->fisbool==0) {
                         n_lcd++;
                     }
@@ -2422,10 +2389,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     {
                         Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                         id = stmt1->u.assign.id;
-                        char tname[1024];
-                        get_true_name(tname, id, _p->CurScope());
-                        hash_bucket_t *b = hash_lookup(var_infos, tname);
-                        vi = (var_info *)b->v;
+                        vi = _get_var_info(id);
                         if (vi->fisbool==0) {
                             block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id, ii, pulser_id, lcd_itr);
                             lcd_itr++;
