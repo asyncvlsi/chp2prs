@@ -905,6 +905,17 @@ void RingEngine::_print_var_info (FILE *fp, var_info *v)
   fprintf(fp, "\n\n");
 }
 
+var_info *RingEngine::_get_var_info (ActId *id)
+{
+  char tname[10240];
+  get_true_name(tname, id, _p->CurScope());
+  auto b = hash_lookup(var_infos, tname);
+  Assert (b, "variable not found");
+  auto vi = (var_info *)b->v;
+  Assert (vi, "var-info corruption");
+  return vi;
+}
+
 Hashtable *RingEngine::_deepcopy_var_info_hashtable (Hashtable *h_in, int only_read_id)
 {
   Hashtable *h_out = hash_new(4);

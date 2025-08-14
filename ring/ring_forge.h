@@ -29,13 +29,10 @@
 class RingForge : public RingEngine {
     public: 
 
-    RingForge ( FILE *fp, 
-            // Process *p, act_chp_lang_t *c,
-            // ActBooleanizePass *bp, 
-            int bdpath,
-            int delay_margin, int dp_style,
-            const char *circuit_library,
-            const char *exprfile);
+    RingForge ( FILE *fp, int bdpath,
+                int delay_margin, int dp_style,
+                const char *circuit_library,
+                const char *exprfile);
 
         void run_forge ();
         long long get_runtime();
@@ -55,8 +52,6 @@ class RingForge : public RingEngine {
         bool _fill_in_ics (act_chp_lang_t *&);
 
         // Main synthesis functions
-        void generate_pipe(act_chp_lang_t *, int);
-        int generate_one_ring(act_chp_lang_t *, int, int);
         int generate_branched_ring(act_chp_lang_t *, int, int, int);
         int generate_branched_ring_non_ssa(act_chp_lang_t *, int, int, int);
 
@@ -70,21 +65,16 @@ class RingForge : public RingEngine {
         int _generate_nds_split(int);
         int _generate_nds_split_stable(int);
         int _generate_selection_merge(int);
-        int _generate_init_cond_itb(int, int, int, int);
         int _generate_pipe_element_custom(int, int, int, ActId *);
         int _generate_pipe_element_lcd(int, ActId *, int, int, int);
         int _generate_pipe_element_lcd(int);
         int _generate_pause_element();
-        int _generate_loop_wrapper();
-        int _generate_doloop_wrapper();
         int _generate_probe_access(ActId *);
         int _generate_probe_access_neg(ActId *);
 
         int handle_struct_recv (ActId *, ActId *, int);
         int struct_bw (ActId *);
         Expr *struct_to_int_concat(Expr *);
-        // TODO: Do this properly later
-        void _generate_qdi_itb(act_chp_lang_t *);
 
         // Datapath generation functions
         int _generate_single_latch (var_info *, latch_info *, long long);

@@ -42,9 +42,7 @@ class RingSynth : public ActSynthesize {
     if (!exprfile) {
       fatal_error ("Ring Synthesis: requires an expression file");
     }
-      // config_set_string("expropt.act_cell_lib_bd_namespace","std::cells");
       config_set_string("synth.bundled.cell_lib_namespace","std::cells");
-      // config_set_string("expropt.act_cell_lib_bd","${ACT_HOME}/act/std/cells.act");
       config_set_string("synth.bundled.cell_lib","${ACT_HOME}/act/std/cells.act");
     }
   
@@ -61,31 +59,24 @@ class RingSynth : public ActSynthesize {
     int dpath_style = dp->getIntParam ("datapath_style");
     tf = new TinyForge (_pp->fp, bundled_data, dm, dpath_style, "", _ename);
     /* print imports */
-    // pp_printf_raw (_pp, "import \"syn/ring/_all_.act\";\n");
     
     if (bundled_data) {
-      pp_printf_raw (_pp, "import \"syn/qdi/_all_.act\";\n"); // @TODO this is a bug fix until the namespace use is properly done
       pp_printf_raw (_pp, "import syn::ring;\n");
       if (bundled_data_2phase) pp_printf_raw (_pp, "open syn::ring_2phase;\n");
       else if (bundled_data_pulsed) pp_printf_raw (_pp, "open syn::ring_pulsed;\n");
       else pp_printf_raw (_pp, "open syn::ring;\n");
     }
     else if (di_dpath){
-      //pp_printf_raw (_pp, "import syn::diopt;\n");
-      //pp_printf_raw (_pp, "open syn::diopt -> syn;\n");
       pp_printf_raw (_pp, "import \"syn/diopt/_all_.act\";\n");
       pp_printf_raw (_pp, "import syn::ring;\n");
       pp_printf_raw (_pp, "open syn::ring_di_dpath;\n");
     }
     else if (ditest_dpath){
-      //pp_printf_raw (_pp, "import syn::ditest;\n");
-      //pp_printf_raw (_pp, "open syn::ditest -> syn;\n");
       pp_printf_raw (_pp, "import \"syn/ditest/_all_.act\";\n");
       pp_printf_raw (_pp, "import syn::ring;\n");
       pp_printf_raw (_pp, "open syn::ring_di_dpath;\n");
     }
     else {
-      pp_printf_raw (_pp, "import \"syn/qdi/_all_.act\";\n");
       pp_printf_raw (_pp, "import syn::ring;\n");
       pp_printf_raw (_pp, "open syn::ring_di_dpath;\n");
     }

@@ -62,6 +62,7 @@ class RingEngine {
         void _construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v);
         void _print_var_info (FILE *fp, var_info *v);
         int _var_in_list (const char *name, list_t *l);
+        var_info *_get_var_info (ActId *);
 
         // Save and restore state of var_infos 
         void save_var_infos ();

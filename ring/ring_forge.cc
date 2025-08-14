@@ -17,7 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
 #include "ring_forge.h"
@@ -143,8 +143,6 @@ void RingForge::_dagify (Expr *&e)
 }
 
 RingForge::RingForge ( FILE *fp, 
-            // Process *p, act_chp_lang_t *c,
-            // ActBooleanizePass *bp, 
             int bdpath,
             int delay_margin, int dp_style,
             const char *circuit_library,
@@ -437,115 +435,49 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
     auto d2 = duration_cast<microseconds>(st1 - ss1);
     if (printt) fprintf(stdout, "\n\n// forge preprocessing duration 1: %lld microseconds \n\n", d2.count());
 
-    if (datapath_style==SSA) 
-    {
+    Assert (datapath_style==SSA, "Non-SSA is deprecated!"); 
+    auto ss2 = high_resolution_clock::now();
 
-        auto ss2 = high_resolution_clock::now();
+    if (printt) fprintf (_fp, "// Read/Write Info pre-mux gen ----\n");
+    if (printt) print_var_infos (_fp);
+    if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
-        if (printt) fprintf (_fp, "// Read/Write Info pre-mux gen ----\n");
-        if (printt) print_var_infos (_fp);
-        if (printt) fprintf (_fp, "// --------------------------------\n\n");
+    _construct_merge_latch_info (c, 1);
+    
+    if (printt) fprintf (_fp, "// Read/Write Info post-mux gen ---\n");
+    if (printt) print_var_infos (_fp);
+    if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
-        _construct_merge_latch_info (c, 1);
-        
-        if (printt) fprintf (_fp, "// Read/Write Info post-mux gen ---\n");
-        if (printt) print_var_infos (_fp);
-        if (printt) fprintf (_fp, "// --------------------------------\n\n");
+    compute_mergemux_info (c);
 
-        compute_mergemux_info (c);
+    if (printt) fprintf (_fp, "// Merge Mux Info pre-mapping -----\n");
+    if (printt) print_merge_mux_infos(_fp, c);
+    if (printt) fprintf (_fp, "// --------------------------------\n\n");
+    
+    flow_assignments (c);
 
-        if (printt) fprintf (_fp, "// Merge Mux Info pre-mapping -----\n");
-        if (printt) print_merge_mux_infos(_fp, c);
-        if (printt) fprintf (_fp, "// --------------------------------\n\n");
-        
-        flow_assignments (c);
+    if (printt) fprintf (_fp, "// Merge Mux Info post-mapping ----\n");
+    if (printt) print_merge_mux_infos(_fp, c);
+    if (printt) fprintf (_fp, "// --------------------------------\n\n");
+    if (printt) fprintf (_fp, "\n*/ \n");
 
-        if (printt) fprintf (_fp, "// Merge Mux Info post-mapping ----\n");
-        if (printt) print_merge_mux_infos(_fp, c);
-        if (printt) fprintf (_fp, "// --------------------------------\n\n");
-        if (printt) fprintf (_fp, "\n*/ \n");
-
-        if ( _check_all_muxes_mapped(c, false) ) { 
-            fprintf (stderr, "Merge muxes were not fully mapped (SSA-style datapath). \n");
-            fprintf (stderr, "This is most likely due to uninitialized \nvariables outside your main loop.\n");
-            fprintf (stderr, "Please add initial conditions to requisite variables.\n\n");
-            fatal_error("Mux input mapping incomplete."); 
-        }
-
-        fprintf (_fp, "// Branched Ring ------------------\n");
-
-        if(c->label && strcmp(c->label,"qdi_itb")==0) {
-            if (verbose) fprintf (_fp, "\n // instantiating qdi itb here..\n");
-            _generate_qdi_itb(c);
-            return;
-        }
-
-        auto st2 = high_resolution_clock::now();
-        auto d3 = duration_cast<microseconds>(st2 - ss2);
-        if (printt) fprintf(stdout, "\n\n// forge preprocessing duration 2: %lld microseconds \n\n", d3.count());
-
-        generate_branched_ring (c,1,0,0);
+    if ( _check_all_muxes_mapped(c, false) ) { 
+        fprintf (stderr, "Merge muxes were not fully mapped (SSA-style datapath). \n");
+        fprintf (stderr, "This is most likely due to uninitialized \nvariables outside your main loop.\n");
+        fprintf (stderr, "Please add initial conditions to requisite variables.\n\n");
+        fatal_error("Mux input mapping incomplete."); 
     }
-    else {
-        Assert (false, "Non-SSA style is deprecated");
-        if ( _check_no_self_assignments(c, false) ) { 
-            fprintf (stderr, "Self assignments detected (Non SSA-style datapath). \n");
-            fprintf (stderr, "This is not currently supported with this datapath style.\n");
-            fprintf (stderr, "Work in progress.\n\n");
-            fprintf (stderr, "Rewrite x:=f(x) as x1:=f(x);x:=x1 \n\n");
-            fatal_error("Self assignments detected."); 
-        }
 
-        fprintf (_fp, "// Branched Ring Non-SSA ----------\n");
-        if(c->label && strcmp(c->label,"qdi_itb")==0) {
-            if (verbose) fprintf (_fp, "\n // instantiating qdi itb here..\n");
-            _generate_qdi_itb(c);
-            return;
-        }
+    fprintf (_fp, "// Branched Ring ------------------\n");
 
-        generate_branched_ring_non_ssa (c,1,0,0);
-    }
+    auto st2 = high_resolution_clock::now();
+    auto d3 = duration_cast<microseconds>(st2 - ss2);
+    if (printt) fprintf(stdout, "\n\n// forge preprocessing duration 2: %lld microseconds \n\n", d3.count());
+
+    generate_branched_ring (c,1,0,0);
 }
 
 unsigned long eval_ic (Expr *);
-
-void RingForge::_generate_qdi_itb(act_chp_lang_t *cc)
-{
-    Assert (cc->type==ACT_CHP_SEMI && (list_length(cc->u.semi_comma.cmd)==2), "QDI ITB : One I.C + loop check");
-    list_t *ll = cc->u.semi_comma.cmd;
-
-    act_chp_lang_t *ic = (act_chp_lang_t *)(list_value(list_first(ll)));
-    Assert (ic->type==ACT_CHP_ASSIGN, "QDI ITB : I.C. Assignment");
-
-    unsigned long ival = eval_ic(ic->u.assign.e);
-
-    act_chp_lang_t *loop = (act_chp_lang_t *)(list_value(list_next(list_first(ll))));
-    Assert (loop->type==ACT_CHP_LOOP, "QDI ITB : Loop check");
-
-    act_chp_lang_t *body = loop->u.gc->s;
-    Assert (body->type==ACT_CHP_SEMI && (list_length(body->u.semi_comma.cmd)==2), "QDI ITB : Send + Recv check");
-    list_t *ll2 = body->u.semi_comma.cmd;
-
-    act_chp_lang_t *send = (act_chp_lang_t *)(list_value(list_first(ll2)));
-    Assert (send->type==ACT_CHP_SEND, "Send check");
-    act_chp_lang_t *recv = (act_chp_lang_t *)(list_value(list_next(list_first(ll2))));
-    Assert (recv->type==ACT_CHP_RECV, "Recv check");
-
-    char Rname[1024];
-    char Lname[1024];
-
-    get_true_name (Rname, send->u.comm.chan, _p->CurScope(), false);
-    get_true_name (Lname, recv->u.comm.chan, _p->CurScope(), false);
-
-    int bw_send = _bitWidth(send->u.comm.chan);
-    int bw_recv = _bitWidth(recv->u.comm.chan);
-    Assert ((bw_send == bw_recv), "Bitwidth match");
-
-    int inst_id = _gen_block_id();
-
-    fprintf(_fp, "\n qdi_itb<%d,%lu> qdi_itb_inst_%d(%s,%s);\n", 
-                    bw_send, ival, inst_id, Lname, Rname);
-}
 
 int RingForge::_compute_delay_line_param(double delay)
 {
@@ -721,38 +653,34 @@ int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long ini
     int latch_id = l->latch_number;
     bool is_latch = (l->type == LatchType::Latch);
     static char buf[1024];
-    if (v->iwrite < v->nwrite)
-    {
-        if (v->fisbool) {
-            get_true_name(buf, v->id, _p->CurScope(), false);
-            fprintf(_fp, "capture_bool %s%s_%d(%s);\n", capture_block_prefix, v->name, latch_id, buf);
-        }
-        else if (init_val == -1)
-        {
-            if (is_latch) {
-                fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
-                                                            _compute_delay_line_param(pulse_width), 
-                                                        v->width, capture_block_prefix, v->name,latch_id);
-            }
-            else {
-                fprintf(_fp, "capture_dummy<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
-                                                            _compute_delay_line_param(pulse_width), 
-                                                        v->width, capture_block_prefix, v->name,latch_id);
-            }
-        }
-        else
-        {
-            Assert (is_latch, "init val. latch but not real latch??");
-            fprintf(_fp, "capture_init_new<%d,%d,%d,%lli> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
-                                                                   _compute_delay_line_param(pulse_width), 
-                                                    v->width, init_val, capture_block_prefix, v->name,latch_id);
-        }
-        v->iwrite++;
-        v->latest_for_read = latch_id;
-        return latch_id;
+    Assert (v->iwrite < v->nwrite, "Something went wrong in latch info tracking!");
+    if (v->fisbool) {
+        get_true_name(buf, v->id, _p->CurScope(), false);
+        fprintf(_fp, "capture_bool %s%s_%d(%s);\n", capture_block_prefix, v->name, latch_id, buf);
     }
-    fatal_error("shouldn't have reached here (generate_single_latch)");
-    return -1;
+    else if (init_val == -1)
+    {
+        if (is_latch) {
+            fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+                                                        _compute_delay_line_param(pulse_width), 
+                                                    v->width, capture_block_prefix, v->name,latch_id);
+        }
+        else {
+            fprintf(_fp, "capture_dummy<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+                                                        _compute_delay_line_param(pulse_width), 
+                                                    v->width, capture_block_prefix, v->name,latch_id);
+        }
+    }
+    else
+    {
+        Assert (is_latch, "init val. latch but not real latch??");
+        fprintf(_fp, "capture_init_new<%d,%d,%d,%lli> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+                                                                _compute_delay_line_param(pulse_width), 
+                                                v->width, init_val, capture_block_prefix, v->name,latch_id);
+    }
+    v->iwrite++;
+    v->latest_for_read = latch_id;
+    return latch_id;
 } 
 
 /*
@@ -936,80 +864,40 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         e = c->u.assign.e;
         var = c->u.assign.id;
         if (verbose) {
-            fprintf(_fp,"\n// Pipe block for action: ");
+            fprintf(_fp,"\n// Pipe block and data for action: ");
             chp_print(_fp,c);
         }
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_paa %s%d;\n",ring_block_prefix,block_id);
 
-        if (verbose) {
-            fprintf(_fp,"\n// Data for action: ");
-            chp_print(_fp,c);
-        }
-        fprintf(_fp,"\n");
         char tname[1024];
         get_true_name(tname, var, _p->CurScope());
         b = hash_lookup(var_infos, tname);
         Assert (b, "variable not found");
-        // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
         vi = (var_info *)b->v;
         bw = vi->width;
         expr_inst_id = _generate_expr_block(e,bw,true);
         Assert ((c->space), "No latch info? (_generate_pipe_element)");
-        if (init_latch == -1)
-        {
+        if (init_latch == -1) {
             latch_id = _generate_single_latch(vi, (latch_info_t *)(c->space));  
         }
-        else 
-        {
+        else {
             latch_id = init_latch;
             Assert (datapath_style==NON_SSA, "Hmm");
         }
         // connect output of math block to latch input
-        if (datapath_style==SSA)
-        {
-            fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din,%s%s_%d.tx);\n", bw, 
-                            expr_block_output_prefix, expr_inst_id,
-                            expr_block_instance_prefix,expr_inst_id,
-                            capture_block_prefix, vi->name,latch_id,
-                            capture_block_prefix, vi->name,latch_id
-                            );
-            // connect pipe block to delay_expr input
-            fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
-            // connect delay_expr output to capture block
-            fprintf(_fp,"delay_expr_%d.p1 = %s%s_%d.go;\n",expr_inst_id,capture_block_prefix,
-                                                vi->name,latch_id);
-        }
-        else 
-        {
-            if (bundled) {
-                fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din[%d][0..%d], %s%s_%d.tx[%d]);\n", bw, 
-                    expr_block_output_prefix, expr_inst_id,
-                    expr_block_instance_prefix,expr_inst_id,
-                    capture_block_prefix, vi->name,latch_id, 
-                    vi->iwrite, (vi->width)-1,
-                    capture_block_prefix, vi->name,latch_id,vi->iwrite
-                    );
-            }
-            else {
-                fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din[%d], %s%s_%d.tx[%d]);\n", bw, 
-                    expr_block_output_prefix, expr_inst_id,
-                    expr_block_instance_prefix,expr_inst_id,
-                    capture_block_prefix, vi->name,latch_id, 
-                    vi->iwrite,
-                    capture_block_prefix, vi->name,latch_id,vi->iwrite
-                    );
-            }
-            // connect pipe block to delay_expr input
-            fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
-            // connect delay_expr output to capture block
-            fprintf(_fp,"delay_expr_%d.p1 = %s%s_%d.go[%d];\n",expr_inst_id,capture_block_prefix,
-                                                vi->name,latch_id,
-                                                vi->iwrite);
-            vi->iwrite++;
-        }
-        
-
+        Assert (datapath_style==SSA, "wth");
+        fprintf(_fp, "connect_exprblk_assign<%d> %s%d(%s%d.out,%s%s_%d.din,%s%s_%d.tx);\n", bw, 
+                        expr_block_output_prefix, expr_inst_id,
+                        expr_block_instance_prefix,expr_inst_id,
+                        capture_block_prefix, vi->name,latch_id,
+                        capture_block_prefix, vi->name,latch_id
+                        );
+        // connect pipe block to delay_expr input
+        fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
+        // connect delay_expr output to capture block
+        fprintf(_fp,"delay_expr_%d.p1 = %s%s_%d.go;\n",expr_inst_id,capture_block_prefix,
+                                            vi->name,latch_id);
         break;
 
     case ACT_CHP_SEND:
@@ -1017,7 +905,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         e = c->u.comm.e;
         get_true_name (chan_name, chan, _p->CurScope(), false);
         if (verbose) {
-            fprintf(_fp,"\n// Pipe block for action: ");
+            fprintf(_fp,"\n// Pipe block and data for action: ");
             chp_print(_fp,c);
         }
         fprintf(_fp,"\n");
@@ -1034,12 +922,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                 e = struct_to_int_concat(e);
             }
             fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
-                fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
-            if (verbose) {
-                fprintf(_fp,"\n// Data for action: ");
-                chp_print(_fp,c);
-            }
-            fprintf(_fp,"\n");
+            fprintf(_fp,"%s%d.ch = %s;\n\n",conn_block_prefix,block_id,chan_name);
+
             expr_inst_id = _generate_expr_block(e,bw,true);
             fprintf(_fp,"connect_exprblk_dout<%d> %s%d(%s%d.out,%s%d.e);\n",bw,expr_block_output_prefix, expr_inst_id,
                                                     expr_block_instance_prefix,expr_inst_id,
@@ -1060,13 +944,11 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         var = c->u.comm.var;
         get_true_name (chan_name, chan, _p->CurScope(), false);
         if (verbose) {
-            fprintf(_fp,"\n// Pipe block for action: ");
+            fprintf(_fp,"\n// Pipe block and data for action: ");
             chp_print(_fp,c);
         }
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_ppa %s%d;\n",ring_block_prefix,block_id);
-        // it = _p->CurScope()->Lookup(chan);
-        // bw = TypeFactory::bitWidth(it);
         bw = _bitWidth(chan);
         if (bw == -1) {
             bw = struct_bw (var);
@@ -1076,17 +958,12 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         }
         fprintf(_fp,"connect_inchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
         fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
-        fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
+        fprintf(_fp,"%s%d.ch = %s;\n\n",conn_block_prefix,block_id,chan_name);
         
         if (var && is_struct) {
             handle_struct_recv (var, chan, block_id);
         }
         else if (var) {
-            if (verbose) {
-                fprintf(_fp,"\n// Data for action: ");
-                chp_print(_fp,c);
-            }
-            fprintf(_fp,"\n");
             char tname[1024];
             get_true_name(tname, var, _p->CurScope());
             b = hash_lookup(var_infos, tname);
@@ -1102,36 +979,13 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                 latch_id = init_latch;
                 Assert (datapath_style==NON_SSA, "Hmm");
             }
-            if (datapath_style==SSA)
-            {
-                fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
-                                vi->name,latch_id,ring_block_prefix,block_id);
-                fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
-                                                vi->name,latch_id,chan_name);
-                fprintf(_fp, "%s%s_%d.tx.a = %s.a;\n",capture_block_prefix,
-                                                vi->name,latch_id,chan_name);
-            }
-            else 
-            {
-                fprintf(_fp, "%s%s_%d.go[%d] = %s%d.data;\n",capture_block_prefix,
-                                vi->name,latch_id,vi->iwrite,
-                                ring_block_prefix,block_id);
-                if (bundled) {
-                    fprintf(_fp, "%s%s_%d.din[%d][0..%d] = %s.d;\n",capture_block_prefix,
-                                                    vi->name,latch_id,
-                                                    vi->iwrite,(vi->width)-1,
-                                                    chan_name);
-                }
-                else {
-                    fprintf(_fp, "%s%s_%d.din[%d] = %s.d;\n",capture_block_prefix,
-                                                    vi->name,latch_id,
-                                                    vi->iwrite,
-                                                    chan_name);
-                }
-                fprintf(_fp, "%s%s_%d.tx[%d].a = %s.a;\n",capture_block_prefix,
-                                                vi->name,latch_id,vi->iwrite,chan_name);
-                vi->iwrite++;
-            }
+            Assert (datapath_style==SSA, "wth");
+            fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
+                            vi->name,latch_id,ring_block_prefix,block_id);
+            fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
+                                            vi->name,latch_id,chan_name);
+            fprintf(_fp, "%s%s_%d.tx.a = %s.a;\n",capture_block_prefix,
+                                            vi->name,latch_id,chan_name);
         }
         else { // dataless action
             fprintf(_fp,"%s%d.data.r = %s%d.data.a;\n",ring_block_prefix,block_id,ring_block_prefix,block_id);
@@ -1225,7 +1079,7 @@ int RingForge::_generate_pipe_element_lcd(int n)
 {
     int block_id = _gen_block_id();
     if (verbose) {
-                fprintf(_fp,"\n// Pipe block for lcd. transmission.");
+        fprintf(_fp,"\n// Pipe block for lcd. transmission.");
             }
     fprintf(_fp,"\n");
     fprintf(_fp,"elem_c_paa_c<%d> %s%d;\n",n,ring_block_prefix,block_id);
@@ -1243,58 +1097,43 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr, int blk
     int first_latch_id, last_latch_id;
     hash_bucket_t *b;
     var_info *vi;
-    char tname[1024];
     int va_id;
 
-    // block_id = _gen_block_id();
     block_id = blk_id;
     Assert (var, "no variable (_generate_pipe_element_lcd");
+    Assert (type==ACT_CHP_ASSIGN, "LCD pipe block for non-assignment?");
 
-    switch(type)
-    {
-    case ACT_CHP_ASSIGN:
-        // if (verbose) {
-        //     fprintf(_fp,"\n// Pipe block for lcd. transmission.");
-        // }
-        // fprintf(_fp,"\n");
-        // fprintf(_fp,"elem_c_paa_c %s%d;\n",ring_block_prefix,block_id);
-        char tname[1024];
-        get_true_name(tname, var, _p->CurScope());
-        b = hash_lookup(var_infos, tname);
-        Assert (b, "variable not found");
-        vi = (var_info *)b->v;
-        first_latch_id = 0;
-        last_latch_id = vi->latest_for_read;
-        // connect last latch output to first latch input
-        va_id = _gen_var_access_id();
-        if (itr==0) {
-            fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,);\n",
-                                    vi->width,var_access_prefix,va_id,
-                                    capture_block_prefix,vi->name, last_latch_id);
-            fprintf(_fp, "connect_exprblk_assign<%d> %s_lcd_%d(%s%d.dout,%s%s_%d.din,%s%s_%d.tx);\n", 
-                                vi->width, expr_block_output_prefix, va_id,
-                                var_access_prefix,va_id,
-                                capture_block_prefix,vi->name,first_latch_id,
-                                capture_block_prefix,vi->name,first_latch_id
-                                );
-            // connect pipe block action port to latch go port
-            fprintf(_fp,"%s%d.zero[%d] = %s%s_%d.go;\n",ring_block_prefix,block_id,
-                                                blk_port,capture_block_prefix,
-                                                vi->name,first_latch_id);
-        }
-        else if (itr==1) {
-            fprintf(_fp,"%s%d.zero[%d] = %s%s_%d.go2;\n",ring_block_prefix,block_id,
-                                                blk_port,capture_block_prefix,
-                                                vi->name,first_latch_id);
-        }
-        else {
-            fatal_error ("what");
-        }
-        break;
-
-    default:
-        fatal_error("Shouldn't be here... (generate_pipe_element_lcd)");
-        break;
+    char tname[1024];
+    get_true_name(tname, var, _p->CurScope());
+    b = hash_lookup(var_infos, tname);
+    Assert (b, "variable not found");
+    vi = (var_info *)b->v;
+    first_latch_id = 0;
+    last_latch_id = vi->latest_for_read;
+    // connect last latch output to first latch input
+    va_id = _gen_var_access_id();
+    if (itr==0) {
+        fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,);\n",
+                                vi->width,var_access_prefix,va_id,
+                                capture_block_prefix,vi->name, last_latch_id);
+        fprintf(_fp, "connect_exprblk_assign<%d> %s_lcd_%d(%s%d.dout,%s%s_%d.din,%s%s_%d.tx);\n", 
+                            vi->width, expr_block_output_prefix, va_id,
+                            var_access_prefix,va_id,
+                            capture_block_prefix,vi->name,first_latch_id,
+                            capture_block_prefix,vi->name,first_latch_id
+                            );
+        // connect pipe block action port to latch go port
+        fprintf(_fp,"%s%d.zero[%d] = %s%s_%d.go;\n",ring_block_prefix,block_id,
+                                            blk_port,capture_block_prefix,
+                                            vi->name,first_latch_id);
+    }
+    else if (itr==1) {
+        fprintf(_fp,"%s%d.zero[%d] = %s%s_%d.go2;\n",ring_block_prefix,block_id,
+                                            blk_port,capture_block_prefix,
+                                            vi->name,first_latch_id);
+    }
+    else {
+        fatal_error ("what");
     }
     return block_id;
 }
@@ -1441,19 +1280,11 @@ int RingForge::_generate_gp_connect()
 */
 int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
 {
-    // fprintf (fp, "// hello from expropt\n");
-    // create mapper object
-    // ExternalExprOpt *eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, _exprfile, 
-    //                                             expr_block_input_prefix,
-    //                                             expr_block_prefix);
-    // ExprCache *eeo = new ExprCache("abc",  ((bundled==1)?bd:qdi), false, _exprfile);
     Assert ((eeo), "No mapper exists");
 
     // collect input vars info
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
-    _invarsmap.clear();
-    // _dagify (e);
 
     auto ss1 = high_resolution_clock::now();
     e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
@@ -1469,25 +1300,21 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
         ihash_bucket_t *ib;
         ihash_iter_init (_inexprmap, &iter);
         while ((ib = ihash_iter_next (_inexprmap, &iter))) {
-        Expr *e1 = (Expr *)ib->key;
-        list_append (all_leaves, e1);
+            Expr *e1 = (Expr *)ib->key;
+            list_append (all_leaves, e1);
         }
     }
 
-    // no dots
-    config_set_int("expropt.verbose", 1);
-    config_set_int("expropt.abc_use_constraints", 1);
+    config_set_int("synth.expropt.verbose", 1);
     config_set_int("synth.expropt.abc.use_constraints", 1);
-    config_set_int("expropt.vectorize_all_ports", 1);
     config_set_int("synth.expropt.vectorize_all_ports", 1);
 
     // output bitwidth and block id for name
     int xid = _gen_expr_block_id();
-    // int out_expr_width = get_expr_width (e, p);
     int out_expr_width = out_bw;
     int delay_line_n;
 
-    if (verbose) fprintf(_fp, "// output bitwidth: %d bits",out_expr_width);
+    if (verbose) fprintf(_fp, "// output bitwidth: %d bits\n",out_expr_width);
     fprintf(_fp,"\n");
     
     if (e->type == E_INT)
@@ -1499,9 +1326,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     auto de = duration_cast<microseconds>(st1 - ss1);
     // fprintf(stdout, "\n\n// one expr duration: %lld microseconds \n\n", de.count());
 
-
     // run abc, then v2act to create the combinational-logic-for-math process
-    // ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
     ExprBlockInfo *ebi = eeo->synth_expr(out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
@@ -1516,10 +1341,8 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     {
         Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
         double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
-        // double typ_delay_ps = (ebi->getDelay().typ_val);
         if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %lfps", typ_delay_ps); }
 
-        // delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
         delay_line_n = _compute_delay_line_param(typ_delay_ps); 
         if (delay_line_n <= 0) { delay_line_n = 1; }
 
@@ -1529,14 +1352,10 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
 
     _instantiate_expr_block (ebi->getID(), xid, all_leaves, connect_inputs);
 
-    // fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",int(std::ceil(delay_line_n*delay_multiplier)),xid);
     fprintf(_fp,"delay_line_chan<%d> delay_expr_%d;\n",delay_line_n,xid);
     // fprintf (stdout, "\n// bye from expropt\n");
 
-    // eeo->~ExternalExprOpt();
-    // eeo->~ExprCache();
     ebi->~ExprBlockInfo();
-    // eeo = NULL;
     ebi = NULL;
 
     // free all temporary data structures 
@@ -1558,19 +1377,11 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
 */
 int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_inputs)
 {
-    // create mapper object
-    // ExternalExprOpt *eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, _exprfile, 
-    //                                             expr_block_input_prefix,
-    //                                             expr_block_prefix);
-
-    // ExprCache *eeo = new ExprCache("abc",  ((bundled==1)?bd:qdi), false, _exprfile);
     Assert ((eeo), "No mapper exists");
 
     // collect input vars info
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
-    _invarsmap.clear();
-    // _dagify (e);
     e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
     e = expr_dag(e);
     
@@ -1584,31 +1395,25 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
         ihash_bucket_t *ib;
         ihash_iter_init (_inexprmap, &iter);
         while ((ib = ihash_iter_next (_inexprmap, &iter))) {
-        Expr *e1 = (Expr *)ib->key;
-        list_append (all_leaves, e1);
+            Expr *e1 = (Expr *)ib->key;
+            list_append (all_leaves, e1);
         }
     }
     // no dots
-    config_set_int("expropt.verbose", 0);
-    config_set_int("expropt.abc_use_constraints", 1);
+    config_set_int("synth.expropt.verbose", 0);
     config_set_int("synth.expropt.abc.use_constraints", 1);
-    config_set_int("expropt.vectorize_all_ports", 1);
     config_set_int("synth.expropt.vectorize_all_ports", 1);
 
     int out_expr_width = 1;
 
     // run abc, then v2act to create the combinational-logic-for-math process
-    // ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
     ExprBlockInfo *ebi = eeo->synth_expr(out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
     
     Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
-    // double typ_delay_ps = (ebi->getDelay().typ_val);
-    // if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %dps", typ_delay_ps); }
 
-    // int delay_line_n = int( (typ_delay_ps/(2*invx1_delay_ps)) + 1 ); 
     int delay_line_n = _compute_delay_line_param(typ_delay_ps); 
     if (delay_line_n <= 0) { delay_line_n = 1; }
 
@@ -1616,10 +1421,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     fprintf(_fp,"\n");
     _instantiate_expr_block (ebi->getID(), xid, all_leaves, connect_inputs);
 
-    // eeo->~ExternalExprOpt();
-    // eeo->~ExprCache();
     ebi->~ExprBlockInfo();
-    // eeo = NULL;
     ebi = NULL;
 
     // free all temporary data structures 
@@ -1665,46 +1467,32 @@ void RingForge::_instantiate_expr_block (std::string expr_id, int block_id, list
             if (!strncmp(tname, "probe__of__",11))
             {
                 Assert (false, "Probe synthesis failure");
-                // printf ("\n found probe to connect\n");
-                // char *tname1 = &tname[11];
-                // connect channel request to expr block
-                // fprintf(_fp,"%s%d.%s%d[0] = %s.r;\n",expr_block_instance_prefix,block_id,
-                //                                         expr_block_input_prefix, ib->i, 
-                //                                         tname1);
             }
             else 
             {
                 hash_bucket_t *b = hash_lookup(var_infos, tname);
                 Assert (b, "var not found?");
-                // hash_bucket_t *b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
                 var_info *vi = (var_info *)b->v;
 
-                // TEST ----
                 int latch_id = vi->latest_for_read;
-                // TEST ----
-
                 Assert ((latch_id>=0),"var. read before being written?");
 
                 int va_id = _gen_var_access_id();
-                fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,%s%d.%s%d);\n",vi->width,var_access_prefix,va_id,
-                                                        capture_block_prefix,vi->name,latch_id,
-                                                        expr_block_instance_prefix,block_id,
-                                                        expr_block_input_prefix, ib->i);
-                // connect variable-latch output to expr block input
-                // fprintf(_fp,"%s%d.%s%d = %s%s_%d.dout;\n",expr_block_instance_prefix,block_id,
-                //                                         expr_block_input_prefix, ib->i, 
-                //                                         capture_block_prefix,
-                //                                         vi->name,latch_id);
+                fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,%s%d.%s%d);\n",
+                            vi->width, var_access_prefix, va_id,
+                            capture_block_prefix, vi->name, latch_id,
+                            expr_block_instance_prefix, block_id,
+                            expr_block_input_prefix, ib->i);
             }
         }
         // connect constants to math block inputs
-        else if ( e_var->type == E_INT )
-        {
+        else if ( e_var->type == E_INT ) {
             fatal_error ("This shouldn't have been used (constant as input to expr block)");
         }
         else { 
             fprintf (stdout, "e_var type: %d \n", e_var->type);
-            fatal_error ("leaf (primary input) is neither variable nor constant int?? (instantiate_expr_block)"); }
+            fatal_error ("leaf (primary input) is neither variable nor constant int?? (instantiate_expr_block)"); 
+        }
     }
 }
 
@@ -1734,7 +1522,6 @@ int RingForge::_generate_probe_circuit (Expr *g, int xid)
             Expr *e1 = new Expr;
             e1->type = E_INT;
             e1->u.ival.v = 1;
-            // _emit_expr_const (eid, 1, 1, true);
             _generate_expr_block_for_sel (e1,eid,true);
             list_iappend (m, eid);
             list_iappend (data_gl, eid);
@@ -1744,17 +1531,13 @@ int RingForge::_generate_probe_circuit (Expr *g, int xid)
             Expr *e1 = new Expr;
             e1->type = E_INT;
             e1->u.ival.v = 1;
-            // _emit_expr_const (eid, 1, 1, true);
             _generate_expr_block_for_sel (e1,eid,true);
             list_iappend (m, eid);
             list_iappend (data_gl, eid);
         }
         else {
-            // _emit_one_guard_expr (tmp, m);
             int eid = _gen_expr_block_id ();
             _generate_expr_block_for_sel (tmp,eid,true);
-            // list_iappend (data_gl,
-            //             list_ivalue (list_tail (m)));
             list_iappend (m, eid);
             list_iappend (data_gl,eid);
         }
@@ -1973,36 +1756,11 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
     break;
     
   case E_INT:
-    if (0) {
-    if (collect_phase) {
-        int w = 0;
-        int val = e->u.ival.v;
-        if (val < 0) {
-          val = -val;
-          w = 32;
-        }
-        else {
-          while (val) {
-            val >>= 1;
-            w++;
-          }
-        }
-        if (w == 0) {
-          w = 1;
-        }
-        ihash_bucket_t *ib = ihash_add (_inexprmap, (long) e);
-        ib->i = _gen_expr_id ();
-        ihash_bucket_t *b_width;
-        b_width = ihash_add (_inwidthmap, (long) e);
-        b_width->i = w;
-    }
-    }
     break;
 
   case E_BITFIELD:
   case E_VAR:
     if (collect_phase) {
-        // fprintf(stdout, "\nle: %lu\n", long(e));
         ActId *var = (ActId *)e->u.e.l;
         var_info *vi;
         hash_bucket_t *b;
@@ -2010,7 +1768,6 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
         get_true_name(tname, var, _p->CurScope());
         b = hash_lookup(var_infos, tname);
         Assert (b, "no var info?");
-        // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
         vi = (var_info *)b->v;
         ihash_bucket_t *ib;
         ihash_bucket_t *b_width;
@@ -2022,15 +1779,9 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
             b_width->i = vi->width;
         }
     }
-    else {
-    //   ihash_bucket_t *b;
-    //   b = ihash_lookup (_inexprmap, (long)e);
-    //   _emit_var_read (b->i, (ActId *)e->u.e.l);
-    }
     break;
 
   case E_PROBE:
-    // fatal_error ("fix probes please");
     if (collect_phase) {
         // make dummy variable to stand in for probe
         InstType *it = TypeFactory::Factory()->NewInt (_p->CurScope(), Type::NONE, 0, const_expr(1));
@@ -2045,7 +1796,6 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
         snprintf(buf, 1024, "probe_of_%s", tname);
         _p->CurScope()->Add (buf, it);
 
-        // Expr *ee = new Expr;
         // Replace the probe in the original expression with dummy var
         e->type = E_VAR;
         e->u.e.l = (Expr *)(new ActId (buf));
@@ -2053,9 +1803,6 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
         auto tst = _p->CurScope()->Lookup((ActId *)e->u.e.l);
         Assert (tst, "hmm new id");
 
-        // auto b = hash_add(var_infos, buf);
-        // b = hash_lookup(var_infos, tname);
-        // vi = (var_info *)b->v;
         ihash_bucket_t *ib;
         ihash_bucket_t *b_width;
         if (!ihash_lookup (_inexprmap, (long)e)) 
@@ -2066,7 +1813,6 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
             b_width->i = 1;
         }
     }
-
     break;
     
   case E_FUNCTION:
@@ -2139,8 +1885,7 @@ int RingForge::_connect_sel_split_outputs_to_pipe (int sel_split_block_id, int p
     Connect the output of guard evaluator to a given guard input
     of a selection split block. 
 */
-int RingForge::_connect_guards_to_sel_split_input (int sel_split_block_id,
-                                        int expr_block_id, int sel_split_guard_port)
+int RingForge::_connect_guards_to_sel_split_input (int sel_split_block_id, int expr_block_id, int sel_split_guard_port)
 {
     // inst_i.out is always size-1 array, not just a bool (1-bit datapath compatibility)
     fprintf(_fp,"block_%d.gs[%d] = %s%d.out[0];\n",sel_split_block_id,sel_split_guard_port,
@@ -2206,6 +1951,7 @@ list_t *RingForge::_create_channel_accesses(list_t *ics)
     Non-SSA style Datapath. 
     [Deprecated]
 */
+#if 0
 int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int prev_block_id, int connect_prev)
 {
     int block_id, expr_block_id, first_block_id;
@@ -2511,6 +2257,7 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
     }
     return block_id;
 }
+#endif
 
 /*
     General synthesis for branched programs. Generates a branched ring
@@ -2566,7 +2313,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             fprintf(_fp,"\n");
             pll_split_block_id = _generate_parallel_split(comma_len);
             pll_merge_block_id = _generate_parallel_merge(comma_len);
-            // connect_pipe_to_pll_split_input(fp, pll_split_block_id, prev_block_id);
             _connect_pipe_elements(prev_block_id, pll_split_block_id);
 
             pll_port = 0;
@@ -2599,8 +2345,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             first_block_id = _generate_itb();
             prev_block_id = first_block_id;
 
-            // new I.C. handling method -----
-#if 1
             // loop through initial condition assignments to create latches with correct initial values
             list_t *ic_list  = list_dup((list_t *)(((latch_info_t *)(main_loop->space))->live_vars));
 
@@ -2616,8 +2360,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;
                     Expr *e = stmt1->u.assign.e;
-                    // Assert (e->type == E_INT, "Constants only in initial conditions");
-                    // long long ival = e->u.ival.v;
                     unsigned long ival = eval_ic(e);
                     char tname[1024];
                     get_true_name(tname, id, _p->CurScope());
@@ -2643,16 +2385,12 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                 _print_list_of_vars (stderr, ic_list);
                 fatal_error ("The above variables were uninitialized in the program. Initialize them please.");
             }
-#endif
-            // new --------------------------
 
             // main program synthesis
             gc = main_loop->u.gc;
             block_id = generate_branched_ring(gc->s, 0, prev_block_id, 1);
             prev_block_id = block_id;
 
-#if 1
-            // new I.C. handling method -----
             int n_lcd = 0;
             // Find actual no. of LCDs
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) {
@@ -2703,7 +2441,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                 _print_list_of_vars (stderr, ic_list);
                 fatal_error ("The above variables were uninitialized in the program. Initialize them please.");
             }
-#endif
 
             _connect_pipe_elements(prev_block_id, first_block_id);
             break;
@@ -2755,12 +2492,11 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         max_delay_n_sel = 0;
 
         if (verbose) {
-            fprintf (_fp, "\n// %d-way selection split for : ", gc_len);
+            fprintf (_fp, "\n// %d-way selection split and merge for : ", gc_len);
             chp_print(_fp, c);
         }
         fprintf (_fp, "\n");
-        if (verbose) fprintf (_fp, "// %d-way selection merge", gc_len);
-        fprintf (_fp, "\n");
+
         if (!(_guards_have_probes(gc))) {
             sel_split_block_id = _generate_selection_split(gc_len);
         }
@@ -2779,7 +2515,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         gp_connect_ids = list_new();
         for (int i = 0; gc; gc = gc->next)
         {
-            // branch_id++;
             Assert ((gc->g) , "should've been fixed in else generation");
             if (have_probes)
             {   
@@ -2801,26 +2536,20 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         gc = c->u.gc;
         for (int i = 0; gc; gc = gc->next)
         {   
-            // _branch_id++;
-            // _save_read_ids();
             _push_read_ids();
             block_id = generate_branched_ring (gc->s, 0, list_ivalue(lj), 1);
             _connect_pipe_to_sel_merge_inputs (sel_merge_block_id, block_id, i);
-            // _restore_read_ids();
             _pop_and_restore_read_ids();
             i++; lj = list_next(lj);
         }
 
         // muxing variables live-out of merge so downstream can access correctly
         muxed_vars = {};
-        // tmp = _compute_merge_mux_info((latch_info_t *)(c->space), sel_split_block_id, muxed_vars);
         tmp = _compute_merge_mux_info((latch_info_t *)(c->space), sel_merge_block_id, muxed_vars);
         delay_n_merge = tmp.second;
         n_muxes = tmp.first;
         Assert (n_muxes>=0, "what");
         Assert (n_muxes == muxed_vars.size(), "what2");
-
-        // delay_n_merge = 0;
 
         // generate delay line for max guard evaluator delay (split)
         Assert (max_delay_n_sel>=0, "negative delay?");
@@ -2846,11 +2575,9 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             if (verbose) fprintf(_fp,"\n// Delaying post-merge-block sync. by max. delay of all merge muxes");
             fprintf(_fp,"\n");
             if (n_muxes==0) { // can't create zero-length arrays
-                // fprintf(_fp,"delay_line_chan<%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),ring_block_prefix, delay_merge_block_id);
                 fprintf(_fp,"delay_line_chan<%d> %s%d;\n",delay_n_merge,ring_block_prefix, delay_merge_block_id);
             }
             else {
-                // fprintf(_fp,"delay_line_merge<%d,%d> %s%d;\n",int(std::ceil(delay_n_merge*delay_multiplier)),n_muxes,ring_block_prefix, delay_merge_block_id);
                 fprintf(_fp,"delay_line_merge<%d,%d> %s%d;\n",delay_n_merge,n_muxes,ring_block_prefix, delay_merge_block_id);
                 int i = 0;
                 for ( auto var : muxed_vars ) {
@@ -2871,8 +2598,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         {
             block_id = sel_merge_block_id;
         }
-
-        // _save_read_ids();
         break;
         
     case ACT_CHP_SKIP:
@@ -2880,7 +2605,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     case ACT_CHP_ASSIGNSELF:
     case ACT_CHP_SEND:
     case ACT_CHP_RECV:
-        // do stuff
         if (c->label && !strcmp(c->label,"pause"))
         {
             block_id = _generate_pause_element();
@@ -3019,8 +2743,6 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
         for ( auto z : l->merge_mux_inputs.at(ctr) )
         {
             if (z == pre_sel_latch) {
-                // fprintf (_fp, "or_%s_%d.in[%d] = %s%d.co[%d].r;\n", vi->name, mux_id, ctr2, 
-                //                     ring_block_prefix, split_block_id, ctr3);
                 // NOTE: THIS IS MERGE BLOCK ID NOW
                 fprintf (_fp, "or_%s_%d.in[%d] = %s%d.ci[%d].r;\n", vi->name, mux_id, ctr2, 
                                     ring_block_prefix, split_block_id, ctr3); 
@@ -3061,9 +2783,6 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
             else if (zz != pre_sel_latch) 
             {
                 // connect mux input control
-                // fprintf (_fp, "%s%s_%d.c[%d] = %s%d.co[%d].r;\n", capture_block_prefix, vi->name, 
-                //                                         mux_id, ctr_mux_port, ring_block_prefix, 
-                //                                     split_block_id, ctr_sel_br);
                 // NOTE: THIS IS MERGE BLOCK ID NOW
                 fprintf (_fp, "%s%s_%d.c[%d] = %s%d.ci[%d].r;\n", capture_block_prefix, vi->name, 
                                                         mux_id, ctr_mux_port, ring_block_prefix, 
@@ -3109,19 +2828,16 @@ double RingForge::_lookup_mux_delays (int mux_sz, int or_sz)
 void RingForge::_print_list_of_vars (FILE *fp, list_t *vars)
 {
     listitem_t *li;
-    if (list_isempty(vars))
-    {
+    if (list_isempty(vars)) {
         fprintf (fp, "\nempty list\n");
         return;
     }
   
     fprintf(fp, "\n-----------\n");
-    for (li = list_first(vars); li; li = list_next(li)) 
-    {
+    for (li = list_first(vars); li; li = list_next(li)) {
         fprintf(fp, "%s, ", (char *)list_value(li));
     }	     
-    fprintf(fp, "\n-----------");
-    fprintf(fp, "\n\n");
+    fprintf(fp, "\n-----------\n\n");
     return;
 }
 
