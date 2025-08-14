@@ -28,8 +28,6 @@
 class RingEngine {
     public:
         RingEngine ( FILE *fp, 
-            // Process *p, act_chp_lang_t *c,
-            // ActBooleanizePass *bp, 
             const char *circuit_library,
             const char *exprfile);
     
@@ -48,8 +46,6 @@ class RingEngine {
 
         ActBooleanizePass *_bp; 
 
-        // virtual void _run_forge_helper ();
-
         // Info collection
         void construct_var_infos (act_chp_lang_t *c);
         void print_var_infos (FILE *fp);
@@ -67,9 +63,6 @@ class RingEngine {
         // Save and restore state of var_infos 
         void save_var_infos ();
         void restore_var_infos ();
-
-        void _push_read_ids();
-        void _pop_and_restore_read_ids();
 
         // Merge mux info builder functions ---------
         void _construct_merge_latch_info (act_chp_lang_t *, int);
@@ -93,7 +86,8 @@ class RingEngine {
 
         // Internal helper functions
         void _save_read_ids ();
-        void _restore_read_ids ();
+        void _push_read_ids();
+        void _pop_and_restore_read_ids();
         var_info *_deepcopy_var_info (var_info *v, int only_read_id);
         Hashtable *_deepcopy_var_info_hashtable (Hashtable *h_in, int only_read_id);
 

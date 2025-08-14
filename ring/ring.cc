@@ -23,15 +23,10 @@
 #include "ring.h"
 
 RingEngine::RingEngine ( FILE *fp, 
-            // Process *p, act_chp_lang_t *c,
-            // ActBooleanizePass *bp, 
             const char *circuit_library,
             const char *exprfile )
             {
                 _fp = fp;
-                // _p = p;
-                // _c = c;
-                // _bp = bp;
                 _circuit_library = Strdup(circuit_library);
                 _exprfile = Strdup(exprfile);
 
@@ -68,10 +63,6 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     break;
 
   case ACT_CHP_ASSIGN:
-    // _chkdynamic (c->u.assign.id);
-    // if (_isdynamic_var) {
-    //   return;
-    // }
     if (id->isEqual(c->u.assign.id))
     { 
       if((latch_info_t *)(c->space))
@@ -82,16 +73,9 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     }
     if ( _var_appears_in_expr (c->u.assign.e, id) )
       v->nread++;
-    // if (x != v->nread) {
-    //   c->type = ACT_CHP_ASSIGNSELF;
-    // }
     break;
 
   case ACT_CHP_SEND:
-    // _chkdynamic (c->u.comm.chan);
-    // if (_isdynamic_var) {
-    //   return;
-    // }
     if (v->fischan==1) {
       if (id->isEqual(c->u.comm.chan))
         v->iwrite++;
@@ -125,7 +109,6 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     break;
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_LOOP:
   case ACT_CHP_SELECT:
   case ACT_CHP_DOLOOP:
@@ -149,7 +132,6 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -293,7 +275,6 @@ bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
     break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -344,7 +325,6 @@ int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux
   }
     break;
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
   {
     act_chp_gc_t *gc = c->u.gc;
@@ -373,7 +353,6 @@ int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -433,7 +412,6 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
     break;
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
   {
     latch_number = _compute_mergemux_info (branch, vi, latch_number);
@@ -441,7 +419,6 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -498,7 +475,6 @@ void RingEngine::print_merge_mux_infos (FILE *fp, act_chp_lang_t *c)
     break;
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
   {
     act_chp_gc_t *gc = c->u.gc;
@@ -516,7 +492,6 @@ void RingEngine::print_merge_mux_infos (FILE *fp, act_chp_lang_t *c)
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -640,8 +615,6 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
     break;
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); 
-    // break;
   case ACT_CHP_SELECT:
   {
     std::vector<int> latests;
@@ -666,7 +639,6 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -704,8 +676,8 @@ bool RingEngine::_check_all_muxes_mapped (act_chp_lang_t *c, bool fail)
     Assert (!(gc->next), "more than one loop branch at top-level?");
   }
     break;
+
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
   {
     act_chp_gc_t *gc = c->u.gc;
@@ -741,7 +713,6 @@ bool RingEngine::_check_all_muxes_mapped (act_chp_lang_t *c, bool fail)
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -782,7 +753,6 @@ bool RingEngine::_check_no_self_assignments (act_chp_lang_t *c, bool fail)
   }
     break;
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
   {
     act_chp_gc_t *gc = c->u.gc;
@@ -794,7 +764,6 @@ bool RingEngine::_check_no_self_assignments (act_chp_lang_t *c, bool fail)
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -867,7 +836,6 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         v->latest_for_read = 0;
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
-        // fprintf(stdout, "found a chan\n");
         _construct_var_info (c, id, v);
         if (v->iwrite>1 || v->iread>1) {
           fprintf(stderr, "\nChan name: %s\n", v->name);
@@ -975,24 +943,6 @@ void RingEngine::restore_var_infos ()
     hash_clear (var_infos_copy);
 }
 
-#if 0
-void RingEngine::_restore_read_ids ()
-{
-    hash_bucket_t *b, *b_saved;
-    var_info *vi, *vi_saved;
-    hash_iter_t itr;
-    hash_iter_init (var_infos, &itr);
-    while ((b = hash_iter_next (var_infos, &itr))) {
-      b_saved = hash_lookup(var_infos_read_ids, b->key);
-      Assert (b_saved, "No var_info_read_id ??");
-      vi_saved = (var_info *)b_saved->v;
-      vi = (var_info *)b->v;
-      vi->latest_for_read = vi_saved->latest_for_read;
-    }
-    hash_clear (var_infos_read_ids);
-}
-#endif
-
 var_info *RingEngine::_deepcopy_var_info (var_info *v, int only_read_id)
 {
   var_info *v_copy;
@@ -1097,9 +1047,6 @@ bool RingEngine::is_elementary_action(act_chp_lang_t *c)
     case ACT_CHP_SELECT_NONDET:
         return false;
         break;
-
-        // fatal_error ("Can't handle NDS");
-        // return false;
         
     case ACT_CHP_SKIP:
     case ACT_CHP_ASSIGN:
@@ -1190,8 +1137,6 @@ bool RingEngine::chp_has_branches (act_chp_lang_t *c, int root)
         }
         break;
 
-        // fatal_error ("Can't handle NDS");
-        
     case ACT_CHP_SKIP:
     case ACT_CHP_ASSIGN:
     case ACT_CHP_ASSIGNSELF:
@@ -1226,6 +1171,7 @@ int RingEngine::_var_in_list (const char *name, list_t *l)
   return NOT_FOUND;
 }
 
+// Note: UNUSED
 int RingEngine::get_expr_width(Expr *ex)
 {
   // recursively run through the expression and collect its width
@@ -1239,7 +1185,6 @@ int RingEngine::get_expr_width(Expr *ex)
     char tname[1024];
     get_true_name(tname, var, _p->CurScope());
     b = hash_lookup(var_infos, tname);
-    // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
     var_info *vi = (var_info *)b->v;
     return vi->width;
   }
@@ -1271,7 +1216,6 @@ int RingEngine::get_expr_width(Expr *ex)
     int lw = get_expr_width(ex->u.e.l);
     int rw = get_expr_width(ex->u.e.r);
     return std::max(lw,rw);
-    // @TODO genus trys to tie the top bit and i dont know why
     // return std::max(lw,rw)+1;
   }
   // comparisons result in a bool so 1, do not walk further
@@ -1347,13 +1291,6 @@ int RingEngine::get_expr_width(Expr *ex)
     break;
 
   case E_BITFIELD:
-    // _var_getinfo ((ActId *)ex->u.e.l);
-    // if (ex->u.e.r->u.e.l) {
-    //   return (ex->u.e.r->u.e.r->u.ival.v - ex->u.e.r->u.e.l->u.ival.v + 1);
-    // }
-    // else {
-    //   return 1;
-    // }
     fatal_error ("Not handling bitfields right now.");
     break;
 
@@ -1362,7 +1299,6 @@ int RingEngine::get_expr_width(Expr *ex)
     break;
 
   case E_PROBE:
-    // fatal_error ("fix probes please");
     return 1;
     break;
     
