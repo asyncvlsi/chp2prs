@@ -17,7 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 #include <stdio.h>
 #include <unistd.h>
@@ -332,9 +332,11 @@ int main(int argc, char **argv)
   auto duration1 = duration_cast<microseconds>(mid - start);
   auto duration2 = duration_cast<microseconds>(stop - mid2);
   if (run_time) {
-    fprintf(stdout, "\n// total duration: %lld microseconds \n", duration.count());
-    fprintf(stdout, "\n// core lib duration: %lld microseconds \n", duration1.count());
-    fprintf(stdout, "\n// pass duration: %lld microseconds \n", duration2.count());
+    fprintf(stdout, "\n// ---------- Top-level Runtimes ---------- ");
+    fprintf(stdout, "\n// Total            : %-8lld microseconds", duration.count());
+    fprintf(stdout, "\n// ACT Core Library : %-8lld microseconds", duration1.count());
+    fprintf(stdout, "\n// Synthesis Pass   : %-8lld microseconds", duration2.count());
+    fprintf(stdout, "\n");
   }
 
   return 0;

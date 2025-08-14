@@ -1,6 +1,7 @@
 /*************************************************************************
  *
  *  Copyright (c) 2024 Rajit Manohar
+ *  Copyright (c) 2025 Karthi Srinivasan
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -17,7 +18,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 #include "synth.h"
 #include "engines.h"
@@ -207,9 +208,10 @@ class RingSynth : public ActSynthesize {
 
       int print_rt = dp->getIntParam ("run_time");
       if (print_rt) {
-        fprintf(stdout, "\n\n// forge duration: %lld microseconds \n\n", d2.count());
-        fprintf(stdout, "// process ABC duration: %lld microseconds\n\n", tf->get_runtime());
-        fprintf(stdout, "// process ABC I/O duration: %lld microseconds\n", tf->get_io_runtime());
+        fprintf(stdout, "\n// ----------- Process Runtimes ----------- ");
+        fprintf(stdout, "\n// Maelstrom        : %-8lld microseconds", d2.count());
+        fprintf(stdout, "\n// ABC              : %-8lld microseconds", tf->get_runtime());
+        fprintf(stdout, "\n// ABC I/O          : %-8lld microseconds", tf->get_io_runtime());
         fprintf(stdout, "\n");
       }
       fprintf(stdout, "\n");
