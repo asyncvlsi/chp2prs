@@ -17,7 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
 #include "ring_else_gen.h"
@@ -196,7 +196,6 @@ void expand_self_assignments (act_chp_lang_t *&c, Process *p)
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -261,7 +260,6 @@ void flatten_lists (act_chp_lang_t *&c, Process *p)
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -347,7 +345,6 @@ void make_receives_unique (act_chp_lang_t *&c, Process *p)
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -417,12 +414,6 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
     break;
 
   case E_BITFIELD:
-    /* l is an Id */
-    // v = _var_getinfo ((ActId *)e->u.e.l);
-    // if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
-    //   v->nread++;
-    //   v->fcurexpr = 1;
-    // }
     return id->isEqual((ActId *)(e->u.e.l));
     break;
 
@@ -437,10 +428,6 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
   case E_PROBE:
     return id->isEqual((ActId *)(e->u.e.l));
     break;
-
-    // fatal_error ("Not handling probes right now");
-    // return false;
-    // break;
 
   case E_BUILTIN_BOOL:
   case E_BUILTIN_INT:

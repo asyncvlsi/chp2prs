@@ -17,7 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
 #ifndef __ACT_RING_LIVE_VARS_H__
@@ -96,12 +96,6 @@ class LiveVarAnalysis {
         
         void _add_to_live_vars_lcd (ActId *id);
         void _tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *action);
-
-        // Not used, this processing might be done in opt
-        // void _generate_live_var_bits (act_chp_lang_t *c, int root);
-        // int  _compute_total_bits (list_t *var_list);
-        // void _update_tx_bits(int bits);
-        // void _update_tx_bits(ActId *id, int mode);
         
 };
 

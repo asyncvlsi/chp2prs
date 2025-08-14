@@ -24,7 +24,6 @@
 
 #include "ring/reqs.h"
 #include "ring/ring_else_gen.h"
-// #include "ring/ring_forge.h"
 #include "ring/tiny_forge.h"
 
 #include "opt/chp-opt.h"
@@ -187,11 +186,6 @@ class RingSynth : public ActSynthesize {
       mangle_init();
       fill_in_else_explicit (c, p, 1);
       flatten_lists (c, p);
-      
-      // for non-ssa style only
-      if (dpath_style) expand_self_assignments (c, p);
-      // for qdi only
-      // if (!bundled) make_receives_unique (c, p);
 
       ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
       b->run(p);
@@ -204,8 +198,7 @@ class RingSynth : public ActSynthesize {
 
       fprintf(stdout, "// %s : ",p->getName());
       auto ss1 = high_resolution_clock::now();
-      // if (tf->check_if_pipeable(c))
-      if (false)
+      if (tf->check_if_pipeable(c))
         tf->run_tiny_forge();
       else
         tf->run_forge();

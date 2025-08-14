@@ -17,7 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
 #include "ring_forge.h"
@@ -40,8 +40,6 @@ class TinyForge : public RingForge {
     public: 
 
     TinyForge ( FILE *fp, 
-            // Process *p, act_chp_lang_t *c,
-            // ActBooleanizePass *bp, 
             int bdpath,
             int delay_margin, int dp_style, 
             const char *circuit_library,

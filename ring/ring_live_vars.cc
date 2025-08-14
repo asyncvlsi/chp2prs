@@ -17,7 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
 #include "ring_live_vars.h"
@@ -226,7 +226,6 @@ void LiveVarAnalysis::_remove_from_live_vars (ActId *id, bool mangle=true)
             return;
         }
     }
-    // fatal_error ("Attempted to delete variable not in live-var list");
     return;
 }
 
@@ -265,7 +264,6 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action, int is
     l_info->live_vars = list_dup(req_vars);
 
     action->space = l_info;
-    // action->space = list_dup(req_vars);
 }
 
 void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *action)
@@ -307,7 +305,6 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
     l_info->live_vars = list_dup(req_vars);
 
     action->space = l_info;
-    // action->space = list_dup(req_vars);
 }
 
 void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
@@ -366,7 +363,6 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
             gc = c_t->u.gc;
             _generate_live_var_info (gc->s, 0);
             _tag_action_with_reqd_vars_union_lcd (c_t);
-            // _print_var_list ((list_t *)c_t->space);
             break;
         }
         else
@@ -393,8 +389,6 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
         }
         deepcopy_hashtable (H_out, H_live);
         break;
-
-        // fatal_error ("Can't handle NDS");
         
     case ACT_CHP_SKIP:
         break;
@@ -450,7 +444,8 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
             for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
             {
                 stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) _print_live_var_info (stmt, 1);
+                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) 
+                    _print_live_var_info (stmt, 1);
             }
             break;
         }
@@ -467,7 +462,6 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
         {
             chp_print (fp, c_t);
             _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
-            // _print_var_list((list_t *)c_t->space);
             gc = c_t->u.gc;
             _print_live_var_info (gc->s, 0);
             break;
@@ -482,14 +476,10 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
     case ACT_CHP_SELECT_NONDET:
         chp_print (fp, c_t);
         _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
-        // _print_var_list((list_t *)c_t->space);
         for (gc = c_t->u.gc ; gc ; gc = gc->next)
         {
             _print_live_var_info (gc->s, 0);
         }
-        break;
-
-        // fatal_error ("Can't handle NDS");
         break;
 
     case ACT_CHP_SKIP:
@@ -504,13 +494,11 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
     case ACT_CHP_RECV:
         chp_print (fp, c_t);
         _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
-        // _print_var_list((list_t *)c_t->space);
         break;
 
     case ACT_CHP_SEND:
         chp_print (fp, c_t);
         _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
-        // _print_var_list((list_t *)c_t->space);
         break;
 
     case ACT_CHP_FUNC:

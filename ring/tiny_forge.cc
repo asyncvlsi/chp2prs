@@ -17,22 +17,12 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
 #include "tiny_forge.h"
 
-// TODO: Handling last action selection
-
-#define TERM_SINK 0
-#define TERM_SRC 1
-
-// Name prefixes
-
-TinyForge::TinyForge ( FILE *fp, 
-            // Process *p, act_chp_lang_t *c,
-            // ActBooleanizePass *bp, 
-            int bdpath,
+TinyForge::TinyForge ( FILE *fp, int bdpath,
             int delay_margin, int dp_style, 
             const char *circuit_library,
             const char *exprfile )
@@ -49,7 +39,6 @@ void TinyForge::run_tiny_forge ()
     lva->generate_live_var_info();
 
     construct_var_infos (_c);
-    // _run_forge (_c, 1);
     prog_signature.clear();
     _build_prog_signature (_c, 1);
     _run_forge_new (_c, prog_signature);
@@ -233,11 +222,13 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
 }
 
 /*
+    Deprecated.
     Optimized synthesis for small programs. Single pipe element which 
     sequences 3 actions. Currently only works for linear programs. 
     Can be extended to work with branched programs with the correct 
     (action signature on each branch is the same) structure.  
 */
+#if 0
 void TinyForge::_run_forge (act_chp_lang_t *c, int root)
 {   
     listitem_t *li;
@@ -274,7 +265,6 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
         var = stmt1->u.comm.var;
         chan = stmt1->u.comm.chan;
         chan2 = stmt2->u.comm.chan;
-        // chan = stmt2->u.comm.chan;
         get_true_name (chan_name, chan2, _p->CurScope());
         it = _p->CurScope()->Lookup(chan);
         bw = TypeFactory::bitWidth(it);
@@ -346,12 +336,15 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
     }
     return;
 }
+#endif
 
 /*
+    Deprecated.
     Given a pipeline element, port and mode (either source or sink), 
     terminate that port with the correct element. This is used for 
     tying off unused ports in the pipeline element. 
 */
+#if 0
 void TinyForge::_terminate_port (int block_id, Port port, Term mode)
 {   
     int term_inst;
@@ -382,3 +375,4 @@ void TinyForge::_terminate_port (int block_id, Port port, Term mode)
 
     return;
 }
+#endif
