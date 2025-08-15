@@ -741,9 +741,22 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
 
     int pos = 0;
     ActId *tail = var->Tail ();
-    // need an extra celem for completion T_T
-    fprintf(_fp, "parallel_split<%d> c_compl;\n", (nb+ni));
-    fprintf(_fp, "c_compl.m1 = %s%d.data;\n", ring_block_prefix, block_id);
+
+    int bw = struct_bw(var);
+    // use a wide latch to capture everything at once
+    // then place dummies on output for compatibility
+    fprintf(_fp, "capture<%d,%d,%d> %s_struct_%d;\n", 
+                    _compute_delay_line_param(capture_delay), 
+                    _compute_delay_line_param(pulse_width), 
+                    bw, capture_block_prefix, block_id);
+    // FIXME: this might cause issues in qdi datapath...
+    fprintf(_fp, "%s_struct_%d.go = %s%d.data;\n",capture_block_prefix,
+                    block_id, ring_block_prefix, block_id);
+    fprintf(_fp, "%s_struct_%d.din = %s.d;\n",capture_block_prefix,
+                    block_id, chan_name);
+    fprintf(_fp, "%s_struct_%d.tx.a = %s.a;\n",capture_block_prefix,
+                    block_id, chan_name);
+
     for (int i=ni+nb-1; i >=0; i--) 
     {
         int sz;
@@ -761,16 +774,19 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
         int latch_id = ++vi->latest_for_read;
         vi->iwrite++;
         
-        fprintf(_fp, "capture<%d,%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
-                                                    _compute_delay_line_param(pulse_width), 
-                                                vi->width, capture_block_prefix, vi->name, latch_id);
-
-        fprintf(_fp, "%s%s_%d.go = c_compl.co[%d];\n",capture_block_prefix,
-                        vi->name,latch_id,i);
-        fprintf(_fp, "%s%s_%d.din = %s.d[%d..%d];\n",capture_block_prefix,
-                                        vi->name,latch_id,chan_name, pos, pos+lw-1);
-        fprintf(_fp, "%s%s_%d.tx.a = %s.a;\n",capture_block_prefix,
-                                        vi->name,latch_id,chan_name);
+        fprintf(_fp, "capture_dummy<%d,%d,%d> %s%s_%d;\n", 
+                    _compute_delay_line_param(capture_delay), 
+                    _compute_delay_line_param(pulse_width), 
+                    vi->width, capture_block_prefix, vi->name, latch_id);
+        fprintf(_fp, "%s%s_%d.go.r = %s_struct_%d.go.a;\n",
+                        capture_block_prefix, vi->name, latch_id,
+                        capture_block_prefix, block_id);
+        fprintf(_fp, "%s%s_%d.din = %s_struct_%d.dout[%d..%d];\n",
+                        capture_block_prefix, vi->name, latch_id,
+                        capture_block_prefix, block_id, pos, pos+lw-1);
+        fprintf(_fp, "%s%s_%d.tx.a = %s.a;\n",
+                        capture_block_prefix, vi->name, latch_id,
+                        chan_name);
 
         pos += lw;
 
@@ -917,9 +933,10 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             fprintf(_fp,"%s%d.ch = %s;\n\n",conn_block_prefix,block_id,chan_name);
 
             expr_inst_id = _generate_expr_block(e,bw,true);
-            fprintf(_fp,"connect_exprblk_dout<%d> %s%d(%s%d.out,%s%d.e);\n",bw,expr_block_output_prefix, expr_inst_id,
-                                                    expr_block_instance_prefix,expr_inst_id,
-                                                    conn_block_prefix,block_id);
+            fprintf(_fp,"connect_exprblk_dout<%d> %s%d(%s%d.out,%s%d.e);\n",bw,
+                            expr_block_output_prefix, expr_inst_id,
+                            expr_block_instance_prefix,expr_inst_id,
+                            conn_block_prefix,block_id);
 
             // connect to delay_line
             fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
@@ -976,7 +993,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                                             vi->name,latch_id,chan_name);
         }
         else { // dataless action
-            fprintf(_fp,"%s%d.data.r = %s%d.data.a;\n",ring_block_prefix,block_id,ring_block_prefix,block_id);
+            fprintf(_fp,"%s%d.data.r = %s%d.data.a;\n",ring_block_prefix,
+                            block_id,ring_block_prefix,block_id);
         }
         break;
 
