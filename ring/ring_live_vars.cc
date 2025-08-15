@@ -75,12 +75,8 @@ void LiveVarAnalysis::_add_to_live_vars (ActId *id, bool mangle = true)
         }
     }
     else {
-        get_true_name(tname, id, p->CurScope(), mangle);
-        b = hash_lookup(H_live, tname);
-        if (!b)
-        {
-            hash_add (H_live, tname);
-        } 
+        Assert (id, "what");
+        H_live.insert(id->Canonical(p->CurScope()));
     }
 }
 
@@ -219,26 +215,15 @@ void LiveVarAnalysis::_remove_from_live_vars (ActId *id, bool mangle=true)
         }
     }
     else {
-        get_true_name (tname, id, p->CurScope());
-        if (hash_lookup (H_live, tname))
-        {
-            hash_delete (H_live, tname);
-            return;
-        }
+        if (H_live.contains(id->Canonical(p->CurScope())))
+            H_live.erase(id->Canonical(p->CurScope()));
     }
     return;
 }
 
 void LiveVarAnalysis::_add_to_live_vars_lcd (ActId *id)
 {
-    char tname[1024];
-    get_true_name (tname, id, p->CurScope());
-    hash_bucket_t *b;
-    b = hash_lookup (H_lcd, tname);
-    if (!b)
-    {
-        hash_add (H_lcd, tname);
-    } 
+    H_lcd.insert(id->Canonical(p->CurScope()));
 }
 
 void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action, int is_latch)
@@ -250,18 +235,16 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action, int is
 
     hash_bucket_t *b;
     hash_iter_t itr;
-    list_t *req_vars = list_new();
-    hash_iter_init (H_live, &itr);
-    while ((b = hash_iter_next(H_live, &itr))) 
-    {
-        list_append (req_vars, Strdup(b->key));
+    std::vector<act_connection *> req_vars;
+    for ( auto v : H_live ) {
+        req_vars.push_back(v);
     }
     latch_info_t *l_info;
     l_info = new latch_info_t;
     l_info->merge_mux_latch_number.clear();
     l_info->merge_mux_inputs.clear();
     l_info->type = (is_latch==0) ? (LatchType::Alias) : (LatchType::Latch);
-    l_info->live_vars = list_dup(req_vars);
+    l_info->live_vars = req_vars;
 
     action->space = l_info;
 }
@@ -275,21 +258,16 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
              (action->type == ACT_CHP_SELECT_NONDET)),"not selection");
 
     hash_bucket_t *b, *b2;
-    list_t *req_vars = list_new();
-    hash_iter_t itr, itr2;
-    hash_iter_init (H_lcd, &itr);
-    while ((b = hash_iter_next(H_lcd, &itr))) 
-    {
-        if (!hash_lookup(H_live, b->key))
-        {
-            list_append (req_vars, Strdup(b->key));
-        }
+
+    std::vector<act_connection *> req_vars;
+
+    for ( auto v : H_lcd ) {
+        if (!H_live.contains(v))
+            req_vars.push_back(v);
     }
-    hash_iter_init (H_live, &itr2);
-    while ((b2 = hash_iter_next(H_live, &itr2))) 
-    {
-        list_append (req_vars, Strdup(b2->key));
-    }	     
+    for ( auto v : H_live ) {
+        req_vars.push_back(v);
+    }
 
     latch_info_t *l_info;
     l_info = new latch_info_t;
@@ -302,7 +280,8 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
     else {
         l_info->type = LatchType::Mux;
     }
-    l_info->live_vars = list_dup(req_vars);
+    // l_info->live_vars = list_dup(req_vars);
+    l_info->live_vars = req_vars;
 
     action->space = l_info;
 }
@@ -313,7 +292,8 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
     list_t *copy_list;
     act_chp_lang_t *stmt;
     act_chp_gc_t *gc;
-    Hashtable *H_dup, *H_out;
+    // Hashtable *H_dup, *H_out;
+    std::set<act_connection *> H_dup, H_out;
     
     if (!c_t) return;
 
@@ -375,19 +355,17 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
     case ACT_CHP_SELECT_NONDET:
         // for selections alone, live = live_out of merge
         _tag_action_with_reqd_vars_union_lcd (c_t);
-        H_dup = hash_new (4);
-        H_out = hash_new (4);
-        deepcopy_hashtable (H_live, H_dup);
-        hash_clear (H_out);
+        H_dup = H_live;
+        H_out = {};
         for (gc = c_t->u.gc ; gc ; gc = gc->next)
         {
             _add_to_live_vars (gc->g);
             _generate_live_var_info (gc->s, 0);
             // reverse...
-            union_hashtable (H_out, H_live);
-            deepcopy_hashtable (H_dup, H_live);
+            H_out.insert(H_live.begin(), H_live.end());
+            H_live = H_dup;
         }
-        deepcopy_hashtable (H_out, H_live);
+        H_live = H_out;
         break;
         
     case ACT_CHP_SKIP:
@@ -511,6 +489,20 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
         fatal_error ("Unknown type");
         break;
     }
+}
+
+void LiveVarAnalysis::_print_var_list (std::vector<act_connection *> var_list)
+{   
+    listitem_t *li;
+    fprintf(fp, "\n-----------");
+    fprintf(fp, "\nnecessary input transmissions:");
+    fprintf(fp, "\n(if ring is broken just before here)\n");
+    for (auto v : var_list)
+    {
+        v->Print(fp);
+    }	     
+    fprintf(fp, "\n-----------");
+    fprintf(fp, "\n\n");
 }
 
 void LiveVarAnalysis::_print_var_list (list_t *var_list)

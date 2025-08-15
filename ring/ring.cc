@@ -189,12 +189,14 @@ void RingEngine::_construct_merge_latch_info (act_chp_lang_t *c, int root)
     {
       int gc_len = length_of_guard_set (c);
       ((latch_info_t *)(c->space))->merge_mux_latch_number.clear();
-      list_t *ll = ((latch_info_t *)(c->space))->live_vars;
-      for (listitem_t *li = list_first(ll); li ; li = li->next)
+      auto ll = ((latch_info_t *)(c->space))->live_vars;
+      for ( auto li : ll )
       {
-        hash_bucket_t *b = hash_lookup(var_infos, (char *)list_value(li));
+        char tname[1024];
+        get_true_name(tname, li->toid(), _p->CurScope());
+        hash_bucket_t *b = hash_lookup(var_infos, tname);
         Assert (b, "variable not found");
-        if (_var_assigned_in_subtree (c, (char *)list_value(li))) {
+        if (_var_assigned_in_subtree (c, tname)) {
           // latch id for mux
           ((latch_info_t *)(c->space))->merge_mux_latch_number.push_back(((var_info *)(b->v))->nwrite);
           ((var_info *)(b->v))->nwrite++;
@@ -334,10 +336,10 @@ int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux
       gc = gc->next;
     }
     gc = c->u.gc;
-    list_t *ll = ((latch_info_t *)(c->space))->live_vars;
+    auto ll = ((latch_info_t *)(c->space))->live_vars;
     std::vector<int> latches_in_branches;
     latches_in_branches.clear();
-    int vpos = _var_in_list (vi->name, ll);
+    int vpos = _var_in_list (vi->id, ll);
     std::vector<int> mln = ((latch_info_t *)(c->space))->merge_mux_latch_number;
     if ((vpos != NOT_FOUND) && (mln.at(vpos) != -1))
     {
@@ -377,6 +379,7 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
     ActId *id = branch->u.assign.id;
     char tname[1024];
     get_true_name (tname, id, s, true);
+    // FIXME: Gotta change stuff so assigns to struct also count!!
     if (!strcmp(tname, vi->name)) {
       return ((latch_info_t *)(branch->space))->latch_number;
     }
@@ -515,9 +518,9 @@ void RingEngine::_print_latch_info_struct (FILE *fp, latch_info_t *l)
   {
     fprintf (fp, "type: mux \n");
     int ctr = 0;
-    for (listitem_t *li = list_first (l->live_vars) ; li ; li = li->next) 
+    for ( auto li : l->live_vars ) 
     {
-      fprintf (fp, "variable: %s\n", (char *)(list_value(li)));
+      fprintf (fp, "variable: %s\n", li->toid()->getName());
       fprintf (fp, "mux ID: %d\n", l->merge_mux_latch_number.at(ctr));
       fprintf (fp, "inputs: ");
       for ( auto x : l->merge_mux_inputs.at(ctr) )
@@ -533,9 +536,9 @@ void RingEngine::_print_latch_info_struct (FILE *fp, latch_info_t *l)
   {
     fprintf (fp, "type: initial conditions / loop-carried dependencies \n");
     fprintf (fp, "variables: ");
-    for (listitem_t *li = list_first (l->live_vars) ; li ; li = li->next) 
+    for ( auto li : l->live_vars ) 
     {
-      fprintf (fp, "%s, ", (char *)(list_value(li)));
+      fprintf (fp, "%s, ", li->toid()->getName());
     }
     fprintf (fp, "\n\n");
     break;
@@ -627,7 +630,7 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
       gc = gc->next;
     }
     // actually fill in the info
-    int vpos = _var_in_list (vi->name, ((latch_info_t *)(c->space))->live_vars);
+    int vpos = _var_in_list (vi->id, ((latch_info_t *)(c->space))->live_vars);
     if (vpos != NOT_FOUND) {
       ((latch_info_t *)(c->space))->merge_mux_inputs.at(vpos) = latests;
       // latest is now the merge mux (if it is needed)
@@ -688,11 +691,10 @@ bool RingEngine::_check_all_muxes_mapped (act_chp_lang_t *c, bool fail)
     Assert (c->space, "no mux info?");
     latch_info_t *linfo = ((latch_info_t *)(c->space));
     Assert ((linfo->type == LatchType::Mux), "hmm");
-    listitem_t *li = list_first(linfo->live_vars);
+    Assert ((linfo->live_vars).size() == (linfo->merge_mux_latch_number).size(), "hmm weird");
     int ctr = 0;
     for ( auto x : linfo->merge_mux_latch_number )
     {
-      Assert (li, "hmm weird");
       if (x != -1) 
       {
         for ( auto y : linfo->merge_mux_inputs.at(ctr) ) 
@@ -701,13 +703,14 @@ bool RingEngine::_check_all_muxes_mapped (act_chp_lang_t *c, bool fail)
           {
             fprintf (stderr, "Unmapped mux at selection:\n");
             chp_print (stderr, c);
-            fprintf (stderr, "\n\nUnmapped mux for variable: %s\n\n\n", (char *)(list_value(li)));
+            fprintf (stderr, "\n\nUnmapped mux for variable: %s\n\n\n", 
+                      (linfo->live_vars).at(ctr)->toid()->getName());
             fail = true;
           }
         }
       }
       ctr++;
-      li = li->next;
+      // li = li->next;
     }
   }
   break;
@@ -1156,6 +1159,19 @@ bool RingEngine::chp_has_branches (act_chp_lang_t *c, int root)
     }
 
     return has_branches;
+}
+
+int RingEngine::_var_in_list (ActId *id, std::vector<act_connection *> l)
+{
+  int ctr = 0;
+  for (auto v : l)
+  {
+    if (v == id->Canonical(_p->CurScope())) {
+      return ctr;
+    }
+    ctr++;
+  }
+  return NOT_FOUND;
 }
 
 int RingEngine::_var_in_list (const char *name, list_t *l)

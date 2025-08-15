@@ -93,12 +93,14 @@ class RingForge : public RingEngine {
         int _compute_delay_line_param(double);
 
         list_t *_create_channel_accesses (list_t *ics);
+        std::vector<act_connection *> _create_channel_accesses (std::vector<act_connection *> ics);
 
         // expr block functions
         void _dagify (Expr *&);
         void _expr_collect_vars (Expr *, int);
         void _instantiate_expr_block (std::string, int, list_t *, bool);
         void _print_list_of_vars (FILE *fp, list_t *);
+        void _print_list_of_vars (FILE *fp, std::vector<act_connection *>);
         int _bitWidth (ActId *);
 
         // Channel generation functions

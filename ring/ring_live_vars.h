@@ -50,8 +50,10 @@ class LiveVarAnalysis {
             fp = fp_out; 
             p = p_in; 
             c = c_in; 
-            H_live = hash_new(0);
-            H_lcd = hash_new(0);
+            // H_live = hash_new(0);
+            H_live = {};
+            // H_lcd = hash_new(0);
+            H_lcd = {};
         }
 
         /*
@@ -79,14 +81,15 @@ class LiveVarAnalysis {
         act_chp_lang_t *c;
 
         // Internal running tracker of live variables
-        Hashtable *H_live;
+        std::set<act_connection *> H_live;
 
         // Internal tracker of loop carried dependencies
-        Hashtable *H_lcd;
+        std::set<act_connection *> H_lcd;
 
         void _generate_live_var_info (act_chp_lang_t *c_t, int root);
         void _print_live_var_info (act_chp_lang_t *c_t, int root);   
         void _print_var_list (list_t *var_list);
+        void _print_var_list (std::vector<act_connection *>);
 
         void _add_to_live_vars (ActId *id, bool);
         void _add_to_live_vars (Expr *e, bool);

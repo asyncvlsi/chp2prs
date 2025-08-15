@@ -319,7 +319,7 @@ bool RingForge::_fill_in_ics (act_chp_lang_t *&c)
 {
     bool any_added = false;
     int type = -1;
-    list_t *ic_var_list = NULL;
+    std::vector<act_connection *> ic_var_list = {};
     list_t *ics_assns = NULL;
     act_chp_lang_t *main_loop = NULL;
 
@@ -328,7 +328,7 @@ bool RingForge::_fill_in_ics (act_chp_lang_t *&c)
     case ACT_CHP_LOOP:
     case ACT_CHP_DOLOOP:
         type = 0;
-        ic_var_list = list_dup((list_t *)(((latch_info_t *)(c->space))->live_vars));
+        ic_var_list = ((latch_info_t *)(c->space))->live_vars;
         ics_assns = list_new();
         main_loop = c;
         break;
@@ -340,7 +340,7 @@ bool RingForge::_fill_in_ics (act_chp_lang_t *&c)
         {
             act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
             if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) {
-                ic_var_list  = list_dup((list_t *)(((latch_info_t *)(stmt->space))->live_vars));
+                ic_var_list  = ((latch_info_t *)(stmt->space))->live_vars;
                 main_loop = stmt;
             }
         }
@@ -350,13 +350,15 @@ bool RingForge::_fill_in_ics (act_chp_lang_t *&c)
         break;
     }
 
-    Assert (ic_var_list, "Hmm");
+    // Assert (ic_var_list.size(), "Hmm");
     Assert (main_loop, "Hmm");
 
     // Look through ICs and fill in missing ones
-    for (listitem_t *li = list_first (ic_var_list); li; li = list_next (li)) 
+    for ( auto li  : ic_var_list ) 
     {
-        hash_bucket_t *b = hash_lookup(var_infos, (const char *)(list_value(li)));
+        char tname[1024];
+        get_true_name(tname, li->toid(), _p->CurScope());
+        hash_bucket_t *b = hash_lookup(var_infos, tname);
         Assert (b, "no var info?");
         var_info *vi = (var_info *)b->v;
         ActId *id = vi->id;
@@ -770,9 +772,10 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
         tail->prune ();
 
         // update var_info 
+        // these receives use indices beyond nwrite
+        int latch_id = vi->nwrite;
         vi->nwrite++;
-        int latch_id = ++vi->latest_for_read;
-        vi->iwrite++;
+        vi->latest_for_read = latch_id;
         
         fprintf(_fp, "capture_dummy<%d,%d,%d> %s%s_%d;\n", 
                     _compute_delay_line_param(capture_delay), 
@@ -1934,6 +1937,27 @@ list_t *RingForge::_create_channel_accesses(list_t *ics)
     return ret;
 }
 
+std::vector<act_connection *> RingForge::_create_channel_accesses(std::vector<act_connection *> ics)
+{
+    std::vector<act_connection *> ret = {};
+    for ( auto li : ics )
+    {
+        char tname[1024];
+        get_true_name(tname, li->toid(), _p->CurScope());
+        hash_bucket_t *b = hash_lookup(var_infos, tname);
+        var_info *vi = (var_info *)b->v;
+        if (!(vi->fischan)) {
+            ret.push_back(li);
+        }
+        else {
+            fprintf(_fp, "chan_access<%d> %s%s_%d(", vi->width, capture_block_prefix, vi->name,0);
+            vi->id->Print(_fp);
+            fprintf(_fp,");\n");
+        }
+    }
+    return ret;
+}
+
 /*
     General synthesis for branched programs.
     Non-SSA style Datapath. 
@@ -2334,14 +2358,14 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             prev_block_id = first_block_id;
 
             // loop through initial condition assignments to create latches with correct initial values
-            list_t *ic_list  = list_dup((list_t *)(((latch_info_t *)(main_loop->space))->live_vars));
+            auto ic_list  = ((latch_info_t *)(main_loop->space))->live_vars;
 
             // handle channel variables - i.e. value probes
             ic_list = _create_channel_accesses(ic_list);
 
             for (lj = list_first (c->u.semi_comma.cmd); lj; lj = list_next (lj)) 
             {   
-                list_t *tmp = list_new();
+                std::vector<act_connection *> tmp = {};
                 act_chp_lang_t *stmt1 = (act_chp_lang_t *)list_value(lj);
                 if (stmt1->type != ACT_CHP_LOOP && stmt1->type != ACT_CHP_DOLOOP)
                 {
@@ -2352,11 +2376,13 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     char tname[1024];
                     get_true_name(tname, id, _p->CurScope());
                     hash_bucket_t *b = hash_lookup(var_infos, tname);
-                    for (listitem_t *lk = list_first(ic_list); lk; lk = list_next (lk))
+                    for ( auto lk : ic_list )
                     {
+                        char tname1[1024];
+                        get_true_name(tname1, lk->toid(), _p->CurScope());
                         // copy over all vars except the one being initialized
-                        if (strcmp(tname, (const char *)list_value(lk))) { 
-                            list_append (tmp, list_value(lk));
+                        if (strcmp(tname, tname1)) { 
+                            tmp.push_back(lk);
                         }
                     }
                     vi = (var_info *)b->v;
@@ -2364,12 +2390,10 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     int latch_id = _generate_single_latch (vi, (latch_info_t *)(stmt1->space), ival);
                     Assert (latch_id == 0, "Same variable has more than one initial condition?");
 
-                    ic_list = list_new();
-                    ic_list = list_dup(tmp);
-                    list_free(tmp);
+                    ic_list = tmp;
                 }
             }
-            if (!list_isempty(ic_list)) {
+            if (ic_list.size()!=0) {
                 _print_list_of_vars (stderr, ic_list);
                 fatal_error ("The above variables were uninitialized in the program. Initialize them please.");
             }
@@ -2418,7 +2442,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                 fprintf(_fp, "\n");
             }
 
-            if (!list_isempty(ic_list))
+            if (ic_list.size()!=0)
             {
                 _print_list_of_vars (stderr, ic_list);
                 fatal_error ("The above variables were uninitialized in the program. Initialize them please.");
@@ -2445,10 +2469,10 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     case ACT_CHP_DOLOOP:
         if (root == 1)
         {   
-            list_t *iclist  = list_dup((list_t *)(((latch_info_t *)(c->space))->live_vars));
+            auto iclist  = ((latch_info_t *)(c->space))->live_vars;
             // handle channel variables - i.e. value probes
             iclist = _create_channel_accesses(iclist);
-            if (!list_isempty(iclist)) {                
+            if (iclist.size()!=0) {                
                 _print_list_of_vars (stderr, iclist);
                 fatal_error ("The above variables were uninitialized in the program. Initialize them please. (Should only be here for non-LCD programs)");
             }
@@ -2663,15 +2687,17 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
     int max_mux_size = 0;
     int max_or_size = 0;
 
-    if ( list_isempty(l->live_vars) ) return {0,0};
+    if ( (l->live_vars).size()==0 ) return {0,0};
     Assert (l->type == LatchType::Mux, "wth");
 
     int n_muxes = 0;
 
     int ctr = 0;
-    for ( li = list_first(l->live_vars) ; li ; li = list_next(li) )
+    for ( auto li : l->live_vars )
     {
-        b = hash_lookup (var_infos, (const char *)list_value(li));
+        char tname[1024];
+        get_true_name(tname, li->toid(), _p->CurScope());
+        b = hash_lookup (var_infos, tname);
         if (!b) fatal_error ("variable not found - whatt");
         vi = (var_info *)b->v;
 
@@ -2711,7 +2737,7 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
         fprintf (_fp, "merge_mux_ohc_opt<%d,%d> %s%s_%d;\n", mux_size, vi->width, 
                                                 capture_block_prefix, vi->name, mux_id);
         n_muxes++;
-        mux_vars.push_back(std::string{(const char *)list_value(li)});
+        mux_vars.push_back(std::string{tname});
 
         // increase latest_for_read for the variable so it can be connected to correctly downstream
         vi->iwrite++;
@@ -2818,6 +2844,21 @@ void RingForge::_print_list_of_vars (FILE *fp, list_t *vars)
     fprintf(fp, "\n-----------\n");
     for (li = list_first(vars); li; li = list_next(li)) {
         fprintf(fp, "%s, ", (char *)list_value(li));
+    }	     
+    fprintf(fp, "\n-----------\n\n");
+    return;
+}
+
+void RingForge::_print_list_of_vars (FILE *fp, std::vector<act_connection *> vars)
+{
+    if (vars.size()==0) {
+        fprintf (fp, "\nempty list\n");
+        return;
+    }
+    fprintf(fp, "\n-----------\n");
+    for ( auto li : vars ) {
+
+        fprintf(fp, "%s, ", li->toid()->getName());
     }	     
     fprintf(fp, "\n-----------\n\n");
     return;

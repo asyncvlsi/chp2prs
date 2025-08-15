@@ -75,7 +75,7 @@ typedef struct latch_info {
     Length: (No. of live vars out of merge)
     Not really used for actions
   */
-  list_t *live_vars;
+  std::vector<act_connection *> live_vars;
 
   /*
     Used at merge-points.
