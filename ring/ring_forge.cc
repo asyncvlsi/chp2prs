@@ -412,7 +412,7 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
 {
 
     auto ss1 = high_resolution_clock::now();
-    bool printt = false;
+    bool printt = true;
     LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, c);
     // yes, run twice :)
     lva->generate_live_var_info();
@@ -719,7 +719,7 @@ int RingForge::_generate_single_latch_non_ssa (var_info *v, long long init_val=0
     return latch_id;
 } 
 
-int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
+int RingForge::handle_struct_recv (ActId *var, ActId *chan, latch_info_t *l, int block_id)
 {
     Data *d;
     hash_bucket_t *b;
@@ -732,6 +732,9 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
     auto chan_name = strcat(tmpchan, ".");
     strcat(chan_name, struct_chan_name);
 
+    Assert ((l->type == LatchType::Latch) || (l->type == LatchType::Alias), 
+                "generate latch for non-assignment?");
+    
     InstType *it = _p->CurScope()->localLookup (var, NULL);
     Assert (it, "Hmm");
     Assert (TypeFactory::isStructure (it), "Hmm");
@@ -771,11 +774,7 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, int block_id)
         vi = _get_var_info(tail);
         tail->prune ();
 
-        // update var_info 
-        // these receives use indices beyond nwrite
-        int latch_id = vi->nwrite;
-        vi->nwrite++;
-        vi->latest_for_read = latch_id;
+        int latch_id = l->latch_number;
         
         fprintf(_fp, "capture_dummy<%d,%d,%d> %s%s_%d;\n", 
                     _compute_delay_line_param(capture_delay), 
@@ -973,7 +972,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"%s%d.ch = %s;\n\n",conn_block_prefix,block_id,chan_name);
         
         if (var && is_struct) {
-            handle_struct_recv (var, chan, block_id);
+            handle_struct_recv (var, chan, (latch_info_t *)(c->space), block_id);
         }
         else if (var) {
             vi = _get_var_info(var);

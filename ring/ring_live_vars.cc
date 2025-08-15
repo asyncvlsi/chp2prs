@@ -241,6 +241,7 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action, int is
     }
     latch_info_t *l_info;
     l_info = new latch_info_t;
+    l_info->latch_number = -1;
     l_info->merge_mux_latch_number.clear();
     l_info->merge_mux_inputs.clear();
     l_info->type = (is_latch==0) ? (LatchType::Alias) : (LatchType::Latch);
@@ -500,6 +501,7 @@ void LiveVarAnalysis::_print_var_list (std::vector<act_connection *> var_list)
     for (auto v : var_list)
     {
         v->Print(fp);
+        fprintf(fp, ", ");
     }	     
     fprintf(fp, "\n-----------");
     fprintf(fp, "\n\n");

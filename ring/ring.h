@@ -61,6 +61,7 @@ class RingEngine {
         int _var_in_list (ActId *id, std::vector<act_connection *> l);
         var_info *_get_var_info (ActId *);
 
+        bool _check_ids_equal (ActId *, ActId *);
         // Save and restore state of var_infos 
         void save_var_infos ();
         void restore_var_infos ();

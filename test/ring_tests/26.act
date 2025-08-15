@@ -1,0 +1,58 @@
+
+deftype kstr (
+    int<8> x;
+    int<8> y
+){}
+
+defproc srci (chan!(int<4>) C)
+{
+    chp {
+        *[ C!1 ]
+    }
+}
+
+defproc src (chan!(kstr) C)
+{
+    kstr k;
+    // 0000_0101_0000_1000 = 1288 = (5,8)
+    chp {
+        *[ k := kstr(1288); C!k ]
+    }
+}
+
+defproc snk (chan?(kstr) C)
+{
+    kstr x;
+    chp {
+        *[ C?x; 
+            log("x : ", x.x); 
+            log("y : ",x.y) ]
+    }
+}
+
+defproc fib_inc (chan?(int<4>) C; 
+                chan?(kstr) L; 
+                chan!(kstr) R)
+{
+    kstr k;
+    int<4> c;
+    chp {
+        c:=0;
+        *[ 
+            [ c=0 -> R!k ; C?c ; L?k
+            []else-> k.x := k.x+k.y ; 
+                    k.y := k.x+k.y ; 
+                    c:=c-1
+            ]
+        ]
+    }
+}
+
+defproc testproc(chan!(kstr) Y)
+{
+    fib_inc b;
+    srci sri(b.C);
+    snk  sn(b.R);
+    src  sr(b.L);
+	Y = b.R;
+}

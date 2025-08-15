@@ -72,7 +72,7 @@ class RingForge : public RingEngine {
         int _generate_probe_access(ActId *);
         int _generate_probe_access_neg(ActId *);
 
-        int handle_struct_recv (ActId *, ActId *, int);
+        int handle_struct_recv (ActId *, ActId *, latch_info_t *, int);
         int struct_bw (ActId *);
         Expr *struct_to_int_concat(Expr *);
 

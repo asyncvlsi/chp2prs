@@ -63,7 +63,7 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     break;
 
   case ACT_CHP_ASSIGN:
-    if (id->isEqual(c->u.assign.id))
+    if (_check_ids_equal(id, c->u.assign.id))
     { 
       if((latch_info_t *)(c->space))
       {
@@ -87,13 +87,15 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     break;
 
   case ACT_CHP_RECV:
-    // v = _var_getinfo (c->u.comm.chan);
     if (v->fischan==1) {
-      if (id->isEqual(c->u.comm.chan))
+      if (_check_ids_equal(id, c->u.comm.chan))
         v->iread++;
     }
-    if ((c->u.comm.var) && id->isEqual(c->u.comm.var))
+    if ((c->u.comm.var) && _check_ids_equal(id, c->u.comm.var))
     { 
+      // FIXME!!!!
+      // this will not work in general!!
+      // need to hold one latch number per struct field!!
       Assert ((latch_info_t *)(c->space), "hmm2");
       (((latch_info_t *)(c->space))->latch_number) = v->nwrite;
       v->nwrite++;
@@ -364,6 +366,43 @@ int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux
   return mux_number;
 }
 
+bool RingEngine::_check_ids_equal (ActId *id, ActId *id_s)
+{
+  // id_s may be a struct
+  InstType *it = _p->CurScope()->localLookup (id_s, NULL);
+  auto c1 = id->Canonical(_p->CurScope());
+
+  if (!(TypeFactory::isStructure(it))) {
+    auto c2 = id_s->Canonical(_p->CurScope());
+    return (c1==c2);
+  }
+
+  Data *d = dynamic_cast<Data *>(it->BaseType());
+  int nb, ni;
+  int *types;
+  d->getStructCount (&nb, &ni);
+  Assert (nb==0, "No bools in struct!");
+  ActId **res = d->getStructFields (&types);
+  ActId *tail = id_s->Tail ();
+  for (int i=0; i < ni + nb; i++) {
+      int sz;
+      InstType *xit;
+      Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+      tail->Append (res[i]);
+
+      auto c2 = tail->Canonical(_p->CurScope());
+      if (c1==c2) {
+        tail->prune();
+        return true;
+      }
+
+      tail->prune();
+      delete res[i];
+      delete xit;
+  }
+  return false;
+}
+
 int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *vi, int latch_number)
 {
   Scope *s = _p->CurScope();
@@ -377,10 +416,8 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
   case ACT_CHP_ASSIGN:
   {
     ActId *id = branch->u.assign.id;
-    char tname[1024];
-    get_true_name (tname, id, s, true);
-    // FIXME: Gotta change stuff so assigns to struct also count!!
-    if (!strcmp(tname, vi->name)) {
+    // assigns to struct also count!!
+    if (_check_ids_equal(vi->id,id)) {
       return ((latch_info_t *)(branch->space))->latch_number;
     }
   }
@@ -389,9 +426,8 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
   {
     ActId *id = branch->u.comm.var;
     if (!id) return latch_number;
-    char tname[1024];
-    get_true_name (tname, id, s, true);
-    if (!strcmp(tname, vi->name)) {
+    if (_check_ids_equal(vi->id, id)) {
+
       return ((latch_info_t *)(branch->space))->latch_number;
     }
   }
@@ -576,8 +612,7 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
     break;
   case ACT_CHP_ASSIGN:
     if (c->space) {
-      get_true_name (tname, c->u.assign.id, s, true);
-      if (!strcmp(tname, vi->name)) {
+      if (_check_ids_equal(vi->id, c->u.assign.id)) {
         latest = ((latch_info_t *)(c->space))->latch_number;
       }
     }
@@ -590,8 +625,7 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
   case ACT_CHP_RECV:
     if (c->space) {
       if (!(c->u.comm.var)) break;
-      get_true_name (tname, c->u.comm.var, s, true);
-      if (!strcmp(tname, vi->name)) {
+      if (_check_ids_equal(vi->id, c->u.comm.var)) {
         latest = ((latch_info_t *)(c->space))->latch_number;
       }
     }
@@ -1166,7 +1200,7 @@ int RingEngine::_var_in_list (ActId *id, std::vector<act_connection *> l)
   int ctr = 0;
   for (auto v : l)
   {
-    if (v == id->Canonical(_p->CurScope())) {
+    if (_check_ids_equal(id, v->toid())) {
       return ctr;
     }
     ctr++;
