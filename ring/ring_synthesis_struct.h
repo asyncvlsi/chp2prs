@@ -68,7 +68,10 @@ typedef struct latch_info {
   LatchType type;
   
   // ID for normal latches
-  int latch_number; 
+  // Length 1 if int
+  // No. of member fields if struct
+  // int latch_number; 
+  std::vector<int> latch_numbers; 
 
   /*
     Live vars at this point (in for actions, out for selections)

@@ -61,6 +61,8 @@ class RingEngine {
         int _var_in_list (ActId *id, std::vector<act_connection *> l);
         var_info *_get_var_info (ActId *);
 
+        std::vector<int> _struct_latch_numbers(ActId *, ActId *, std::vector<int>);
+        int _get_latest_struct_latch(ActId *, ActId *, std::vector<int>);
         bool _check_ids_equal (ActId *, ActId *);
         // Save and restore state of var_infos 
         void save_var_infos ();

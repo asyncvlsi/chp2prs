@@ -652,7 +652,8 @@ static bool _guards_have_negated_probes (act_chp_gc_t *gc)
 int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long init_val=-1)
 {
     Assert ((l->type == LatchType::Latch) || (l->type == LatchType::Alias), "generate latch for non-assignment?");
-    int latch_id = l->latch_number;
+    Assert (l->latch_numbers.size()==1, "latch generation on struct!");
+    int latch_id = l->latch_numbers[0];
     bool is_latch = (l->type == LatchType::Latch);
     static char buf[1024];
     Assert (v->iwrite < v->nwrite, "Something went wrong in latch info tracking!");
@@ -762,7 +763,7 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, latch_info_t *l, int
     fprintf(_fp, "%s_struct_%d.tx.a = %s.a;\n",capture_block_prefix,
                     block_id, chan_name);
 
-    for (int i=ni+nb-1; i >=0; i--) 
+    for (int i=ni+nb-1 ; i>=0 ; i--) 
     {
         int sz;
         InstType *xit;
@@ -774,7 +775,7 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, latch_info_t *l, int
         vi = _get_var_info(tail);
         tail->prune ();
 
-        int latch_id = l->latch_number;
+        int latch_id = l->latch_numbers[(ni+nb-1)-i];
         
         fprintf(_fp, "capture_dummy<%d,%d,%d> %s%s_%d;\n", 
                     _compute_delay_line_param(capture_delay), 

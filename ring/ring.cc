@@ -53,6 +53,79 @@ RingEngine::RingEngine ( FILE *fp,
 #define NOT_FOUND -2
 #define NO_ASSIGN -1
 
+std::vector<int> RingEngine::_struct_latch_numbers(ActId *id, ActId *id_s, std::vector<int> lns_in)
+{
+  Assert (_check_ids_equal(id, id_s), "var not a member of struct?");
+  
+  InstType *it = _p->CurScope()->localLookup (id_s, NULL);
+  Data *d = dynamic_cast<Data *>(it->BaseType());
+  int nb, ni;
+  int *types;
+  d->getStructCount (&nb, &ni);
+  Assert (nb==0, "No bools in struct!");
+  ActId **res = d->getStructFields (&types);
+
+  std::vector<int> ret = {};
+  std::vector<int> ret_tmp (ni+nb, -1);
+  if (lns_in.size()==0)
+    ret = ret_tmp;
+  else
+    ret = lns_in;
+
+  Assert (ret.size()==ni+nb, "wth");
+  auto vi = _get_var_info(id);
+
+  ActId *tail = id_s->Tail ();
+  for (int i=0; i < ni + nb; i++) {
+      int sz;
+      InstType *xit;
+      Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+      tail->Append (res[i]);
+      if (_check_ids_equal(id, tail)) {
+        ret[i] = vi->nwrite;
+        vi->nwrite++;
+      }
+      tail->prune ();
+      delete res[i];
+      delete xit;
+  }
+  return ret;
+}
+
+int RingEngine::_get_latest_struct_latch(ActId *id, ActId *id_s, std::vector<int> lns_in)
+{
+  Assert (_check_ids_equal(id, id_s), "var not a member of struct?");
+  
+  InstType *it = _p->CurScope()->localLookup (id_s, NULL);
+  Data *d = dynamic_cast<Data *>(it->BaseType());
+  int nb, ni;
+  int *types;
+  d->getStructCount (&nb, &ni);
+  Assert (nb==0, "No bools in struct!");
+  ActId **res = d->getStructFields (&types);
+
+  Assert (lns_in.size()==ni+nb, "wth");
+
+  ActId *tail = id_s->Tail ();
+  for (int i=0; i < ni + nb; i++) {
+      int sz;
+      InstType *xit;
+      Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+      tail->Append (res[i]);
+      if (_check_ids_equal(id, tail)) {
+        tail->prune();
+        return lns_in[i];
+      }
+      tail->prune ();
+      delete res[i];
+      delete xit;
+  }
+  Assert (false, "should not have gotten here");
+  return -1;
+}
+
+
+
 void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
 {
   Scope *s = _p->CurScope();
@@ -67,7 +140,7 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     { 
       if((latch_info_t *)(c->space))
       {
-        (((latch_info_t *)(c->space))->latch_number) = v->nwrite;
+        ((latch_info_t *)(c->space))->latch_numbers = {v->nwrite};
       }
       v->nwrite++;
     }
@@ -93,12 +166,15 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     }
     if ((c->u.comm.var) && _check_ids_equal(id, c->u.comm.var))
     { 
-      // FIXME!!!!
-      // this will not work in general!!
-      // need to hold one latch number per struct field!!
-      Assert ((latch_info_t *)(c->space), "hmm2");
-      (((latch_info_t *)(c->space))->latch_number) = v->nwrite;
-      v->nwrite++;
+      if (!TypeFactory::isStructure(_p->CurScope()->localLookup (c->u.comm.var, NULL))) {
+        Assert ((latch_info_t *)(c->space), "hmm2");
+        ((latch_info_t *)(c->space))->latch_numbers = {v->nwrite};
+        v->nwrite++;
+      }
+      else {
+        ((latch_info_t *)(c->space))->latch_numbers = 
+          _struct_latch_numbers(id, c->u.comm.var, ((latch_info_t *)(c->space))->latch_numbers);
+      }
     }
     break;
 
@@ -403,7 +479,7 @@ bool RingEngine::_check_ids_equal (ActId *id, ActId *id_s)
   return false;
 }
 
-int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *vi, int latch_number)
+int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *vi, int latch_num)
 {
   Scope *s = _p->CurScope();
   act_chp_lang_t *stmt;
@@ -418,17 +494,26 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
     ActId *id = branch->u.assign.id;
     // assigns to struct also count!!
     if (_check_ids_equal(vi->id,id)) {
-      return ((latch_info_t *)(branch->space))->latch_number;
+      auto lns = ((latch_info_t *)(branch->space))->latch_numbers;
+      Assert (lns.size()==1, "struct assign unexpanded?");
+      return lns[0];
     }
   }
   break;
   case ACT_CHP_RECV:
   {
     ActId *id = branch->u.comm.var;
-    if (!id) return latch_number;
+    if (!id) return latch_num;
     if (_check_ids_equal(vi->id, id)) {
+      auto lns = ((latch_info_t *)(branch->space))->latch_numbers;
 
-      return ((latch_info_t *)(branch->space))->latch_number;
+      if (!TypeFactory::isStructure(_p->CurScope()->localLookup (id, NULL))) {
+        Assert (lns.size()==1, "pure var recv but longer latch_numbers?");
+        return lns[0];
+      }
+      else {
+        return _get_latest_struct_latch(vi->id, id, lns);
+      }
     }
   }
   break;
@@ -437,7 +522,7 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
   case ACT_CHP_SEMI:
     for (listitem_t *li = list_first (branch->u.semi_comma.cmd); li; li = list_next (li)) 
     {   
-      latch_number = _get_latest_assign_in_branch ((act_chp_lang_t *) list_value (li), vi, latch_number);
+      latch_num = _get_latest_assign_in_branch ((act_chp_lang_t *) list_value (li), vi, latch_num);
     }
     break;
 
@@ -445,7 +530,7 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
   case ACT_CHP_DOLOOP:
   {
     act_chp_gc_t *gc = branch->u.gc;
-    latch_number = _get_latest_assign_in_branch (gc->s, vi, latch_number);
+    latch_num = _get_latest_assign_in_branch (gc->s, vi, latch_num);
     Assert (!(gc->next), "more than one loop branch at top-level?");
   }
     break;
@@ -453,7 +538,7 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
   case ACT_CHP_SELECT_NONDET:
   case ACT_CHP_SELECT:
   {
-    latch_number = _compute_mergemux_info (branch, vi, latch_number);
+    latch_num = _compute_mergemux_info (branch, vi, latch_num);
   }
   break;
 
@@ -464,7 +549,7 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
     fatal_error ("What?");
     break;
   }
-  return latch_number;
+  return latch_num;
 }
 
 void RingEngine::print_merge_mux_infos (FILE *fp, act_chp_lang_t *c)
@@ -547,7 +632,12 @@ void RingEngine::_print_latch_info_struct (FILE *fp, latch_info_t *l)
   case LatchType::Alias: 
   {
     fprintf (fp, "type: latch \n");
-    fprintf (fp, "latch ID: %d\n", l->latch_number);
+    if (l->latch_numbers.size()>0) {
+      fprintf (fp, "latch ID: %d\n", l->latch_numbers[0]);
+    }
+    else {
+      fprintf (fp, "latch ID: null\n");
+    }
     break;
   }
   case LatchType::Mux: 
@@ -613,7 +703,9 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
   case ACT_CHP_ASSIGN:
     if (c->space) {
       if (_check_ids_equal(vi->id, c->u.assign.id)) {
-        latest = ((latch_info_t *)(c->space))->latch_number;
+        auto lns = ((latch_info_t *)(c->space))->latch_numbers;
+        Assert (lns.size()==1, "struct assign unexpanded?");
+        latest = lns[0];
       }
     }
     else {
@@ -626,7 +718,16 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
     if (c->space) {
       if (!(c->u.comm.var)) break;
       if (_check_ids_equal(vi->id, c->u.comm.var)) {
-        latest = ((latch_info_t *)(c->space))->latch_number;
+        if (!TypeFactory::isStructure(_p->CurScope()->localLookup (c->u.comm.var, NULL))) {
+          auto lns = ((latch_info_t *)(c->space))->latch_numbers;
+          Assert (lns.size()==1, "struct recv but not?");
+          latest = lns[0];
+        }
+        else {
+        // FIXME
+          latest = _get_latest_struct_latch(vi->id, c->u.comm.var, 
+            ((latch_info_t *)(c->space))->latch_numbers);
+        }
       }
     }
     else {
@@ -849,7 +950,7 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
         
-        _construct_var_info (c, id, v);
+        // _construct_var_info (c, id, v);
         if (v->fisbool) {
           if (warn_once_bools) {
             fprintf(stdout, "\nWARNING: Bools in process, they must be read-only. Hope you know what you're doing.");
@@ -873,7 +974,7 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         v->latest_for_read = 0;
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
-        _construct_var_info (c, id, v);
+        // _construct_var_info (c, id, v);
         if (v->iwrite>1 || v->iread>1) {
           fprintf(stderr, "\nChan name: %s\n", v->name);
           fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
@@ -884,8 +985,32 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         b->v = v;
       }
     }
+  }
 
-}
+  ihash_iter_init (pht, &it);
+  while ((ib = ihash_iter_next (pht, &it))) {
+    bv = (act_booleanized_var_t *)ib->v;
+    if (bv->usedchp) {
+      conn = bv->id;
+      id = conn->toid();
+      if (TypeFactory::isDataType (conn->getvx()->t)) 
+      {
+        var_info *v1 = _get_var_info(id);
+        _construct_var_info (c, id, v1);
+      }
+      // for probes
+      else if (TypeFactory::isChanType (conn->getvx()->t))
+      {
+        _construct_var_info (c, id, v);
+        // FIXME!! : This check gets messed up due to structures, fix properly!!
+        // if (v->iwrite>1 || v->iread>1) {
+        //   fprintf(stderr, "\nChan name: %s\n", v->name);
+        //   fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
+        // }
+      }
+    }
+  }
+
 }
 
 void RingEngine::print_var_infos (FILE *fp)
