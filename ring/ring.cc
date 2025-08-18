@@ -268,14 +268,11 @@ void RingEngine::_construct_merge_latch_info (act_chp_lang_t *c, int root)
       auto ll = ((latch_info_t *)(c->space))->live_vars;
       for ( auto li : ll )
       {
-        char tname[1024];
-        get_true_name(tname, li->toid(), _p->CurScope());
-        hash_bucket_t *b = hash_lookup(var_infos, tname);
-        Assert (b, "variable not found");
-        if (_var_assigned_in_subtree (c, tname)) {
+        auto vi = _get_var_info(li->toid());
+        if (_var_assigned_in_subtree (c, li->toid())) {
           // latch id for mux
-          ((latch_info_t *)(c->space))->merge_mux_latch_number.push_back(((var_info *)(b->v))->nwrite);
-          ((var_info *)(b->v))->nwrite++;
+          ((latch_info_t *)(c->space))->merge_mux_latch_number.push_back(vi->nwrite);
+          vi->nwrite++;
         }
         else {
           // mux not needed, insert -1
@@ -303,7 +300,7 @@ void RingEngine::_construct_merge_latch_info (act_chp_lang_t *c, int root)
   }
 }
 
-bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
+bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, ActId *var)
 {
   Scope *s = _p->CurScope();
   act_chp_lang_t *stmt;
@@ -312,27 +309,24 @@ bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
 
   switch (c->type) {
   case ACT_CHP_SKIP:
-  return false; break;
-
   case ACT_CHP_SEND:
-  return false; break;
+    return false; 
+    break;
   case ACT_CHP_ASSIGN:
-    get_true_name (tname, c->u.assign.id, s, true);
-    return (!strcmp(tname, name));
+    return _check_ids_equal(var, c->u.assign.id);
     break;
   case ACT_CHP_RECV:
     if (!c->u.comm.var) {
       return false;
     }
-    get_true_name (tname, c->u.comm.var, s, true);
-    return (!strcmp(tname, name));
+    return _check_ids_equal(var, c->u.comm.var);
     break;
 
   case ACT_CHP_COMMA:
   case ACT_CHP_SEMI:
     for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
     {   
-      ret = ret || _var_assigned_in_subtree ((act_chp_lang_t *)list_value(li), name);
+      ret = ret || _var_assigned_in_subtree ((act_chp_lang_t *)list_value(li), var);
     }
     break;
 
@@ -341,12 +335,11 @@ bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
     fatal_error ("shouldn't have gotten here"); break;
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
     {
       act_chp_gc_t *gc = c->u.gc;
       while (gc) {
-      ret = ret || _var_assigned_in_subtree (gc->s, name);
+      ret = ret || _var_assigned_in_subtree (gc->s, var);
       gc = gc->next;
       }
     }

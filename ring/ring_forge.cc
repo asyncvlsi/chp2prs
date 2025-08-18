@@ -245,11 +245,7 @@ bool RingForge::_fill_in_ics (act_chp_lang_t *&c)
     // Look through ICs and fill in missing ones
     for ( auto li  : ic_var_list ) 
     {
-        char tname[1024];
-        get_true_name(tname, li->toid(), _p->CurScope());
-        hash_bucket_t *b = hash_lookup(var_infos, tname);
-        Assert (b, "no var info?");
-        var_info *vi = (var_info *)b->v;
+        var_info *vi = _get_var_info(li->toid());
         ActId *id = vi->id;
 
         if (vi->fischan==0) {
@@ -1253,9 +1249,7 @@ void RingForge::_instantiate_expr_block (std::string expr_id, int block_id, list
             }
             else 
             {
-                hash_bucket_t *b = hash_lookup(var_infos, tname);
-                Assert (b, "var not found?");
-                var_info *vi = (var_info *)b->v;
+                var_info *vi = _get_var_info(var);
 
                 int latch_id = vi->latest_for_read;
                 Assert ((latch_id>=0),"var. read before being written?");
@@ -1701,10 +1695,7 @@ std::vector<act_connection *> RingForge::_create_channel_accesses(std::vector<ac
     std::vector<act_connection *> ret = {};
     for ( auto li : ics )
     {
-        char tname[1024];
-        get_true_name(tname, li->toid(), _p->CurScope());
-        hash_bucket_t *b = hash_lookup(var_infos, tname);
-        var_info *vi = (var_info *)b->v;
+        var_info *vi = _get_var_info(li->toid());
         if (!(vi->fischan)) {
             ret.push_back(li);
         }
@@ -2048,7 +2039,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     int delay_n_sel, max_delay_n_sel, delay_n_merge;
     std::pair<int,int> tmp;
     int n_muxes;
-    std::vector<std::string> muxed_vars;
+    std::vector<ActId *> muxed_vars;
     list_t *gp_connect_ids;
     listitem_t *li, *lj;
     act_chp_gc_t *gc;
@@ -2134,7 +2125,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     unsigned long ival = eval_ic(e);
                     char tname[1024];
                     get_true_name(tname, id, _p->CurScope());
-                    hash_bucket_t *b = hash_lookup(var_infos, tname);
                     for ( auto lk : ic_list )
                     {
                         char tname1[1024];
@@ -2144,7 +2134,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                             tmp.push_back(lk);
                         }
                     }
-                    vi = (var_info *)b->v;
+                    vi =  _get_var_info(id);
                     Assert ((stmt1->space), "No latch info? (_generate_branched_ring, initial condition handling)");
                     int latch_id = _generate_single_latch (vi, (latch_info_t *)(stmt1->space), ival);
                     Assert (latch_id == 0, "Same variable has more than one initial condition?");
@@ -2346,11 +2336,11 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                 fprintf(_fp,"delay_line_merge<%d,%d> %s%d;\n",delay_n_merge,n_muxes,ring_block_prefix, delay_merge_block_id);
                 int i = 0;
                 for ( auto var : muxed_vars ) {
-                    hash_bucket_t *b = hash_lookup (var_infos, var.c_str());
-                    if (!b) fatal_error ("variable not found - whatt");
-                    var_info *vi = (var_info *)b->v;
+                    var_info *vi = _get_var_info(var);
+                    char tname2[1024];
+                    get_true_name(tname2, var, _p->CurScope());
                     auto mux_id = vi->latest_for_read;
-                    fprintf(_fp, "%s%s_%d.a = %s%d.mux_acks[%d];\n", capture_block_prefix, var.c_str(), mux_id, ring_block_prefix, delay_merge_block_id, i);
+                    fprintf(_fp, "%s%s_%d.a = %s%d.mux_acks[%d];\n", capture_block_prefix, tname2, mux_id, ring_block_prefix, delay_merge_block_id, i);
                     i++;
                 }
             }
@@ -2435,7 +2425,7 @@ std::pair<int,int> RingForge::_get_pre_sel_latch_and_size (std::vector<int> in)
     a selection can be addressed correctly when exiting the selection, 
     based on which branch was taken in this iteration of the loop.
 */
-std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id, std::vector<std::string> &mux_vars)
+std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id, std::vector<ActId *> &mux_vars)
 {
     var_info *vi, *vi_pre;
     hash_bucket_t *b, *b_pre;
@@ -2454,11 +2444,7 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
     int ctr = 0;
     for ( auto li : l->live_vars )
     {
-        char tname[1024];
-        get_true_name(tname, li->toid(), _p->CurScope());
-        b = hash_lookup (var_infos, tname);
-        if (!b) fatal_error ("variable not found - whatt");
-        vi = (var_info *)b->v;
+        vi = _get_var_info(li->toid());
 
         if (verbose) fprintf (_fp, "\n// variable: %s", vi->name);
         fprintf(_fp,"\n");
@@ -2496,7 +2482,7 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
         fprintf (_fp, "merge_mux_ohc_opt<%d,%d> %s%s_%d;\n", mux_size, vi->width, 
                                                 capture_block_prefix, vi->name, mux_id);
         n_muxes++;
-        mux_vars.push_back(std::string{tname});
+        mux_vars.push_back(li->toid());
 
         // increase latest_for_read for the variable so it can be connected to correctly downstream
         vi->iwrite++;

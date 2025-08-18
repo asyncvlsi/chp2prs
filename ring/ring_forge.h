@@ -81,7 +81,7 @@ class RingForge : public RingEngine {
         int _generate_single_latch_non_ssa (var_info *, long long);
         int _generate_expr_block(Expr *, int, bool);
         int _generate_expr_block_for_sel(Expr *, int, bool);
-        std::pair<int,int> _compute_merge_mux_info(latch_info_t *, int, std::vector<std::string>&);
+        std::pair<int,int> _compute_merge_mux_info(latch_info_t *, int, std::vector<ActId *>&);
         int _generate_probe_clause(list_t *, list_t *);
         int _generate_probe_circuit(Expr *, int);
         double _lookup_mux_delays (int, int);

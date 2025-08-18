@@ -70,7 +70,7 @@ class RingEngine {
 
         // Merge mux info builder functions ---------
         void _construct_merge_latch_info (act_chp_lang_t *, int);
-        bool _var_assigned_in_subtree (act_chp_lang_t *, const char *);
+        bool _var_assigned_in_subtree (act_chp_lang_t *, ActId *);
 
         void compute_mergemux_info (act_chp_lang_t *c);
         int _compute_mergemux_info (act_chp_lang_t *, var_info *, int);
