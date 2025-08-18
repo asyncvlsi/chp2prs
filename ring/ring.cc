@@ -260,7 +260,6 @@ void RingEngine::_construct_merge_latch_info (act_chp_lang_t *c, int root)
     }
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
     {
       int gc_len = length_of_guard_set (c);
@@ -892,7 +891,6 @@ bool RingEngine::_check_no_self_assignments (act_chp_lang_t *c, bool fail)
 void RingEngine::construct_var_infos (act_chp_lang_t *c)
 {
   var_infos = {};
-  hash_bucket_t *b;
   var_info *v;
   ActId *id;
   char str[1024];
@@ -934,10 +932,6 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
             warn_once_bools = false;
           }
         }
-        if (v->fischan && ( v->iwrite>1 || v->iread>1) ) {
-          fprintf(stderr, "\nChan name: %s\n", v->name);
-          fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
-        }
         var_infos.insert({conn,v});
       }
     }
@@ -957,12 +951,12 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
       // for probes
       else if (TypeFactory::isChanType (conn->getvx()->t))
       {
-        _construct_var_info (c, id, v);
-        // FIXME!! : This check gets messed up due to structures, fix properly!!
-        // if (v->iwrite>1 || v->iread>1) {
-        //   fprintf(stderr, "\nChan name: %s\n", v->name);
-        //   fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
-        // }
+        var_info *v1 = _get_var_info(id);
+        _construct_var_info (c, id, v1);
+        if (v1->iwrite>1 || v1->iread>1) {
+          fprintf(stderr, "\nChannel name: %s\n", v1->name);
+          fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
+        }
       }
     }
   }
