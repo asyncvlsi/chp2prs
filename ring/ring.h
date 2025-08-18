@@ -25,6 +25,9 @@
 /*
  * Base class for ring synthesis 
  */
+
+typedef std::unordered_map<act_connection *, var_info *> VI_Table;
+
 class RingEngine {
     public:
         RingEngine ( FILE *fp, 
@@ -93,13 +96,13 @@ class RingEngine {
         void _push_read_ids();
         void _pop_and_restore_read_ids();
         var_info *_deepcopy_var_info (var_info *v, int only_read_id);
-        Hashtable *_deepcopy_var_info_hashtable (Hashtable *h_in, int only_read_id);
+        VI_Table _deepcopy_var_info_hashtable (VI_Table h_in, int only_read_id);
 
-        Hashtable *var_infos;
-        Hashtable *var_infos_copy;
-        Hashtable *var_infos_read_ids;
+        VI_Table var_infos;
+        VI_Table var_infos_copy;
+        VI_Table var_infos_read_ids;
 
-        list_t *H_stk;
+        std::stack<VI_Table> H_stk;
 
         // Expression handling for Expropt
         iHashtable *_inexprmap;

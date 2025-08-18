@@ -30,11 +30,11 @@ RingEngine::RingEngine ( FILE *fp,
                 _circuit_library = Strdup(circuit_library);
                 _exprfile = Strdup(exprfile);
 
-                var_infos = hash_new (4);
-                var_infos_copy = hash_new (4);
-                var_infos_read_ids = hash_new (4);
+                var_infos = {};
+                var_infos_copy = {};
+                var_infos_read_ids = {};
 
-                H_stk = list_new();
+                H_stk = {};
 
                 _inexprmap = ihash_new (0);
                 _inwidthmap = ihash_new (0);
@@ -357,14 +357,9 @@ bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, ActId *var)
 
 void RingEngine::compute_mergemux_info (act_chp_lang_t *c)
 {
-  hash_iter_t it;
-  hash_bucket_t *b;
-  hash_iter_init (var_infos, &it);
-  // one pass per variable
-  while ((b = hash_iter_next (var_infos, &it))) 
-  {
-    _compute_mergemux_info (c, (var_info *)b->v, -1);
-  }	     
+  for ( auto v : var_infos ) {
+    _compute_mergemux_info (c, v.second, -1);
+  }
 }
 
 int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux_number)
@@ -671,14 +666,8 @@ void RingEngine::_print_latch_info_struct (FILE *fp, latch_info_t *l)
 */
 void RingEngine::flow_assignments (act_chp_lang_t *c)
 {
-  hash_iter_t it;
-  hash_bucket_t *b;
-  hash_iter_init (var_infos, &it);
-  // one pass per variable per assignment
-  while ((b = hash_iter_next (var_infos, &it))) 
-  {
-    var_info *vi = (var_info *)b->v;
-    _flow_assignments (c, (var_info *)b->v, -1);
+  for ( auto v : var_infos ) {
+    _flow_assignments (c, v.second, -1);
   }
 }
 
@@ -902,7 +891,7 @@ bool RingEngine::_check_no_self_assignments (act_chp_lang_t *c, bool fail)
 
 void RingEngine::construct_var_infos (act_chp_lang_t *c)
 {
-  var_infos = hash_new(4);
+  var_infos = {};
   hash_bucket_t *b;
   var_info *v;
   ActId *id;
@@ -949,8 +938,7 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
           fprintf(stderr, "\nChan name: %s\n", v->name);
           fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
         }
-        b = hash_add (var_infos, v->name);
-        b->v = v;
+        var_infos.insert({conn,v});
       }
     }
   }
@@ -984,13 +972,9 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
 void RingEngine::print_var_infos (FILE *fp)
 {
   fprintf (fp, "\nvar_info hashtable: \n");
-  hash_iter_t it;
-  hash_bucket_t *b;
-  hash_iter_init (var_infos, &it);
-    while ((b = hash_iter_next (var_infos, &it))) 
-    {
-      _print_var_info (fp, (var_info *)b->v);
-    }	     
+  for ( auto v : var_infos ) {
+    _print_var_info (fp, v.second);
+  }
 }
 
 void RingEngine::_print_var_info (FILE *fp, var_info *v)
@@ -1005,78 +989,53 @@ void RingEngine::_print_var_info (FILE *fp, var_info *v)
 
 var_info *RingEngine::_get_var_info (ActId *id)
 {
-  char tname[10240];
-  get_true_name(tname, id, _p->CurScope());
-  auto b = hash_lookup(var_infos, tname);
-  Assert (b, "variable not found");
-  auto vi = (var_info *)b->v;
-  Assert (vi, "var-info corruption");
-  return vi;
+  Assert (var_infos.contains(id->Canonical(_p->CurScope())), "variable not found");
+  auto v = var_infos.at(id->Canonical(_p->CurScope()));
+  return v;
 }
 
-Hashtable *RingEngine::_deepcopy_var_info_hashtable (Hashtable *h_in, int only_read_id)
+VI_Table RingEngine::_deepcopy_var_info_hashtable (VI_Table h_in, int only_read_id)
 {
-  Hashtable *h_out = hash_new(4);
-  hash_bucket_t *b, *b_copy;
-  var_info *v_copy;
-  hash_iter_t itr;
-  hash_iter_init (h_in, &itr);
-  while ((b = hash_iter_next (h_in, &itr))) {
-    NEW (v_copy, var_info);
-    v_copy = _deepcopy_var_info((var_info *)b->v, only_read_id);
-    b_copy = hash_add (h_out, v_copy->name);
-    b_copy->v = v_copy;
+  VI_Table ret = {};
+  for ( auto v : h_in ) {
+    ret.insert({v.first,_deepcopy_var_info(v.second, only_read_id)});
   }
-  return h_out;
+  return ret;
 }
 
 void RingEngine::save_var_infos ()
 {
-    var_infos_copy = hash_new (4);
-    var_infos_copy = _deepcopy_var_info_hashtable (var_infos, 0);
-}
-
-void RingEngine::_save_read_ids ()
-{
-    var_infos_read_ids = hash_new (4);
-    var_infos_read_ids = _deepcopy_var_info_hashtable (var_infos, 1);
+  var_infos_copy = var_infos;
 }
 
 void RingEngine::_push_read_ids()
 {
-  auto hi = _deepcopy_var_info_hashtable (var_infos, 1);
-  stack_push (H_stk, hi);
+  auto tmp_vis = _deepcopy_var_info_hashtable (var_infos, 1);
+  H_stk.push(tmp_vis);
 }
 
 void RingEngine::_pop_and_restore_read_ids()
 {
-  Assert (!(list_isempty(H_stk)), "Tried to pop from empty var_infos stack");
-  auto hi = (Hashtable *)stack_pop(H_stk);
+  Assert (!H_stk.empty(), "Tried to pop from empty var_infos stack");
+  auto hi = H_stk.top();
+  H_stk.pop();
 
-  hash_bucket_t *b, *b_saved;
-  var_info *vi, *vi_saved;
-  hash_iter_t itr;
-  hash_iter_init (var_infos, &itr);
-  while ((b = hash_iter_next (var_infos, &itr))) {
-    b_saved = hash_lookup(hi, b->key);
-    Assert (b_saved, "No var_info_read_id ??");
-    vi_saved = (var_info *)b_saved->v;
-    vi = (var_info *)b->v;
+  for ( auto v : var_infos ) {
+    auto vi = v.second;
+    auto vi_saved = hi.at(v.first);
     vi->latest_for_read = vi_saved->latest_for_read;
   }
 }
 
 void RingEngine::restore_var_infos ()
 {
-    var_infos = hash_new (4);
-    var_infos = _deepcopy_var_info_hashtable (var_infos_copy, 0);
-    hash_clear (var_infos_copy);
+    var_infos = var_infos_copy;
+    var_infos_copy.clear();
 }
 
 var_info *RingEngine::_deepcopy_var_info (var_info *v, int only_read_id)
 {
-  var_info *v_copy;
-  NEW (v_copy, var_info);
+  var_info *v_copy = new var_info;
   v_copy->name = v->name;
   v_copy->latest_for_read = v->latest_for_read;
   if (!only_read_id) {

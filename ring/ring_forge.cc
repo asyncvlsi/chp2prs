@@ -36,9 +36,7 @@ RingForge::RingForge ( FILE *fp,
             int delay_margin, int dp_style,
             const char *circuit_library,
             const char *exprfile )
-    : RingEngine ( fp, 
-                    // p, c, bp, 
-                    circuit_library, exprfile )
+    : RingEngine ( fp, circuit_library, exprfile )
 {
     ring_block_prefix = "block_";
     conn_block_prefix = "conn_z_";
@@ -297,7 +295,7 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
 {
 
     auto ss1 = high_resolution_clock::now();
-    bool printt = true;
+    bool printt = false;
     LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, c);
     // yes, run twice :)
     lva->generate_live_var_info();
