@@ -148,6 +148,8 @@ bool TinyForge::_build_prog_signature (act_chp_lang_t *c, int root)
     return false;
 }
 
+// FIXME!!
+// Need to update to handle structures correctly
 void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature)
 {
     std::vector<Action> buf_s = {Action::Receive, Action::Send};
@@ -206,12 +208,12 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
         Assert (stmt1->type == ACT_CHP_RECV, "Sink stmt not a recv?");
         int lbw = _bitWidth(stmt1->u.comm.chan);
         if (stmt1->u.comm.var) {
-            fprintf(_fp, "snk_impl<%d,%d, %d, true> ss_impl;\n", lbw, 
+            fprintf(_fp, "snk_impl<%d,%d,%d,true> ss_impl;\n", lbw, 
                             _compute_delay_line_param(capture_delay), 
                             _compute_delay_line_param(pulse_width));
         }
         else {
-            fprintf(_fp, "snk_impl<%d,%d, %d, false> ss_impl;\n", lbw, 
+            fprintf(_fp, "snk_impl<%d,%d,%d,false> ss_impl;\n", lbw, 
                             _compute_delay_line_param(capture_delay), 
                             _compute_delay_line_param(pulse_width));
         }

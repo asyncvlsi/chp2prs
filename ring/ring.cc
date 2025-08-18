@@ -124,8 +124,6 @@ int RingEngine::_get_latest_struct_latch(ActId *id, ActId *id_s, std::vector<int
   return -1;
 }
 
-
-
 void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
 {
   Scope *s = _p->CurScope();
@@ -724,7 +722,6 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
           latest = lns[0];
         }
         else {
-        // FIXME
           latest = _get_latest_struct_latch(vi->id, c->u.comm.var, 
             ((latch_info_t *)(c->space))->latch_numbers);
         }
@@ -845,7 +842,6 @@ bool RingEngine::_check_all_muxes_mapped (act_chp_lang_t *c, bool fail)
         }
       }
       ctr++;
-      // li = li->next;
     }
   }
   break;
@@ -935,7 +931,8 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
     if (bv->usedchp) {
       conn = bv->id;
       id = conn->toid();
-      if (TypeFactory::isDataType (conn->getvx()->t)) 
+      if (TypeFactory::isDataType (conn->getvx()->t) 
+       || TypeFactory::isChanType (conn->getvx()->t)) 
       {
         v = new var_info;
         v->id = id;
@@ -944,43 +941,21 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         v->iread = 0;
         v->nwrite = 0;
         v->iwrite = 0;
-        v->fischan = 0;
+        v->fischan = TypeFactory::isChanType (conn->getvx()->t);
         v->fisbool = TypeFactory::isBoolType (conn->getvx()->t);
         v->latest_for_read = 0;
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
-        
-        // _construct_var_info (c, id, v);
         if (v->fisbool) {
           if (warn_once_bools) {
             fprintf(stdout, "\nWARNING: Bools in process, they must be read-only. Hope you know what you're doing.");
             warn_once_bools = false;
           }
         }
-        b = hash_add (var_infos, v->name);
-        b->v = v;
-      }
-      // for probes
-      else if (TypeFactory::isChanType (conn->getvx()->t))
-      {
-        v = new var_info;
-        v->id = id;
-        v->width = bv->width;
-        v->nread = 0;
-        v->iread = 0;
-        v->nwrite = 0;
-        v->iwrite = 0;
-        v->fischan = 1;
-        v->latest_for_read = 0;
-        get_true_name (str, id, _p->CurScope());
-        v->name = Strdup (str);
-        // _construct_var_info (c, id, v);
-        if (v->iwrite>1 || v->iread>1) {
+        if (v->fischan && ( v->iwrite>1 || v->iread>1) ) {
           fprintf(stderr, "\nChan name: %s\n", v->name);
           fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
         }
-        v->iread = 0;
-        v->iwrite = 0;
         b = hash_add (var_infos, v->name);
         b->v = v;
       }
@@ -1331,159 +1306,4 @@ int RingEngine::_var_in_list (ActId *id, std::vector<act_connection *> l)
     ctr++;
   }
   return NOT_FOUND;
-}
-
-int RingEngine::_var_in_list (const char *name, list_t *l)
-{
-  int ctr = 0;
-  for (listitem_t *li = list_first(l) ; li ; li = li->next)
-  {
-    if (!strcmp(name, (char *)list_value(li))) {
-      return ctr;
-    }
-    ctr++;
-  }
-  return NOT_FOUND;
-}
-
-// Note: UNUSED
-int RingEngine::get_expr_width(Expr *ex)
-{
-  // recursively run through the expression and collect its width
-  switch ((ex)->type)
-  {
-  // for a var read the bitwidth of that var
-  case E_VAR:
-  {
-    ActId *var = (ActId *)ex->u.e.l;  
-    hash_bucket_t *b;
-    char tname[1024];
-    get_true_name(tname, var, _p->CurScope());
-    b = hash_lookup(var_infos, tname);
-    var_info *vi = (var_info *)b->v;
-    return vi->width;
-  }
-  // for true and false the bit width is one
-  case E_TRUE:
-  case E_FALSE:
-    return 1;
-  // for int look up the corresponding bitwidth
-  case E_INT:
-  {
-    return ihash_lookup(_inwidthmap, (long) ex)->i;
-  }
-  // step through
-  case E_QUERY:
-    ex = ex->u.e.r;
-  // get the max out of the right and the left expr part
-  case E_AND:
-  case E_OR:
-  case E_XOR:
-  {
-    int lw = get_expr_width(ex->u.e.l);
-    int rw = get_expr_width(ex->u.e.r);
-    return std::max(lw,rw);
-  }
-  // get the max out of the right and the left expr part and one for the overflow bit
-  case E_PLUS:
-  case E_MINUS:
-  {
-    int lw = get_expr_width(ex->u.e.l);
-    int rw = get_expr_width(ex->u.e.r);
-    return std::max(lw,rw);
-    // return std::max(lw,rw)+1;
-  }
-  // comparisons result in a bool so 1, do not walk further
-  case E_LT:
-  case E_GT:
-  case E_LE:
-  case E_GE:
-  case E_EQ:
-  case E_NE:
-    // should be fine in ignoring the rest of the expr
-    return 1;
-  // for multiplication add both operand bitwidth
-  case E_MULT:
-  {
-    int lw = get_expr_width(ex->u.e.l);
-    int rw = get_expr_width(ex->u.e.r);
-    return lw+rw;
-  } 
-  // step through
-  case E_MOD:
-  {
-    int rw = get_expr_width(ex->u.e.r);
-    return rw;
-  } 
-  // use left bitwidth and add number of shifted right
-  case E_LSL:
-  {
-    int lw = get_expr_width(ex->u.e.l);
-    int rw = get_expr_width(ex->u.e.r);
-    return lw + (1 << rw);
-  }
-  // pass through
-  case E_DIV:
-  case E_LSR:
-  case E_ASR:
-  case E_UMINUS:
-  case E_NOT:
-  case E_COMPLEMENT:
-  {
-    int lw = get_expr_width(ex->u.e.l);
-    return lw;
-  }  
-
-  //get the value out of the datastructure
-  case E_BUILTIN_INT:
-    if (ex->u.e.r) {
-      Assert (ex->u.e.r->type == E_INT, "What?");
-      return ex->u.e.r->u.ival.v;
-    }
-    else {
-      return 1;
-    }
-
-  case E_BUILTIN_BOOL:
-    return 1;
-  // the following ones should give you errors because not handled
-  case E_COLON:
-  case E_COMMA:
-    fatal_error ("Should have been handled elsewhere");
-    break;
-
-    /* XXX: here */
-  case E_CONCAT:
-    {
-      int w = 0;
-      Expr *tmp = ex;
-      while (tmp) {
-	w += get_expr_width (tmp->u.e.l);
-	tmp = tmp->u.e.r;
-      }
-      return w;
-    }
-    break;
-
-  case E_BITFIELD:
-    fatal_error ("Not handling bitfields right now.");
-    break;
-
-  case E_REAL:
-    fatal_error ("No real expressions please.");
-    break;
-
-  case E_PROBE:
-    return 1;
-    break;
-    
-  case E_FUNCTION:
-    fatal_error ("function!");
-    
-  case E_SELF:
-  default:
-    fatal_error ("Unknown expression type %d\n", ex->type);
-    break;
-  }
-  return 0;
 }
