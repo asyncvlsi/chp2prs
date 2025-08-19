@@ -65,7 +65,6 @@ class RingForge : public RingEngine {
         int _generate_nds_split(int);
         int _generate_nds_split_stable(int);
         int _generate_selection_merge(int);
-        int _generate_pipe_element_custom(int, int, int, ActId *);
         int _generate_pipe_element_lcd(int, ActId *, int, int, int);
         int _generate_pipe_element_lcd(int);
         int _generate_pause_element();
@@ -92,14 +91,11 @@ class RingForge : public RingEngine {
         int or_table_sz;
         int _compute_delay_line_param(double);
 
-        list_t *_create_channel_accesses (list_t *ics);
         std::vector<act_connection *> _create_channel_accesses (std::vector<act_connection *> ics);
 
         // expr block functions
-        void _dagify (Expr *&);
         void _expr_collect_vars (Expr *, int);
         void _instantiate_expr_block (std::string, int, list_t *, bool);
-        void _print_list_of_vars (FILE *fp, list_t *);
         void _print_list_of_vars (FILE *fp, std::vector<act_connection *>);
         int _bitWidth (ActId *);
 
@@ -133,8 +129,6 @@ class RingForge : public RingEngine {
 
         // Name of int port chan in impl. of struct chan
         const char *struct_chan_name;
-
-        // unsigned int invx1_delay_ps;
 
         // Capture delay of a latch (ps)
         double capture_delay;

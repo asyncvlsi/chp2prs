@@ -605,7 +605,6 @@ int RingForge::_generate_single_latch_non_ssa (var_info *v, long long init_val=0
 int RingForge::handle_struct_recv (ActId *var, ActId *chan, latch_info_t *l, int block_id)
 {
     Data *d;
-    hash_bucket_t *b;
     ActId **res;
     int *types;
     int nb, ni;
@@ -749,8 +748,6 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
     char chan_name[10240];
     int latch_id;
     int bw;
-    InstType *it;
-    hash_bucket_t *b;
     var_info *vi;
 
     block_id = _gen_block_id();
@@ -826,7 +823,6 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             // connect to delay_line
             fprintf(_fp,"delay_expr_%d.m1 = %s%d.zero;\n",expr_inst_id,ring_block_prefix,block_id);
             fprintf(_fp,"delay_expr_%d.p1 = %s%d.ctrl;\n",expr_inst_id,conn_block_prefix,block_id);
-
         }
         else { // dataless action
             fprintf(_fp,"%s%d.zero = %s;\n",ring_block_prefix,block_id, chan_name);
@@ -919,7 +915,6 @@ int RingForge::_generate_pipe_element_lcd(int type, ActId *var, int itr, int blk
 {
     int block_id;
     int first_latch_id, last_latch_id;
-    hash_bucket_t *b;
     var_info *vi;
     int va_id;
 
@@ -1221,7 +1216,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
 */
 void RingForge::_instantiate_expr_block (std::string expr_id, int block_id, list_t *all_leaves, bool connect_inputs)
 {
-    ihash_bucket_t *ib, *ibw;
+    ihash_bucket_t *ib;
     listitem_t *li;
 
     // generate instance
@@ -1551,7 +1546,6 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
 
         ActId *chan = (ActId *)e->u.e.l;
         var_info *vi;
-        hash_bucket_t *b;
         char tname[1024];
         get_true_name(tname, chan, _p->CurScope());
         snprintf(buf, 1024, "probe_of_%s", tname);
@@ -2425,12 +2419,6 @@ std::pair<int,int> RingForge::_get_pre_sel_latch_and_size (std::vector<int> in)
 */
 std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int split_block_id, std::vector<ActId *> &mux_vars)
 {
-    var_info *vi, *vi_pre;
-    hash_bucket_t *b, *b_pre;
-    listitem_t *li, *lj;
-    list_t *latch_branches;
-    int iwrite, iwrite_pre;
-    int latest_branch_id;
     int max_mux_size = 0;
     int max_or_size = 0;
 
@@ -2442,7 +2430,7 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
     int ctr = 0;
     for ( auto li : l->live_vars )
     {
-        vi = _get_var_info(li->toid());
+        auto vi = _get_var_info(li->toid());
 
         if (verbose) fprintf (_fp, "\n// variable: %s", vi->name);
         fprintf(_fp,"\n");

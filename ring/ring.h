@@ -55,12 +55,10 @@ class RingEngine {
         int length_of_guard_set (act_chp_lang_t *c);
         bool is_elementary_action(act_chp_lang_t *c);
         bool chp_has_branches (act_chp_lang_t *c, int root);
-        int get_expr_width(Expr *ex);
 
         // Internal functions
         void _construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v);
         void _print_var_info (FILE *fp, var_info *v);
-        int _var_in_list (const char *name, list_t *l);
         int _var_in_list (ActId *id, std::vector<act_connection *> l);
         var_info *_get_var_info (ActId *);
 
@@ -92,7 +90,6 @@ class RingEngine {
         bool _check_no_self_assignments (act_chp_lang_t *, bool);
 
         // Internal helper functions
-        void _save_read_ids ();
         void _push_read_ids();
         void _pop_and_restore_read_ids();
         var_info *_deepcopy_var_info (var_info *v, int only_read_id);
