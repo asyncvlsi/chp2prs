@@ -22,54 +22,27 @@
 
 #include "ring_live_vars.h"
 
-void deepcopy_hashtable (Hashtable *H_in, Hashtable *H_out)
+void LiveVarAnalysis::_add_to_live_vars (ActId *id)
 {
-    hash_clear (H_out);
-    hash_iter_t itr;
-    hash_bucket_t *b;
-    hash_iter_init (H_in, &itr);
-    while ((b = hash_iter_next(H_in, &itr))) 
-    {
-        hash_add (H_out, Strdup(b->key));
-    }
-}
-
-void union_hashtable (Hashtable *H_acc, Hashtable *H_inc)
-{
-    hash_iter_t itr;
-    hash_bucket_t *b;
-    hash_iter_init (H_inc, &itr);
-    while ((b = hash_iter_next(H_inc, &itr))) 
-    {
-        if (!hash_lookup(H_acc, b->key)) {
-            hash_add (H_acc, Strdup(b->key));
-        }
-    }
-}
-
-void LiveVarAnalysis::_add_to_live_vars (ActId *id, bool mangle = true)
-{
-    char tname[1024];
-    hash_bucket_t *b;
-    InstType *it = p->CurScope()->localLookup (id, NULL);
+    InstType *it = p->CurScope()->localLookup(id, NULL);
 
     if (TypeFactory::isStructure(it)) {
 
         Data *d = dynamic_cast<Data *>(it->BaseType());
-        int w = TypeFactory::totBitWidth (d);
+        int w = TypeFactory::totBitWidth(d);
         int nb, ni;
         int *types;
-        d->getStructCount (&nb, &ni);
+        d->getStructCount(&nb, &ni);
         Assert (nb==0, "No bools in struct!");
-        ActId **res = d->getStructFields (&types);
-        ActId *tail = id->Tail ();
+        ActId **res = d->getStructFields(&types);
+        ActId *tail = id->Tail();
         for (int i=0; i < ni + nb; i++) {
             int sz;
             InstType *xit;
             Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
             tail->Append (res[i]);
-            _add_to_live_vars (tail, mangle);
-            tail->prune ();
+            _add_to_live_vars (tail);
+            tail->prune();
             delete res[i];
             delete xit;
         }
@@ -80,24 +53,20 @@ void LiveVarAnalysis::_add_to_live_vars (ActId *id, bool mangle = true)
     }
 }
 
-void LiveVarAnalysis::_add_to_live_vars (Expr *e, bool mangle = true)
+void LiveVarAnalysis::_add_to_live_vars (Expr *e)
 {
-  int id;
   ActId *var;
-  hash_bucket_t *b;
-  char tname[1024];
-//   Assert (e, "Hmm");
   if (!e) return;
 
 #define BINARY_OP					\
-  do {							\
-    _add_to_live_vars (e->u.e.l, mangle);	\
-    _add_to_live_vars (e->u.e.r, mangle);	\
+  do {							    \
+    _add_to_live_vars (e->u.e.l);	\
+    _add_to_live_vars (e->u.e.r);	\
   } while (0)
 
 #define UNARY_OP					\
-  do {							\
-    _add_to_live_vars (e->u.e.l, mangle);	\
+  do {							    \
+    _add_to_live_vars (e->u.e.l);	\
   } while (0)
   
   switch (e->type) {
@@ -131,9 +100,9 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e, bool mangle = true)
     break;
 
   case E_QUERY:
-    _add_to_live_vars (e->u.e.l, mangle);
-    _add_to_live_vars (e->u.e.r->u.e.l, mangle);
-    _add_to_live_vars (e->u.e.r->u.e.r, mangle);
+    _add_to_live_vars (e->u.e.l);
+    _add_to_live_vars (e->u.e.r->u.e.l);
+    _add_to_live_vars (e->u.e.r->u.e.r);
     break;
 
   case E_COLON:
@@ -141,12 +110,11 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e, bool mangle = true)
     fatal_error ("Should have been handled elsewhere");
     break;
 
-    /* XXX: here */
   case E_CONCAT:
     {
       Expr *tmp = e;
       while (tmp) {
-        _add_to_live_vars (tmp->u.e.l, mangle);
+        _add_to_live_vars (tmp->u.e.l);
         tmp = tmp->u.e.r;
       }
     }
@@ -167,12 +135,10 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e, bool mangle = true)
 
   case E_BITFIELD:
   case E_VAR:
-        var = (ActId *)e->u.e.l;
-        _add_to_live_vars (var, mangle);
+    _add_to_live_vars ((ActId *)e->u.e.l);
     break;
 
   case E_PROBE:
-    // fatal_error ("fix probes please");
     break;
     
   case E_FUNCTION:
@@ -187,29 +153,28 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e, bool mangle = true)
 #undef UNARY_OP
 }
 
-void LiveVarAnalysis::_remove_from_live_vars (ActId *id, bool mangle=true)
+void LiveVarAnalysis::_remove_from_live_vars (ActId *id)
 {
-    char tname[1024];
     if (!id) return;
-    InstType *it = p->CurScope()->localLookup (id, NULL);
+    InstType *it = p->CurScope()->localLookup(id, NULL);
 
     if (TypeFactory::isStructure(it)) {
 
         Data *d = dynamic_cast<Data *>(it->BaseType());
-        int w = TypeFactory::totBitWidth (d);
+        int w = TypeFactory::totBitWidth(d);
         int nb, ni;
         int *types;
-        d->getStructCount (&nb, &ni);
+        d->getStructCount(&nb, &ni);
         Assert (nb==0, "No bools in struct!");
-        ActId **res = d->getStructFields (&types);
-        ActId *tail = id->Tail ();
+        ActId **res = d->getStructFields(&types);
+        ActId *tail = id->Tail();
         for (int i=0; i < ni + nb; i++) {
             int sz;
             InstType *xit;
-            Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+            Assert (d->getStructOffset(res[i], &sz, &xit) != -1, "What?");
             tail->Append (res[i]);
-            _remove_from_live_vars (tail, mangle);
-            tail->prune ();
+            _remove_from_live_vars (tail);
+            tail->prune();
             delete res[i];
             delete xit;
         }
@@ -223,6 +188,8 @@ void LiveVarAnalysis::_remove_from_live_vars (ActId *id, bool mangle=true)
 
 void LiveVarAnalysis::_add_to_live_vars_lcd (ActId *id)
 {
+    InstType *it = p->CurScope()->localLookup (id, NULL);
+    Assert (!TypeFactory::isStructure(it), "Structure assign not broken up?"); 
     H_lcd.insert(id->Canonical(p->CurScope()));
 }
 
@@ -233,8 +200,6 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action, int is
              (action->type == ACT_CHP_SEND)||
              (action->type == ACT_CHP_RECV)),"not action");
 
-    hash_bucket_t *b;
-    hash_iter_t itr;
     std::vector<act_connection *> req_vars;
     for ( auto v : H_live ) {
         req_vars.push_back(v);
@@ -258,8 +223,6 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
              (action->type == ACT_CHP_SELECT)||
              (action->type == ACT_CHP_SELECT_NONDET)),"not selection");
 
-    hash_bucket_t *b, *b2;
-
     std::vector<act_connection *> req_vars;
 
     for ( auto v : H_lcd ) {
@@ -274,14 +237,12 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
     l_info = new latch_info_t;
     l_info->merge_mux_latch_number.clear();
     l_info->merge_mux_inputs.clear();
-    if (action->type != ACT_CHP_SELECT && action->type != ACT_CHP_SELECT_NONDET)
-    {
+    if (action->type != ACT_CHP_SELECT && action->type != ACT_CHP_SELECT_NONDET) {
         l_info->type = LatchType::ICs;
     }
     else {
         l_info->type = LatchType::Mux;
     }
-    // l_info->live_vars = list_dup(req_vars);
     l_info->live_vars = req_vars;
 
     action->space = l_info;
@@ -293,7 +254,6 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
     list_t *copy_list;
     act_chp_lang_t *stmt;
     act_chp_gc_t *gc;
-    // Hashtable *H_dup, *H_out;
     std::set<act_connection *> H_dup, H_out;
     
     if (!c_t) return;
@@ -373,7 +333,7 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
         break;
     case ACT_CHP_ASSIGN:
     case ACT_CHP_ASSIGNSELF:
-        // order important (!!)
+        // order important!!
         _remove_from_live_vars (c_t->u.assign.id);
         _add_to_live_vars (c_t->u.assign.e);
         _tag_action_with_reqd_vars (c_t, 0);
@@ -404,7 +364,6 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
 void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
 {
     listitem_t *li;
-    list_t *copy_list;
     act_chp_lang_t *stmt;
     act_chp_gc_t *gc;
 
@@ -417,36 +376,24 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
         break;
         
     case ACT_CHP_COMMA:
-    case ACT_CHP_SEMI:
-        if (root == 1)
-        {        
-            for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
-            {
-                stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) 
-                    _print_live_var_info (stmt, 1);
-            }
-            break;
-        }
-        for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
-        {
+    case ACT_CHP_SEMI:    
+        for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) {
             stmt = (act_chp_lang_t *)(list_value(li));
-            _print_live_var_info (stmt, 0);
+            if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) 
+                _print_live_var_info (stmt, root);
         }
         break;
 
     case ACT_CHP_LOOP:
     case ACT_CHP_DOLOOP:
-        if (root == 1)
-        {
+        if (root == 1) {
             chp_print (fp, c_t);
             _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
             gc = c_t->u.gc;
             _print_live_var_info (gc->s, 0);
             break;
         }
-        else
-        {
+        else {
             fatal_error ("should've excised internal loops...");
         }
         break;
@@ -455,8 +402,7 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
     case ACT_CHP_SELECT_NONDET:
         chp_print (fp, c_t);
         _print_var_list(((latch_info_t *)(c_t->space))->live_vars);
-        for (gc = c_t->u.gc ; gc ; gc = gc->next)
-        {
+        for (gc = c_t->u.gc ; gc ; gc = gc->next) {
             _print_live_var_info (gc->s, 0);
         }
         break;
@@ -496,26 +442,11 @@ void LiveVarAnalysis::_print_var_list (std::vector<act_connection *> var_list)
 {   
     listitem_t *li;
     fprintf(fp, "\n-----------");
-    fprintf(fp, "\nnecessary input transmissions:");
-    fprintf(fp, "\n(if ring is broken just before here)\n");
+    fprintf(fp, "\nlive-in at this point:\n");
     for (auto v : var_list)
     {
         v->Print(fp);
         fprintf(fp, ", ");
-    }	     
-    fprintf(fp, "\n-----------");
-    fprintf(fp, "\n\n");
-}
-
-void LiveVarAnalysis::_print_var_list (list_t *var_list)
-{   
-    listitem_t *li;
-    fprintf(fp, "\n-----------");
-    fprintf(fp, "\nnecessary input transmissions:");
-    fprintf(fp, "\n(if ring is broken just before here)\n");
-    for (li = list_first(var_list); li; li = list_next(li)) 
-    {
-        fprintf(fp, "%s, ", (char *)list_value(li));
     }	     
     fprintf(fp, "\n-----------");
     fprintf(fp, "\n\n");
@@ -530,91 +461,3 @@ void LiveVarAnalysis::generate_live_var_info ()
 {
     _generate_live_var_info (c, 1);
 }
-
-#if 0
-void LiveVarAnalysis::_generate_live_var_bits (act_chp_lang_t *c_t, int root)
-{
-    listitem_t *li, *li_prev;
-    list_t *copy_list;
-    act_chp_lang_t *stmt;
-    act_chp_gc_t *gc;
-    int bits;
-
-    if (!c_t) return;
-
-    switch (c_t->type) {
-    case ACT_CHP_COMMALOOP:
-    case ACT_CHP_SEMILOOP:
-        fatal_error ("Replication loops should've been removed..");
-        break;
-        
-    case ACT_CHP_COMMA:
-    case ACT_CHP_SEMI:
-        if (root == 1)
-        {        
-            for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) 
-            {
-                stmt = (act_chp_lang_t *)(list_value(li));
-                if (stmt->type == ACT_CHP_LOOP) _generate_live_var_bits (stmt, 1);
-            }
-            break;
-        }
-        li_prev = NULL;
-        li = list_first (c_t->u.semi_comma.cmd);
-        li_prev = li;
-        // start from second stmt
-        for (li = list_next (li) ; li ; li = list_next (li)) 
-        {
-            stmt = (act_chp_lang_t *)(list_value(li));
-            _generate_live_var_bits (stmt, 0);
-        }
-        break;
-
-    case ACT_CHP_LOOP:
-    case ACT_CHP_DOLOOP:
-        if (root == 1)
-        {
-            gc = c_t->u.gc;
-            _generate_live_var_bits (gc->s, 0);
-        }
-        else
-        {
-            fatal_error ("should've excised internal loops...");
-        }
-        break;
-        
-    case ACT_CHP_SELECT:
-        for (gc = c_t->u.gc ; gc ; gc = gc->next)
-        {
-            _generate_live_var_bits (gc->s, 0);
-            // reverse...
-        }
-        break;
-
-    case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS");
-        
-    case ACT_CHP_SKIP:
-        break;
-
-    case ACT_CHP_ASSIGN:
-    case ACT_CHP_ASSIGNSELF:
-    case ACT_CHP_SEND:
-    case ACT_CHP_RECV:
-        bits = compute_total_bits ((list_t *)c_t->space, p);
-        update_tx_bits (bits);
-        break;
-
-    case ACT_CHP_FUNC:
-    case ACT_CHP_HOLE: /* to support verification */
-    case ACT_CHP_MACRO:
-    case ACT_HSE_FRAGMENTS:
-        break;
-
-    default:
-        fatal_error ("Unknown type");
-        break;
-    }
-
-}
-#endif
