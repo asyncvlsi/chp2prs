@@ -170,8 +170,21 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
                         _compute_delay_line_param(pulse_width));
         char lchan_name[1024];
         char rchan_name[1024];
+
         get_true_name (lchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
+        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+            _p->CurScope()->localLookup(stmt1->u.comm.chan, NULL)))) {
+            strcat (lchan_name, ".");
+            strcat (lchan_name, struct_chan_name);
+        }
+
         get_true_name (rchan_name, stmt2->u.comm.chan, _p->CurScope(), false);
+        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+            _p->CurScope()->localLookup(stmt2->u.comm.chan, NULL)))) {
+            strcat (rchan_name, ".");
+            strcat (rchan_name, struct_chan_name);
+        }
+
         fprintf(_fp, "fb_impl.L = %s;\n", lchan_name);
         fprintf(_fp, "fb_impl.R = %s;\n", rchan_name);
 
@@ -201,6 +214,11 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
                         rbw, ival);
         char rchan_name[1024];
         get_true_name (rchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
+        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+            _p->CurScope()->localLookup(stmt1->u.comm.chan, NULL)))) {
+            strcat (rchan_name, ".");
+            strcat (rchan_name, struct_chan_name);
+        }
         fprintf(_fp, "cs_impl.R = %s;\n", rchan_name);
     }
     else if (signature == snk_s) {
@@ -219,6 +237,11 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
         }
         char lchan_name[1024];
         get_true_name (lchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
+        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+            _p->CurScope()->localLookup(stmt1->u.comm.chan, NULL)))) {
+            strcat (lchan_name, ".");
+            strcat (lchan_name, struct_chan_name);
+        }
         fprintf(_fp, "ss_impl.L = %s;\n", lchan_name);
     }
 }

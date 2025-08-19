@@ -802,9 +802,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"elem_c_paa_send %s%d;\n",ring_block_prefix,block_id);
         if (e) {
             bw = _bitWidth(chan);
-            if (bw == -1) {
+            if (TypeFactory::isStructure(TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL)))) {
                 Assert (e->type==E_VAR, "Structure send must be pure var, not a function");
-                bw = struct_bw ((ActId *)e->u.e.l);
                 is_struct = true;
                 strcat (chan_name, ".");
                 strcat (chan_name, struct_chan_name);
@@ -840,8 +839,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_ppa %s%d;\n",ring_block_prefix,block_id);
         bw = _bitWidth(chan);
-        if (bw == -1) {
-            bw = struct_bw (var);
+        if (TypeFactory::isStructure(TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL)))) {
             is_struct = true;
             strcat (chan_name, ".");
             strcat (chan_name, struct_chan_name);
@@ -2588,5 +2586,5 @@ int RingForge::_bitWidth (ActId *id)
   if (!it) {
     return -2;
   }
-  return TypeFactory::bitWidth (it);
+  return TypeFactory::totBitWidth (it);
 }
