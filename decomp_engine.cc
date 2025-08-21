@@ -58,6 +58,8 @@ class Decomp : public ActSynthesize {
   bool overrideTypes() { return true; }
 
   bool skipOverride (ValueIdx *vx) {
+    if (TypeFactory::isProcessType(vx->t))
+      return false;
     return true;
   }
 

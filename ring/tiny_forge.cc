@@ -148,8 +148,6 @@ bool TinyForge::_build_prog_signature (act_chp_lang_t *c, int root)
     return false;
 }
 
-// FIXME!!
-// Need to update to handle structures correctly
 void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature)
 {
     std::vector<Action> buf_s = {Action::Receive, Action::Send};

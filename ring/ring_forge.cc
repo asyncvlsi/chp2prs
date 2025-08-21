@@ -2018,6 +2018,7 @@ int RingForge::generate_branched_ring_non_ssa(act_chp_lang_t *c, int root, int p
     the branched ring (non-trivial initial conditions and loop
     carried dependencies are inextricably linked). 
 */
+// FIXME: comment about what return value and arguments mean
 int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_block_id, int connect_prev)
 {
     int block_id, expr_block_id, first_block_id;

@@ -199,8 +199,8 @@ class RingSynth : public ActSynthesize {
 
       fprintf(stdout, "// %s : ",p->getName());
       auto ss1 = high_resolution_clock::now();
-      if (tf->check_if_pipeable(c))
-      // if (false)
+      // if (tf->check_if_pipeable(c))
+      if (false)
         tf->run_tiny_forge();
       else
         tf->run_forge();
