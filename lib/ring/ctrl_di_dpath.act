@@ -229,10 +229,36 @@ defproc mywriteport(bool wt[W], wf[W]; a1of1 go; ring_int<W> in; ring_int<W> reg
 
   prs {
 
-    // ( i : W : ~go.r & ~in.t[i]  -> _wt[i]+ )
     ( i : W : ~go.r  -> _wt[i]+ )
-    // ( i : W : ~go.r & ~in.f[i]  -> _wf[i]+ )
     ( i : W : ~go.r  -> _wf[i]+ )
+    ( i : W :  go.r &  in.t[i]  -> _wt[i]- )
+    ( i : W :  go.r &  in.f[i]  -> _wf[i]- )
+
+    ( i : W : _wt[i] => wt[i]- )
+    ( i : W : _wf[i] => wf[i]- )
+
+    ( i : W : (wt[i] & reg.t[i]) | (wf[i] & reg.f[i]) -> _wack[i]- )
+    ( i : W : ~wt[i] & ~wf[i] -> _wack[i]+ )
+  }
+  
+  std::gates::ctree<W, false> wa(_wack);
+  
+  prs {
+    Reset | wa.out => go.a-
+  }
+}
+
+export template<pint W>
+defproc mywriteport_strict(bool wt[W], wf[W]; a1of1 go; ring_int<W> in; ring_int<W> reg)
+{
+  bool _wt[W];
+  bool _wf[W];
+  bool _wack[W];
+
+  prs {
+
+    ( i : W : ~go.r & ~in.t[i]  -> _wt[i]+ )
+    ( i : W : ~go.r & ~in.f[i]  -> _wf[i]+ )
     ( i : W :  go.r &  in.t[i]  -> _wt[i]- )
     ( i : W :  go.r &  in.f[i]  -> _wf[i]- )
 
@@ -306,6 +332,24 @@ defproc capture(a1of1 go; ring_int<W> din; ring_int<W> dout; a1of1 tx)
   reg.v = dout;
   
   mywriteport<W> wp;
+  wp.wt = reg.wt;
+  wp.wf = reg.wf;
+  wp.reg = reg.v;
+  wp.in = din;
+
+  two_to_four_brs tf;
+  go = tf.in;
+  wp.go = tf.out;
+  tf.out.r = tx.r;
+}
+
+export template <pint CD, PW, W>
+defproc capture_strict(a1of1 go; ring_int<W> din; ring_int<W> dout; a1of1 tx)
+{
+  register<W,false> reg;
+  reg.v = dout;
+  
+  mywriteport_strict<W> wp;
   wp.wt = reg.wt;
   wp.wf = reg.wf;
   wp.reg = reg.v;
@@ -858,44 +902,28 @@ defproc parallel_merge(a1of1 ci[N]; a1of1! p1)
 // N-way selection split & merge ------
 // for selections
 
-// FLAG: connects to expr block
-export template<pint N>
-defproc selection_split_old(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
+defproc asymc (bool in[2]; bool out)
 {
-  // { N<=4 : "Upto four-way only for now" };
-  { N>1 : "one way split, something whent wrong" };
-  capture<5, 6, 1> capt[N];
-  ( i : N : capt[i].go.r = m1.r; )
-
-  connect_exprblk_assign<1> conn[N];
-  ( i : N : conn[i].e[0] = gs[i]; 
-            conn[i].d = capt[i].din;
-            conn[i].tx.r = capt[i].go.r; )
-
-  var_access_sr vax[N];
-  ( i : N: capt[i].dout = vax[i].din; )
-
-  std::gates::ctree<N,false> c_w;
-  ( i : N: capt[i].go.a = c_w.in[i]; )
-  ( i : N: c_w.out = vax[i].r; )
-  ( i : N : co[i].r = vax[i].d; )
-  
-  std::gates::ortree<N, false> ort(, m1.a);
-  ( i : N: ort.in[i] = co[i].a; )
+  bool _out;
+  prs {
+    in[0] & in[1] -> _out- 
+    ~in[1] -> _out+
+    _out => out- 
+  }
 }
 
 export template<pint N>
 defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
 {
   { N>1 : "one way split?" };
-  capture<5, 6, 1> capt[N];
+  capture_strict<5, 6, 1> capt[N];
   ( i : N : 
       capt[i].go.r = m1.r; 
       capt[i].din.t[0] = gs[i].d.d[0].t; 
       capt[i].din.f[0] = gs[i].d.d[0].f; 
   )
 
-  std::gates::ctree<2,false> c_g[N];
+  asymc c_g[N];
   ( i : N : 
       c_g[i].in[0] = m1.r; 
       c_g[i].in[1] = capt[i].tx.r; 
