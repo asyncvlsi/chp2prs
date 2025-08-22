@@ -3,11 +3,6 @@ defproc gcd_decomp (chan?(int<8>) l1; chan?(int<8>) l2; chan!(int<8>) r1)
 {
 	int<2> c,c1;
 	int<8> x,y;
-	int<8> x1,y1;
-
-    chan(int<2>) CS, CR;
-    chan(int<8>) XS, XR;
-    chan(int<8>) YS, YR;
 
 	chp {
 			c:=0; x:=0; y:=0;
