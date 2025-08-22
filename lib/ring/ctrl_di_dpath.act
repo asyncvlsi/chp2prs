@@ -819,12 +819,12 @@ export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
 
 export defproc elem_c_itb (a1of1 m1; a1of1 p1)
 {
-    prs {
-        ~Reset & (~m1.r & ~p1.a) -> p1.r+
-         Reset | ( m1.r &  p1.a) -> p1.r-
-    }
+  prs {
+      ~Reset & (~m1.r & ~p1.a) -> p1.r+
+        Reset | ( m1.r &  p1.a) -> p1.r-
+  }
 
-    inverter m1_inv(p1.r,m1.a);
+  inverter m1_inv(p1.r,m1.a);
 }
 
 // ------------------------------------
@@ -836,21 +836,21 @@ export defproc elem_c_itb (a1of1 m1; a1of1 p1)
 export template<pint N>
 defproc parallel_split(a1of1? m1; a1of1 co[N]) 
 {
-    std::gates::sigbuf<N> s(m1.r);
-    ( i : N: s.out[i] = co[i].r; )
+  std::gates::sigbuf<N> s(m1.r);
+  ( i : N: s.out[i] = co[i].r; )
 
-    std::gates::ctree<N, false> ct(, m1.a);
-    ( i : N: ct.in[i] = co[i].a; )
+  std::gates::ctree<N, false> ct(, m1.a);
+  ( i : N: ct.in[i] = co[i].a; )
 }
 
 export template<pint N>
 defproc parallel_merge(a1of1 ci[N]; a1of1! p1) 
 {
-    std::gates::ctree<N, false> ct(, p1.r);
-    ( i : N: ct.in[i] = ci[i].r; )
+  std::gates::ctree<N, false> ct(, p1.r);
+  ( i : N: ct.in[i] = ci[i].r; )
 
-    std::gates::sigbuf<N> s(p1.a);
-    ( i : N: s.out[i] = ci[i].a; )
+  std::gates::sigbuf<N> s(p1.a);
+  ( i : N: s.out[i] = ci[i].a; )
 }
 // ------------------------------------
 
@@ -860,39 +860,73 @@ defproc parallel_merge(a1of1 ci[N]; a1of1! p1)
 
 // FLAG: connects to expr block
 export template<pint N>
+defproc selection_split_old(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+  // { N<=4 : "Upto four-way only for now" };
+  { N>1 : "one way split, something whent wrong" };
+  capture<5, 6, 1> capt[N];
+  ( i : N : capt[i].go.r = m1.r; )
+
+  connect_exprblk_assign<1> conn[N];
+  ( i : N : conn[i].e[0] = gs[i]; 
+            conn[i].d = capt[i].din;
+            conn[i].tx.r = capt[i].go.r; )
+
+  var_access_sr vax[N];
+  ( i : N: capt[i].dout = vax[i].din; )
+
+  std::gates::ctree<N,false> c_w;
+  ( i : N: capt[i].go.a = c_w.in[i]; )
+  ( i : N: c_w.out = vax[i].r; )
+  ( i : N : co[i].r = vax[i].d; )
+  
+  std::gates::ortree<N, false> ort(, m1.a);
+  ( i : N: ort.in[i] = co[i].a; )
+}
+
+export template<pint N>
 defproc selection_split(sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
 {
-    // { N<=4 : "Upto four-way only for now" };
-    { N>1 : "one way split, something whent wrong" };
-    capture<5, 6, 1> capt[N];
-    ( i : N : capt[i].go.r = m1.r; )
+  { N>1 : "one way split?" };
+  capture<5, 6, 1> capt[N];
+  ( i : N : 
+      capt[i].go.r = m1.r; 
+      capt[i].din.t[0] = gs[i].d.d[0].t; 
+      capt[i].din.f[0] = gs[i].d.d[0].f; 
+  )
 
-    connect_exprblk_assign<1> conn[N];
-    ( i : N : conn[i].e[0] = gs[i]; 
-              conn[i].d = capt[i].din;
-              conn[i].tx.r = capt[i].go.r; )
-
-    var_access_sr vax[N];
-    ( i : N: capt[i].dout = vax[i].din; )
-
-    std::gates::ctree<N,false> c_w;
-    ( i : N: capt[i].go.a = c_w.in[i]; )
-    ( i : N: c_w.out = vax[i].r; )
-    ( i : N : co[i].r = vax[i].d; )
-    
-    std::gates::ortree<N, false> ort(, m1.a);
-    ( i : N: ort.in[i] = co[i].a; )
+  std::gates::ctree<2,false> c_g[N];
+  ( i : N : 
+      c_g[i].in[0] = m1.r; 
+      c_g[i].in[1] = capt[i].tx.r; 
+      c_g[i].out = gs[i].r; 
+  )
+  
+  std::gates::ctree<N,false> c_w;
+  ( i : N : 
+      c_w.in[i] = capt[i].go.a;
+  )
+  
+  std::gates::andtree<2,false> and_b[N];
+  ( i : N : 
+      c_w.out = and_b[i].in[0]; 
+      capt[i].dout.t[0] = and_b[i].in[1]; 
+      co[i].r = and_b[i].out; 
+  )
+  
+  std::gates::ortree<N, false> ort(, m1.a);
+  ( i : N: ort.in[i] = co[i].a; )
 }
 
 
 export template<pint N>
 defproc selection_merge(a1of1 ci[N]; a1of1! p1) 
 {
-    std::gates::ortree<N, false> ort(, p1.r);
-    ( i : N: ort.in[i] = ci[i].r; )
+  std::gates::ortree<N, false> ort(, p1.r);
+  ( i : N: ort.in[i] = ci[i].r; )
 
-    std::gates::sigbuf<N> s(p1.a);
-    ( i : N: s.out[i] = ci[i].a; )
+  std::gates::sigbuf<N> s(p1.a);
+  ( i : N: s.out[i] = ci[i].a; )
 }
 // ------------------------------------
 
