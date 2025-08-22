@@ -1,0 +1,23 @@
+
+
+defproc src6 (chan!(int<1>) r)
+{
+	int<1> x, y;
+	chp{
+		x:=0; *[ y:=x+1; r!y ]
+	}
+}
+
+defproc snk (chan?(int<1>) l)
+{
+	int<1> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<1>) X; chan!(int<1>) Y)
+{
+  src6 ix(Y);
+  snk o(Y);
+}
