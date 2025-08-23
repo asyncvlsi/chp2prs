@@ -1,6 +1,6 @@
 import globals;
-import "14.act";
-import "runs/14_ring.act";
+import "15.act";
+import "15_ring.act";
 
 defproc test()
 {
@@ -10,14 +10,13 @@ defproc test()
   af = t.Y.d.f;
   aa = t.Y.a;
   chp {
-      // a = 0
       [
-      at[0]=true  & 
-      af[0]=false & 
-      // at[0]=false & 
-      // af[0]=true  & 
-
+      // at[0]=true  &
+      // af[0]=false &
+      at[0]=false &
+      af[0]=true  &
       aa = true
+
       -> log("SUCCESS")]
   }
 }

@@ -499,9 +499,8 @@ defproc dummy_probe_clause(bool? g[1]; bool! out[1]) {
   out = g;
 }
 
-/*
 export template<pint N; pint idx[N]; pint T>
-defproc probe_clause(ring_expr_chan<1> g[N]; ring_expr_chan<1> probe[T]; ring_expr_chan<1> out[1]) {
+defproc probe_clause(sdtexprchan<1> g[N]; ring_expr_chan<1> probe[T]; sdtexprchan<1> out[1]) {
   pint tstval, tmp;
   pint lo_idx[N];
   tstval = 0;
@@ -511,23 +510,28 @@ defproc probe_clause(ring_expr_chan<1> g[N]; ring_expr_chan<1> probe[T]; ring_ex
     tstval = tstval + idx[tmp];
     tmp = tmp + 1; ]
   { T = tstval : "Inconsistent template parameters" };
+
+  ring_expr_chan<1> outr[1];
+  ring_expr_chan<1> gr[N];
+  exprchan_match<1,1> em(out,outr);
+  exprchan_match<1,N> emg(g,gr);
   
-  ( i : N : out[0].r = g[i].r; )
-  ( i : T : out[0].r = probe[i].r; )
+  ( i : N : outr[0].r = gr[i].r; )
+  ( i : T : outr[0].r = probe[i].r; )
 
   bool _out_t, _out_f, out_f, out_t, _Reset;
-  out_f = out[0].d.d[0].f;
-  out_t = out[0].d.d[0].t;
+  out_f = outr[0].d.f[0];
+  out_t = outr[0].d.t[0];
   prs {
     // inverted Reset to initialize correctly
     Reset => _Reset-
 
-     (| i: N: g[i].d.d[0].t & 
-     ( & j: idx[i]: probe[j + lo_idx[i]].d.d[0].t | probe[j + lo_idx[i]].d.d[0].f )) -> _out_t-
+     (| i: N: gr[i].d.t[0] & 
+     ( & j: idx[i]: probe[j + lo_idx[i]].d.t[0] | probe[j + lo_idx[i]].d.f[0] )) -> _out_t-
 
-     (& i: N: g[i].d.d[0].f ) -> _out_f-
+     (& i: N: gr[i].d.f[0] ) -> _out_f-
 
-     ~_Reset | (& i: N: ~g[i].d.d[0].t & ~g[i].d.d[0].f) -> _out_t+
+     ~_Reset | (& i: N: ~gr[i].d.t[0] & ~gr[i].d.f[0]) -> _out_t+
      
      ~_Reset | ~_out_t -> _out_f+
 
@@ -540,11 +544,10 @@ defproc probe_clause(ring_expr_chan<1> g[N]; ring_expr_chan<1> probe[T]; ring_ex
     p_n_mode <- 1;
     _out_t{ -1 };
     _out_f{ -1 };
-    out[0].d.d[0].t{ -1 };
-    out[0].d.d[0].f{ -1 }
+    outr[0].d.t[0]{ -1 };
+    outr[0].d.f[0]{ -1 }
   }
 }
-*/
 
 // N-way non-deterministic split ------
 
@@ -648,16 +651,17 @@ defproc nds_two_way (bool gs[2]; a1of1 m1; a1of1 co[2])
 
 // Round-robin non-deterministic split
 export template <pint N>
-defproc nds_split (ring_expr_chan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
+defproc nds_split (sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
 {
   { N>1 : "At least two-way non-deterministic selection" };
+
+  ring_expr_chan<1> gsr[N];
+  exprchan_match<1,N> em(gs,gsr);
 
   // No. of NDS blocks
   pint M = N;
 
   nds_two_way nds[M];
-  // std::cells::INVX1 inv[M];
-  // std::cells::NOR2X1 nors[M];
   std::cells::XOR2X1 xor1;
   std::cells::TIELOX1 tielo1;
   std::cells::INVX1 inv_loop;
@@ -666,9 +670,54 @@ defproc nds_split (ring_expr_chan<1> gs[N]; a1of1? m1; a1of1 co[N])
   Reset = reset_nor.A;
 
   // connect guards and inverted guards
-  ( i : M : nds[i].gs[0] = gs[i].d.t[0]; 
-            nds[i].gs[1] = gs[i].d.f[0]; 
-            xor1.Y = gs[i].r;
+  ( i : M : nds[i].gs[0] = gsr[i].d.t[0]; 
+            nds[i].gs[1] = gsr[i].d.f[0]; 
+            xor1.Y = gsr[i].r;
+              )
+
+  // first one
+  xor1.B = m1.r;
+  xor1.Y = nds[0].m1.r;
+  m1.a = nds[0].m1.a;
+ 
+  ( i : M-1 : nds[i].co[0] = co[i]; 
+              nds[i].co[1] = nds[i+1].m1; )
+
+  // last one
+  nds[M-1].co[0] = co[M-1];
+  nds[M-1].co[1].a = tielo1.Y;
+  xor1.A = reset_nor.Y;
+  nds[M-1].co[1].r = inv_loop.A;
+}
+
+// Round-robin non-deterministic split
+// Note: Optimized stable NDS is not possible for QDI
+// Can't eval until you know you'll succeed
+// Can't know you'll succeed without eval 
+// Chicken-n-egg prob
+export template <pint N>
+defproc nds_split_stable (sdtexprchan<1> gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+  { N>1 : "At least two-way non-deterministic selection" };
+
+  ring_expr_chan<1> gsr[N];
+  exprchan_match<1,N> em(gs,gsr);
+
+  // No. of NDS blocks
+  pint M = N;
+
+  nds_two_way nds[M];
+  std::cells::XOR2X1 xor1;
+  std::cells::TIELOX1 tielo1;
+  std::cells::INVX1 inv_loop;
+  std::cells::NOR2X1 reset_nor;
+  inv_loop.Y = reset_nor.B;
+  Reset = reset_nor.A;
+
+  // connect guards and inverted guards
+  ( i : M : nds[i].gs[0] = gsr[i].d.t[0]; 
+            nds[i].gs[1] = gsr[i].d.f[0]; 
+            xor1.Y = gsr[i].r;
               )
 
   // first one
@@ -953,8 +1002,13 @@ defproc selection_merge(a1of1 ci[N]; a1of1! p1)
   std::gates::ortree<N, false> ort(, p1.r);
   ( i : N: ort.in[i] = ci[i].r; )
 
-  std::gates::sigbuf<N> s(p1.a);
-  ( i : N: s.out[i] = ci[i].a; )
+  // std::gates::sigbuf<N> s(p1.a);
+  // ( i : N: s.out[i] = ci[i].a; )
+  std::gates::ctree<2,false> cs[N];
+  ( i : N: cs[i].in[0] = ci[i].r; )
+  ( i : N: cs[i].in[1] = p1.a; )
+  ( i : N: cs[i].out = ci[i].a; )
+
 }
 // ------------------------------------
 

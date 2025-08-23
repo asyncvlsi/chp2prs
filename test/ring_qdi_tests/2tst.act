@@ -7,8 +7,8 @@ defproc test()
   pint W = 4;
   ring_testproc t;
   bool at[W], af[W], aa;
-  ( i : 4 : at[i] = t.Y.d.t[i]; )
-  ( i : 4 : af[i] = t.Y.d.f[i]; )
+  at = t.Y.d.t;
+  af = t.Y.d.f;
   aa = t.Y.a;
   chp {
       // a = 10
