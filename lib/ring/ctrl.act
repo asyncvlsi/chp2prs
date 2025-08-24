@@ -872,26 +872,8 @@ defproc doloop_wrapper (bool? g; a1of1? m1;
 // ------------------------------------
 
 // N : No. of inputs, W : Width of each input
-// export template<pint N,W>
-// defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
-// {
-//   // ands
-//   std::cells::AND2X1 stage_1[N][W];
-  
-//   ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
-//   ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
-
-//   // ors
-//   std::gates::ortree<N, false> stage_2[W]; 
-
-//   ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
-//   ( j : W : stage_2[j].out = dout[j]; )
-
-// }
-
-// N : No. of inputs, W : Width of each input
 export template<pint N,W>
-defproc merge_mux_ohc_old(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
+defproc merge_mux_old_2(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 {
   // nands
   std::cells::NAND2X1 stage_1[N][W];
@@ -911,7 +893,7 @@ defproc merge_mux_ohc_old(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 
 // N : No. of inputs, W : Width of each input
 export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
+defproc merge_mux_old_3(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 {
   { N>1 : "Size two or greater merge mux only"};
   
@@ -940,6 +922,27 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
   ]
 
   ( j : W : stage_2[j].out = dout[j]; )
+}
+
+export template<pint N,W>
+defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
+{
+  { N>1 : "Size two or greater merge mux only"};
+
+  std::cells::TBUF1 tb[N][W];
+  std::cells::INVX1 invs[W];
+
+  sigbuf<W> fanout_tree[N];
+  ( i : N : fanout_tree[i].in = c[i]; )
+
+  ( i : N : 
+    ( j : W : 
+      tb[i][j].EN = fanout_tree[i].out[j];
+      tb[i][j].A  = din[i][j];
+      tb[i][j].Y  = invs[j].A;
+      dout[j] = invs[j].Y;
+    )
+  )
 }
 
 // --------------------------------------------------------

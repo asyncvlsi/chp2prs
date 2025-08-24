@@ -869,7 +869,7 @@ defproc doloop_wrapper (bool? g; a1of1? m1;
 
 // N : No. of inputs, W : Width of each input
 export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
+defproc merge_mux_old_1(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 {
   { N>1 : "Size two or greater merge mux only"};
   
@@ -884,13 +884,13 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
   capture_init<R2P_MERGE_MUX_CD,R2P_MERGE_MUX_PW,1,0> capt1[N], capt2[N];
 
   ( i : N :
-            capt1[i].din[0] = c[i];
-            capt1[i].dout[0] = xors[i].A;
-            capt1[i].din[0]  = xors[i].B;
-            capt2[i].din[0]  = xors[i].Y;
-            capt2[i].dout[0] = new_c[i];
-            capt2[i].go.r = delay_xor.out;
-            capt2[i].go.a = capt1[i].go.r; 
+    capt1[i].din[0] = c[i];
+    capt1[i].dout[0] = xors[i].A;
+    capt1[i].din[0]  = xors[i].B;
+    capt2[i].din[0]  = xors[i].Y;
+    capt2[i].dout[0] = new_c[i];
+    capt2[i].go.r = delay_xor.out;
+    capt2[i].go.a = capt1[i].go.r; 
    )
   // last-changed detector (one-hot output) circuit ---
 
@@ -920,6 +920,49 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 
   ( j : W : stage_2[j].out = dout[j]; ) 
 }
+
+export template<pint N,W>
+defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
+{
+  { N>1 : "Size two or greater merge mux only"};
+  
+  std::gates::xortree<N, false> xort(c);
+  delay_line<R2P_MERGE_MUX_DELAY> delay_xor;
+  delay_xor.in = xort.out;
+  
+  // last-changed detector (one-hot output) circuit ---
+  bool new_c[N];
+  std::cells::XOR2X1 xors[N];
+  
+  capture_init<R2P_MERGE_MUX_CD,R2P_MERGE_MUX_PW,1,0> capt1[N], capt2[N];
+
+  ( i : N :
+    capt1[i].din[0] = c[i];
+    capt1[i].dout[0] = xors[i].A;
+    capt1[i].din[0]  = xors[i].B;
+    capt2[i].din[0]  = xors[i].Y;
+    capt2[i].dout[0] = new_c[i];
+    capt2[i].go.r = delay_xor.out;
+    capt2[i].go.a = capt1[i].go.r; 
+  )
+  // last-changed detector (one-hot output) circuit ---
+
+  std::cells::TBUF1 tb[N][W];
+  std::cells::INVX1 invs[W];
+
+  sigbuf<W> fanout_tree[N];
+  ( i : N : fanout_tree[i].in = new_c[i]; )
+
+  ( i : N : 
+    ( j : W : 
+      tb[i][j].EN = fanout_tree[i].out[j];
+      tb[i][j].A  = din[i][j];
+      tb[i][j].Y  = invs[j].A;
+      dout[j] = invs[j].Y;
+    )
+  )
+}
+
 
 export defproc capture_bool (bool i; bool dout[1])
 {
