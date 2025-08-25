@@ -33,10 +33,10 @@ TinyForge::TinyForge ( FILE *fp, int bdpath,
 
 void TinyForge::run_tiny_forge ()
 {
-    LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, _c);
+    RingVarAnalysis *lva = new RingVarAnalysis (_fp, _p, _c);
     // yes, run twice :)
-    lva->generate_live_var_info();
-    lva->generate_live_var_info();
+    lva->generate_var_info();
+    lva->generate_var_info();
 
     construct_var_infos (_c);
     prog_signature.clear();

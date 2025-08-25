@@ -296,14 +296,14 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
 
     auto ss1 = high_resolution_clock::now();
     bool printt = false;
-    LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, c);
+    RingVarAnalysis *lva = new RingVarAnalysis (_fp, _p, c);
     // yes, run twice :)
-    lva->generate_live_var_info();
-    lva->generate_live_var_info();
+    lva->generate_var_info();
+    lva->generate_var_info();
 
     if (printt) fprintf (_fp, "\n/* \n");
     if (printt) fprintf (_fp, "// Live Vars Info -----------------\n");
-    if (printt) lva->print_live_var_info();
+    if (printt) lva->print_var_info();
     if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
     construct_var_infos (c);
@@ -312,9 +312,9 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
         fprintf (stdout, "; initializing these to zero.\n");
     }
 
-    LiveVarAnalysis *lva2 = new LiveVarAnalysis (_fp, _p, c);
-    lva2->generate_live_var_info();
-    lva2->generate_live_var_info();
+    RingVarAnalysis *lva2 = new RingVarAnalysis (_fp, _p, c);
+    lva2->generate_var_info();
+    lva2->generate_var_info();
 
     construct_var_infos (c);
     auto st1 = high_resolution_clock::now();

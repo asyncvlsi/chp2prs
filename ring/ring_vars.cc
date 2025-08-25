@@ -20,9 +20,9 @@
  *************************************************************************
  */
 
-#include "ring_live_vars.h"
+#include "ring_vars.h"
 
-void LiveVarAnalysis::_add_to_live_vars (ActId *id)
+void RingVarAnalysis::_add_to_live_vars (ActId *id)
 {
     InstType *it = p->CurScope()->localLookup(id, NULL);
 
@@ -53,7 +53,7 @@ void LiveVarAnalysis::_add_to_live_vars (ActId *id)
     }
 }
 
-void LiveVarAnalysis::_add_to_live_vars (Expr *e)
+void RingVarAnalysis::_add_to_live_vars (Expr *e)
 {
   ActId *var;
   if (!e) return;
@@ -153,7 +153,7 @@ void LiveVarAnalysis::_add_to_live_vars (Expr *e)
 #undef UNARY_OP
 }
 
-void LiveVarAnalysis::_remove_from_live_vars (ActId *id)
+void RingVarAnalysis::_remove_from_live_vars (ActId *id)
 {
     if (!id) return;
     InstType *it = p->CurScope()->localLookup(id, NULL);
@@ -186,14 +186,14 @@ void LiveVarAnalysis::_remove_from_live_vars (ActId *id)
     return;
 }
 
-void LiveVarAnalysis::_add_to_live_vars_lcd (ActId *id)
+void RingVarAnalysis::_add_to_live_vars_lcd (ActId *id)
 {
     InstType *it = p->CurScope()->localLookup (id, NULL);
     Assert (!TypeFactory::isStructure(it), "Structure assign not broken up?"); 
     H_lcd.insert(id->Canonical(p->CurScope()));
 }
 
-void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action, int is_latch)
+void RingVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action, int is_latch)
 {
     if (!action) return;
     Assert (((action->type == ACT_CHP_ASSIGN)||
@@ -215,7 +215,7 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars (act_chp_lang_t *action, int is
     action->space = l_info;
 }
 
-void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *action)
+void RingVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *action)
 {
     if (!action) return;
     Assert (((action->type == ACT_CHP_LOOP)||
@@ -248,7 +248,7 @@ void LiveVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
     action->space = l_info;
 }
 
-void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
+void RingVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
 {
     listitem_t *li;
     list_t *copy_list;
@@ -361,7 +361,7 @@ void LiveVarAnalysis::_generate_live_var_info (act_chp_lang_t *c_t, int root)
     }
 }
 
-void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
+void RingVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
 {
     listitem_t *li;
     act_chp_lang_t *stmt;
@@ -438,7 +438,7 @@ void LiveVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
     }
 }
 
-void LiveVarAnalysis::_print_var_list (std::vector<act_connection *> var_list)
+void RingVarAnalysis::_print_var_list (std::vector<act_connection *> var_list)
 {   
     listitem_t *li;
     fprintf(fp, "\n-----------");
@@ -452,12 +452,12 @@ void LiveVarAnalysis::_print_var_list (std::vector<act_connection *> var_list)
     fprintf(fp, "\n\n");
 }
 
-void LiveVarAnalysis::print_live_var_info ()
+void RingVarAnalysis::print_var_info ()
 {
     _print_live_var_info (c, 1);
 }
 
-void LiveVarAnalysis::generate_live_var_info ()
+void RingVarAnalysis::generate_var_info ()
 {
     _generate_live_var_info (c, 1);
 }

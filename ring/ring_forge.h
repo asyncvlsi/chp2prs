@@ -20,7 +20,7 @@
  *************************************************************************
  */
 
-#include "ring_live_vars.h"
+#include "ring_vars.h"
 #include "ring.h"
 
 /*

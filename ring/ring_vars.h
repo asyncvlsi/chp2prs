@@ -20,8 +20,8 @@
  *************************************************************************
  */
 
-#ifndef __ACT_RING_LIVE_VARS_H__
-#define __ACT_RING_LIVE_VARS_H__
+#ifndef __ACT_RING_VARS_H__
+#define __ACT_RING_VARS_H__
 
 #include "reqs.h"
 
@@ -32,7 +32,7 @@
  *  For selections, tagged variables are live-out and are used
  *  to compute the merging muxes.
 */
-class LiveVarAnalysis {
+class RingVarAnalysis {
     public:
         /**
          * Live Variable Analysis 
@@ -45,7 +45,7 @@ class LiveVarAnalysis {
          * @param c_in is the input chp tree for analysis
          *
          */
-        LiveVarAnalysis (FILE *fp_out, Process *p_in, act_chp_lang_t *c_in)
+        RingVarAnalysis (FILE *fp_out, Process *p_in, act_chp_lang_t *c_in)
         { 
             fp = fp_out; 
             p = p_in; 
@@ -57,7 +57,7 @@ class LiveVarAnalysis {
         /*
         * Run the live-variable analysis algorithm
         */
-        void generate_live_var_info ();
+        void generate_var_info ();
 
         /*
         * Print the generated information. For actions,
@@ -65,7 +65,7 @@ class LiveVarAnalysis {
         * For selections, variables are the ones that
         * are live-out (of the merge).
         */
-        void print_live_var_info ();
+        void print_var_info ();
 
     protected:
 
