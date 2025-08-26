@@ -2399,7 +2399,7 @@ std::pair<int,int> RingForge::_get_pre_sel_latch_and_size (std::vector<int> in)
     //  assumption: only 1 duplicate exists
     for ( auto x : in )
     {
-        if (!seen.contains(x)) {
+        if (!seen.count(x)) {
             seen.insert(x);
             size++; // size goes up by 1 for every new element
         }

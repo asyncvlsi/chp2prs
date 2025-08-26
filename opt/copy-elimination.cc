@@ -36,7 +36,7 @@ remove_copies(Sequence &seq,
               bool &changed) {
     auto remap_with = [&](const std::unordered_map<VarId, VarId> &map,
                           VarId &id) -> void {
-        if (map.contains(id)) {
+        if (map.count(id)) {
             auto new_id = map.at(id);
             changed |= (id != new_id);
             id = new_id;
@@ -83,7 +83,7 @@ remove_copies(Sequence &seq,
                 Algo::remove_filter_2_if(
                     assign.ids, assign.e.roots,
                     [&](const VarId &id, const ChpExprDag::Node *root) {
-                        hassert(!new_id_from_old_id.contains(id));
+                        hassert(!new_id_from_old_id.count(id));
                         if (root->type() == IRExprTypeKind::Var) {
                             new_id_from_old_id[id] = root->u_var().id;
                             changed = true;
@@ -93,7 +93,7 @@ remove_copies(Sequence &seq,
                     });
                 hassert(assign.ids.size() == assign.e.roots.size());
                 for (auto id : assign.ids)
-                    hassert(!getIdsUsedByExpr(assign.e).contains(id));
+                    hassert(!getIdsUsedByExpr(assign.e).count(id));
 
                 // then deduplicate output variables that both copy from the
                 // same node
@@ -102,7 +102,7 @@ remove_copies(Sequence &seq,
                 Algo::remove_filter_2_if(
                     assign.ids, assign.e.roots,
                     [&](const VarId &id, const ChpExprDag::Node *root) {
-                        if (id_from_node.contains(root)) {
+                        if (id_from_node.count(root)) {
                             new_id_from_old_id[id] = id_from_node.at(root);
                             changed = true;
                             return true;
@@ -122,7 +122,7 @@ remove_copies(Sequence &seq,
                 break;
             case StatementType::Receive:
                 if (curr->u_basic().stmt.u_receive().var)
-                    hassert(!new_id_from_old_id.contains(
+                    hassert(!new_id_from_old_id.count(
                         *curr->u_basic().stmt.u_receive().var));
                 break;
             }
@@ -188,7 +188,7 @@ remove_copies(Sequence &seq,
                 std::unordered_map<std::vector<OptionalVarId>, VarId>
                     out_id_from_branch_ids;
                 for (auto &merge : curr->u_par().merges) {
-                    if (!out_id_from_branch_ids.contains(merge.branch_ids))
+                    if (!out_id_from_branch_ids.count(merge.branch_ids))
                         out_id_from_branch_ids[merge.branch_ids] =
                             merge.post_id;
                     else
@@ -215,7 +215,7 @@ remove_copies(Sequence &seq,
                     VarId branch_id = **Algo::find_assert_if(
                         merge.branch_ids,
                         [](const OptionalVarId &id) { return (bool)id; });
-                    if (pre_id_from_split_id.contains(branch_id))
+                    if (pre_id_from_split_id.count(branch_id))
                         new_id_from_old_id[merge.post_id] =
                             pre_id_from_split_id.at(branch_id);
                 }
@@ -285,7 +285,7 @@ remove_copies(Sequence &seq,
             std::unordered_map<std::vector<VarId>, VarId>
                 out_id_from_branch_ids;
             for (auto &merge : curr->u_select().merges) {
-                if (!out_id_from_branch_ids.contains(merge.branch_ids))
+                if (!out_id_from_branch_ids.count(merge.branch_ids))
                     out_id_from_branch_ids[merge.branch_ids] = merge.post_id;
                 else
                     new_id_from_old_id[merge.post_id] =
@@ -303,10 +303,10 @@ remove_copies(Sequence &seq,
                     }
                 }
                 for (auto &merge : curr->u_select().merges) {
-                    if (pre_id_from_split_id.contains(merge.branch_ids[0]) &&
+                    if (pre_id_from_split_id.count(merge.branch_ids[0]) &&
                         Algo::all_of(
                             merge.branch_ids, [&](const auto &branch_id) {
-                                return pre_id_from_split_id.contains(
+                                return pre_id_from_split_id.count(
                                            branch_id) &&
                                        pre_id_from_split_id.at(branch_id) ==
                                            pre_id_from_split_id.at(
@@ -334,7 +334,7 @@ remove_copies(Sequence &seq,
             std::unordered_map<VarId, VarId> branch_id_from_pre_id;
             std::unordered_map<VarId, VarId> new_branch_id_from_old_branch_id;
             for (auto &phi : curr->u_doloop().in_phis) {
-                if (!branch_id_from_pre_id.contains(phi.pre_id))
+                if (!branch_id_from_pre_id.count(phi.pre_id))
                     branch_id_from_pre_id[phi.pre_id] = phi.bodyin_id;
                 else
                     new_branch_id_from_old_branch_id[phi.bodyin_id] =
@@ -355,7 +355,7 @@ remove_copies(Sequence &seq,
             // now combine out_phis statements that have the same set of inputs
             std::unordered_map<VarId, VarId> out_id_from_branch_ids;
             for (auto &phi : curr->u_doloop().out_phis) {
-                if (!out_id_from_branch_ids.contains(phi.bodyout_id))
+                if (!out_id_from_branch_ids.count(phi.bodyout_id))
                     out_id_from_branch_ids[phi.bodyout_id] = phi.post_id;
                 else
                     new_id_from_old_id[phi.post_id] =
@@ -380,7 +380,7 @@ remove_copies_new(Sequence &seq,
               bool &changed) {
     auto remap_with = [&](const std::unordered_map<VarId, VarId> &map,
                           VarId &id) -> void {
-        if (map.contains(id)) {
+        if (map.count(id)) {
             auto new_id = map.at(id);
             changed |= (id != new_id);
             id = new_id;
@@ -427,7 +427,7 @@ remove_copies_new(Sequence &seq,
                 Algo::remove_filter_2_if(
                     assign.ids, assign.e.roots,
                     [&](const VarId &id, const ChpExprDag::Node *root) {
-                        hassert(!new_id_from_old_id.contains(id));
+                        hassert(!new_id_from_old_id.count(id));
                         if (root->type() == IRExprTypeKind::Var) {
                             new_id_from_old_id[id] = root->u_var().id;
                             changed = true;
@@ -437,7 +437,7 @@ remove_copies_new(Sequence &seq,
                     });
                 hassert(assign.ids.size() == assign.e.roots.size());
                 for (auto id : assign.ids)
-                    hassert(!getIdsUsedByExpr(assign.e).contains(id));
+                    hassert(!getIdsUsedByExpr(assign.e).count(id));
 
                 // then deduplicate output variables that both copy from the
                 // same node
@@ -446,7 +446,7 @@ remove_copies_new(Sequence &seq,
                 Algo::remove_filter_2_if(
                     assign.ids, assign.e.roots,
                     [&](const VarId &id, const ChpExprDag::Node *root) {
-                        if (id_from_node.contains(root)) {
+                        if (id_from_node.count(root)) {
                             new_id_from_old_id[id] = id_from_node.at(root);
                             changed = true;
                             return true;
@@ -466,7 +466,7 @@ remove_copies_new(Sequence &seq,
                 break;
             case StatementType::Receive:
                 if (curr->u_basic().stmt.u_receive().var)
-                    hassert(!new_id_from_old_id.contains(
+                    hassert(!new_id_from_old_id.count(
                         *curr->u_basic().stmt.u_receive().var));
                 break;
             }
@@ -538,7 +538,7 @@ remove_copies_new(Sequence &seq,
             std::unordered_map<std::vector<VarId>, VarId>
                 out_id_from_branch_ids;
             for (auto &merge : curr->u_select().merges) {
-                if (!out_id_from_branch_ids.contains(merge.branch_ids))
+                if (!out_id_from_branch_ids.count(merge.branch_ids))
                     out_id_from_branch_ids[merge.branch_ids] = merge.post_id;
                 else
                     new_id_from_old_id[merge.post_id] =
@@ -556,10 +556,10 @@ remove_copies_new(Sequence &seq,
                     }
                 }
                 for (auto &merge : curr->u_select().merges) {
-                    if (pre_id_from_split_id.contains(merge.branch_ids[0]) &&
+                    if (pre_id_from_split_id.count(merge.branch_ids[0]) &&
                         Algo::all_of(
                             merge.branch_ids, [&](const auto &branch_id) {
-                                return pre_id_from_split_id.contains(
+                                return pre_id_from_split_id.count(
                                            branch_id) &&
                                        pre_id_from_split_id.at(branch_id) ==
                                            pre_id_from_split_id.at(
@@ -587,7 +587,7 @@ remove_copies_new(Sequence &seq,
             std::unordered_map<VarId, VarId> branch_id_from_pre_id;
             std::unordered_map<VarId, VarId> new_branch_id_from_old_branch_id;
             for (auto &phi : curr->u_doloop().in_phis) {
-                if (!branch_id_from_pre_id.contains(phi.pre_id))
+                if (!branch_id_from_pre_id.count(phi.pre_id))
                     branch_id_from_pre_id[phi.pre_id] = phi.bodyin_id;
                 else
                     new_branch_id_from_old_branch_id[phi.bodyin_id] =
@@ -608,7 +608,7 @@ remove_copies_new(Sequence &seq,
             // now combine out_phis statements that have the same set of inputs
             std::unordered_map<VarId, VarId> out_id_from_branch_ids;
             for (auto &phi : curr->u_doloop().out_phis) {
-                if (!out_id_from_branch_ids.contains(phi.bodyout_id))
+                if (!out_id_from_branch_ids.count(phi.bodyout_id))
                     out_id_from_branch_ids[phi.bodyout_id] = phi.post_id;
                 else
                     new_id_from_old_id[phi.post_id] =

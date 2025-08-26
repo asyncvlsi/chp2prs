@@ -64,7 +64,7 @@ void DecompAnalysis::_populate_decomp_info_map (
     {
         auto li_vars = x.second;
         //check if same block exists in both maps
-        hassert (lom.contains(x.first)); 
+        hassert (lom.count(x.first)); 
         auto lo_vars = lom.find(x.first)->second;
 
         decomp_info_t *di;
@@ -331,7 +331,7 @@ void DecompAnalysis::_h_live_union_h_parent ()
     std::unordered_set<VarId>::iterator itr;
     for (itr = H_live.begin(); itr != H_live.end(); itr++)
     {
-        if(!h_p.contains(*itr))
+        if(!h_p.count(*itr))
         {
             h_p.insert(*itr);
         }
@@ -353,7 +353,7 @@ std::unordered_set<VarId> DecompAnalysis::_set_union (std::unordered_set<VarId> 
     std::unordered_set<VarId>::iterator itr2;
     for (itr2 = input2.begin(); itr2 != input2.end(); itr2++)
     {
-        if (!output.contains(*itr2))
+        if (!output.count(*itr2))
             output.insert(*itr2);
     }
     return output;
@@ -370,7 +370,7 @@ std::unordered_set<VarId> DecompAnalysis::_prune_T (std::unordered_set<VarId> T_
         keep = false;
         for (auto Si = Si_s_in.begin() ; Si != Si_s_in.end() ; ++Si )
         {
-            if (Si->contains(*itr))
+            if (Si->count(*itr))
             {    
                 keep = true;
                 break;

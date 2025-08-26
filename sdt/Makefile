@@ -20,7 +20,7 @@
 #-------------------------------------------------------------------------
 TARGETLIBS=libactchpsdt_$(EXT).so
 
-CPPSTD=c++20
+CPPSTD=c++17
 
 SHOBJS=sdt.os basicsdt.os externoptsdt.os
 

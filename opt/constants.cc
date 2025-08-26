@@ -968,7 +968,7 @@ void flow(VarValueTable &table, const ChanValueTable &ctable,
                 }
             }
 
-            if (changed || !run_once.contains(curr)) {
+            if (changed || !run_once.count(curr)) {
                 // then do all the flows
                 run_once.insert(curr);
 
@@ -999,7 +999,7 @@ void flow(VarValueTable &table, const ChanValueTable &ctable,
                 }
             }
 
-            if (changed || !run_once.contains(curr)) {
+            if (changed || !run_once.count(curr)) {
                 // then do all the flows
                 run_once.insert(curr);
 
@@ -1028,7 +1028,7 @@ void flow(VarValueTable &table, const ChanValueTable &ctable,
             for (const auto &phi : curr->u_doloop().loop_phis)
                 changed |= update_cell_merge_from(phi.bodyin_id, phi.pre_id);
 
-            if (changed || !run_once.contains(curr)) {
+            if (changed || !run_once.count(curr)) {
                 // then do all the flows
                 run_once.insert(curr);
 

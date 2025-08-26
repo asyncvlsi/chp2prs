@@ -135,7 +135,7 @@ void MultiChan::_build_multichan_info (Sequence seq)
 void MultiChan::_add_chan_blk_pair (Block *b, ChanId id)
 {
     chan_blk_pair tmp;
-    if (!mc_info.contains(id))
+    if (!mc_info.count(id))
     {
         tmp.clear();
         // first alias number is 1, 0 is reserved for special purpose
@@ -154,7 +154,7 @@ void MultiChan::_print_multichan_info ()
     fprintf (fp, "\n\n----------------\n\n");
     for ( auto itr : mc_info )
     {
-        Assert (g->name_from_chan.contains(itr.first), "channel name not found?");
+        Assert (g->name_from_chan.count(itr.first), "channel name not found?");
         auto chmap = (g->name_from_chan.find(itr.first))->second;
         char chname[1024];
         chmap->sPrint(chname,1024,NULL,1);

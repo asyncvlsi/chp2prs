@@ -82,7 +82,7 @@ void Projection::project()
     // fprintf (stdout, "\n\n");
 
     // Copy-insertion strategy
-    if (0) {
+    if (1) {
         bool _ins = false;
         _insert_copies_v3 (*g, dfg1, g->graph.m_seq, dfg1.get_wccs().size(), 1, _ins);
     }
@@ -162,7 +162,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
             if (vars.size()==1) {
                 d_loc.delete_all_out_edges(n_id);
                 // Actually insert copies corresponding to this 
-                Assert (!old_to_new.contains(vars[0]), "STF violation"); 
+                Assert (!old_to_new.count(vars[0]), "STF violation"); 
                 auto newvar = _insert_node_copy (g_copy, d_loc, n_id, vars[0]);
                 fprintf(stdout, "\n// inserting copy oldvar: %llu, newvar: %llu", vars[0].m_id, newvar.m_id);
                 old_to_new.insert({vars[0],newvar});
@@ -187,7 +187,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
             const auto &node = d_loc.find(n_id);
             auto vars = get_defs(node);
             if (vars.size()==1) {
-                Assert (old_to_new.contains(vars[0]), "Hmm"); 
+                Assert (old_to_new.count(vars[0]), "Hmm"); 
                 _uninsert_node_copy (g_copy, d_loc, n_id, old_to_new[vars[0]], vars[0]);
                 old_to_new.erase(vars[0]);
             }
@@ -225,7 +225,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
             if (vars.size()==1) {
                 d_loc.delete_edge (e.first, e.second);
                 // Actually insert copies corresponding to this edge deletion
-                if (!old_to_new.contains(vars[0])) {
+                if (!old_to_new.count(vars[0])) {
                     // auto newvar = _insert_dominator_copy (g_copy, d_loc, e, vars[0]);
                     auto newvar = _insert_edge_copy (g_copy, d_loc, e, vars[0], clm);
                     fprintf(stdout, "\n// inserting copy oldvar: %llu, newvar: %llu", vars[0].m_id, newvar.m_id);
@@ -255,7 +255,7 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
             if (vars.size()==1) {
                 d_loc.add_edge (e.first, e.second);
                 // Un-insert the copy corresponding to this edge
-                if (old_to_new.contains(vars[0])) {
+                if (old_to_new.count(vars[0])) {
                     // _uninsert_dominator_copy (g_copy, d_loc, e, old_to_new[vars[0]], vars[0]);
                     _uninsert_edge_copy (g_copy, d_loc, e, old_to_new[vars[0]], vars[0], clm);
                     old_to_new.erase(vars[0]);
@@ -277,10 +277,10 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
             const auto &node = d_loc.find(e.first);
             auto vars = get_defs(node);
             if (vars.size()==1) {
-                Assert (vv_inv.contains(vars[0]), "Var not in map");
+                Assert (vv_inv.count(vars[0]), "Var not in map");
                 auto var_in_old_g = vv_inv[vars[0]];
                 fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
-                Assert(d_in.vardefmap.contains(var_in_old_g), "Var not in vardefmap");
+                Assert(d_in.vardefmap.count(var_in_old_g), "Var not in vardefmap");
                 auto node_id = d_in.vardefmap[var_in_old_g];
                 // _insert_dominator_copy (g, d_in, e, var_in_old_g);
                 _insert_edge_copy (g, d_in, e, var_in_old_g, clm);
@@ -292,10 +292,10 @@ void Projection::_insert_copies_v4 (GraphWithChanNames &g, DFG &d_in)
             const auto &node = d_loc.find(n_id);
             auto vars = get_defs(node);
             if (vars.size()==1) {
-                Assert (vv_inv.contains(vars[0]), "Var not in map");
+                Assert (vv_inv.count(vars[0]), "Var not in map");
                 auto var_in_old_g = vv_inv[vars[0]];
                 fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
-                Assert(d_in.vardefmap.contains(var_in_old_g), "Var not in vardefmap");
+                Assert(d_in.vardefmap.count(var_in_old_g), "Var not in vardefmap");
                 auto node_id = d_in.vardefmap[var_in_old_g];
                 _insert_node_copy (g, d_in, node_id, var_in_old_g);
             }
@@ -369,7 +369,7 @@ void Projection::_insert_copies_v5 (GraphWithChanNames &g, DFG &d_in)
             if (vars.size()==1) {
                 d_loc.delete_edge (e.first, e.second);
                 // Actually insert copies corresponding to this edge deletion
-                if (!old_to_new.contains(vars[0])) {
+                if (!old_to_new.count(vars[0])) {
                     auto newvar = _insert_edge_copy (g_copy, d_loc, e, vars[0], clm);
                     fprintf(stdout, "\n// inserting copy oldvar: %llu, newvar: %llu", vars[0].m_id, newvar.m_id);
                     old_to_new.insert({vars[0],newvar});
@@ -397,7 +397,7 @@ void Projection::_insert_copies_v5 (GraphWithChanNames &g, DFG &d_in)
             if (vars.size()==1) {
                 d_loc.add_edge (e.first, e.second);
                 // Un-insert the copy corresponding to this edge
-                if (old_to_new.contains(vars[0])) {
+                if (old_to_new.count(vars[0])) {
                     _uninsert_edge_copy (g_copy, d_loc, e, old_to_new[vars[0]], vars[0], clm);
                     old_to_new.erase(vars[0]);
                 }
@@ -415,10 +415,10 @@ void Projection::_insert_copies_v5 (GraphWithChanNames &g, DFG &d_in)
             const auto &node = d_loc.find(e.first);
             auto vars = get_defs(node);
             if (vars.size()==1) {
-                Assert (vv_inv.contains(vars[0]), "Var not in map");
+                Assert (vv_inv.count(vars[0]), "Var not in map");
                 auto var_in_old_g = vv_inv[vars[0]];
                 fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
-                Assert(d_in.vardefmap.contains(var_in_old_g), "Var not in vardefmap");
+                Assert(d_in.vardefmap.count(var_in_old_g), "Var not in vardefmap");
                 auto node_id = d_in.vardefmap[var_in_old_g];
                 _insert_edge_copy (g, d_in, e, var_in_old_g, clm);
             }
@@ -442,7 +442,7 @@ void Projection::_uninsert_node_copy (GraphWithChanNames &gg, const DFG &d_in, i
     Assert (rcv->u_basic().stmt.u_receive().var, "No receiving var");
     Assert (*(rcv->u_basic().stmt.u_receive().var)==copyvar, "Not the correct dist_asn block?");
     auto snd_ids = getIdsUsedByExpr(snd->u_basic().stmt.u_send().e);
-    Assert (snd_ids.contains(origvar), "Not the correct dist_asn block?");
+    Assert (snd_ids.count(origvar), "Not the correct dist_asn block?");
 
     _splice_out_block (dist_assn);
 
@@ -463,7 +463,7 @@ void Projection::_uninsert_dominator_copy (GraphWithChanNames &gg, const DFG &d_
     Assert (rcv->u_basic().stmt.u_receive().var, "No receiving var");
     Assert (*(rcv->u_basic().stmt.u_receive().var)==copyvar, "Not the correct dist_asn block?");
     auto snd_ids = getIdsUsedByExpr(snd->u_basic().stmt.u_send().e);
-    Assert (snd_ids.contains(origvar), "Not the correct dist_asn block?");
+    Assert (snd_ids.count(origvar), "Not the correct dist_asn block?");
 
     _splice_out_block (dist_assn);
 
@@ -477,7 +477,7 @@ void Projection::_uninsert_edge_copy (GraphWithChanNames &gg, const DFG &d_in, I
 {
     auto b_from = d_in.find(edge.first).b;
     // auto dist_assn = b_from->child();
-    Assert (clm.contains(copyvar), "what");
+    Assert (clm.count(copyvar), "what");
     auto dist_assn = clm.at(copyvar);
     Assert (dist_assn->type()==BlockType::Par, "par block");
     Assert (dist_assn->u_par().branches.size()==2, "two par branches");
@@ -494,7 +494,7 @@ void Projection::_uninsert_edge_copy (GraphWithChanNames &gg, const DFG &d_in, I
     }
     Assert (*(rcv->u_basic().stmt.u_receive().var)==copyvar, "Not the correct dist_asn block?");
     auto snd_ids = getIdsUsedByExpr(snd->u_basic().stmt.u_send().e);
-    Assert (snd_ids.contains(origvar), "Not the correct dist_asn block?");
+    Assert (snd_ids.count(origvar), "Not the correct dist_asn block?");
 
     _splice_out_block (dist_assn);
 
@@ -516,7 +516,7 @@ std::unordered_map<IntPair, std::vector<IntPair>> Projection::_candidate_edges (
             auto scc1 = d_in.find_scc_id(i);
             auto scc2 = d_in.find_scc_id(dest);
             if (scc1!=scc2) {
-                if (!ret.contains(IntPair(scc1,scc2)))
+                if (!ret.count(IntPair(scc1,scc2)))
                     ret.insert({IntPair(scc1,scc2),{}});
                 ret[IntPair(scc1,scc2)].push_back(IntPair(i,dest));
             }
@@ -551,7 +551,7 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
         _build_graph(g1.graph.m_seq, d_loc);
         auto tmp_sgs = d_loc.get_wccs();
         auto itr = tmp_sgs.begin();
-        while ((marker_node_ids.contains((*itr).second[0]))) 
+        while ((marker_node_ids.count((*itr).second[0]))) 
         { itr++; }
         hassert (itr != tmp_sgs.end());
         marker_node_ids.insert((*itr).second[0]);
@@ -585,7 +585,7 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, const DFG &d_in, S
     switch (curr->type()) {
     case BlockType::Basic: {
         const auto &dfgnode = d_in.find(curr);
-        if (dfgnode && s.contains(dfgnode.id)) {
+        if (dfgnode && s.count(dfgnode.id)) {
             s.erase(dfgnode.id);
             empty = false;
         }
@@ -602,7 +602,7 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, const DFG &d_in, S
         std::vector<Block::Variant_Par::PhiSplit> new_splits = {};
         for (auto phi_inv : curr->u_par().splits) {
             const auto &dfgnode = d_in.find(curr, phi_inv);
-            if (dfgnode && s.contains(dfgnode.id)) {
+            if (dfgnode && s.count(dfgnode.id)) {
                 s.erase(dfgnode.id);
                 new_splits.push_back(phi_inv);
                 empty = false;
@@ -617,7 +617,7 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, const DFG &d_in, S
         std::vector<Block::Variant_Par::PhiMerge> new_merges = {};
         for (auto phi : curr->u_par().merges) {
             const auto &dfgnode = d_in.find(curr, phi);
-            if (dfgnode && s.contains(dfgnode.id)) {
+            if (dfgnode && s.count(dfgnode.id)) {
                 s.erase(dfgnode.id);
                 new_merges.push_back(phi);
                 empty = false;
@@ -646,7 +646,7 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, const DFG &d_in, S
         std::vector<Block::Variant_Select::PhiSplit> new_splits = {};
         for (auto phi_inv : curr->u_select().splits) {
             const auto &dfgnode = d_in.find(curr, phi_inv);
-            if (dfgnode && s.contains(dfgnode.id)) {
+            if (dfgnode && s.count(dfgnode.id)) {
                 s.erase(dfgnode.id);
                 new_splits.push_back(phi_inv);
                 empty = false;
@@ -663,7 +663,7 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, const DFG &d_in, S
             bool emp = _build_sub_proc_new (gg, d_in, branch.seq, s);
 
             const auto &dfgnode = d_in.find(curr, {i, IRGuard::deep_copy(branch.g)});
-            if (!emp || (dfgnode && s.contains(dfgnode.id))) {
+            if (!emp || (dfgnode && s.count(dfgnode.id))) {
                 s.erase(dfgnode.id);
                 new_branches.push_back({branch.seq, IRGuard::deep_copy(branch.g)});
                 all_empty = false;
@@ -690,7 +690,7 @@ bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, const DFG &d_in, S
         std::vector<Block::Variant_Select::PhiMerge> new_merges = {};
         for (auto phi : curr->u_select().merges) {
             const auto &dfgnode = d_in.find(curr, phi);
-            if (dfgnode && s.contains(dfgnode.id)) {
+            if (dfgnode && s.count(dfgnode.id)) {
                 s.erase(dfgnode.id);
                 new_merges.push_back(phi);
                 empty = false;
@@ -758,7 +758,7 @@ void Projection::build_vardefmap (DFG &d_in)
     for ( const auto &n : d_in.nodes ) {
         auto vars = get_defs(*n);
         for ( const auto &var : vars ) {
-            Assert (!(d_in.vardefmap.contains(var)), "Multiple nodes defining the same var? STF violation");
+            Assert (!(d_in.vardefmap.count(var)), "Multiple nodes defining the same var? STF violation");
             d_in.vardefmap.insert({var,n->id});
         }
     }
@@ -922,7 +922,7 @@ bool Projection::_check_data_dependence (const DFG_Node &prev, const DFG_Node &c
     auto uses = get_uses(curr);
 
     for ( auto v : defs ) {
-        if (uses.contains(v)) return true;
+        if (uses.count(v)) return true;
     }
     return false;
 }
@@ -1087,13 +1087,13 @@ void Projection::_insert_guard_comms (GraphWithChanNames &g_in, DFG &d_in)
                     // auto send_node = new DFG_Node (send, dfg.gen_id()); 
                     d_in.add_node (DFG_Node (send, d_in.gen_id()));
                     // printf("\nsend node id: %d", send_node->id);
-                    // hassert (dfg.contains(send_node));
+                    // hassert (dfg.count(send_node));
 
                     // auto recv_node = new DFG_Node (recv, dfg.gen_id()); 
                     // dfg.add_node (recv_node);
                     d_in.add_node (DFG_Node (recv, d_in.gen_id()));
                     // printf("\nrecv node id: %d", recv_node->id);
-                    // hassert (dfg.contains(recv_node));
+                    // hassert (dfg.count(recv_node));
 
                     to_add.push_back({d_in.nodes[i]->id, (d_in.find(send)).id});
                     to_add.push_back({(d_in.find(recv)).id, nn.id});
@@ -1355,7 +1355,7 @@ void Projection::_insert_copies_v2 (GraphWithChanNames &gg, Sequence seq, int nw
             auto n = dfg.find(curr);
             if (n) {
                 auto n1 = _heuristic2(n, nwcc);
-                if (dfg.contains(n1)) {
+                if (dfg.count(n1)) {
                     auto vars = get_defs(n1);
                     hassert (vars.size()==1);
                     _insert_copy(gg, n1, vars[0]);
@@ -2312,7 +2312,7 @@ void Projection::_split_selections(Sequence seq)
         _splice_out_block(curr);
         Block *par = g->graph.blockAllocator().newBlock(Block::makeParBlock());
         auto selsetid = _gen_sel_set_id();
-        hassert(!(sel_sets.contains(selsetid)));
+        hassert(!(sel_sets.count(selsetid)));
         sel_sets.insert({selsetid,{}});
         for (auto &branch : curr->u_select().branches) {
             Block *sel2 = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());

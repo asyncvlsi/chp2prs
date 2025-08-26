@@ -71,7 +71,27 @@ class VarId {
         return VarId{m_id + 1};
     }
 
-    auto operator<=>(const VarId &) const = default;
+    // c++17 rollback
+    // auto operator<=>(const VarId &) const = default;
+    bool operator==(const VarId& other) const {
+        return m_id == other.m_id;
+    }
+    bool operator!=(const VarId& other) const {
+        return !(*this == other);
+    }
+    bool operator<(const VarId& other) const {
+        return m_id < other.m_id;
+    }
+    bool operator>(const VarId& other) const {
+        return other < *this;
+    }
+    bool operator<=(const VarId& other) const {
+        return !(other < *this);
+    }
+    bool operator>=(const VarId& other) const {
+        return !(*this < other);
+    }
+
 };
 
 
@@ -116,7 +136,27 @@ class OptionalVarId {
     */
     uint64_t _getId() const { return m_idd; }
 
-    auto operator<=>(const OptionalVarId &) const = default;
+    // c++17 rollback
+    // auto operator<=>(const OptionalVarId &) const = default;
+    
+    bool operator==(const OptionalVarId& other) const {
+        return m_idd == other.m_idd;
+    }
+    bool operator!=(const OptionalVarId& other) const {
+        return !(*this == other);
+    }
+    bool operator<(const OptionalVarId& other) const {
+        return m_idd < other.m_idd;
+    }
+    bool operator>(const OptionalVarId& other) const {
+        return other < *this;
+    }
+    bool operator<=(const OptionalVarId& other) const {
+        return !(other < *this);
+    }
+    bool operator>=(const OptionalVarId& other) const {
+        return !(*this < other);
+    }
 };
 
 
@@ -139,8 +179,29 @@ class ChanId {
         hassert(m_id + 1 != 0);
         return ChanId{m_id + 1};
     }
+    
+    // c++17 rollback
+    // auto operator<=>(const ChanId &) const = default;
 
-    auto operator<=>(const ChanId &) const = default;
+    bool operator==(const ChanId& other) const {
+        return m_id == other.m_id;
+    }
+    bool operator!=(const ChanId& other) const {
+        return !(*this == other);
+    }
+    bool operator<(const ChanId& other) const {
+        return m_id < other.m_id;
+    }
+    bool operator>(const ChanId& other) const {
+        return other < *this;
+    }
+    bool operator<=(const ChanId& other) const {
+        return !(other < *this);
+    }
+    bool operator>=(const ChanId& other) const {
+        return !(*this < other);
+    }
+    
 };
 
 class OptionalChanId {
@@ -160,7 +221,27 @@ class OptionalChanId {
     }
     uint64_t _getId() const { return m_idd; }
 
-    auto operator<=>(const OptionalChanId &) const = default;
+    // c++17 rollback
+    // auto operator<=>(const OptionalChanId &) const = default;
+    
+    bool operator==(const OptionalChanId& other) const {
+        return m_idd == other.m_idd;
+    }
+    bool operator!=(const OptionalChanId& other) const {
+        return !(*this == other);
+    }
+    bool operator<(const OptionalChanId& other) const {
+        return m_idd < other.m_idd;
+    }
+    bool operator>(const OptionalChanId& other) const {
+        return other < *this;
+    }
+    bool operator<=(const OptionalChanId& other) const {
+        return !(other < *this);
+    }
+    bool operator>=(const OptionalChanId& other) const {
+        return !(*this < other);
+    }
 };
 
 } // namespace ChpOptimize

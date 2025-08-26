@@ -54,7 +54,7 @@ bool TinyForge::check_if_pipeable (act_chp_lang_t *c)
 {
     prog_signature.clear();
     if (_build_prog_signature (c, 1)) {
-        return valid_signatures.contains(prog_signature);
+        return valid_signatures.count(prog_signature);
     }
     return false;
 }

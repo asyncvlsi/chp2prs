@@ -114,7 +114,7 @@ void updateDefUsesTable (Sequence seq,
 			 std::unordered_map<const Block *, UsesAndDefs> &table)
 {
   Block *curr = seq.startseq;
-  if (table.contains (curr)) return;
+  if (table.count (curr)) return;
   curr = curr->child();
   while (curr->type() != BlockType::EndSequence) {
     table[seq.startseq] |= table[curr];

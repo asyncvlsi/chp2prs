@@ -20,7 +20,7 @@
 #-------------------------------------------------------------------------
 TARGETLIBS=libactchpring_$(EXT).so
 
-CPPSTD=c++20
+CPPSTD=c++17
 
 SHOBJS=ring.os \
 	tiny_forge.os \

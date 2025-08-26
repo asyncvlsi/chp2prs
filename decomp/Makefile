@@ -20,7 +20,7 @@
 #-------------------------------------------------------------------------
 TARGETLIBS=libactchpdecomp_$(EXT).so
 
-CPPSTD=c++20
+CPPSTD=c++17
 
 SHOBJS=analysis.os \
 	breakpoint.os \

@@ -139,7 +139,7 @@ bool fuseAssignments(ChpGraph &graph) {
             bb1->u_basic().stmt.u_assign().e.roots,
             bb1->u_basic().stmt.u_assign().ids,
             [&](ChpExprDag::Node * /*root*/, const VarId &id) {
-                return bb2_ids.contains(id);
+                return bb2_ids.count(id);
             });
 
         // Finally, add in the root/id pairs from bb2
@@ -844,7 +844,7 @@ void hassertNoSelfAssignments_helper(const Sequence &seq) {
 
                 std::vector<std::pair<VarId, VarId>> old_new_pairs;
                 for (const auto &id : assign.ids)
-                    hassert(!ids_used_by_expr.contains(id));
+                    hassert(!ids_used_by_expr.count(id));
                 break;
             }
             case StatementType::Send:
@@ -890,7 +890,7 @@ void removeSelfAssignments_helper(Sequence &seq, ChpGraph &graph) {
                 for (auto &id : assign.ids) {
                     // This function should only be called on graphs with 1 id
                     // per assignment (e.g. newly parsed ones)
-                    if (ids_used_by_expr.contains(id)) {
+                    if (ids_used_by_expr.count(id)) {
                         VarId new_id = graph.id_pool().makeUniqueVar(
                             graph.id_pool().getBitwidth(id));
                         old_new_pairs.emplace_back(id, new_id);

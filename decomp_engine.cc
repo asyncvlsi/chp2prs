@@ -234,7 +234,7 @@ class Decomp : public ActSynthesize {
         // Using first 3 chars for now
         // if (strncmp(channame, "_ch", 3) == 0
         if (strncmp(channame, chan_prefix, len) == 0
-        && !chans.contains(std::string(channame))) {
+        && !chans.count(std::string(channame))) {
           list_append(_decomp_vx, vx);
           chans.insert(std::string(channame));
         }
@@ -249,7 +249,7 @@ class Decomp : public ActSynthesize {
           // Using first 3 chars for now
           // if (strncmp(channame, "_ch", 3) == 0
           if (strncmp(channame, chan_prefix, len) == 0
-            && !chans.contains(std::string(channame))) {
+            && !chans.count(std::string(channame))) {
             list_append(_decomp_vx, vx);
             chans.insert(std::string(channame));
           }

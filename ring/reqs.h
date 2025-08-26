@@ -34,8 +34,6 @@
 // #include <act/expropt.h>
 #include <act/expr_cache.h>
 
-#include <source_location>
-
 #include "ring_name_handling.h"
 #include "ring_else_gen.h"
 #include "ring_synthesis_struct.h"

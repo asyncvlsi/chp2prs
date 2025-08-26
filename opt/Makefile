@@ -37,7 +37,7 @@ SHOBJS=algos.os big-int.os ir-id.os \
 	stmt-parallelize.os \
 	defuse.os 
 
-CPPSTD=c++20
+CPPSTD=c++17
 
 SRCS=$(SHOBJS:.os=.cc)
 

@@ -983,7 +983,7 @@ void RingEngine::_print_var_info (FILE *fp, var_info *v)
 
 var_info *RingEngine::_get_var_info (ActId *id)
 {
-  Assert (var_infos.contains(id->Canonical(_p->CurScope())), "variable not found");
+  Assert (var_infos.count(id->Canonical(_p->CurScope())), "variable not found");
   auto v = var_infos.at(id->Canonical(_p->CurScope()));
   return v;
 }

@@ -238,7 +238,7 @@ VarId new_do_assigning_renaming(VarId input_id,
 
 VarId new_do_direct_renaming (VarId input_id, VarIdRemap &curmap)
 {
-  while (curmap.contains (input_id)) {
+  while (curmap.count (input_id)) {
     input_id = curmap[input_id];
   }
   return input_id;
@@ -246,13 +246,13 @@ VarId new_do_direct_renaming (VarId input_id, VarIdRemap &curmap)
 
 void _update_curmap (VarIdRemap &curmap, VarId from, VarId to)
 {
-  if (curmap.contains (to)) {
+  if (curmap.count (to)) {
     curmap[from] = curmap[to];
   }
   else {
     curmap[from] = to;
   }
-  hassert (!curmap.contains (curmap[from]));
+  hassert (!curmap.count (curmap[from]));
 }
 
 
@@ -661,7 +661,7 @@ using VarSet = std::unordered_set<VarId>;
 /* 
  * This converts the CHP to static token form
  *
- * The VarIdRemapPair contains two mappings:
+ * The VarIdRemapPair count two mappings:
  *
  *    - orig input var -> new var name (used for conditional uses)
  *    - orig output var -> new var name (used for new defs)
@@ -669,7 +669,7 @@ using VarSet = std::unordered_set<VarId>;
  * The "rename_input" flag is used to rename uses. This flag is set
  * whenever we need a PHI' function: in loops and selects.
  *
- * We also keep track of an auxillary map which contains the
+ * We also keep track of an auxillary map which count the
  * correspondence between the original VarIds to the newly generated
  * ones.
  *
@@ -778,7 +778,7 @@ void _run_seq (Sequence seq,
 	if (!br.seq.empty()) {
 	  livein_branches = Algo::set_union (livein_branches,
 					     livein[br.seq.startseq->child()]);
-	  if (defuse.contains(br.seq.startseq)) {
+	  if (defuse.count(br.seq.startseq)) {
 	    branch_defuse = Algo::set_union (branch_defuse,
 					     defuse[br.seq.startseq].var_reads);
 	    branch_defuse = Algo::set_union (branch_defuse,
@@ -794,7 +794,7 @@ void _run_seq (Sequence seq,
       //std::cout << "Hello!" << std::endl;
       for (auto &var : livein_branches) {
 	//std::cout << "v" << var.m_id << " is live" << std::endl;
-	if (branch_defuse.contains(var)) {
+	if (branch_defuse.count(var)) {
 	  //std::cout << "v" << var.m_id << " is in the defuse set" << std::endl;
 	  int ii = 0;
 	  for (auto &br : curr->u_select().branches) {
@@ -802,14 +802,14 @@ void _run_seq (Sequence seq,
 	    //printvars (std::cout, livein[br.seq.startseq]);
 	    //std::cout << "} ";
 	    if (!br.seq.empty() &&
-		livein[br.seq.startseq->child()].contains (var)) {
+		livein[br.seq.startseq->child()].count (var)) {
 	      calcsplit[var].push_back
 		(new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
 	      //printf ("here, added: %d for %d\n", newcurmaps[ii][var].m_id,
 	      //var.m_id);
 	    }
-	    else if (br.seq.empty() && liveout[curr].contains (var) &&
-		     defuse[curr].var_writes.contains (var)) {
+	    else if (br.seq.empty() && liveout[curr].count (var) &&
+		     defuse[curr].var_writes.count (var)) {
 	      //printf ("empty case for %d\n", var.m_id);
 	      calcsplit[var].push_back
 		(new_do_assigning_renaming (var, newcurmaps[ii], id_pool));
@@ -842,8 +842,8 @@ void _run_seq (Sequence seq,
 	 variables defined.
       */
       for (auto &var : liveout[curr]) {
-	if (defuse.contains(curr)) {
-	  if (defuse[curr].var_writes.contains (var)) {
+	if (defuse.count(curr)) {
+	  if (defuse[curr].var_writes.count (var)) {
 	    std::vector<VarId> branch_ids;
 	    int ii = 0;
 	    for (auto &br : curr->u_select().branches) {
@@ -879,9 +879,9 @@ void _run_seq (Sequence seq,
       std::vector<tmploop> loopphis;
 
       for (auto &var : livein[curr]) {
-	if (defuse[curr].var_reads.contains (var) ||
-	    defuse[curr].var_writes.contains (var)) {
-	  if (!defuse[curr].var_writes.contains (var)) {
+	if (defuse[curr].var_reads.count (var) ||
+	    defuse[curr].var_writes.count (var)) {
+	  if (!defuse[curr].var_writes.count (var)) {
 	    // Scenario I:
 	    //     h := BLAH; *[ USE(h) <- g ]; ...
 	    // in_phi
@@ -893,7 +893,7 @@ void _run_seq (Sequence seq,
 	    
 	    VarId preid;
 	    VarId invar = new_do_assigning_renaming (var, outmap, id_pool);
-	    if (curmap.contains (var)) {
+	    if (curmap.count (var)) {
 	      preid = curmap[var];
 	    }
 	    else {
@@ -907,7 +907,7 @@ void _run_seq (Sequence seq,
 	    // loop_phi
 
 	    VarId preid;
-	    if (curmap.contains (var)) {
+	    if (curmap.count (var)) {
 	      preid = curmap[var];
 	    }
 	    else {
@@ -915,7 +915,7 @@ void _run_seq (Sequence seq,
 	    }
 	    
 	    OptionalVarId out_id;
-	    if (liveout[curr].contains (var)) {
+	    if (liveout[curr].count (var)) {
 	      out_id = OptionalVarId{new_do_assigning_renaming (var, curmap, id_pool)};
 	    }
 	    else {
@@ -948,7 +948,7 @@ void _run_seq (Sequence seq,
       //     h := BLAH; *[ no-use(h); DEF(h) ... <- g ]; USE(h)
       // out_phi
       for (auto &var : liveout[curr]) {
-	if (!livein[curr].contains (var)) {
+	if (!livein[curr].count (var)) {
 	  curr->u_doloop().out_phis.push_back({outmap[var],
 		new_do_assigning_renaming (var, curmap, id_pool)});
 	}
@@ -1217,7 +1217,7 @@ void prunePhis (Sequence seq, std::unordered_set<VarId> &deadvars,
       for (auto &phisplit : curr->u_select().splits) {
 	// remove any dead variable from the split
 	for (auto &var : phisplit.branch_ids) {
-	  if (var && deadvars.contains(*var)) {
+	  if (var && deadvars.count(*var)) {
 	    var = OptionalVarId::null_id();
 	  }
 	}
@@ -1236,7 +1236,7 @@ void prunePhis (Sequence seq, std::unordered_set<VarId> &deadvars,
 
       std::vector<Block::Variant_Select::PhiMerge> newmerges;
       for (auto &phimerge : curr->u_select().merges) {
-	if (!deadvars.contains (phimerge.post_id)) {
+	if (!deadvars.count (phimerge.post_id)) {
 	  newmerges.push_back (phimerge);
 	}
 	else {
@@ -1256,7 +1256,7 @@ void prunePhis (Sequence seq, std::unordered_set<VarId> &deadvars,
       // check and prune phis
       std::vector<Block::Variant_DoLoop::OutPhi> new_outphis;
       for (auto &outphi : curr->u_doloop().out_phis) {
-	if (deadvars.contains (outphi.post_id)) {
+	if (deadvars.count (outphi.post_id)) {
 	  new_pot_dead.insert (outphi.bodyout_id);
 	}
 	else {
@@ -1266,7 +1266,7 @@ void prunePhis (Sequence seq, std::unordered_set<VarId> &deadvars,
       curr->u_doloop().out_phis = new_outphis;
 
       for (auto &loopphi : curr->u_doloop().loop_phis) {
-	if (loopphi.post_id && deadvars.contains (*loopphi.post_id)) {
+	if (loopphi.post_id && deadvars.count (*loopphi.post_id)) {
 	  loopphi.post_id = OptionalVarId::null_id();
 	}
       }
@@ -1408,7 +1408,7 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
 #if 0
     auto pre = [&] (std::ostream &os, const Block &b)
       {
-       if (livein.contains (&b)) {
+       if (livein.count (&b)) {
   	os << " {";
 	printvars (os, livein[&b]);
 	os << "}";
@@ -1423,13 +1423,13 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
 	       if (br.seq.empty()) {
 		 os << "p";
 	       }
-	       else if (!livein[br.seq.startseq->child()].contains(var)) {
+	       else if (!livein[br.seq.startseq->child()].count(var)) {
 		 os << "_";
 	       }
-	       else if (defuse[br.seq.startseq].var_reads.contains(var)) {
+	       else if (defuse[br.seq.startseq].var_reads.count(var)) {
 		 os << "|";
 	       }
-	       else if (defuse[br.seq.startseq].var_writes.contains(var)) {
+	       else if (defuse[br.seq.startseq].var_writes.count(var)) {
 		 os << "/";
 	       }
 	       else {
@@ -1448,7 +1448,7 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
       };
     auto post = [&] (std::ostream &os, const Block &b)
       {
-       if (liveout.contains (&b)) {
+       if (liveout.count (&b)) {
   	os << " {";
 	printvars(os, liveout[&b]);
 	os << "}";
@@ -1457,9 +1457,9 @@ void putIntoNewStaticTokenForm(ChpGraph &g) {
        if (b.type() == BlockType::Select) {
 	   os << " {{ pot-merges: ";
 	   for (auto &var : liveout[&b]) {
-	     if (defuse.contains (&b)) {
+	     if (defuse.count (&b)) {
 	       auto &du = defuse[&b];
-	       if (du.var_writes.contains (var)) {
+	       if (du.var_writes.count (var)) {
 		 os << "v" << var.m_id << "<-";
 		 os << " ";
 	       }
@@ -1536,7 +1536,7 @@ class RegisterAllocationGraph {
             k = {a, b};
         else
             k = {b, a};
-        if (rewards.contains(k))
+        if (rewards.count(k))
             return rewards.at(k);
         return 0;
     }
@@ -1568,7 +1568,27 @@ class ColoredRegisterAllocationGraph {
   public:
     struct ColorId {
         int id;
-        auto operator<=>(const ColorId &) const = default;
+        // c++17 rollback
+        // auto operator<=>(const ColorId &) const = default;
+
+        bool operator==(const ColorId& other) const {
+            return id == other.id;
+        }
+        bool operator!=(const ColorId& other) const {
+            return !(*this == other);
+        }
+        bool operator<(const ColorId& other) const {
+            return id < other.id;
+        }
+        bool operator>(const ColorId& other) const {
+            return other < *this;
+        }
+        bool operator<=(const ColorId& other) const {
+            return !(other < *this);
+        }
+        bool operator>=(const ColorId& other) const {
+            return !(*this < other);
+        }
     };
 
   private:
@@ -1919,13 +1939,13 @@ void build_register_graph(RegisterAllocationGraph &rag, const Sequence &seq,
             // anywhere after, then set the block that creates it to be its own
             // final use
             for (auto id : def_uses.uses) {
-                if (!read_ids.contains(id)) {
+                if (!read_ids.count(id)) {
                     final_uses.insert(id);
                     read_ids.insert(id);
                 }
             }
             for (auto id : def_uses.defs) {
-                if (!read_ids.contains(id))
+                if (!read_ids.count(id))
                     final_uses.insert(id);
             }
             final_use_map[curr] = std::move(final_uses);
@@ -1939,7 +1959,7 @@ void build_register_graph(RegisterAllocationGraph &rag, const Sequence &seq,
             // anywhere after, then set the block that creates it to be its own
             // final use
             for (auto id : phi_in_ids) {
-                if (!read_ids.contains(id))
+                if (!read_ids.count(id))
                     final_uses.insert(id);
             }
             final_use_map[seq.startseq] = std::move(final_uses);
@@ -1949,7 +1969,7 @@ void build_register_graph(RegisterAllocationGraph &rag, const Sequence &seq,
     // now scan forward, and generate all the conflicts!
     auto live_ids = std::set<VarId>{phi_in_ids.begin(), phi_in_ids.end()};
     for (auto id : final_use_map.at(seq.startseq)) {
-        hassert(live_ids.contains(id));
+        hassert(live_ids.count(id));
         live_ids.erase(id);
     }
 
@@ -2007,11 +2027,11 @@ void build_register_graph(RegisterAllocationGraph &rag, const Sequence &seq,
     auto update_live_varids = [&](const Block *curr) {
         const auto &def_uses = table.block_defuses.at(curr);
         for (auto id : def_uses.defs) {
-            hassert(!live_ids.contains(id));
+            hassert(!live_ids.count(id));
             live_ids.insert(id);
         }
         for (auto id : final_use_map.at(curr)) {
-            hassert(live_ids.contains(id));
+            hassert(live_ids.count(id));
             live_ids.erase(id);
         }
     };
@@ -2091,8 +2111,8 @@ void build_register_graph(RegisterAllocationGraph &rag, const Sequence &seq,
             // the branches? Do the first half of the liveness update
             const auto &def_uses = table.block_defuses.at(curr);
             for (auto id : final_use_map.at(curr)) {
-                if (!def_uses.defs.contains(id)) {
-                    hassert(live_ids.contains(id));
+                if (!def_uses.defs.count(id)) {
+                    hassert(live_ids.count(id));
                     live_ids.erase(id);
                 }
             }
@@ -2116,8 +2136,8 @@ void build_register_graph(RegisterAllocationGraph &rag, const Sequence &seq,
             // TODO Is this ok? I moved the first half to right after the
             // guards? Do the second half of the liveness update
             for (auto id : def_uses.defs) {
-                if (!final_use_map.at(curr).contains(id)) {
-                    hassert(!live_ids.contains(id));
+                if (!final_use_map.at(curr).count(id)) {
+                    hassert(!live_ids.count(id));
                     live_ids.insert(id);
                 }
             }
@@ -2147,8 +2167,8 @@ void build_register_graph(RegisterAllocationGraph &rag, const Sequence &seq,
             // Do the first half of the liveness update
             const auto &def_uses = table.block_defuses.at(curr);
             for (auto id : final_use_map.at(curr)) {
-                if (!def_uses.defs.contains(id)) {
-                    hassert(live_ids.contains(id));
+                if (!def_uses.defs.count(id)) {
+                    hassert(live_ids.count(id));
                     live_ids.erase(id);
                 }
             }
@@ -2178,8 +2198,8 @@ void build_register_graph(RegisterAllocationGraph &rag, const Sequence &seq,
 
             // Do the second half of the liveness update
             for (auto id : def_uses.defs) {
-                if (!final_use_map.at(curr).contains(id)) {
-                    hassert(!live_ids.contains(id));
+                if (!final_use_map.at(curr).count(id)) {
+                    hassert(!live_ids.count(id));
                     live_ids.insert(id);
                 }
             }
@@ -2230,7 +2250,7 @@ void RegisterAllocationGraph::add_set_interferes_set(
         nodes.insert(b);
     for (auto a : A) {
         for (auto b : B) {
-            if (fusions.contains({a, b}) || fusions.contains({b, a}))
+            if (fusions.count({a, b}) || fusions.count({b, a}))
                 continue;
             insert_conflict(a, b);
         }
@@ -2258,7 +2278,7 @@ void RegisterAllocationGraph::add_set_interferes_clique(
         for (auto b : A) {
             if (a == b)
                 continue;
-            if (fusions.contains({a, b}) || fusions.contains({b, a}))
+            if (fusions.count({a, b}) || fusions.count({b, a}))
                 continue;
             insert_conflict(a, b);
         }
@@ -2460,7 +2480,7 @@ void apply_crag(
 
                 auto read_ids = getIdsUsedByExpr(assign.e);
                 for (const auto &id : assign.ids) {
-                    hassert(!read_ids.contains(id));
+                    hassert(!read_ids.count(id));
                 }
 
                 break;

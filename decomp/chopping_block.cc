@@ -137,7 +137,7 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
     if (bb->type() == BlockType::EndSequence)
         return NULL;
 
-    hassert (vmap.contains(bb));
+    hassert (vmap.count(bb));
     decomp_info_t *di = (vmap.find(bb))->second;
     di->live_in_vec = std::vector<VarId> {di->live_in_vars.begin(), di->live_in_vars.end()};
 
@@ -206,7 +206,7 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
         return NULL;
     }
 
-    hassert (vmap.contains(bb));
+    hassert (vmap.count(bb));
     decomp_info_t *di = (vmap.find(bb))->second;
     di->live_out_vec = std::vector<VarId> {di->live_out_vars.begin(), di->live_out_vars.end()};
 
@@ -284,7 +284,7 @@ Block *ChoppingBlock::_find_next_break_after (Block *b)
     Block *itr = b;
     while (itr->type() != BlockType::EndSequence)
     {
-        hassert (vmap.contains(itr));
+        hassert (vmap.count(itr));
         decomp_info_t *di = (vmap.find(itr))->second;
         if (di->break_after)
             return itr;
@@ -301,7 +301,7 @@ Block *ChoppingBlock::_find_next_break_before (Block *b)
     Block *itr = b;
     while (itr->type() != BlockType::EndSequence)
     {
-        hassert (vmap.contains(itr));
+        hassert (vmap.count(itr));
         decomp_info_t *di = (vmap.find(itr))->second;
         if (di->break_before)
             return itr;
@@ -438,7 +438,7 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     while (curr->type() != BlockType::EndSequence) {
     switch (curr->type()) {
     case BlockType::Basic: {
-        hassert (vmap.contains(curr));
+        hassert (vmap.count(curr));
         di = (vmap.find(curr))->second;
         if (di->break_before && (curr != seq.startseq->child()))
         {   
@@ -452,7 +452,7 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
       
     case BlockType::Par: {
 
-        hassert (vmap.contains(curr));
+        hassert (vmap.count(curr));
         di = (vmap.find(curr))->second;
         if (di->break_before && di->break_after)
         {
@@ -478,7 +478,7 @@ void ChoppingBlock::_chop_graph(Sequence seq, int root)
     break;
       
     case BlockType::Select: {
-        hassert (vmap.contains(curr));
+        hassert (vmap.count(curr));
         di = (vmap.find(curr))->second;
         if (di->break_before && di->break_after)
         {
@@ -794,7 +794,7 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
 std::vector<Block *> ChoppingBlock::_initialize_ics(Block *curr)
 {
     std::vector<Block *> v_inits;
-    hassert (vmap.contains(curr));
+    hassert (vmap.count(curr));
     hassert (curr->type() == BlockType::DoLoop);
     decomp_info_t *di = (vmap.find(curr))->second;
     
@@ -834,7 +834,7 @@ int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send, int type)
 
 std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block *send, int type)
 {
-    hassert (vmap.contains(send));
+    hassert (vmap.count(send));
     decomp_info_t *di = (vmap.find(send))->second;
 
     // std::unordered_set<VarId> vars;
@@ -922,7 +922,7 @@ Block *ChoppingBlock::_process_parallel (Block *pll, int n)
     hassert (n<3);
 
     hassert (pll->type() == BlockType::Par);
-    hassert (vmap.contains(pll));
+    hassert (vmap.count(pll));
     decomp_info_t *di = (vmap.find(pll))->second;
 
     Block *recv;
@@ -963,7 +963,7 @@ Block *ChoppingBlock::_process_selection (Block *sel, int n)
     hassert (n<3);
     // hassert (n>0);
     hassert (sel->type() == BlockType::Select);
-    hassert (vmap.contains(sel));
+    hassert (vmap.count(sel));
     decomp_info_t *di = (vmap.find(sel))->second;
 
     Block *recv;
@@ -1017,7 +1017,7 @@ Block *ChoppingBlock::_process_selection (Block *sel, int n)
 
 std::pair<Block *, Block *> ChoppingBlock::_generate_pll_send_recv_and_seed_branches (Block *pll)
 {
-    hassert (vmap.contains(pll));
+    hassert (vmap.count(pll));
     decomp_info_t *di_pll = (vmap.find(pll))->second;
 
     bool merge_needed = true;
@@ -1116,7 +1116,7 @@ std::tuple<Block *, Block *, Block *> ChoppingBlock::_generate_split_merge_and_s
     VarId ctrl_id = g->graph.id_pool().makeUniqueVar(ctrl_bw, false);
     Block *merge_ctrl_recv = g->graph.blockAllocator().newBlock(
             Block::makeBasicBlock(Statement::makeReceive(ctrl_chan_id, ctrl_id)));
-    hassert (vmap.contains(sel));
+    hassert (vmap.count(sel));
     decomp_info_t *di_sel = (vmap.find(sel))->second;
 
     bool merge_needed = true;

@@ -569,7 +569,7 @@ static std::unordered_map<VarId, VarId> vv;
 
 ChanId get_chan_id (const ChanId &ci, ChpGraph &g_new, const ChpGraph &g_old)
 {
-  if (cc.contains(ci))
+  if (cc.count(ci))
     return cc[ci];
   ChanId co = g_new.id_pool().makeUniqueChan(
                       g_old.id_pool().getBitwidth(ci), 
@@ -580,7 +580,7 @@ ChanId get_chan_id (const ChanId &ci, ChpGraph &g_new, const ChpGraph &g_old)
 
 VarId get_var_id (const VarId &vi, ChpGraph &g_new, const ChpGraph &g_old)
 {
-  if (vv.contains(vi))
+  if (vv.count(vi))
     return vv[vi];
   VarId vo = g_new.id_pool().makeUniqueVar(
                       g_old.id_pool().getBitwidth(vi), 

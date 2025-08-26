@@ -57,7 +57,7 @@ struct var_to_actvar {
     static char chan_prefix[20];
     snprintf (chan_prefix, 20, "_ch_%d_",ref);
     static char buf[100];
-    if (name_from_chan.contains(ch)) {
+    if (name_from_chan.count(ch)) {
       return name_from_chan[ch]->Clone();
     }
     do {
@@ -86,7 +86,7 @@ struct var_to_actvar {
   ActId *varMap (const VarId &v) {
     const char *var_prefix = "_va";
     static char buf[100];
-    if (name_from_var.contains(v)) {
+    if (name_from_var.count(v)) {
       return name_from_var[v]->Clone();
     }
     do {

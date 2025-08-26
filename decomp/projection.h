@@ -484,7 +484,7 @@ class DFG {
             }
             for ( const auto &n : nodes ) {
                 auto ufn = uf.find(n->id);
-                if (!wccs.contains(ufn)) {
+                if (!wccs.count(ufn)) {
                     wccs.insert({ufn,{}});
                 }
                 wccs[ufn].push_back(n->id);
@@ -584,7 +584,7 @@ class DFG {
             Assert (n1!=-1, "Invalid node");
             Assert (contains(n1), "Node does not exist");
             Assert (sccs_built, "SCCs not built");
-            Assert (sccs.contains(n1), "Node not in SCCs? sth went wrong");
+            Assert (sccs.count(n1), "Node not in SCCs? sth went wrong");
             return sccs.at(n1);
         }
 

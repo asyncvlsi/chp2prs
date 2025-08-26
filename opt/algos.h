@@ -456,7 +456,7 @@ std::unordered_set<K> set_intersection(const std::unordered_set<K> &a,
 				   const std::unordered_set<K> &b) {
     std::unordered_set<K> result;
     for (const auto &x : a) {
-      if (b.contains(x)) {
+      if (b.count(x)) {
 	result.insert(x);
       }
     }

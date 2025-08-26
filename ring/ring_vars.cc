@@ -180,7 +180,7 @@ void RingVarAnalysis::_remove_from_live_vars (ActId *id)
         }
     }
     else {
-        if (H_live.contains(id->Canonical(p->CurScope())))
+        if (H_live.count(id->Canonical(p->CurScope())))
             H_live.erase(id->Canonical(p->CurScope()));
     }
     return;
@@ -226,7 +226,7 @@ void RingVarAnalysis::_tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *acti
     std::vector<act_connection *> req_vars;
 
     for ( auto v : H_lcd ) {
-        if (!H_live.contains(v))
+        if (!H_live.count(v))
             req_vars.push_back(v);
     }
     for ( auto v : H_live ) {

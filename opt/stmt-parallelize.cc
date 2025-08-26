@@ -62,12 +62,12 @@ void make_parallel(ChpGraph &g, Sequence &seq,
     Block *curr1 = seq.startseq->child();
     while (curr1 != seq.endseq) 
     {
-        Assert (udmap.contains(curr1), "what1");
+        Assert (udmap.count(curr1), "what1");
         auto ud1 = udmap.at(curr1);
         Block *curr2 = curr1->child();
         while (curr2 != seq.endseq) 
         {
-            Assert (udmap.contains(curr2), "what2");
+            Assert (udmap.count(curr2), "what2");
             auto ud2 = udmap.at(curr2);
             std::unordered_set<VarId> ww = {};
             std::unordered_set<VarId> wr = {};

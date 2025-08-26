@@ -222,7 +222,7 @@ getLiveVars (const ChpGraph &graph)
   auto pre = [&] (std::ostream &os, const Block &b) { return; };
   auto post = [&] (std::ostream &os, const Block &b)
     {
-     if (raw.contains (&b)) {
+     if (raw.count (&b)) {
        bool first;
        os << " {rd=";
        first = true;

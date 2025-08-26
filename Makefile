@@ -23,7 +23,7 @@ BINARY=chp2prs_dev.$(EXT)
 TARGETS=$(BINARY) synth2.$(EXT)
 TARGETLIBS=libactchp2prspass_$(EXT).so
 
-CPPSTD=c++20
+CPPSTD=c++17
 
 OBJS1=main.o
 
