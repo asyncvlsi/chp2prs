@@ -24,11 +24,12 @@
 #ifndef __PROJECTION_H__
 #define __PROJECTION_H__
 
-#include "chopping_block.h"
-#include "chp_cost.h"
+#include <act/chp/chopping_block.h>
+#include <act/chp/chp_cost.h>
 
-#include "../opt/static-tokens.h"
-#include "../opt/union-find.h"
+#include <act/chp/static-tokens.h>
+#include <act/chp/union-find.h>
+
 
 enum class NodeType { Basic, Copy, Guard, LoopGuard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
 

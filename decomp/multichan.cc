@@ -21,7 +21,6 @@
  */
 
 #include "multichan.h"
-#include "../opt/utils.h"
 
  std::vector<Sequence> MultiChan::get_auxiliary_procs()
 {

@@ -22,16 +22,16 @@
 #include "synth.h"
 #include "engines.h"
 
-#include "decomp/breakpoint.h"
-#include "decomp/chopping_block.h"
-#include "decomp/projection.h"
-#include "decomp/pretty_print.h"
-#include "decomp/multichan.h"
+#include <act/chp/breakpoint.h>
+#include <act/chp/chopping_block.h>
+#include <act/chp/projection.h>
+#include <act/chp/pretty_print.h>
+#include <act/chp/multichan.h>
 
 #include "ring/ring_else_gen.h"
 
-#include "opt/chp-opt.h"
-#include "opt/static-tokens.h"
+#include <act/chp/chp-opt.h>
+#include <act/chp/static-tokens.h>
 
 class Decomp : public ActSynthesize {
  public:

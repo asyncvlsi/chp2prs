@@ -21,7 +21,6 @@
  */
 
 #include "chopping_block.h"
-#include "../opt/utils.h"
 
 #define LIVE_IN 0
 #define LIVE_OUT 1

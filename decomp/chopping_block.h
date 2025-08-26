@@ -23,7 +23,8 @@
 #ifndef __CHOPPING_BLOCK_H__
 #define __CHOPPING_BLOCK_H__
 
-#include "analysis.h"
+#include <act/chp/analysis.h>
+#include <act/chp/utils.h>
 
 /*
     Class for implementing the breaking of 

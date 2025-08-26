@@ -24,8 +24,8 @@
 #define __DECOMP_ANALYSIS_H__
 
 #include <act/act.h>
-#include "../opt/chp-opt.h"
-#include "../opt/act-names.h"
+#include <act/chp/chp-opt.h>
+#include <act/chp/act-names.h>
 
 // ChpOptimize::ChpGraph *g;
 using namespace ChpOptimize;

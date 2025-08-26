@@ -20,7 +20,7 @@
  **************************************************************************
  */
 
-#include "analysis.h"
+#include <act/chp/analysis.h>
 /*
     Marks breakpoints on each block. There are a few rules that must
     be followed in order for a marking to be a valid marking.

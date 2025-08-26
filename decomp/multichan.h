@@ -24,7 +24,8 @@
 #ifndef __MULTICHAN_H__
 #define __MULTICHAN_H__
 
-#include "analysis.h"
+#include <act/chp/analysis.h>
+#include <act/chp/utils.h>
 
 using namespace ChpOptimize;
 

@@ -24,7 +24,7 @@
 #define __CHP_COST_H__
 
 
-#include "chopping_block.h"
+#include <act/chp/chopping_block.h>
 #include <act/expropt.h>
 // #include <act/expr_cache.h>
 
