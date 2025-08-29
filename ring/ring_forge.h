@@ -23,6 +23,7 @@
 #include "ring_vars.h"
 #include "ring.h"
 
+#define USE_CACHE 0
 /*
  * Ring synthesizer class
  */
@@ -39,12 +40,23 @@ class RingForge : public RingEngine {
         long long get_io_runtime();
 
     ~RingForge () {
-        if (eeo) { eeo->~ExprCache(); eeo=NULL; }
+        if (eeo) { 
+#if USE_CACHE
+            eeo->~ExprCache(); 
+#else
+            eeo->~ExternalExprOpt();
+#endif
+            eeo=NULL; 
+        }
     }
 
     protected:
 
+#if USE_CACHE
         ExprCache *eeo;
+#else
+        ExternalExprOpt *eeo;
+#endif
 
         void _run_forge_helper (act_chp_lang_t *);
         bool _structure_check (act_chp_lang_t *);
@@ -80,6 +92,7 @@ class RingForge : public RingEngine {
         int _generate_single_latch_non_ssa (var_info *, long long);
         int _generate_expr_block(Expr *, int, bool);
         int _generate_expr_block_for_sel(Expr *, int, bool);
+        int _generate_expr_block_for_sel_all(act_chp_gc_t *, int, bool);
         std::pair<int,int> _compute_merge_mux_info(latch_info_t *, int, std::vector<ActId *>&);
         int _generate_probe_clause(list_t *, list_t *);
         int _generate_probe_circuit(Expr *, int);

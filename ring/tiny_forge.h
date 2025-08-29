@@ -49,8 +49,15 @@ class TinyForge : public RingForge {
         bool check_if_pipeable (act_chp_lang_t *);
 
     ~TinyForge () {
-        if (eeo) { eeo->~ExprCache(); eeo=NULL; }
-    }
+        if (eeo) { 
+#if USE_CACHE
+            eeo->~ExprCache(); 
+#else
+            eeo->~ExternalExprOpt();
+#endif
+            eeo=NULL; 
+        }
+}
 
     protected:
 

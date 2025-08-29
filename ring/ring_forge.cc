@@ -86,7 +86,11 @@ RingForge::RingForge ( FILE *fp,
     _mux_block_id = 0;
     _branch_id = 0;
 
+#if USE_CACHE
     eeo = new ExprCache("abc",  ((bundled==1)?bd:qdi), false, _exprfile);
+#else
+    eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, exprfile, expr_block_input_prefix, expr_block_prefix);
+#endif
     Assert ((eeo), "Could not create mapper!");
 }
 
@@ -1056,6 +1060,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     Assert ((eeo), "No mapper exists");
 
     // collect input vars info
+    ac.clear();
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
 
@@ -1100,7 +1105,12 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     // fprintf(stdout, "\n\n// one expr duration: %lld microseconds \n\n", de.count());
 
     // run abc, then v2act to create the combinational-logic-for-math process
+#if USE_CACHE
     ExprBlockInfo *ebi = eeo->synth_expr(out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+#else
+    ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+    ebi->setID(std::to_string(xid));
+#endif
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
     runtime2 += de.count();
@@ -1153,6 +1163,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     Assert ((eeo), "No mapper exists");
 
     // collect input vars info
+    ac.clear();
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
     e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
@@ -1180,7 +1191,129 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     int out_expr_width = 1;
 
     // run abc, then v2act to create the combinational-logic-for-math process
+#if USE_CACHE
     ExprBlockInfo *ebi = eeo->synth_expr(out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+#else
+    ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+    ebi->setID(std::to_string(xid));
+#endif
+    runtime1 += ebi->getRuntime();
+    runtime2 += ebi->getIORuntime();
+    
+    Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
+    double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
+
+    int delay_line_n = _compute_delay_line_param(typ_delay_ps); 
+    if (delay_line_n <= 0) { delay_line_n = 1; }
+
+    if (verbose) fprintf(_fp, "\n// typical delay: %lfps",typ_delay_ps);
+    fprintf(_fp,"\n");
+    _instantiate_expr_block (ebi->getID(), xid, all_leaves, connect_inputs);
+
+    ebi->~ExprBlockInfo();
+    ebi = NULL;
+
+    // free all temporary data structures 
+    ihash_free (_inexprmap);
+    _inexprmap = NULL;
+    ihash_free (_inwidthmap);
+    _inwidthmap = NULL;
+    list_free (all_leaves);
+
+    // force write output file
+    fflush(_fp);
+    return delay_line_n;
+}
+
+/*
+    Function to call an external logic synthesis tool to
+    generate combinational logic to implement guard
+    evaluators. Currently supports only abc. 
+*/
+int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool connect_inputs)
+{
+    Assert ((eeo), "No mapper exists");
+
+    std::vector<Expr *> e_list = {};
+    while (gc) {
+        Assert (gc->g, "else_gen failed");
+        e_list.push_back(gc->g);
+        gc = gc->next;
+    }
+
+    _reset_expr_id();
+    // collect input vars info
+    _inexprmap = ihash_new (0);
+    _inwidthmap = ihash_new (0);
+    for (auto &e : e_list) {
+        e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
+        e = expr_dag(e);
+        _expr_collect_vars (e, 1);
+    }
+    
+    // collect input vars in list
+    list_t *all_leaves = list_new();
+    {
+        ihash_iter_t iter;
+        ihash_bucket_t *ib;
+        ihash_iter_init (_inexprmap, &iter);
+        while ((ib = ihash_iter_next (_inexprmap, &iter))) {
+            Expr *e1 = (Expr *)ib->key;
+            list_append (all_leaves, e1);
+        }
+    }
+    // no dots
+    config_set_int("synth.expropt.verbose", 0);
+    config_set_int("synth.expropt.abc.use_constraints", 1);
+    config_set_int("synth.expropt.vectorize_all_ports", 1);
+
+    int out_expr_width = 1;
+
+    // run abc, then v2act to create the combinational-logic-for-math process
+#if USE_CACHE
+    ExprBlockInfo *ebi = eeo->synth_expr(out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
+#else
+    _outexprmap = ihash_new(0);
+    _outwidthmap = ihash_new(0);
+    _inexprmap_str = ihash_new(0);
+
+    for (listitem_t *li = list_first (all_leaves); li; li = list_next (li)) { 
+        Expr *tmp = (Expr *) list_value(li);
+        // change from int to C string
+        ihash_bucket_t *b_map,*b_new;
+        b_map = ihash_lookup(_inexprmap, (long) tmp);
+        char *charbuf = (char *) malloc( sizeof(char) * ( 100 + 1 ) );
+        snprintf(charbuf, 100, "%s%u","e_in_",b_map->i);
+        b_new = ihash_add(_inexprmap_str, (long) tmp);
+        b_new->v = charbuf;
+    }
+    list_t *_outlist = list_new();
+    int i=0;
+    for ( auto e : e_list ) {
+        list_append (_outlist, e);
+        ihash_bucket_t *b_map;
+        char *cb = (char *) malloc( sizeof(char) * ( 100 + 1 ) );
+        snprintf(cb, 100, "out_%u",i);
+        b_map = ihash_add(_outexprmap,(long) e);
+        b_map->v = strdup(cb);
+        ihash_bucket_t *b_width;
+        b_width = ihash_add(_outwidthmap,(long) e);
+        b_width->i = 1;
+        i++;
+    }
+
+    std::string sname = std::string(expr_block_prefix) + std::to_string(xid);
+
+    ExprBlockInfo *ebi = eeo->run_external_opt(sname, all_leaves, _inexprmap_str, _inwidthmap, _outlist, _outexprmap, _outwidthmap, NULL, true);
+    ebi->setID(std::to_string(xid));
+
+    ihash_free (_outexprmap);
+    _outexprmap = NULL;
+    ihash_free (_outwidthmap);
+    _outwidthmap = NULL;
+    list_free (_outlist);
+
+#endif
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
     
@@ -1525,12 +1658,22 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
         var_info *vi = _get_var_info(var);
         ihash_bucket_t *ib;
         ihash_bucket_t *b_width;
+        auto conn = var->Canonical(_p->CurScope());
         if (!ihash_lookup (_inexprmap, (long)e)) 
         {
-            ib = ihash_add (_inexprmap, (long)e);
-            ib->i = _gen_expr_id();
-            b_width = ihash_add (_inwidthmap, (long) e);
-            b_width->i = vi->width;
+            if (!ac.count( conn )) {
+                ib = ihash_add (_inexprmap, (long)e);
+                ib->i = _gen_expr_id();
+                b_width = ihash_add (_inwidthmap, (long) e);
+                b_width->i = vi->width;
+                ac.insert({conn,ib->i});
+            }
+            else {
+                ib = ihash_add (_inexprmap, (long)e);
+                ib->i = ac.at(conn);
+                b_width = ihash_add (_inwidthmap, (long) e);
+                b_width->i = vi->width;
+            }
         }
     }
     break;
@@ -2270,6 +2413,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             {   
                 expr_block_id = _gen_expr_block_id();
                 delay_n_sel = _generate_expr_block_for_sel (gc->g, expr_block_id,true);
+                // delay_n_sel = _generate_expr_block_for_sel_all (gc, expr_block_id, true);
                 if (max_delay_n_sel < delay_n_sel) max_delay_n_sel = delay_n_sel;
             }
             _connect_guards_to_sel_split_input (sel_split_block_id, expr_block_id, i);
