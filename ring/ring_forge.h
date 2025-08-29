@@ -23,7 +23,10 @@
 #include "ring_vars.h"
 #include "ring.h"
 
-#define USE_CACHE 0
+// NOTE
+// Using cache will turn off multi-output expr block support 
+// (for now)
+#define USE_CACHE 1
 /*
  * Ring synthesizer class
  */
@@ -122,6 +125,7 @@ class RingForge : public RingEngine {
         int _connect_pipe_to_pll_merge_inputs (int, int, int);
         int _connect_sel_split_outputs_to_pipe (int, int, int);
         int _connect_guards_to_sel_split_input (int, int, int);
+        int _connect_guards_to_sel_split_input_multi (int, int, int);
         int _connect_pipe_to_sel_merge_inputs (int, int, int);
 
         // Pipeline block name prefixes

@@ -1232,6 +1232,11 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
 */
 int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool connect_inputs)
 {
+#if USE_CACHE
+    Assert (false, "Can't use cache and multi-output expr blocks simultaneously (yet)");
+    return -1;
+#else
+
     Assert ((eeo), "No mapper exists");
 
     std::vector<Expr *> e_list = {};
@@ -1241,8 +1246,9 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
         gc = gc->next;
     }
 
-    _reset_expr_id();
     // collect input vars info
+    ac.clear();
+    _reset_expr_id();
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
     for (auto &e : e_list) {
@@ -1267,12 +1273,7 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
     config_set_int("synth.expropt.abc.use_constraints", 1);
     config_set_int("synth.expropt.vectorize_all_ports", 1);
 
-    int out_expr_width = 1;
-
     // run abc, then v2act to create the combinational-logic-for-math process
-#if USE_CACHE
-    ExprBlockInfo *ebi = eeo->synth_expr(out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
-#else
     _outexprmap = ihash_new(0);
     _outwidthmap = ihash_new(0);
     _inexprmap_str = ihash_new(0);
@@ -1283,7 +1284,7 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
         ihash_bucket_t *b_map,*b_new;
         b_map = ihash_lookup(_inexprmap, (long) tmp);
         char *charbuf = (char *) malloc( sizeof(char) * ( 100 + 1 ) );
-        snprintf(charbuf, 100, "%s%u","e_in_",b_map->i);
+        snprintf(charbuf, 100, "%s%u",expr_block_input_prefix,b_map->i);
         b_new = ihash_add(_inexprmap_str, (long) tmp);
         b_new->v = charbuf;
     }
@@ -1313,33 +1314,33 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
     _outwidthmap = NULL;
     list_free (_outlist);
 
-#endif
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
     
     Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
-
+    
     int delay_line_n = _compute_delay_line_param(typ_delay_ps); 
     if (delay_line_n <= 0) { delay_line_n = 1; }
-
+    
     if (verbose) fprintf(_fp, "\n// typical delay: %lfps",typ_delay_ps);
     fprintf(_fp,"\n");
     _instantiate_expr_block (ebi->getID(), xid, all_leaves, connect_inputs);
-
+    
     ebi->~ExprBlockInfo();
     ebi = NULL;
-
+    
     // free all temporary data structures 
     ihash_free (_inexprmap);
     _inexprmap = NULL;
     ihash_free (_inwidthmap);
     _inwidthmap = NULL;
     list_free (all_leaves);
-
+    
     // force write output file
     fflush(_fp);
     return delay_line_n;
+#endif
 }
 
 /*
@@ -1786,6 +1787,14 @@ int RingForge::_connect_guards_to_sel_split_input (int sel_split_block_id, int e
     // inst_i.out is always size-1 array, not just a bool (1-bit datapath compatibility)
     fprintf(_fp,"block_%d.gs[%d] = %s%d.out[0];\n",sel_split_block_id,sel_split_guard_port,
                                             expr_block_instance_prefix, expr_block_id);
+    return 0;
+}
+
+int RingForge::_connect_guards_to_sel_split_input_multi (int sel_split_block_id, int expr_block_id, int sel_split_guard_port)
+{
+    // inst_i.out is always size-1 array, not just a bool (1-bit datapath compatibility)
+    fprintf(_fp,"block_%d.gs[%d] = %s%d.out_%d[0];\n",sel_split_block_id,sel_split_guard_port,
+                                            expr_block_instance_prefix, expr_block_id, sel_split_guard_port);
     return 0;
 }
 
@@ -2402,26 +2411,39 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         save_var_infos();
 
         gp_connect_ids = list_new();
-        for (int i = 0; gc; gc = gc->next)
-        {
-            Assert ((gc->g) , "should've been fixed in else generation");
-            if (have_probes)
-            {   
-                expr_block_id = _generate_probe_circuit (gc->g, expr_block_id);
+
+        if (!have_probes && USE_CACHE==0) {
+            expr_block_id = _gen_expr_block_id();
+            max_delay_n_sel = _generate_expr_block_for_sel_all(gc, expr_block_id, true);
+            gc = c->u.gc;
+
+            for (int i = 0; gc; gc = gc->next) {
+                _connect_guards_to_sel_split_input_multi (sel_split_block_id, expr_block_id, i);
+                block_id = _generate_gp_connect ();
+                _connect_sel_split_outputs_to_pipe (sel_split_block_id, block_id, i);
+                list_iappend(gp_connect_ids, block_id);
+                i++;
             }
-            else
-            {   
-                expr_block_id = _gen_expr_block_id();
-                delay_n_sel = _generate_expr_block_for_sel (gc->g, expr_block_id,true);
-                // delay_n_sel = _generate_expr_block_for_sel_all (gc, expr_block_id, true);
-                if (max_delay_n_sel < delay_n_sel) max_delay_n_sel = delay_n_sel;
-            }
-            _connect_guards_to_sel_split_input (sel_split_block_id, expr_block_id, i);
-            block_id = _generate_gp_connect ();
-            _connect_sel_split_outputs_to_pipe (sel_split_block_id, block_id, i);
-            list_iappend(gp_connect_ids, block_id);
-            i++;
         }
+        else {
+            for (int i = 0; gc; gc = gc->next) {
+                Assert ((gc->g) , "should've been fixed in else generation");
+                if (have_probes) {   
+                    expr_block_id = _generate_probe_circuit (gc->g, expr_block_id);
+                }
+                else {   
+                    expr_block_id = _gen_expr_block_id();
+                    delay_n_sel = _generate_expr_block_for_sel (gc->g, expr_block_id,true);
+                    if (max_delay_n_sel < delay_n_sel) max_delay_n_sel = delay_n_sel;
+                }
+                _connect_guards_to_sel_split_input (sel_split_block_id, expr_block_id, i);
+                block_id = _generate_gp_connect ();
+                _connect_sel_split_outputs_to_pipe (sel_split_block_id, block_id, i);
+                list_iappend(gp_connect_ids, block_id);
+                i++;
+            }
+        }
+
         lj = list_first(gp_connect_ids);
         gc = c->u.gc;
         for (int i = 0; gc; gc = gc->next)
