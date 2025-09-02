@@ -76,7 +76,7 @@ RingForge::RingForge ( FILE *fp,
     _delay_margin = delay_margin;
     delay_multiplier = float(_delay_margin)/100;
 
-    // Instance counters
+    // Instance countersq
     _block_id = 0;
     _itb_wrapper_id = 0;
     _bd_chan_id = 0;
@@ -86,11 +86,7 @@ RingForge::RingForge ( FILE *fp,
     _mux_block_id = 0;
     _branch_id = 0;
 
-#if USE_CACHE
     eeo = new ExprCache("abc",  ((bundled==1)?bd:qdi), false, _exprfile);
-#else
-    eeo = new ExternalExprOpt("abc", ((bundled==1)?bd:qdi), false, exprfile, expr_block_input_prefix, expr_block_prefix);
-#endif
     Assert ((eeo), "Could not create mapper!");
 }
 
@@ -804,8 +800,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         }
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_paa_send %s%d;\n",ring_block_prefix,block_id);
+        bw = _bitWidth(chan);
         if (e) {
-            bw = _bitWidth(chan);
             if (TypeFactory::isStructure(TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL)))) {
                 Assert (e->type==E_VAR, "Structure send must be pure var, not a function");
                 is_struct = true;
@@ -828,7 +824,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             fprintf(_fp,"delay_expr_%d.p1 = %s%d.ctrl;\n",expr_inst_id,conn_block_prefix,block_id);
         }
         else { // dataless action
-            fprintf(_fp,"%s%d.zero = %s;\n",ring_block_prefix,block_id, chan_name);
+            fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
+            fprintf(_fp,"%s%d.ch = %s;\n\n",conn_block_prefix,block_id,chan_name);
         }
         break;
 
@@ -1105,12 +1102,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     // fprintf(stdout, "\n\n// one expr duration: %lld microseconds \n\n", de.count());
 
     // run abc, then v2act to create the combinational-logic-for-math process
-#if USE_CACHE
     ExprBlockInfo *ebi = eeo->synth_expr(out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
-#else
-    ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
-    ebi->setID(std::to_string(xid));
-#endif
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
     runtime2 += de.count();
@@ -1191,12 +1183,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     int out_expr_width = 1;
 
     // run abc, then v2act to create the combinational-logic-for-math process
-#if USE_CACHE
     ExprBlockInfo *ebi = eeo->synth_expr(out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
-#else
-    ExprBlockInfo *ebi = eeo->run_external_opt(xid, out_expr_width, e, all_leaves, _inexprmap, _inwidthmap);
-    ebi->setID(std::to_string(xid));
-#endif
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
     
@@ -1232,11 +1219,6 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
 */
 int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool connect_inputs)
 {
-#if USE_CACHE
-    Assert (false, "Can't use cache and multi-output expr blocks simultaneously (yet)");
-    return -1;
-#else
-
     Assert ((eeo), "No mapper exists");
 
     std::vector<Expr *> e_list = {};
@@ -1305,8 +1287,10 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
 
     std::string sname = std::string(expr_block_prefix) + std::to_string(xid);
 
+    eeo->set_expr_outfile(_exprfile);
     ExprBlockInfo *ebi = eeo->run_external_opt(sname, all_leaves, _inexprmap_str, _inwidthmap, _outlist, _outexprmap, _outwidthmap, NULL, true);
     ebi->setID(std::to_string(xid));
+    eeo->set_expr_outfile("");
 
     ihash_free (_outexprmap);
     _outexprmap = NULL;
@@ -1340,7 +1324,7 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
     // force write output file
     fflush(_fp);
     return delay_line_n;
-#endif
+// #endif
 }
 
 /*
@@ -2395,7 +2379,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         }
         fprintf (_fp, "\n");
 
-        if (!(_guards_have_probes(gc))) {
+        if (!(_guards_have_probes(gc)) && c->type==ACT_CHP_SELECT) {
             sel_split_block_id = _generate_selection_split(gc_len);
         }
         else if (!(_guards_have_negated_probes(gc))){
@@ -2412,7 +2396,8 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
 
         gp_connect_ids = list_new();
 
-        if (!have_probes && USE_CACHE==0) {
+        // if (!have_probes && USE_CACHE==0) {
+        if (!have_probes) {
             expr_block_id = _gen_expr_block_id();
             max_delay_n_sel = _generate_expr_block_for_sel_all(gc, expr_block_id, true);
             gc = c->u.gc;

@@ -50,11 +50,7 @@ class TinyForge : public RingForge {
 
     ~TinyForge () {
         if (eeo) { 
-#if USE_CACHE
             eeo->~ExprCache(); 
-#else
-            eeo->~ExternalExprOpt();
-#endif
             eeo=NULL; 
         }
 }
