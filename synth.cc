@@ -90,6 +90,7 @@ ActSynthesize::ActSynthesize (const char *prefix,
 
   _top = NULL;
   _decomp_vx = NULL;
+  _new_ports = NULL;
   _prefix = prefix;
 }
 

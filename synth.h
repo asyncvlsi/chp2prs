@@ -135,6 +135,11 @@ class ActSynthesize {
   const char *getPrefix () { return _prefix; }
 
   /**
+   * Return list of new ports added to the process
+   */
+  list_t *getNewPorts() { return _new_ports; }
+
+  /**
    * Return list of types freshly introduced by decomposition
    */
   list_t *getDecompVx() { return _decomp_vx; }
@@ -185,6 +190,7 @@ protected:
   Process *_top;
 
   list_t *_decomp_vx; ///< for new instances introduced during decomposition
+  list_t *_new_ports; ///< for new ports introduced to enable scan points
 
   void Close (); ///< close output files
 };

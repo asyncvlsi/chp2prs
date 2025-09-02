@@ -27,7 +27,8 @@ SHOBJS=ring.os \
 	ring_forge.os \
 	ring_else_gen.os \
 	ring_name_handling.os \
-	ring_vars.os
+	ring_vars.os \
+	ring_scan.os
 
 SRCS=$(SHOBJS:.os=.cc)
 

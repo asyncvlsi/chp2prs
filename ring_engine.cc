@@ -26,6 +26,7 @@
 #include "ring/reqs.h"
 #include "ring/ring_else_gen.h"
 #include "ring/tiny_forge.h"
+#include "ring/ring_scan.h"
 
 #include "opt/chp-opt.h"
 
@@ -155,6 +156,19 @@ class RingSynth : public ActSynthesize {
     _expr = NULL;
 
     tf->~TinyForge();
+  }
+
+  void runPreSynth (ActPass *ap, Process *p) {
+
+    if (p->getlang() && p->getlang()->getchp()) {
+      ScanInsertion *si = new ScanInsertion(p, p->getlang()->getchp()->c);
+      si->insert_scan_points();
+      if (!_new_ports) {
+        _new_ports = list_new();
+      } 
+      _new_ports = si->get_new_ports();
+      p->getlang()->getchp()->c = si->getc();
+    }
   }
 
   void runSynth (ActPass *ap, Process *p) {

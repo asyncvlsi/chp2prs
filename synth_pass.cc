@@ -169,7 +169,21 @@ static int emit_refinement_header (ActSynthesize *syn,
     FREE (tmp);
   }
   u->snprintActName (buf, 10240);
-  pp_printf (pp, "%s()", buf);
+  pp_printf (pp, "%s(", buf);
+  list_t *newp = syn->getNewPorts();
+  if (newp && is_process) {
+    pp_forced (pp, 0);
+    for (listitem_t *li = list_first(newp); li; li = li->next) {
+      char buf1[1024];
+      int pos = list_ivalue(li);
+      auto it = u->getPortType(pos);
+      auto nm = u->getPortName(pos);
+      it->sPrint(buf1, 1024);
+      fprintf(pp->fp, "%s %s", buf1, nm);
+      if (li->next) fprintf(pp->fp,";\n");
+    }
+  }
+  pp_printf (pp, ")");
   pp_forced (pp, 0);
   
   int bw = 0;
