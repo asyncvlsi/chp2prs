@@ -24,11 +24,11 @@
 
 void ScanInsertion::insert_scan_points()
 {   
-    fprintf(stdout, "hi from scan inserter");
+    // fprintf(stdout, "hi from scan inserter");
     _insert_scan_points(_c);
-    fprintf(stdout, "\n inside SI\n");
-    chp_print(stdout, _c);
-    fprintf(stdout, "\n inside SI\n");
+    // fprintf(stdout, "\n inside SI\n");
+    // chp_print(stdout, _c);
+    // fprintf(stdout, "\n inside SI\n");
 }
 
 int ScanInsertion::_gen_scan_port_idx ()
