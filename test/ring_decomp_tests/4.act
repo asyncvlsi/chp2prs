@@ -1,0 +1,44 @@
+
+defproc split (chan?(int<1>) l1; chan?(int<8>) l2; chan!(int<8>) r1, r2)
+{
+	int<1> c;
+	int<8> x;
+	chp{
+		*[
+		l1?c; l2?x; [c=0 -> r1!x []c=1 -> r2!x]
+		]
+	}
+}
+
+defproc src (chan!(int<8>) r)
+{
+	chp{
+		*[r!5]
+	}
+}
+
+defproc src_c (chan!(int<1>) r)
+{
+	chp{
+		*[r!0]
+	}
+}
+
+defproc snk (chan?(int<8>) l)
+{
+	int<8> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<1>) C; chan?(int<8>) X; chan!(int<8>) Y1, Y2)
+{
+  split s(C,X,Y1,Y2);
+
+  src_c ic(C);
+  src   ix(X);
+
+  snk o1(Y1);
+  snk o2(Y2);
+}

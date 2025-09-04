@@ -69,12 +69,12 @@ do
            myecho ".[$bname]"
         fi
         ok=1
-        for opt in "-F ring -b"
+        for opt in "-F ring -C bdp" "-F ring -C bd2" "-F ring -C bd"
 	do
         if [ $ok -eq 1 ]
         then
-        $ACTTOOL -F decomp -O -p testproc -o runs/${orig}decomp.act $i > /dev/null 2>runs/$i.t.dc.stderr
-	$ACTTOOL -ref=1 $opt -E abc -e runs/${orig}_expr.act -p decomp_testproc -o runs/${orig}_ring.act runs/${orig}decomp.act > /dev/null 2>runs/$i.t.syn.stderr
+        $ACTTOOL -F decomp -O -p testproc -o runs/${orig}_decomp.act $i > /dev/null 2>runs/$i.t.dc.stderr
+	$ACTTOOL -ref=1 $opt -E abc -e runs/${orig}_expr.act -p decomp_testproc -o runs/${orig}_ring.act runs/${orig}_decomp.act > /dev/null 2>runs/$i.t.syn.stderr
         if test -s runs/$i.t.dc.stderr 
         then
                 echo 
