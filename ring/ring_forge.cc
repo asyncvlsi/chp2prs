@@ -116,6 +116,9 @@ void RingForge::run_forge ()
         }
     }
     else {
+        if (_c->type == ACT_CHP_COMMA) {
+            fatal_error ("Detected *[P1] || *[P2]. Top-level parallel loops within same process not allowed in user input.\n");
+        }
         _run_forge_helper (_c);
     }
 }
