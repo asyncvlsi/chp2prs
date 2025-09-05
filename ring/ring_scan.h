@@ -82,12 +82,12 @@ class ScanInsertion {
         */
 
         /*
-            ps:A  -->  A; C_bp!
+            bs:A  -->  A; C_bp!
         */
         void _insert_static_breakpoint (act_chp_lang_t *&);
 
         /*
-            pd:A  -->  A; [| ~b_bp->skip [] b_bp->C_bp! |]
+            bd:A  -->  A; [| ~b_bp->skip [] b_bp->C_bp! |]
         */
         void _insert_dynamic_breakpoint (act_chp_lang_t *&);
 
