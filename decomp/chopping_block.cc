@@ -28,6 +28,7 @@
 #define END_INC 0
 #define END_EXC 1
 
+
 void ChoppingBlock::_print_seq (Sequence seq)
 {
     fprintf (stdout, "\n");

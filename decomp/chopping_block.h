@@ -27,11 +27,9 @@
 #include <act/chp/utils.h>
 
 /*
-    Class for implementing the breaking of 
-    a single program into multiple parallel programs.
-    1. Helper functions
-    2. Loop excision
-    3. Live-variable based decomposition (deprecated)
+    Class with:
+    1. Several helper functions for manipulating the ChpGraph IR.
+    2. Code to perform loop excision (nested loops -> multiple parallel loops)
 */
 class ChoppingBlock {
     public:
@@ -49,6 +47,7 @@ class ChoppingBlock {
 
         /*
             Break the graph based on breakpoints
+            [DEPRECATED]
         */
         void chop_graph();
 
