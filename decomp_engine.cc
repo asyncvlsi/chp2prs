@@ -121,14 +121,16 @@ class Decomp : public ActSynthesize {
       mc->process_multichans();
       vs = mc->get_auxiliary_procs();
 
-      BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope(), 0);
+      DecompAnalysis *dca = new DecompAnalysis (_pp->fp, g, p->CurScope());
+      dca->analyze();
+      
       ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
-                                bkp->get_decomp_info_map(), p->CurScope());
+                                dca->get_decomp_info_map(), p->CurScope());
       cb->excise_internal_loops();
       vs1 = cb->get_chopped_seqs();
 
       Projection *pr = new Projection (_pp->fp, g, 
-                          bkp->get_decomp_info_map(), p->CurScope());
+                          dca->get_decomp_info_map(), p->CurScope());
       if (project) {
         pr->project();
       }

@@ -129,45 +129,11 @@ class DecompAnalysis {
 
         unsigned int total_bits;
 
-        // traverse the graph and generate the live-in var map
-        void _generate_decomp_info (Sequence seq, int root);
-
-        void _map_block_to_live_vars (Block *, decomp_info_t *);
-
-        void _add_to_live_vars (VarId vid);
-        void _add_to_live_vars (std::unordered_set<VarId> vids);
-        void _remove_from_live_vars (VarId vid);
-
-        // return a decomp_info_t based on the current state of H_live
-        decomp_info_t *_generate_decomp_info ();
-        decomp_info_t *_generate_decomp_info (std::unordered_set<VarId> H);
-
         // print decomp_info_t's for the whole graph
         void _print_decomp_info (Sequence seq,  int root);
 
         // print a decomp_info_t object
         void _print_decomp_info (decomp_info *di);
-
-        // save the state of H_live into H_saved
-        void _save_state_live_vars ();
-
-        // restore the state of H_live from H_saved
-        void _restore_state_live_vars ();
-
-        // push current H_live into H_parents stack
-        void _init_union ();
-        
-        // pop H_parents stack
-        void _free_union ();
-        
-        // compute union of top element of stack and current H_live
-        void _h_live_union_h_parent ();
-        std::unordered_set<VarId> _set_union (std::unordered_set<VarId>, std::unordered_set<VarId>);
-
-        std::unordered_set<VarId> _prune_T (std::unordered_set<VarId>, std::vector<std::unordered_set<VarId>>);
-
-        // add the vars from top element of stack to H_live
-        void _restore_live_vars_from_parent (); //_restore_live_vars_from_parent
 };
 
 #endif

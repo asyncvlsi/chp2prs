@@ -20,14 +20,13 @@
 #-------------------------------------------------------------------------
 TARGETLIBS=libactchpdecomp_$(EXT).so
 
-TARGETINCS=projection.h chopping_block.h breakpoint.h analysis.h multichan.h \
+TARGETINCS=projection.h chopping_block.h analysis.h multichan.h \
 		   pretty_print.h chp_cost.h
 TARGETINCSUBDIR=act/chp
 
 CPPSTD=c++17
 
 SHOBJS=analysis.os \
-	breakpoint.os \
 	chopping_block.os \
 	chp_cost.os \
 	projection.os \
