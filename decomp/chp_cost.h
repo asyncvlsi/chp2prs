@@ -23,10 +23,8 @@
 #ifndef __CHP_COST_H__
 #define __CHP_COST_H__
 
-
 #include <act/chp/chopping_block.h>
-#include <act/expropt.h>
-// #include <act/expr_cache.h>
+#include <act/expr_cache.h>
 
 class ChpCost {
     public:
@@ -36,10 +34,7 @@ class ChpCost {
             _s = s;
             procs = {};
             _expr_id = 0;
-            eeo = new ExternalExprOpt("abc", bd, false, 
-                                    "/dev/null", "eblk_", "in_");
-            // eeo = new ExprCache(false, "abc", bd, false, 
-                                    // "/dev/null");
+            eeo = new ExprCache("abc", bd, false, "/dev/null");
             Assert ((eeo), "Could not create mapper");
 
             config_set_int("expropt.verbose", 0);
@@ -65,8 +60,7 @@ class ChpCost {
 
         ~ChpCost ()
         {
-            eeo->~ExternalExprOpt();
-            // eeo->~ExprCache();
+            eeo->~ExprCache();
         }
 
         void clear();
@@ -93,8 +87,7 @@ class ChpCost {
         Scope *_s;
 
         // mapper object
-        ExternalExprOpt *eeo;
-        // ExprCache *eeo;
+        ExprCache *eeo;
 
         int _expr_id;
         

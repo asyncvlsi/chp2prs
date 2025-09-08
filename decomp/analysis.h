@@ -114,19 +114,6 @@ class DecompAnalysis {
         */
         int _compute_total_bits (std::unordered_set<VarId> vars);
 
-        /*
-            NOTE: All those below are unused
-            TODO: Delete all this later
-        */
-        // running state of live variables
-        std::unordered_set<VarId> H_live;
-
-        // copy of running state
-        std::unordered_set<VarId> H_saved;
-
-        // stack of parent states - used when descending down into selections
-        std::vector<std::unordered_set<VarId>> H_parents;
-
         unsigned int total_bits;
 
         // print decomp_info_t's for the whole graph
