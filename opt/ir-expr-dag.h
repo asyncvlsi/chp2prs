@@ -588,6 +588,7 @@ template <typename Tag, typename VarIdType,  typename ChanIdType> struct IRExprD
                 n.u_bitfield().hi(), n.u_bitfield().lo());
         }
         hassert(false);
+        exit(1);
     }
 
     Node *addSubdag(const IRExprSingleRootDag_t &other);
