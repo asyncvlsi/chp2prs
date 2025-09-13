@@ -711,17 +711,6 @@ class Projection : protected ChoppingBlock {
         VarId _insert_edge_copy (GraphWithChanNames &, const DFG &, IntPair, VarId, CopyLocMap &);
         void _uninsert_edge_copy (GraphWithChanNames &, const DFG &, IntPair, VarId, VarId, CopyLocMap &);
 
-        VarId _insert_dominator_copy (GraphWithChanNames &, const DFG &, IntPair, VarId);
-        void _uninsert_dominator_copy (GraphWithChanNames &, const DFG &, IntPair, VarId, VarId);
-
-
-        /*
-            Same as other overload, with option to specify where to place 
-            the distributed assignment and where to start the renaming from. 
-            Deprecated.
-        */
-        // void _insert_copy (GraphWithChanNames &, Sequence, Block *, Block *, VarId);
-
         /*
             Rename `old_var` to `new_var`, but exclude `excl` and start after `start_after`
         */
@@ -762,7 +751,6 @@ class Projection : protected ChoppingBlock {
         /*
             Copy insertion strategy: latency cost-based.
         */
-        void _insert_copies_v4 (GraphWithChanNames &, DFG &);
         void _insert_copies_v5 (GraphWithChanNames &, DFG &);
 
         int _heuristic1 (DFG &, const DFG_Node &, int);
