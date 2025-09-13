@@ -69,6 +69,25 @@ template <> struct std::hash<NodeId> {
 
 typedef std::pair<NodeId,NodeId> Edge;
 
+// Basically a copy tree
+typedef std::pair<NodeId,std::unordered_set<NodeId>> HyperEdge;
+
+inline bool operator==(const HyperEdge& a, const HyperEdge& b) {
+    return a.first == b.first && a.second == b.second;
+}
+
+template<> struct std::hash<HyperEdge> {
+    size_t operator()(const HyperEdge& e) const noexcept {
+        size_t h = std::hash<NodeId>{}(e.first);
+        for (const auto& tail : e.second) {
+            h ^= std::hash<NodeId>{}(tail) + 0x9e3779b9 + (h << 6) + (h >> 2);
+        }
+        return h;
+    }
+};
+
+typedef std::unordered_map<NodeId,std::unordered_set<NodeId>> HyperEdges;
+
 typedef std::unordered_map<VarId, Block *> CopyLocMap;
 
 template<> struct std::hash<Edge> {
@@ -413,7 +432,11 @@ class DFG {
             Find a given basic block in the DFG.
         */
         const DFG_Node &find (NodeId node_id) const {
-            hassert (node_id.get_raw()>=0 && node_id.get_raw()<nodes.size());
+            if (!contains(node_id)) {
+                fprintf(stdout, "Node ID : %d", node_id.get_raw());
+                print_adj(stdout);
+            }
+            Assert (contains(node_id), "Invalid node");
             for ( const auto &n1 : nodes ) {
                 if (n1->id == node_id) 
                     return *n1;
@@ -649,6 +672,22 @@ class DFG {
             }
             return ret;
         }
+
+        void print_sccs (FILE *fp) const {
+            Assert (sccs_built, "SCCs not built");
+            fprintf (fp, "\n/* ------ SCCs ------\n");
+            for ( auto x : sccs ) {
+                fprintf(stdout, "Node : %d, SCC ID : %d\n", x.first.get_raw(), x.second);
+            }
+            fprintf (fp, "\n\n   ------ SCCs ------ */\n");
+        }
+
+        int n_edges () const {
+            int len = 0;
+            for ( const auto &x : adj ) 
+                len += x.second.size();
+            return len;
+        }
 };
 
 DFG dfg1;
@@ -742,42 +781,13 @@ class Projection : protected ChoppingBlock {
             and flush the renaming downstream in the program. 
             Due to STF, it is sufficient to rename within the sequence.
         */
-        VarId _insert_node_copy (GraphWithChanNames &, const DFG &, NodeId, VarId);
-        void _uninsert_node_copy (GraphWithChanNames &, const DFG &, NodeId, VarId, VarId);
+        VarId _insert_hyperedge_copy (GraphWithChanNames &, const DFG &, HyperEdge, VarId, CopyLocMap &);
+        void _uninsert_hyperedge_copy (GraphWithChanNames &, const DFG &, HyperEdge, VarId, VarId, CopyLocMap &);
 
-        VarId _insert_edge_copy (GraphWithChanNames &, const DFG &, Edge, VarId, CopyLocMap &);
-        void _uninsert_edge_copy (GraphWithChanNames &, const DFG &, Edge, VarId, VarId, CopyLocMap &);
-
-        /*
-            Rename `old_var` to `new_var`, but exclude `excl` and start after `start_after`
-        */
-        void _replace_uses (GraphWithChanNames &, VarId, VarId, Block *, Block *);
         /*
             Replace use only in this block
         */
         void _replace_use (GraphWithChanNames &, VarId, VarId, const DFG_Node &);
-
-        /*
-            Internal use only.
-        */
-        void _replace_uses (GraphWithChanNames &, Sequence, VarId, VarId, Block *, Block *);
-        void _replace_uses (GraphWithChanNames &, Block *, VarId, VarId, Block *, Block *);
-        
-        /*
-            Copy insertion strategy: at all receives.
-        */
-        void _insert_copies_v0 (GraphWithChanNames &, Sequence);
-
-        /*
-            Copy insertion strategy: at splits and merges.
-        */
-        void _insert_copies_v1 (GraphWithChanNames &, Sequence);
-
-        /*
-            Copy insertion strategy: heuristic-based.
-            Sends/receives included
-        */
-        void _insert_copies_v2 (GraphWithChanNames &, Sequence, int, bool &);
 
         /*
             Copy insertion strategy: heuristic-based.
@@ -788,13 +798,10 @@ class Projection : protected ChoppingBlock {
         /*
             Copy insertion strategy: latency cost-based.
         */
-        void _insert_copies_v5 (GraphWithChanNames &, DFG &);
+        void _insert_copies_v6 (GraphWithChanNames &, DFG &);
 
-        NodeId _heuristic1 (DFG &, const DFG_Node &, int);
         NodeId _heuristic2 (DFG &, const DFG_Node &, int);
         NodeId _heuristic3 (DFG &, const DFG_Node &, int);
-
-        std::unordered_map<Edge, std::vector<Edge>> _candidate_edges (const DFG &);
         
         /*
             Construct a sub-process from a set of DFG nodes.
