@@ -110,79 +110,60 @@ class Decomp : public ActSynthesize {
       }
       uninlineBitfieldExprsHack (g.graph);
 
-      std::vector<ActId *> tmp_names;
       std::unordered_set<ActId *> newnames;
+      std::vector<ActId *> tmp_names;
 
-      // necessary decompositions for ring synthesis --------------------------
-      MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
-      mc->process_multichans();
-      auto vs = mc->get_auxiliary_procs();
-
-      DecompAnalysis *dca = new DecompAnalysis (_pp->fp, g, p->CurScope());
-      dca->analyze();
-      
-      ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
-                          dca->get_decomp_info_map(), p->CurScope());
-      cb->excise_internal_loops();
-      auto vs1 = cb->get_chopped_seqs();
-      // ----------------------------------------------------------------------
-
-      // projection/decomposition for slack elastic programs ------------------
-      Projection *pr = new Projection (_pp->fp, g, 
-                          dca->get_decomp_info_map(), p->CurScope());
-      if (project) {
-        pr->project();
-      }
-      auto vs3 = pr->get_procs();
-      // ----------------------------------------------------------------------
-
-      Block *top = g.graph.blockAllocator().newBlock(Block::makeParBlock());
-      top->u_par().branches.push_back(g.graph.m_seq);
-
-      chp_graph_to_act (g, tmp_names, p->CurScope());
-      for ( auto x : tmp_names ) { newnames.insert(x); }
       act_chp_lang_t *top_chp;
-      NEW (top_chp, act_chp_lang_t);
+      top_chp = new act_chp_lang_t;
       top_chp->label = NULL;
       top_chp->space = NULL;
       top_chp->type = ACT_CHP_COMMA;
       top_chp->u.semi_comma.cmd = list_new();
 
-      for ( auto vv : {vs, vs1} ) 
-      {
-        for (auto v : vv)
-        {
+      // necessary decompositions for ring synthesis --------------------------
+      MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
+      mc->process_multichans();
+      auto vs = mc->get_auxiliary_procs();
+      
+      DecompAnalysis *dca = new DecompAnalysis (_pp->fp, g, p->CurScope());
+      dca->analyze();
+      
+      ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
+                            dca->get_decomp_info_map(), p->CurScope());
+      cb->excise_internal_loops();
+      auto vs1 = cb->get_chopped_seqs();
+        
+      std::unordered_map<ChanId, ChanId> cc;
+      std::unordered_map<VarId, VarId> vv;
+      auto gcopy = deep_copy_graph(g, cc, vv);
+
+      for ( auto vv : {vs, vs1} ) {
+        for (auto v : vv) {
           g.graph.m_seq = v;
           act_chp_lang_t *tmp = chp_graph_to_act (g, tmp_names, p->CurScope());
           for ( auto x : tmp_names ) { newnames.insert(x); }
           list_append(top_chp->u.semi_comma.cmd, tmp);
         }
       }
-
-      std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
+      // ----------------------------------------------------------------------
       
-      for ( auto v : vs3 )
-      {
-        auto _g = ChpOptimize::chp_graph_from_act (v, p->CurScope (), 1);
-        // ChpOptimize::optimize_chp_O2 (_g.graph, p->getName(), false);
-        ChpOptimize::optimize_chp_O0 (_g.graph, p->getName(), false);
-        std::vector<ActId *> tmp_names2;
-        v = chp_graph_to_act (_g, tmp_names2, p->CurScope());
-        for ( auto x : tmp_names2 ) { newnames.insert(x); }
-        nfc.push_back(_g.name_from_chan);
-        list_append(top_chp->u.semi_comma.cmd, v);
+      // projection/decomposition for slack elastic programs ------------------
+      std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc;
+      Projection *pr = new Projection (_pp->fp, gcopy, 
+                          dca->get_decomp_info_map(), p->CurScope());
+      if (project) {
+        pr->project();
+        auto [names, top_chp1, nfc1] = pr->get_result();
+        nfc = nfc1;
+        for ( auto x : names ) { newnames.insert(x); }
+        list_concat(top_chp->u.semi_comma.cmd, top_chp1->u.semi_comma.cmd);
       }
-
-      // only decomposing main program for now
-      for ( auto d_seq : top->u_par().branches )
-      {
-        g.graph.m_seq = d_seq;
-        act_chp_lang_t *tmp2 = chp_graph_to_act (g, tmp_names, p->CurScope());
-        if (!project) {
-          list_append(top_chp->u.semi_comma.cmd, tmp2);
-        }
+      else {
+        auto tmp2 = chp_graph_to_act (gcopy, tmp_names, p->CurScope());
         for ( auto x : tmp_names ) { newnames.insert(x); }
+        list_append(top_chp->u.semi_comma.cmd, tmp2);
       }
+      // ----------------------------------------------------------------------
 
       act_chp_lang_t *l = top_chp;
       p->getlang()->getchp()->c = l;

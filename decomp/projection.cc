@@ -31,9 +31,35 @@
     - expose complex part cleanly for optimizer plug-in (done)
 */
 
-std::vector<Sequence> Projection::get_seqs ()
-{
-    return seqs;
+std::tuple<
+    std::unordered_set<ActId *>, 
+    act_chp_lang_t *,
+    std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>>
+    > Projection::get_result ()
+{     
+    std::unordered_set<ActId *> names = {};
+    act_chp_lang_t *top_chp;
+    std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
+
+    top_chp = new act_chp_lang_t;
+    top_chp->label = NULL;
+    top_chp->space = NULL;
+    top_chp->type = ACT_CHP_COMMA;
+    top_chp->u.semi_comma.cmd = list_new(); 
+
+    for ( auto v : procs )
+    {
+        auto _g = ChpOptimize::chp_graph_from_act (v, s, 1);
+        // ChpOptimize::optimize_chp_O2 (_g.graph, p->getName(), false);
+        ChpOptimize::optimize_chp_O0 (_g.graph, "brr", false);
+        std::vector<ActId *> tmp_names2;
+        v = chp_graph_to_act (_g, tmp_names2, s);
+        for ( auto x : tmp_names2 ) { names.insert(x); }
+        nfc.push_back(_g.name_from_chan);
+        list_append(top_chp->u.semi_comma.cmd, v);
+    }
+
+    return {names, top_chp, nfc};
 }
 
 std::vector<act_chp_lang_t *> Projection::get_procs ()
@@ -132,7 +158,7 @@ void Projection::_insert_copies_v6 (GraphWithChanNames &g, DFG &d_in)
     }
     auto n_cand_edges = i;
     // unsigned long long max_itr_edge = 1024*1024*1024;
-    unsigned long long max_itr_edge = 1024;
+    unsigned long long max_itr_edge = 32;
     unsigned long long n_itr_edge = std::min(max_itr_edge, 1ULL<<n_cand_edges);
 
     if (verbose) {
@@ -329,7 +355,6 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
         }
 
         ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
-        seqs.push_back(g1.graph.m_seq);
         std::vector<ActId *> tmp_names2;
         act_chp_lang_t *tmpact = chp_graph_to_act (g1, tmp_names2, s);
         procs.push_back(tmpact);

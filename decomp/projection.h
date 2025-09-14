@@ -708,21 +708,21 @@ class Projection : protected ChoppingBlock {
                         Scope *s_in) 
             : ChoppingBlock (fp_in, g_in, vmap_in, s_in) 
             {
-                seqs.clear();
                 procs.clear();
                 dfg1.clear();
                 dfg2.clear();
             }
         
+        std::tuple<
+            std::unordered_set<ActId *>, 
+            act_chp_lang_t *,
+            std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>>
+            > get_result ();
+
         /*
             Compute the projected processes
         */
         void project ();
-
-        /*
-            Returns vector of Sequences of projected proceses 
-        */
-        std::vector<Sequence> get_seqs ();
 
         /*
             Returns vector of act_chp_lang's of projected proceses 
@@ -746,7 +746,6 @@ class Projection : protected ChoppingBlock {
 
     private:
 
-        std::vector<Sequence> seqs;
         std::vector<act_chp_lang_t *> procs;
 
         void step1(GraphWithChanNames &, DFG &);
