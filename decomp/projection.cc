@@ -88,7 +88,7 @@ void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
     d_in.build_sccs();
 }
 
-void Projection::project()
+void Projection::project(Strategy s)
 {
     bool printt = false;
 
@@ -100,14 +100,26 @@ void Projection::project()
     
     // compute strongly-connected components info
     step2(*g, dfg1);
-    
+
     // Copy-insertion strategy
+    switch (s)
     {
+    case Strategy::None: {
+    }
+    break;
+    case  Strategy::Heuristic: {
         bool _ins = false;
-        // _insert_copies_v3 (*g, dfg1, g->graph.m_seq, dfg1.get_wccs().size(), 1, _ins);
+        _insert_copies_v3 (*g, dfg1, g->graph.m_seq, dfg1.get_wccs().size(), 1, _ins);
+    }
+    break;
+    case Strategy::BruteForce: {
         _insert_copies_v6 (*g, dfg1);
     }
+    case Strategy::Timing: {
 
+    }
+    break;
+    }
     // Construct sub-processes
     dfg1.clear();
     _build_graph(g->graph.m_seq, dfg1);
@@ -706,8 +718,22 @@ std::unordered_set<VarId> Projection::get_uses (const DFG_Node &node)
 
 bool Projection::_check_data_dependence (const DFG_Node &prev, const DFG_Node &curr) 
 {
+    // fprintf(stdout, "\n\n here 2.2.2.1");
+    // fprintf(stdout, "\n\n");
+    // prev.print(std::cout);
+    // fprintf(stdout, "\n\n");
+
     auto defs = get_defs(prev);
+
+    // fprintf(stdout, "\n\n here 2.2.2.2");
+    // fprintf(stdout, "\n\n");
+    // curr.print(std::cout);
+    // fprintf(stdout, "\n\n");
+
     auto uses = get_uses(curr);
+
+    // fprintf(stdout, "\n\n here 2.2.2.3");
+    // fprintf(stdout, "\n\n");
 
     for ( auto v : defs ) {
         if (uses.count(v)) return true;
@@ -738,8 +764,14 @@ bool Projection::_check_guard_phi_dependence (const DFG_Node &guard_node, const 
 
 void Projection::_build_graph (const Sequence &seq, DFG &d_in)
 {
+    // fprintf(stdout, "\n\n here 2.2.1");
+    // fprintf(stdout, "\n\n");
     _build_graph_nodes (seq, d_in);
+    // fprintf(stdout, "\n\n here 2.2.2");
+    // fprintf(stdout, "\n\n");
     _build_graph_edges (d_in);
+    // fprintf(stdout, "\n\n here 2.2.3");
+    // fprintf(stdout, "\n\n");
 }
 
 void Projection::_build_graph_edges (DFG &d_in)

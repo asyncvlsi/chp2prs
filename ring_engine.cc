@@ -199,7 +199,7 @@ class RingSynth : public ActSynthesize {
     {
       Assert (c, "hmm no chp lol - something went wrong");
       mangle_init();
-      fill_in_else_explicit (c, p, 1);
+      fill_in_else_explicit (c, p);
       flatten_lists (c, p);
 
       ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");

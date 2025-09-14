@@ -95,7 +95,7 @@ class Decomp : public ActSynthesize {
 
     if (p->getlang() && p->getlang()->getchp()) {
 
-      fill_in_else_explicit (p->getlang()->getchp()->c, p, 1);
+      fill_in_else_explicit (p->getlang()->getchp()->c, p);
 
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope (), 1);
@@ -120,7 +120,7 @@ class Decomp : public ActSynthesize {
       top_chp->type = ACT_CHP_COMMA;
       top_chp->u.semi_comma.cmd = list_new();
 
-      // necessary decompositions for ring synthesis --------------------------
+      // necessary rewrites for ring synthesis --------------------------------
       MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
       mc->process_multichans();
       auto vs = mc->get_auxiliary_procs();
@@ -133,11 +133,7 @@ class Decomp : public ActSynthesize {
       cb->excise_internal_loops();
       auto vs1 = cb->get_chopped_seqs();
         
-      std::unordered_map<ChanId, ChanId> cc;
-      std::unordered_map<VarId, VarId> vv;
-      auto gcopy = deep_copy_graph(g, cc, vv);
-
-      for ( auto vv : {vs, vs1} ) {
+      for ( auto vv : {{g.graph.m_seq}, vs, vs1} ) {
         for (auto v : vv) {
           g.graph.m_seq = v;
           act_chp_lang_t *tmp = chp_graph_to_act (g, tmp_names, p->CurScope());
@@ -148,20 +144,25 @@ class Decomp : public ActSynthesize {
       // ----------------------------------------------------------------------
       
       // projection/decomposition for slack elastic programs ------------------
-      std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc;
-      Projection *pr = new Projection (_pp->fp, gcopy, 
-                          dca->get_decomp_info_map(), p->CurScope());
+      std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
       if (project) {
-        pr->project();
-        auto [names, top_chp1, nfc1] = pr->get_result();
-        nfc = nfc1;
-        for ( auto x : names ) { newnames.insert(x); }
-        list_concat(top_chp->u.semi_comma.cmd, top_chp1->u.semi_comma.cmd);
-      }
-      else {
-        auto tmp2 = chp_graph_to_act (gcopy, tmp_names, p->CurScope());
-        for ( auto x : tmp_names ) { newnames.insert(x); }
-        list_append(top_chp->u.semi_comma.cmd, tmp2);
+        std::vector<Strategy> prj_steps = {};
+        // prj_steps = {Strategy::None, Strategy::BruteForce};
+        for ( auto ss : prj_steps ) {
+          fill_in_else_explicit (top_chp, p);
+          auto gnew = chp_graph_from_act (top_chp, p->CurScope(), 1);
+          DecompAnalysis *dca2 = new DecompAnalysis (_pp->fp, gnew, p->CurScope());
+          dca2->analyze();
+          Projection *pr2 = new Projection (_pp->fp, gnew, 
+                          dca2->get_decomp_info_map(), p->CurScope());
+          pr2->project(ss);
+          auto [names2, top_chp2, nfc2] = pr2->get_result();
+          for ( auto x : names2 ) { newnames.insert(x); }
+          for ( auto x : nfc2 ) { nfc.push_back(x); }
+          
+          // list_concat(top_chp->u.semi_comma.cmd, top_chp2->u.semi_comma.cmd);
+          top_chp = top_chp2;
+        }
       }
       // ----------------------------------------------------------------------
 

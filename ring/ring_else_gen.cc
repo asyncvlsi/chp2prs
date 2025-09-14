@@ -24,7 +24,7 @@
 
 static int counter = 0;
 
-void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
+void fill_in_else_explicit (act_chp_lang_t *c, Process *p)
 {
     listitem_t *li;
     act_chp_lang_t *stmt;
@@ -44,14 +44,14 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
         for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
         {
             stmt = (act_chp_lang_t *)(list_value(li));
-            fill_in_else_explicit (stmt, p, 0);
+            fill_in_else_explicit (stmt, p);
         }
         break;
 
     case ACT_CHP_LOOP:
     case ACT_CHP_DOLOOP:
         gc = c->u.gc;
-        fill_in_else_explicit (gc->s, p, 0);
+        fill_in_else_explicit (gc->s, p);
         break;
         
     case ACT_CHP_SELECT:
@@ -89,7 +89,7 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
 
         for (gc = c->u.gc ; gc ; gc = gc->next)
         {
-            fill_in_else_explicit (gc->s, p, 0);
+            fill_in_else_explicit (gc->s, p);
         }
 
         break;
@@ -97,7 +97,7 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root)
     case ACT_CHP_SELECT_NONDET:
         for (gc = c->u.gc ; gc ; gc = gc->next)
         {
-            fill_in_else_explicit (gc->s, p, 0);
+            fill_in_else_explicit (gc->s, p);
         }
 
         break;

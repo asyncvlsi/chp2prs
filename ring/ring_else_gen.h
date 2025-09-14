@@ -46,7 +46,7 @@
  * ]
  * 
 */
-void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root);
+void fill_in_else_explicit (act_chp_lang_t *c, Process *p);
 
 void expand_self_assignments (act_chp_lang_t *&c, Process *p);
 

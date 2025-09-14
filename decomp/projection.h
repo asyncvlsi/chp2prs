@@ -190,7 +190,7 @@ class DFG_Node {
             id = NodeId::generate();
             set_n = -1;
         }
-        DFG_Node (Block *_b, Block::Variant_Select::PhiSplit x) 
+        DFG_Node (Block *_b, const Block::Variant_Select::PhiSplit &x) 
         {
             hassert (_b->type() == BlockType::Select);
             t = NodeType::SelPhiInv;
@@ -199,7 +199,7 @@ class DFG_Node {
             id = NodeId::generate();
             set_n = -1;
         }
-        DFG_Node (Block *_b, Block::Variant_Select::PhiMerge x) 
+        DFG_Node (Block *_b, const Block::Variant_Select::PhiMerge &x) 
         {
             hassert (_b->type() == BlockType::Select);
             t = NodeType::SelPhi;
@@ -208,7 +208,7 @@ class DFG_Node {
             id = NodeId::generate();
             set_n = -1;
         }
-        DFG_Node (Block *_b, Block::Variant_Par::PhiSplit x) 
+        DFG_Node (Block *_b, const Block::Variant_Par::PhiSplit &x) 
         {
             hassert (_b->type() == BlockType::Par);
             t = NodeType::PllPhiInv;
@@ -217,7 +217,7 @@ class DFG_Node {
             id = NodeId::generate();
             set_n = -1;
         }
-        DFG_Node (Block *_b, Block::Variant_Par::PhiMerge x) 
+        DFG_Node (Block *_b, const Block::Variant_Par::PhiMerge &x) 
         {
             hassert (_b->type() == BlockType::Par);
             t = NodeType::PllPhi;
@@ -226,7 +226,7 @@ class DFG_Node {
             id = NodeId::generate();
             set_n = -1;
         }
-        DFG_Node (Block *_b, Block::Variant_DoLoop::InPhi x) 
+        DFG_Node (Block *_b, const Block::Variant_DoLoop::InPhi &x) 
         {
             hassert (_b->type() == BlockType::DoLoop);
             t = NodeType::LoopInPhi;
@@ -235,7 +235,7 @@ class DFG_Node {
             id = NodeId::generate();
             set_n = -1;
         }
-        DFG_Node (Block *_b, Block::Variant_DoLoop::OutPhi x) 
+        DFG_Node (Block *_b, const Block::Variant_DoLoop::OutPhi &x) 
         {
             hassert (_b->type() == BlockType::DoLoop);
             t = NodeType::LoopOutPhi;
@@ -244,7 +244,7 @@ class DFG_Node {
             id = NodeId::generate();
             set_n = -1;
         }
-        DFG_Node (Block *_b, Block::Variant_DoLoop::LoopPhi x) 
+        DFG_Node (Block *_b, const Block::Variant_DoLoop::LoopPhi &x) 
         {
             hassert (_b->type() == BlockType::DoLoop);
             t = NodeType::LoopLoopPhi;
@@ -694,6 +694,11 @@ DFG dfg1;
 DFG dfg2;
 
 /*
+    Projection Copy-Insertion Strategy
+*/
+enum class Strategy { None, Heuristic, BruteForce, Timing };
+
+/*
     Class implementing projection based on the DFG.
     @param seqs Vector of Sequences of projected processes
     @param procs Vector of act_chp_lang's of projected processes
@@ -722,7 +727,7 @@ class Projection : protected ChoppingBlock {
         /*
             Compute the projected processes
         */
-        void project ();
+        void project (Strategy);
 
         /*
             Returns vector of act_chp_lang's of projected proceses 
