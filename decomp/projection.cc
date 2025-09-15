@@ -723,22 +723,8 @@ std::unordered_set<VarId> Projection::get_uses (const DFG_Node &node)
 
 bool Projection::_check_data_dependence (const DFG_Node &prev, const DFG_Node &curr) 
 {
-    // fprintf(stdout, "\n\n here 2.2.2.1");
-    // fprintf(stdout, "\n\n");
-    // prev.print(std::cout);
-    // fprintf(stdout, "\n\n");
-
     auto defs = get_defs(prev);
-
-    // fprintf(stdout, "\n\n here 2.2.2.2");
-    // fprintf(stdout, "\n\n");
-    // curr.print(std::cout);
-    // fprintf(stdout, "\n\n");
-
     auto uses = get_uses(curr);
-
-    // fprintf(stdout, "\n\n here 2.2.2.3");
-    // fprintf(stdout, "\n\n");
 
     for ( auto v : defs ) {
         if (uses.count(v)) return true;
@@ -769,14 +755,8 @@ bool Projection::_check_guard_phi_dependence (const DFG_Node &guard_node, const 
 
 void Projection::_build_graph (const Sequence &seq, DFG &d_in)
 {
-    // fprintf(stdout, "\n\n here 2.2.1");
-    // fprintf(stdout, "\n\n");
     _build_graph_nodes (seq, d_in);
-    // fprintf(stdout, "\n\n here 2.2.2");
-    // fprintf(stdout, "\n\n");
     _build_graph_edges (d_in);
-    // fprintf(stdout, "\n\n here 2.2.3");
-    // fprintf(stdout, "\n\n");
 }
 
 void Projection::_build_graph_edges (DFG &d_in)
