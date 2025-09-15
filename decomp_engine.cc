@@ -110,6 +110,26 @@ class Decomp : public ActSynthesize {
       }
       uninlineBitfieldExprsHack (g.graph);
 
+#if 0
+      auto xg = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
+          p->CurScope (), 1);
+      ChpOptimize::optimize_chp_basic (xg.graph, "brr", false);
+      ChpOptimize::putIntoNewStaticTokenForm(xg.graph);
+      fprintf(stdout, "\n ------- stf -------- \n");
+      print_chp(std::cout, xg.graph);
+      fprintf(stdout, "\n ------- stf -------- \n");
+      ChpOptimize::takeOutOfNewStaticTokenForm(xg.graph);
+      fprintf(stdout, "\n ------- non-stf -------- \n");
+      print_chp(std::cout, xg.graph);
+      fprintf(stdout, "\n ------- non-stf -------- \n");
+      std::vector<ActId *> xnms;
+      auto xchp = chp_graph_to_act (xg, xnms, p->CurScope());
+      fprintf(stdout, "\n ------- chp -------- \n");
+      chp_print(stdout, xchp);
+      fprintf(stdout, "\n ------- chp -------- \n");
+      exit(2);
+#endif
+
       std::unordered_set<ActId *> newnames;
       std::vector<ActId *> tmp_names;
 
@@ -147,7 +167,7 @@ class Decomp : public ActSynthesize {
       std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
       if (project) {
         std::vector<Strategy> prj_steps = {};
-        // prj_steps = {Strategy::None, Strategy::BruteForce};
+        prj_steps = {Strategy::None, Strategy::BruteForce};
         for ( auto ss : prj_steps ) {
           fill_in_else_explicit (top_chp, p);
           auto gnew = chp_graph_from_act (top_chp, p->CurScope(), 1);

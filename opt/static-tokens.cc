@@ -1023,10 +1023,31 @@ void _run_unmap_seq (Sequence seq, VarIdRemap &curmap)
       }
       for (auto &mergephi : curr->u_select().merges) {
 	VarId post_id = mergephi.post_id;
+#if 0
 	for (size_t i = 0; i < mergephi.branch_ids.size(); i++) {
 	  curmap[mergephi.branch_ids[i]] = post_id;
 	  _update_curmap (curmap, mergephi.branch_ids[i], post_id);
 	}
+#else
+    OptionalVarId canonical;
+	for (size_t i = 0; i < mergephi.branch_ids.size(); i++) {
+        if (curmap.count(mergephi.branch_ids[i])) {
+            canonical = curmap[mergephi.branch_ids[i]];
+            break;
+        }
+    }
+    if (!(canonical)) {
+        canonical = post_id;
+    }
+    else {
+        curmap[post_id] = *canonical;
+        _update_curmap (curmap, post_id, *canonical);
+    }
+	for (size_t i = 0; i < mergephi.branch_ids.size(); i++) {
+	  curmap[mergephi.branch_ids[i]] = *canonical;
+	  _update_curmap (curmap, mergephi.branch_ids[i], *canonical);
+	}
+#endif
       }
       curr->u_select().splits.clear();
       curr->u_select().merges.clear();
