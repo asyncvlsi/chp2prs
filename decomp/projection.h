@@ -708,10 +708,8 @@ enum class Strategy { None, Heuristic, BruteForce, Timing };
 class Projection : protected ChoppingBlock {
     public:
 
-        Projection (FILE *fp_in, GraphWithChanNames &g_in, 
-                    std::unordered_map<const Block *, decomp_info_t *> vmap_in,
-                        Scope *s_in) 
-            : ChoppingBlock (fp_in, g_in, vmap_in, s_in) 
+        Projection (GraphWithChanNames &g_in, Scope *s_in) 
+            : ChoppingBlock (g_in, s_in) 
             {
                 procs.clear();
                 dfg1.clear();

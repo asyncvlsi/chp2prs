@@ -60,7 +60,10 @@ class ChpCost {
 
         ~ChpCost ()
         {
-            eeo->~ExprCache();
+            if (eeo) {
+                eeo->~ExprCache();
+                eeo = NULL;
+            }
         }
 
         void clear();

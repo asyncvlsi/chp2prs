@@ -88,9 +88,9 @@ typedef std::vector<StateRow> StateTable;
 class MultiChan : public DecompAnalysis {
     public:
 
-        MultiChan ( FILE *fp_out, GraphWithChanNames &g_in, 
+        MultiChan (GraphWithChanNames &g_in, 
                 Scope *s_in)
-            : DecompAnalysis (fp_out, g_in, s_in)
+            : DecompAnalysis (g_in, s_in)
             {
                 analyze();
             }

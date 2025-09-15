@@ -68,9 +68,9 @@ static decomp_info_t *_deepcopy_decomp_info(decomp_info_t *di)
 class DecompAnalysis {
     public:
 
-        DecompAnalysis ( FILE *fp_out, GraphWithChanNames &g_in, Scope *s_in)
+        DecompAnalysis (GraphWithChanNames &g_in, Scope *s_in)
             {   
-                fp = fp_out;
+                fp = stdout;
                 g = &g_in;
                 s = s_in;
                 decomp_info_map.clear();

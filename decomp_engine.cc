@@ -22,7 +22,6 @@
 #include "synth.h"
 #include "engines.h"
 
-#include <act/chp/breakpoint.h>
 #include <act/chp/chopping_block.h>
 #include <act/chp/projection.h>
 #include <act/chp/pretty_print.h>
@@ -141,15 +140,11 @@ class Decomp : public ActSynthesize {
       top_chp->u.semi_comma.cmd = list_new();
 
       // necessary rewrites for ring synthesis --------------------------------
-      MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
+      MultiChan *mc = new MultiChan (g, p->CurScope());
       mc->process_multichans();
       auto vs = mc->get_auxiliary_procs();
       
-      DecompAnalysis *dca = new DecompAnalysis (_pp->fp, g, p->CurScope());
-      dca->analyze();
-      
-      ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
-                            dca->get_decomp_info_map(), p->CurScope());
+      ChoppingBlock *cb = new ChoppingBlock (g, p->CurScope());
       cb->excise_internal_loops();
       auto vs1 = cb->get_chopped_seqs();
         
@@ -172,10 +167,7 @@ class Decomp : public ActSynthesize {
         for ( auto ss : prj_steps ) {
           fill_in_else_explicit (top_chp, p);
           auto gnew = chp_graph_from_act (top_chp, p->CurScope(), 1);
-          DecompAnalysis *dca2 = new DecompAnalysis (_pp->fp, gnew, p->CurScope());
-          dca2->analyze();
-          Projection *pr2 = new Projection (_pp->fp, gnew, 
-                          dca2->get_decomp_info_map(), p->CurScope());
+          Projection *pr2 = new Projection (gnew, p->CurScope());
           pr2->project(ss);
           auto [names2, top_chp2, nfc2] = pr2->get_result();
           for ( auto x : names2 ) { newnames.insert(x); }

@@ -34,16 +34,15 @@
 class ChoppingBlock {
     public:
 
-        ChoppingBlock ( FILE *fp_in, GraphWithChanNames &g_in, 
-                        std::unordered_map<const Block *, decomp_info_t *> vmap_in,
-                        Scope *s_in)
-            {
-                fp = fp_in;
-                g = &g_in;
-                vmap = vmap_in;
-                idpool = g->graph.id_pool();
-                s = s_in;
-            }
+        ChoppingBlock (GraphWithChanNames &g_in, Scope *s_in)
+        {
+            g = &g_in;
+            s = s_in;
+            idpool = g->graph.id_pool();
+            DecompAnalysis *dca = new DecompAnalysis (*g, s);
+            dca->analyze();
+            vmap = dca->get_decomp_info_map();
+        }
 
         /*
             Break the graph based on breakpoints
@@ -68,7 +67,6 @@ class ChoppingBlock {
 
     protected:
 
-        FILE *fp;
         GraphWithChanNames *g;
         std::unordered_map<const Block *, decomp_info_t *> vmap;
         std::vector<Sequence> v_seqs;
