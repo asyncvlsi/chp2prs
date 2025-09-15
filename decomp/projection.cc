@@ -31,6 +31,8 @@
     - expose complex part cleanly for optimizer plug-in (done)
 */
 
+void eliminate_unobservable(ChpGraph &g, Sequence seq);
+
 std::tuple<
     std::unordered_set<ActId *>, 
     act_chp_lang_t *,
@@ -38,10 +40,9 @@ std::tuple<
     > Projection::get_result ()
 {     
     std::unordered_set<ActId *> names = {};
-    act_chp_lang_t *top_chp;
     std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
 
-    top_chp = new act_chp_lang_t;
+    act_chp_lang_t *top_chp = new act_chp_lang_t;
     top_chp->label = NULL;
     top_chp->space = NULL;
     top_chp->type = ACT_CHP_COMMA;
@@ -50,13 +51,17 @@ std::tuple<
     for ( auto v : procs )
     {
         auto _g = ChpOptimize::chp_graph_from_act (v, s, 1);
-        // ChpOptimize::optimize_chp_O2 (_g.graph, p->getName(), false);
-        ChpOptimize::optimize_chp_O0 (_g.graph, "brr", false);
+        ChpOptimize::optimize_chp_basic (_g.graph, "brr", false);
+        eliminate_unobservable(_g.graph, _g.graph.m_seq);
         std::vector<ActId *> tmp_names2;
         v = chp_graph_to_act (_g, tmp_names2, s);
         for ( auto x : tmp_names2 ) { names.insert(x); }
         nfc.push_back(_g.name_from_chan);
-        list_append(top_chp->u.semi_comma.cmd, v);
+        // No chans -> can delete process
+        // Perhaps a better way to check this
+        if (_g.name_from_chan.size()>0) {
+            list_append(top_chp->u.semi_comma.cmd, v);
+        }
     }
 
     return {names, top_chp, nfc};
@@ -1411,3 +1416,78 @@ void Projection::export_dot(std::string filename, const DFG &d_in)
     fprintf(ff,"\n}");
     fclose(ff);
 }
+
+bool is_unobservable(ChpGraph &g, Sequence seq)
+{
+    bool ret = true;
+    Block *curr = seq.startseq->child();
+
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        switch (curr->u_basic().stmt.type()) {
+        case StatementType::Send:
+        case StatementType::Receive: {
+            return false;
+            }
+            break;
+        case StatementType::Assign: {
+            }
+            break;
+        }
+    }
+    break;
+      
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            ret &= is_unobservable (g, branch);
+        }
+    }
+    break;
+      
+    case BlockType::Select: {
+        for (auto &branch : curr->u_select().branches) {
+            ret &= is_unobservable (g, branch.seq);
+        }
+    }
+    break;
+      
+    case BlockType::DoLoop: {
+        ret &= is_unobservable(g, curr->u_doloop().branch);
+    }
+    break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
+    return ret;
+}
+
+void eliminate_unobservable(ChpGraph &g, Sequence seq)
+{
+    Block *curr = seq.startseq->child();
+    switch (curr->type()) {
+    case BlockType::Par: {
+        std::list<Sequence> new_branches = {};
+        for (auto &branch : curr->u_par().branches) {
+            if(!is_unobservable (g, branch)) {
+                new_branches.push_back(branch);
+            }
+        }
+        curr->u_par().branches = new_branches;
+    }
+    break;
+    case BlockType::DoLoop: 
+    case BlockType::Basic:
+    case BlockType::Select:
+    break;
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+} 

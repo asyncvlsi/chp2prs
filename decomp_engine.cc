@@ -168,6 +168,7 @@ class Decomp : public ActSynthesize {
       if (project) {
         std::vector<Strategy> prj_steps = {};
         prj_steps = {Strategy::None, Strategy::BruteForce};
+        // prj_steps = {Strategy::None};
         for ( auto ss : prj_steps ) {
           fill_in_else_explicit (top_chp, p);
           auto gnew = chp_graph_from_act (top_chp, p->CurScope(), 1);
@@ -179,8 +180,7 @@ class Decomp : public ActSynthesize {
           auto [names2, top_chp2, nfc2] = pr2->get_result();
           for ( auto x : names2 ) { newnames.insert(x); }
           for ( auto x : nfc2 ) { nfc.push_back(x); }
-          
-          // list_concat(top_chp->u.semi_comma.cmd, top_chp2->u.semi_comma.cmd);
+
           top_chp = top_chp2;
         }
       }
