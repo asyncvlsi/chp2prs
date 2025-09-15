@@ -21,7 +21,7 @@
 TARGETLIBS=libactchpdecomp_$(EXT).so
 
 TARGETINCS=projection.h chopping_block.h analysis.h multichan.h \
-		   pretty_print.h chp_cost.h
+		   pretty_print.h chp_cost.h ddg.h
 TARGETINCSUBDIR=act/chp
 
 CPPSTD=c++17
