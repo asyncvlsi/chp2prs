@@ -21,6 +21,7 @@
  */
 
 #include "chp_timing.h"
+#include "math.h"
 
 static constexpr double EPS = 1e-12;
 
@@ -378,7 +379,7 @@ RawResult max_tick_ratio_cycle(int n, const std::vector<RawEdge>& E)
 
     double ratio = cycle_ratio(cyc);
     // If reconstruction failed (rare), still report L as the ratio.
-    if (!isfinite(ratio)) ratio = L;
+    if (!std::isfinite(ratio)) ratio = L;
     return {ratio, cyc};
 }
 
