@@ -33,13 +33,14 @@
 
 enum class NodeType { Basic, Copy, Guard, LoopGuard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
 
-class NodeId {
+template <class G>
+class NodeIdT {
 public:
-    NodeId() : id_(-1) {}
-    explicit NodeId(int id) : id_(id) {}
+    NodeIdT() : id_(-1) {}
+    explicit NodeIdT(int id) : id_(id) {}
 
-    static NodeId generate() {
-        return NodeId(counter_++); 
+    static NodeIdT generate() {
+        return NodeIdT(counter_++); 
     }
 
     static void reset() {
@@ -48,16 +49,20 @@ public:
 
     int get_raw() const { return id_; }
 
-    bool operator==(const NodeId& other) const { return id_ == other.id_; }
-    bool operator!=(const NodeId& other) const { return id_ != other.id_; }
-    bool operator<(const NodeId& other)  const { return id_ < other.id_; }
+    bool operator==(const NodeIdT& other) const { return id_ == other.id_; }
+    bool operator!=(const NodeIdT& other) const { return id_ != other.id_; }
+    bool operator<(const NodeIdT& other)  const { return id_ < other.id_; }
 
 private:
     int id_;
     static int counter_;
 };
 
-int NodeId::counter_{0};
+template <class G>
+int NodeIdT<G>::counter_{0};
+
+struct G_DFG {};
+using NodeId = NodeIdT<G_DFG>;
 
 static NodeId bot_id = NodeId(-1); 
 

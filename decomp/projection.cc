@@ -93,7 +93,7 @@ void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
     d_in.build_sccs();
 }
 
-void Projection::project(Strategy s)
+void Projection::project(Strategy ss)
 {
     bool printt = false;
 
@@ -107,7 +107,7 @@ void Projection::project(Strategy s)
     step2(*g, dfg1);
 
     // Copy-insertion strategy
-    switch (s)
+    switch (ss)
     {
     case Strategy::None: {
     }
@@ -120,8 +120,27 @@ void Projection::project(Strategy s)
     case Strategy::BruteForce: {
         _insert_copies_v6 (*g, dfg1);
     }
+    break;
     case Strategy::Timing: {
-
+        ChpTiming ct(*g, s);
+        // auto n1 = ct.tg.add_node();
+        // auto n2 = ct.tg.add_node();
+        // auto n3 = ct.tg.add_node();
+        // auto n4 = ct.tg.add_node();
+        // auto n5 = ct.tg.add_node();
+        // auto n6 = ct.tg.add_node();
+        // ct.tg.add_edge(n1,n2,10,1);
+        // ct.tg.add_edge(n2,n3,10,0);
+        // ct.tg.add_edge(n3,n1,10,0);
+        // ct.tg.add_edge(n2,n4,15,0);
+        // ct.tg.add_edge(n4,n1,15,0);
+        ct.construct_tg();
+        auto r = ct.get_maxcycle();
+        fprintf(stdout, "\nCycle: ");
+        for ( auto id : r ) {
+            fprintf(stdout, "%d, ", id.get_raw());
+        }
+        fprintf(stdout, "\n");
     }
     break;
     }

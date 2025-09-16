@@ -163,7 +163,7 @@ class Decomp : public ActSynthesize {
       if (project) {
         std::vector<Strategy> prj_steps = {};
         prj_steps = {Strategy::None, Strategy::BruteForce};
-        // prj_steps = {Strategy::None};
+        // prj_steps = {Strategy::Timing};
         for ( auto ss : prj_steps ) {
           fill_in_else_explicit (top_chp, p);
           auto gnew = chp_graph_from_act (top_chp, p->CurScope(), 1);

@@ -24,7 +24,9 @@
 #ifndef __PROJECTION_H__
 #define __PROJECTION_H__
 
-#include <act/chp/ddg.h>
+// #include <act/chp/ddg.h>
+#include "ddg.h"
+#include "chp_timing.h"
 
 DFG dfg1;
 DFG dfg2;

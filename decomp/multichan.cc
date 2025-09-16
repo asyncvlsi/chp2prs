@@ -30,21 +30,23 @@
 void MultiChan::process_multichans()
 {
     _build_multichan_info (g->graph.m_seq);
-    _delete_singles ();
+    _delete_singles (mc_info_recv);
+    _delete_singles (mc_info_send);
     bool printt = false;
     // if (printt) _print_multichan_info ();
 
-    for ( auto cbp : mc_info )
+    for ( auto mi : {mc_info_recv, mc_info_send} ) {
+    for ( auto cbp : mi )
     {
         alias_number = 0;
-        _update_with_aliases (g->graph.m_seq, cbp.first);
+        _update_with_aliases (g->graph.m_seq, cbp.first, mi);
         int tmp = alias_number;
         // fprintf (fp, "\n\nalias_number : %d\n\n", alias_number);
 
         Assert(_contains_chan_access(g->graph.m_seq, cbp.first), "huh?");
 
         Assert(alias_number == cbp.second.size(), "hmm");
-        auto final_state = _build_state_table (g->graph.m_seq, cbp.first, 0);
+        auto final_state = _build_state_table (g->graph.m_seq, cbp.first, 0, mi);
         _st.push_back (StateRow(final_state, 0));
         if (printt) fprintf (fp, "\n /* ----- initial -------\n");
         if (printt) _print_state_table (_st);
@@ -72,9 +74,10 @@ void MultiChan::process_multichans()
         if (printt) _print_state_table (_st);
         if (printt) fprintf (fp, "\n ------------ */ \n");
 
-        auto aux = _build_aux_process_new (_st, cbp.first);
+        auto aux = _build_aux_process_new (_st, cbp.first, mi);
         v_aux.push_back(aux);
         _st.clear();
+    }
     }
     // if (printt) _print_multichan_info ();
 }
@@ -96,10 +99,10 @@ void MultiChan::_build_multichan_info (Sequence seq)
         case StatementType::Assign:
             break;
         case StatementType::Send:
-            _add_chan_blk_pair (curr, curr->u_basic().stmt.u_send().chan);
+            _add_chan_blk_pair (curr, curr->u_basic().stmt.u_send().chan, mc_info_send);
             break;
         case StatementType::Receive:
-            _add_chan_blk_pair (curr, curr->u_basic().stmt.u_receive().chan);
+            _add_chan_blk_pair (curr, curr->u_basic().stmt.u_receive().chan, mc_info_recv);
             break;
       }
     }
@@ -131,27 +134,29 @@ void MultiChan::_build_multichan_info (Sequence seq)
     }
 }
 
-void MultiChan::_add_chan_blk_pair (Block *b, ChanId id)
+void MultiChan::_add_chan_blk_pair (Block *b, ChanId id, multichan_alias_struct &mi)
 {
     chan_blk_pair tmp;
-    if (!mc_info.count(id))
+    if (!mi.count(id))
     {
         tmp.clear();
         // first alias number is 1, 0 is reserved for special purpose
         tmp.insert({b,{id,1}});
-        mc_info.insert({id, tmp});
+        mi.insert({id, tmp});
     }
     else 
     {
-        unsigned int curr_no_of_aliases = (mc_info.find(id)->second).size();
-        mc_info.find(id)->second.insert({b,{id, curr_no_of_aliases+1}});
+        unsigned int curr_no_of_aliases = (mi.find(id)->second).size();
+        mi.find(id)->second.insert({b,{id, curr_no_of_aliases+1}});
     }
 }
 
 void MultiChan::_print_multichan_info ()
 {
     fprintf (fp, "\n\n----------------\n\n");
-    for ( auto itr : mc_info )
+
+    for ( auto mi : {mc_info_recv, mc_info_send} ) {
+    for ( auto itr : mi )
     {
         Assert (g->name_from_chan.count(itr.first), "channel name not found?");
         auto chmap = (g->name_from_chan.find(itr.first))->second;
@@ -182,25 +187,26 @@ void MultiChan::_print_multichan_info ()
         }
         fprintf (fp,"\n");
     }
+    }
     fprintf (fp, "\n----------------\n\n");
 }
 
-void MultiChan::_delete_singles ()
+void MultiChan::_delete_singles (multichan_alias_struct &mi)
 {
-    multichan_alias_struct mc_info_new;
-    for ( auto itr : mc_info )
+    multichan_alias_struct tmp;
+    for ( auto itr : mi )
     {
         auto vec = itr.second;
         if (vec.size() > 1)
         {
-            mc_info_new.insert(itr);
+            tmp.insert(itr);
         }
     }
-    mc_info.clear();
-    mc_info = mc_info_new;
+    mi.clear();
+    mi = tmp;
 }
 
-void MultiChan::_update_with_aliases (Sequence seq, ChanId id)
+void MultiChan::_update_with_aliases (Sequence seq, ChanId id, multichan_alias_struct &mi)
 {
     Block *curr = seq.startseq->child();
 
@@ -218,8 +224,8 @@ void MultiChan::_update_with_aliases (Sequence seq, ChanId id)
                 ActId *aid = vtoa.chanMap(alias_chan);
                 g->name_from_chan.insert({alias_chan, aid});
 
-                (mc_info.find(id)->second).find(curr)->second.first = alias_chan;
-                (mc_info.find(id)->second).find(curr)->second.second = _gen_alias_number();
+                (mi.find(id)->second).find(curr)->second.first = alias_chan;
+                (mi.find(id)->second).find(curr)->second.second = _gen_alias_number();
             }
             break;
         case StatementType::Receive:
@@ -230,8 +236,8 @@ void MultiChan::_update_with_aliases (Sequence seq, ChanId id)
                 ActId *aid = vtoa.chanMap(alias_chan);
                 g->name_from_chan.insert({alias_chan, aid});
                 
-                (mc_info.find(id)->second).find(curr)->second.first = alias_chan;
-                (mc_info.find(id)->second).find(curr)->second.second = _gen_alias_number();
+                (mi.find(id)->second).find(curr)->second.first = alias_chan;
+                (mi.find(id)->second).find(curr)->second.second = _gen_alias_number();
             }
             break;
       }
@@ -240,19 +246,19 @@ void MultiChan::_update_with_aliases (Sequence seq, ChanId id)
       
     case BlockType::Par: {
         for (auto &branch : curr->u_par().branches) {
-            _update_with_aliases (branch, id);
+            _update_with_aliases (branch, id, mi);
         }
     }
     break;
       
     case BlockType::Select:
         for (auto &branch : curr->u_select().branches) {
-            _update_with_aliases (branch.seq, id);
+            _update_with_aliases (branch.seq, id, mi);
         }
     break;
       
     case BlockType::DoLoop:
-        _update_with_aliases (curr->u_doloop().branch, id);
+        _update_with_aliases (curr->u_doloop().branch, id, mi);
         break;
     
     case BlockType::StartSequence:
@@ -299,7 +305,7 @@ bool MultiChan::_seq_contains_block (Block *b, Sequence seq)
     return false;
 }
 
-int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
+int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state, multichan_alias_struct &mi)
 {
     Block *curr = seq.startseq->child();
     bool alias_hit = false;
@@ -314,7 +320,7 @@ int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
         case StatementType::Send:
             if (curr->u_basic().stmt.u_send().chan == id)
             {
-                auto next_state = (mc_info.find(id)->second).find(curr)->second.second;
+                auto next_state = (mi.find(id)->second).find(curr)->second.second;
                 _st.push_back(StateRow(curr_state, next_state));
                 curr_state = next_state;
                 alias_hit = true;
@@ -323,7 +329,7 @@ int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
         case StatementType::Receive:
             if (curr->u_basic().stmt.u_receive().chan == id)
             {   
-                auto next_state = (mc_info.find(id)->second).find(curr)->second.second;
+                auto next_state = (mi.find(id)->second).find(curr)->second.second;
                 _st.push_back(StateRow(curr_state, next_state));
                 curr_state = next_state;
                 alias_hit = true;
@@ -337,7 +343,7 @@ int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
         // Note: Only zero/one of the branches must contain a channel 
         // access. If not, there's a possible write conflict
         for (auto &branch : curr->u_par().branches) {
-            curr_state = _build_state_table (branch, id, curr_state);
+            curr_state = _build_state_table (branch, id, curr_state, mi);
         }
     }
     break;
@@ -357,7 +363,7 @@ int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
             for (auto &branch : curr->u_select().branches) {
                 auto next_state = _gen_alias_number();
                 ns_i.push_back(next_state);
-                auto out_state = _build_state_table (branch.seq, id, next_state);
+                auto out_state = _build_state_table (branch.seq, id, next_state, mi);
                 _st.push_back(StateRow(out_state, merge_state));
             }
             // fprintf (fp, "\n got here 1 dawg \n");
@@ -381,7 +387,7 @@ int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state)
             ns_i.push_back(jump_back_state);
 
             curr_state = jump_back_state; 
-            auto loop_state = _build_state_table (curr->u_doloop().branch, id, curr_state);
+            auto loop_state = _build_state_table (curr->u_doloop().branch, id, curr_state, mi);
             auto exit_loop_state = _gen_alias_number();
             ns_i.push_back(exit_loop_state);
 
@@ -584,7 +590,7 @@ void MultiChan::_re_encode_state (int old_st, int new_st)
 
 // ^ implementing this is a nightmare, gonna do state transition table
 
-Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
+Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id, multichan_alias_struct &mi)
 {
     // auto alias_var_bw = log_2_round_up(st.size());
     int stmax = 0;
@@ -617,7 +623,7 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
     Block *sm_sel = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
 
     // Channel access type : receive or send
-    bool send_type = ((mc_info.find(id)->second).begin()->first->u_basic().stmt.type() == StatementType::Send);
+    bool send_type = ((mi.find(id)->second).begin()->first->u_basic().stmt.type() == StatementType::Send);
 
     // iterate and build state machine ------------------------------
     for ( auto sr : st )
@@ -645,8 +651,8 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id)
 
         if (valid_alias) // receiving
         {
-            blk = _find_alias_block (id, sr.curr);
-            auto alias_chan = (mc_info.find(id)->second).find(blk)->second.first;
+            blk = _find_alias_block (id, sr.curr, mi);
+            auto alias_chan = (mi.find(id)->second).find(blk)->second.first;
             _replace_with_alias (blk, alias_chan);
             if (send_type) {
                 access_alias = g->graph.blockAllocator().newBlock(
@@ -781,9 +787,9 @@ Block *MultiChan::_build_next_assign (VarId v, int v_bw, std::vector<int> nxts, 
     return ret;
 }
 
-Block *MultiChan::_find_alias_block (ChanId id, unsigned int alias_i)
+Block *MultiChan::_find_alias_block (ChanId id, unsigned int alias_i, multichan_alias_struct &mi)
 {
-    auto cbp = mc_info.find(id)->second;
+    auto cbp = mi.find(id)->second;
     for ( auto x : cbp )
     {
         if (x.second.second == alias_i)

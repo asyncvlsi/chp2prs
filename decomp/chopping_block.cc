@@ -555,23 +555,24 @@ void ChoppingBlock::_excise_internal_loops(Sequence seq, int root)
       
     case BlockType::Par: {
         for ( auto &branch : curr->u_par().branches )
-            _excise_internal_loops (branch, 0);
+            _excise_internal_loops (branch, root);
     }
     break;
       
     case BlockType::Select: {
         for ( auto &branch : curr->u_select().branches )
-            _excise_internal_loops (branch.seq, 0);
+            _excise_internal_loops (branch.seq, root);
     }
     break;
       
     case BlockType::DoLoop:
-        if (root != 1) 
+        if (root == 0) 
         {
-            _excise_internal_loops (curr->u_doloop().branch, 0);
+            _excise_internal_loops (curr->u_doloop().branch, root);
             // fprintf(stdout, "\nexcising internal loop \n");
             tmp = curr->child();
             _excise_loop(curr);
+            // fprintf(stdout, "\nfinished excising internal loop \n");
             tmp = tmp->parent();
         }
         else {

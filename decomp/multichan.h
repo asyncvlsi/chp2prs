@@ -118,7 +118,7 @@ class MultiChan : public DecompAnalysis {
             no need to process it - just delete
             it from the list of ones to handle
         */
-        void _delete_singles();
+        void _delete_singles(multichan_alias_struct &);
 
         void _print_multichan_info();
 
@@ -127,9 +127,9 @@ class MultiChan : public DecompAnalysis {
             with IDs of freshly generated
             alias channels
         */
-        void _update_with_aliases(Sequence, ChanId);
+        void _update_with_aliases(Sequence, ChanId, multichan_alias_struct &);
 
-        void _add_chan_blk_pair (Block *, ChanId);
+        void _add_chan_blk_pair (Block *, ChanId, multichan_alias_struct &);
 
         /*
             Before a selection, insert channel communication
@@ -165,7 +165,7 @@ class MultiChan : public DecompAnalysis {
         /*
             Construct the auxiliary multi-channel handler process
         */
-        Sequence _build_aux_process_new (StateTable, ChanId);
+        Sequence _build_aux_process_new (StateTable, ChanId, multichan_alias_struct &);
 
         /*
             Build a guard expression that encodes whether
@@ -185,14 +185,15 @@ class MultiChan : public DecompAnalysis {
             access of a given channel and alias number
             This is maybe inefficient 
         */
-        Block *_find_alias_block (ChanId, unsigned int);
+        Block *_find_alias_block (ChanId, unsigned int, multichan_alias_struct &);
 
         /*
             Wrap CHP in an infinite loop
         */
         Block *_wrap_in_do_loop (Sequence);
 
-        multichan_alias_struct mc_info;
+        multichan_alias_struct mc_info_send;
+        multichan_alias_struct mc_info_recv;
 
         StateTable _st;
 
@@ -201,7 +202,7 @@ class MultiChan : public DecompAnalysis {
             tracks the execution of the relevant 
             portions of the program
         */
-        int _build_state_table (Sequence, ChanId, int);
+        int _build_state_table (Sequence, ChanId, int, multichan_alias_struct &);
 
         /*
             For every staterow where the current state is a
