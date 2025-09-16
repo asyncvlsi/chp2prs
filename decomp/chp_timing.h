@@ -42,9 +42,16 @@ class TimingNode {
     public:
         TimingNode () {
             id = TNodeId::generate();
+            label = "<None>";
+        }
+        
+        TimingNode (std::string s) {
+            id = TNodeId::generate();
+            label = s;
         }
         
         TNodeId id;
+        std::string label;
 };
 
 class TimingEdge {
@@ -64,6 +71,11 @@ class TimingGraph {
 
         TNodeId add_node() {
             nodes.emplace_back();
+            return nodes.back().id;
+        }
+
+        TNodeId add_node(std::string s) {
+            nodes.push_back(TimingNode(s));
             return nodes.back().id;
         }
 
@@ -120,12 +132,14 @@ class ChpTiming : public ChpCost {
         GraphWithChanNames *g;
 
         void construct_tg();
-        TNodeId _construct_tg(Sequence, TNodeId, var_to_actvar&, 
-                            chan_to_nodes&, chan_to_nodes&, 
-                            int);
+        void _construct_tg(Sequence, var_to_actvar&, chan_to_nodes&, chan_to_nodes&);
+        TNodeId _construct_subtg(Sequence, TNodeId, var_to_actvar&, 
+                            chan_to_nodes&, chan_to_nodes&, int);
+
+        void export_dot(std::string);
 
         std::vector<TNodeId> get_maxcycle ();
-        RawResult run_max_ratio(const TimingGraph&);
+        RawResult run_max_ratio();
 
         TimingGraph tg;
 

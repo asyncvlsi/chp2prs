@@ -123,20 +123,9 @@ void Projection::project(Strategy ss)
     break;
     case Strategy::Timing: {
         ChpTiming ct(*g, s);
-        // auto n1 = ct.tg.add_node();
-        // auto n2 = ct.tg.add_node();
-        // auto n3 = ct.tg.add_node();
-        // auto n4 = ct.tg.add_node();
-        // auto n5 = ct.tg.add_node();
-        // auto n6 = ct.tg.add_node();
-        // ct.tg.add_edge(n1,n2,10,1);
-        // ct.tg.add_edge(n2,n3,10,0);
-        // ct.tg.add_edge(n3,n1,10,0);
-        // ct.tg.add_edge(n2,n4,15,0);
-        // ct.tg.add_edge(n4,n1,15,0);
         ct.construct_tg();
         auto r = ct.get_maxcycle();
-        fprintf(stdout, "\nCycle: ");
+        fprintf(stdout, "\n// Cycle: ");
         for ( auto id : r ) {
             fprintf(stdout, "%d, ", id.get_raw());
         }

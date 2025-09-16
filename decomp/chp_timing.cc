@@ -24,40 +24,91 @@
 
 static constexpr double EPS = 1e-12;
 
-void ChpTiming::construct_tg()
+void ChpTiming::_construct_tg(Sequence seq, var_to_actvar &table, 
+                    chan_to_nodes &c2n_recv, chan_to_nodes &c2n_send)
 {
-    // collect top-level parallel loops
-    std::vector<Sequence> seqs;
-    {
-        auto top = g->graph.m_seq;
-        if (top.startseq->child()->type()==BlockType::Par) {
-            auto pb = top.startseq->child();
-            Assert (pb->child()->type()==BlockType::EndSequence, "what");
-            for ( auto seq : pb->u_par().branches ) {
-                seqs.push_back(seq);
-            }
-        }
-        else {
-            seqs.push_back (top);
+    Block *curr = seq.startseq->child();
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic:
+    break;
+      
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            _construct_tg(branch, table, c2n_recv, c2n_send);
         }
     }
-
-    // construct each
-    chan_to_nodes c2n_recv = {};
-    chan_to_nodes c2n_send = {};
-    for ( auto seq : seqs ) {
-        var_to_actvar table(_s, g->graph.id_pool());
+    break;
+      
+    case BlockType::Select:
+    break;
+      
+    case BlockType::DoLoop: {
         TNodeId tmp;
-        _construct_tg (seq, tmp, table, c2n_recv, c2n_send, 1);
+        _construct_subtg (seq, tmp, table, c2n_recv, c2n_send, 1);
     }
-
-    // connect channels
-
-    // terminate port channels with sources/sinks
-
+    break;
+    
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
 }
 
-TNodeId ChpTiming::_construct_tg(Sequence seq, TNodeId previd, var_to_actvar &table, 
+void ChpTiming::construct_tg()
+{
+    chan_to_nodes c2n_recv = {};
+    chan_to_nodes c2n_send = {};
+    var_to_actvar table(_s, g->graph.id_pool());
+    _construct_tg(g->graph.m_seq, table, c2n_recv, c2n_send);
+
+    // connect internal channels
+    // terminate port channels with sources/sinks
+    std::unordered_set<ChanId> c_i = {}; // internal
+    std::unordered_set<ChanId> c_s = {}; // sends
+    std::unordered_set<ChanId> c_r = {}; // recvs
+    for ( auto x : c2n_recv ) {
+        if (c2n_send.count(x.first)) {
+            c_i.insert(x.first);
+        }
+        else {
+            c_r.insert(x.first);
+        }
+    }
+    for ( auto x : c2n_send ) {
+        if (!c2n_recv.count(x.first)) {
+            c_s.insert(x.first);
+        }
+    }
+
+    for ( auto cc : c_i ) {
+        auto sendnodes = c2n_send[cc];
+        auto recvnodes = c2n_recv[cc];
+        tg.add_edge(sendnodes.first, recvnodes.first, 0, false);
+        tg.add_edge(recvnodes.second, sendnodes.second, 0, false);
+    }
+    for ( auto cc : c_r ) {
+        auto recvnodes = c2n_recv[cc];
+        // FIXME : Correct delay
+        tg.add_edge(recvnodes.second, recvnodes.first, 1, true);
+    } 
+    for ( auto cc : c_s ) {
+        auto sendnodes = c2n_send[cc];
+        // FIXME : Correct delay
+        auto snk_term_req = tg.add_node();
+        auto snk_term_ack = tg.add_node();
+        tg.add_edge(snk_term_req, snk_term_ack, capture_delay, false);
+        tg.add_edge(snk_term_ack, snk_term_req, 1, true);
+        tg.add_edge(sendnodes.first, snk_term_req, 0, false);
+        tg.add_edge(snk_term_ack, sendnodes.second, 0, false);
+    } 
+    
+}
+
+TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar &table, 
                         chan_to_nodes &c2n_recv, chan_to_nodes &c2n_send, int root)
 {
   auto varToId = [&] (const VarId &v) { return table.varMap (v); };
@@ -71,8 +122,9 @@ TNodeId ChpTiming::_construct_tg(Sequence seq, TNodeId previd, var_to_actvar &ta
     case BlockType::Basic: if (root==0) {
         switch (curr->u_basic().stmt.type()) {
         case StatementType::Receive: {
-            auto reqid = tg.add_node();
-            auto ackid = tg.add_node();
+            auto chan = curr->u_basic().stmt.u_receive().chan;
+            auto reqid = tg.add_node(std::to_string(chan.m_id)+"?.r");
+            auto ackid = tg.add_node(std::to_string(chan.m_id)+"?.a");
             Assert (!c2n_recv.count(curr->u_basic().stmt.u_receive().chan), "Multi Chan Access?");
             c2n_recv[curr->u_basic().stmt.u_receive().chan] = {reqid,ackid};
             tg.add_edge(currid, reqid, recv_delay, 0);
@@ -81,9 +133,9 @@ TNodeId ChpTiming::_construct_tg(Sequence seq, TNodeId previd, var_to_actvar &ta
         }
         break;
         case StatementType::Send: {
-            auto reqid = tg.add_node();
-            auto ackid = tg.add_node();
             auto chan = curr->u_basic().stmt.u_send().chan;
+            auto reqid = tg.add_node(std::to_string(chan.m_id)+"!.r");
+            auto ackid = tg.add_node(std::to_string(chan.m_id)+"!.a");
             Assert (!c2n_send.count(chan), "Multi Chan Access?");
             c2n_send[chan] = {reqid,ackid};
             Expr *e = ChpOptimize::template_func_new_expr_from_irexpr (
@@ -101,7 +153,7 @@ TNodeId ChpTiming::_construct_tg(Sequence seq, TNodeId previd, var_to_actvar &ta
                         *curr->u_basic().stmt.u_assign().e.roots[0], 
                         ActExprIntType::Int, varToId, chanToId);
             auto edel = expr_delay(e, g->graph.id_pool().getBitwidth(ids[0]));
-            auto assnid = tg.add_node();
+            auto assnid = tg.add_node("assn");
             tg.add_edge(currid, assnid, assn_delay + capture_delay + edel, 0);
             currid = assnid;
         }
@@ -111,48 +163,51 @@ TNodeId ChpTiming::_construct_tg(Sequence seq, TNodeId previd, var_to_actvar &ta
     break;
       
     case BlockType::Par: {
-        auto split_id = tg.add_node();
-        auto merge_id = tg.add_node();
+        auto split_id = tg.add_node("par_split");
+        auto merge_id = tg.add_node("par_merge");
         tg.add_edge(currid, split_id, 0, 0);
         int n = curr->u_par().branches.size();
         for (auto &branch : curr->u_par().branches) {
             auto tmpid = tg.add_node();
             tg.add_edge(split_id, tmpid, n, 0);
-            auto finalid = _construct_tg (branch, tmpid, table, c2n_recv, c2n_send, 0);
-            tg.add_edge(tmpid, merge_id, n, 0);
+            auto finalid = _construct_subtg (branch, tmpid, table, c2n_recv, c2n_send, 0);
+            tg.add_edge(finalid, merge_id, n, 0);
         }
         currid = merge_id;
     }
     break;
       
     case BlockType::Select: {
-        Assert (false, "wip");
-        // guard nodes
-        int i=0;
+        auto split_id = tg.add_node("sel_split");
+        auto merge_id = tg.add_node("sel_merge");
+        tg.add_edge(currid, split_id, 0, 0);
+        double max_delay_g = 0;
+        int n = curr->u_select().branches.size();
         for ( auto &branch : curr->u_select().branches ) {
-            // compute max
             auto &g = branch.g;
             Expr *e = ChpOptimize::template_func_new_expr_from_irexpr (
                         *branch.g.u_e().e.m_dag.roots[0],
-						ActExprIntType::Bool, varToId, chanToId);
+                        ActExprIntType::Bool, varToId, chanToId);
             auto delay = expr_delay(e, 1);
-            i++;
+            max_delay_g = std::max(delay, max_delay_g);
         }
-        // branches
         for ( auto &branch : curr->u_select().branches ) {
-            _construct_tg (branch.seq, currid, table, c2n_recv, c2n_send, 0);
+            auto tmpid = tg.add_node();
+            // FIXME : Correct delay
+            tg.add_edge(split_id, tmpid, max_delay_g, 0);
+            auto finalid = _construct_subtg (branch.seq, tmpid, table, c2n_recv, c2n_send, 0);
+            // FIXME : Correct delay
+            tg.add_edge(finalid, merge_id, n, 0);
         }
-        // phi's
-        for ( auto phi : curr->u_select().merges ) {
-        }
+        currid = merge_id;
     }
     break;
       
     case BlockType::DoLoop: {
-        auto start = tg.add_node();
-        auto end = tg.add_node();
+        auto start = tg.add_node("Start");
+        auto end = tg.add_node("End");
         tg.add_edge(end, start, 1, true);
-        auto final = _construct_tg(curr->u_doloop().branch, start, table, c2n_recv, c2n_send, 0);
+        auto final = _construct_subtg(curr->u_doloop().branch, start, table, c2n_recv, c2n_send, 0);
         tg.add_edge(final, end, 0, false);
     }
     break;
@@ -327,37 +382,64 @@ RawResult max_tick_ratio_cycle(int n, const std::vector<RawEdge>& E)
     return {ratio, cyc};
 }
 
-RawResult ChpTiming::run_max_ratio(const TimingGraph& G) 
+RawResult ChpTiming::run_max_ratio() 
 {
+    bool printt = false;
     // Map TNodeId -> compact index
     int idx = 0;
-    for (auto& n : G.get_nodes()) {
+    for (auto& n : tg.get_nodes()) {
         idx_to_id[idx] = n.id;
         id_to_idx[n.id] = idx;
+        if (printt) fprintf(stdout, "\n Node ID : %d", n.id.get_raw());
         idx++;
     }
     int n_nodes = idx;
+    if (printt) fprintf (stdout, "\n Graph Nodes : %d", n_nodes);
+    if (printt) fprintf (stdout, "\n Graph Edges : %zu\n\n", tg.get_edges().size());
 
     std::vector<RawEdge> E;
-    for (auto& e : G.get_edges()) {
+    for (auto& e : tg.get_edges()) {
+        if (printt) fprintf(stdout, "Edge : %d -> %d\n", e.from.get_raw(), e.to.get_raw());
+    }
+    TNodeId bot;
+    for (auto& e : tg.get_edges()) {
+        Assert (e.from!=bot && e.to!=bot, "Malformed Timing Graph!");
         int u = id_to_idx.at(e.from);
         int v = id_to_idx.at(e.to);
         E.push_back({u,v,e.weight, e.ticked ? 1 : 0});
     }
+    export_dot("out.dot");
 
     return max_tick_ratio_cycle(n_nodes, E);
 }
 
 std::vector<TNodeId> ChpTiming::get_maxcycle () 
 {
-    auto r = run_max_ratio(tg);
-    Assert(!r.cycle.empty(), "Critical Cycle Failure");
-
-    fprintf(stdout, "Ratio: %f\n", r.ratio);
+    auto r = run_max_ratio();
+    Assert(!r.cycle.empty(), "Critical Cycle Failure! Unticked cycle may exist.");
 
     std::vector<TNodeId> ret;
     for ( auto id : r.cycle ) {
         ret.push_back(idx_to_id[id]);
     }
     return ret;
+}
+
+void ChpTiming::export_dot(std::string filename)
+{
+    FILE *ff = fopen(filename.c_str(), "w");
+
+    std::string edge_repr = "->";
+    fprintf(ff,"\ndigraph{ ");
+    for ( const auto &node : tg.get_nodes() ) {
+        fprintf(ff, "\n_%d [label=\"%d : %s\"];", 
+            node.id.get_raw(), node.id.get_raw(), node.label.c_str());
+    }
+    for ( auto e : tg.get_edges() ) {
+        std::string color = (e.ticked) ? "red" : "black";
+        fprintf(ff, "\n_%d %s _%d [color=%s];", 
+            e.from.get_raw(), edge_repr.c_str(), e.to.get_raw(), color.c_str());
+    }
+    fprintf(ff,"\n}");
+    fclose(ff);
 }
