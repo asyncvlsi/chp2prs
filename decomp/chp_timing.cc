@@ -99,8 +99,8 @@ void ChpTiming::construct_tg()
     for ( auto cc : c_s ) {
         auto sendnodes = c2n_send[cc];
         // FIXME : Correct delay
-        auto snk_term_req = tg.add_node();
-        auto snk_term_ack = tg.add_node();
+        auto snk_term_req = tg.add_node("snk_term.r");
+        auto snk_term_ack = tg.add_node("snk_term.a");
         tg.add_edge(snk_term_req, snk_term_ack, capture_delay, false);
         tg.add_edge(snk_term_ack, snk_term_req, 1, true);
         tg.add_edge(sendnodes.first, snk_term_req, 0, false);
@@ -126,6 +126,8 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
             auto chan = curr->u_basic().stmt.u_receive().chan;
             auto reqid = tg.add_node(std::to_string(chan.m_id)+"?.r");
             auto ackid = tg.add_node(std::to_string(chan.m_id)+"?.a");
+            nmap[reqid] = &dfg->find(curr);
+            nmap[ackid] = &dfg->find(curr);
             Assert (!c2n_recv.count(curr->u_basic().stmt.u_receive().chan), "Multi Chan Access?");
             c2n_recv[curr->u_basic().stmt.u_receive().chan] = {reqid,ackid};
             tg.add_edge(currid, reqid, recv_delay, 0);
@@ -137,6 +139,8 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
             auto chan = curr->u_basic().stmt.u_send().chan;
             auto reqid = tg.add_node(std::to_string(chan.m_id)+"!.r");
             auto ackid = tg.add_node(std::to_string(chan.m_id)+"!.a");
+            nmap[reqid] = &dfg->find(curr);
+            nmap[ackid] = &dfg->find(curr);
             Assert (!c2n_send.count(chan), "Multi Chan Access?");
             c2n_send[chan] = {reqid,ackid};
             Expr *e = ChpOptimize::template_func_new_expr_from_irexpr (
@@ -155,6 +159,7 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
                         ActExprIntType::Int, varToId, chanToId);
             auto edel = expr_delay(e, g->graph.id_pool().getBitwidth(ids[0]));
             auto assnid = tg.add_node("assn");
+            nmap[assnid] = &dfg->find(curr);
             tg.add_edge(currid, assnid, assn_delay + capture_delay + edel, 0);
             currid = assnid;
         }
@@ -192,13 +197,16 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
             auto delay = expr_delay(e, 1);
             max_delay_g = std::max(delay, max_delay_g);
         }
+        int i=0;
         for ( auto &branch : curr->u_select().branches ) {
             auto tmpid = tg.add_node();
+            nmap[tmpid] = &dfg->find(curr, {i,IRGuard::deep_copy(branch.g)});
             // FIXME : Correct delay
             tg.add_edge(split_id, tmpid, max_delay_g, 0);
             auto finalid = _construct_subtg (branch.seq, tmpid, table, c2n_recv, c2n_send, 0);
             // FIXME : Correct delay
             tg.add_edge(finalid, merge_id, n, 0);
+            i++;
         }
         currid = merge_id;
     }
@@ -409,12 +417,11 @@ RawResult ChpTiming::run_max_ratio()
         int v = id_to_idx.at(e.to);
         E.push_back({u,v,e.weight, e.ticked ? 1 : 0});
     }
-    export_dot("out.dot");
 
     return max_tick_ratio_cycle(n_nodes, E);
 }
 
-std::vector<TNodeId> ChpTiming::get_maxcycle () 
+void ChpTiming::run_maxcycle() 
 {
     auto r = run_max_ratio();
     Assert(!r.cycle.empty(), "Critical Cycle Failure! Unticked cycle may exist.");
@@ -423,8 +430,14 @@ std::vector<TNodeId> ChpTiming::get_maxcycle ()
     for ( auto id : r.cycle ) {
         ret.push_back(idx_to_id[id]);
     }
-    return ret;
+    maxcycle = {r.ratio, ret};
 }
+
+std::pair<double, std::vector<TNodeId>> ChpTiming::get_maxcycle() const
+{
+    return maxcycle;
+}
+
 
 void ChpTiming::export_dot(std::string filename)
 {

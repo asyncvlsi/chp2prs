@@ -91,7 +91,8 @@ template<> struct std::hash<HyperEdge> {
     }
 };
 
-typedef std::unordered_map<NodeId,std::unordered_set<NodeId>> HyperEdges;
+typedef std::vector<HyperEdge> HyperEdgeVec;
+typedef std::unordered_map<NodeId,std::unordered_set<NodeId>> HyperEdgeSet;
 
 typedef std::unordered_map<VarId, Block *> CopyLocMap;
 

@@ -106,6 +106,7 @@ void Projection::project(Strategy ss)
     // compute strongly-connected components info
     step2(*g, dfg1);
 
+    bool skip = false;
     // Copy-insertion strategy
     switch (ss)
     {
@@ -122,23 +123,188 @@ void Projection::project(Strategy ss)
     }
     break;
     case Strategy::Timing: {
-        ChpTiming ct(*g, s);
-        ct.construct_tg();
-        auto r = ct.get_maxcycle();
-        fprintf(stdout, "\n// Cycle: ");
-        for ( auto id : r ) {
-            fprintf(stdout, "%d, ", id.get_raw());
-        }
-        fprintf(stdout, "\n");
+        _insert_copies_v7 (*g, dfg1);
+        skip = true;
     }
     break;
     }
     // Construct sub-processes
-    dfg1.clear();
-    _build_graph(g->graph.m_seq, dfg1);
-    _build_procs (*g, dfg1);
+    if (!skip) {
+        dfg1.clear();
+        _build_graph(g->graph.m_seq, dfg1);
+        _build_procs (*g, dfg1);
+        
+        ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
+    }
+}
 
-    ChpOptimize::takeOutOfNewStaticTokenForm(g->graph);
+void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
+{
+    bool verbose = false;
+
+    // make copy of graph
+    std::unordered_map<ChanId, ChanId> cc;
+    std::unordered_map<VarId, VarId> vv;
+    auto g_copy = deep_copy_graph(g,cc,vv);
+    DFG d_loc;
+    step2(g_copy, d_loc);
+
+    // initialize timer
+    ChpTiming xct(g_copy, d_loc, s);
+    xct.construct_tg();
+    xct.run_maxcycle();
+    auto r = xct.get_maxcycle();
+    double max_cycle_orig = r.first;
+    std::vector<double> max_cycles_trace = {-1.0};
+
+    if (verbose) {
+        fprintf(stdout, "\n// Original : %f\n", max_cycle_orig);
+    }
+    do {
+        ChpTiming ct(g_copy, d_loc, s);
+        ct.construct_tg();
+        ct.run_maxcycle();
+        auto r1 = ct.get_maxcycle();
+        max_cycles_trace.push_back(r1.first);
+        auto max_cycle = max_cycles_trace.back();
+        auto hs = _get_candidates(ct);
+        HyperEdge best_h = {}; 
+        
+        double itr_best_cycle = std::numeric_limits<double>::max();
+        
+        if (verbose) {
+            fprintf(stdout, "\n// Hyperedge set size: %zu", hs.size());
+            fprintf(stdout, "\n\n");
+        } 
+        int j=0;
+        for ( const auto &h : hs ) {
+            if (j==50) break;
+            j++;
+            if (verbose) {
+                fprintf(stdout, "\n%d", j);
+            }
+
+            std::unordered_map<VarId, VarId> old_to_new = {};
+            CopyLocMap clm = {};
+            const auto &node = d_loc.find(h.first);
+            auto vars = get_defs(node);
+            if (vars.size()==1) {
+                for ( auto x : h.second ) {
+                    d_loc.delete_edge (h.first, x);
+                }
+                if (!old_to_new.count(vars[0])) {
+                    auto newvar = _insert_hyperedge_copy (g_copy, d_loc, h, vars[0], clm);
+                    old_to_new.insert({vars[0],newvar});
+                }
+            }
+
+            _build_procs(g_copy, d_loc);
+            auto [names, top_chp, nfc] = get_result();
+            _fill_in_else_explicit (top_chp, s);
+            auto g_tmp = chp_graph_from_act (top_chp, s, 1);
+            DFG d_tmp;
+            step2(g_tmp, d_tmp);
+            ChpTiming ct_tmp(g_tmp, d_tmp, s);
+            ct_tmp.construct_tg();
+            ct_tmp.run_maxcycle();
+            auto r_tmp = ct_tmp.get_maxcycle();
+            if (itr_best_cycle > r_tmp.first) {
+                best_h = h;
+                itr_best_cycle = r_tmp.first;
+            }
+            std::vector<ActId *> xnms;
+
+            if (vars.size()==1) {
+                for ( auto x : h.second ) {
+                    d_loc.add_edge (h.first, x);
+                }
+                if (old_to_new.count(vars[0])) {
+                    _uninsert_hyperedge_copy (g_copy, d_loc, h, old_to_new[vars[0]], vars[0], clm);
+                    old_to_new.erase(vars[0]);
+                }
+            }
+        }
+
+        CopyLocMap clm = {};
+        const auto &node = d_loc.find(best_h.first);
+        auto vars = get_defs(node);
+        if (vars.size()==1) {
+            for ( auto x : best_h.second ) {
+                d_loc.delete_edge (best_h.first, x);
+            }
+            auto newvar = _insert_hyperedge_copy (g_copy, d_loc, best_h, vars[0], clm);
+        }
+
+        _build_procs(g_copy, d_loc);
+        auto [names, top_chp, nfc] = get_result();
+        _fill_in_else_explicit (top_chp, s);
+        g_copy = chp_graph_from_act (top_chp, s, 1);
+        step2(g_copy, d_loc);
+        if (verbose) {
+            fprintf(stdout, "\n// Latest: %f", max_cycles_trace.back());
+        } 
+    
+    } while ( abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 1.0 );
+
+    if (verbose) {
+        fprintf(stdout, "\n// Trace : ");
+        for ( auto x : max_cycles_trace ) {
+            fprintf(stdout, "%f, ", x);
+        }
+    }
+    _build_procs(g_copy, d_loc);
+}
+
+template <typename T>
+static std::vector<std::vector<T>> power_set(const std::unordered_set<T>& s) {
+    std::vector<T> elems(s.begin(), s.end());
+    std::vector<std::vector<T>> result;
+    int n = elems.size();
+    Assert (n<=15, "Extremely high out-degree?");
+    int total = 1 << n; // 2^n subsets
+
+    result.reserve(total);
+
+    for (int mask = 0; mask < total; ++mask) {
+        std::vector<T> subset;
+        for (int i = 0; i < n; ++i) {
+            if (mask & (1 << i)) {
+                subset.push_back(elems[i]);
+            }
+        }
+        result.push_back(std::move(subset));
+    }
+    return result;
+}
+
+HyperEdgeVec Projection::_get_candidates(const ChpTiming &ct)
+{
+    std::vector<NodeId> cand_nodes;
+    auto r = ct.get_maxcycle();
+    for ( const auto &x : r.second ) {
+        if (ct.nmap.count(x)) {
+            auto n = ct.nmap.at(x);
+            if (n->t!=NodeType::LoopLoopPhi) {
+                cand_nodes.push_back(n->id);
+            }
+            if (n->t==NodeType::Guard) {
+                auto children = ct.dfg->get_out_edges(n->id);
+                for ( const auto &y : children ) {
+                    cand_nodes.push_back(ct.dfg->find(y).id);
+                }
+            }
+        }
+    }
+
+    HyperEdgeVec hs;
+    for ( const auto &id : cand_nodes ) {
+        auto pow_set = power_set(ct.dfg->get_out_edges(id));
+        for ( auto outs : pow_set ) {
+            hs.push_back({id,std::unordered_set<NodeId>(outs.begin(),outs.end())});
+        }
+    }
+
+    return hs;
 }
 
 /*
@@ -166,7 +332,7 @@ void Projection::_insert_copies_v6 (GraphWithChanNames &g, DFG &d_in)
     // initialize cost-related stuff
     ChpCost c(s);
     double min_max_cost = std::numeric_limits<double>::max();
-    HyperEdges best_subset = {};
+    HyperEdgeSet best_subset = {};
     std::vector<double> best_costs = {};
     
     std::unordered_map<int, Edge> emap = {};
@@ -193,7 +359,7 @@ void Projection::_insert_copies_v6 (GraphWithChanNames &g, DFG &d_in)
 
     for (unsigned long long mask=0; mask<n_itr_edge; mask++)
     {
-        HyperEdges h_subset = {};
+        HyperEdgeSet h_subset = {};
         for (int i = 0; i < n_cand_edges; i++) {
             if (mask & (1 << i)) {
                 auto e = emap[i];

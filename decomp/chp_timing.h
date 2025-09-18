@@ -86,6 +86,16 @@ class TimingGraph {
         const std::vector<TimingNode>& get_nodes() const { return nodes; }
         const std::vector<TimingEdge>& get_edges() const { return edges; }
 
+        const TimingNode &find (const TNodeId id) const {
+            for ( const auto &n : nodes ) {
+                if (n.id==id)
+                    return n;
+            }
+            Assert (false, "Invalid Node");
+            return nodes[0];
+        }
+
+
     private:
         std::vector<TimingNode> nodes;
         std::vector<TimingEdge> edges;
@@ -114,9 +124,10 @@ typedef std::unordered_map<ChanId, std::pair<TNodeId, TNodeId>> chan_to_nodes;
 class ChpTiming : public ChpCost {
     public:
 
-        ChpTiming (GraphWithChanNames &g_in, Scope *s_in)
+        ChpTiming (const GraphWithChanNames &g_in, const DFG &dfg_in, Scope *s_in)
         : ChpCost (s_in) {
             g = &g_in;
+            dfg = &dfg_in;
             tg = TimingGraph();
             id_to_idx = {};
             idx_to_id = {};
@@ -129,7 +140,9 @@ class ChpTiming : public ChpCost {
             }
         }
 
-        GraphWithChanNames *g;
+        const GraphWithChanNames *g;
+        const DFG *dfg;
+        std::unordered_map<TNodeId, const DFG_Node *> nmap;
 
         void construct_tg();
         void _construct_tg(Sequence, var_to_actvar&, chan_to_nodes&, chan_to_nodes&);
@@ -138,7 +151,9 @@ class ChpTiming : public ChpCost {
 
         void export_dot(std::string);
 
-        std::vector<TNodeId> get_maxcycle ();
+        std::pair<double, std::vector<TNodeId>> maxcycle;
+        void run_maxcycle ();
+        std::pair<double, std::vector<TNodeId>> get_maxcycle () const ;
         RawResult run_max_ratio();
 
         TimingGraph tg;
