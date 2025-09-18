@@ -20,13 +20,15 @@
 #-------------------------------------------------------------------------
 TARGETLIBS=libactchpring_$(EXT).so
 
+TARGETINCS=ring_synthesis_struct.h reqs.h ring_misc.h
+TARGETINCSUBDIR=act/chp
+
 CPPSTD=c++17
 
 SHOBJS=ring.os \
 	tiny_forge.os \
 	ring_forge.os \
-	ring_else_gen.os \
-	ring_name_handling.os \
+	ring_misc.os \
 	ring_vars.os \
 	ring_scan.os
 

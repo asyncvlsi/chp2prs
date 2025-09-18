@@ -23,7 +23,7 @@
 #ifndef __ACT_RING_ELSE_GEN_H__
 #define __ACT_RING_ELSE_GEN_H__
 
-#include "reqs.h"
+#include <act/chp/reqs.h>
 
 /* 
  * Recurses through the given chp tree.
@@ -46,15 +46,37 @@
  * ]
  * 
 */
-void fill_in_else_explicit (act_chp_lang_t *c, Process *p);
+void fill_in_else_explicit (act_chp_lang_t *c, Scope *s);
 
-void expand_self_assignments (act_chp_lang_t *&c, Process *p);
+void expand_self_assignments (act_chp_lang_t *&c, Scope *s);
 
-void make_receives_unique (act_chp_lang_t *&c, Process *p);
+void make_receives_unique (act_chp_lang_t *&c, Scope *s);
 
-void flatten_lists (act_chp_lang_t *&c, Process *p);
+void flatten_lists (act_chp_lang_t *&c, Scope *s);
 
 bool _var_appears_in_expr (Expr *e, ActId *id);
+
+/*
+    Revert the mangling settings back to 
+    the main Act object's defaults.
+*/
+void revert_mangle ();
+
+/*
+ * Initialize the Act object that is used for 
+ * string mangling functionality.
+ * Needs to be called only once in the entire
+ * program.
+*/
+void mangle_init ();
+
+/*
+ * Get the true name of a variable. This is 
+ * a consistent way to get a unique string
+ * name for every identifier. Indices in 
+ * arrayed identifiers are mangled as required.
+*/
+void get_true_name (char *buf, ActId *id, Scope *s, bool mangle = true);
 
 /*
 // Assert but error print location is parent

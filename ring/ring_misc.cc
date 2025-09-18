@@ -20,11 +20,11 @@
  *************************************************************************
  */
 
-#include "ring_else_gen.h"
+#include "ring_misc.h"
 
 static int counter = 0;
 
-void fill_in_else_explicit (act_chp_lang_t *c, Process *p)
+void fill_in_else_explicit (act_chp_lang_t *c, Scope *s)
 {
     listitem_t *li;
     act_chp_lang_t *stmt;
@@ -44,14 +44,14 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p)
         for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
         {
             stmt = (act_chp_lang_t *)(list_value(li));
-            fill_in_else_explicit (stmt, p);
+            fill_in_else_explicit (stmt, s);
         }
         break;
 
     case ACT_CHP_LOOP:
     case ACT_CHP_DOLOOP:
         gc = c->u.gc;
-        fill_in_else_explicit (gc->s, p);
+        fill_in_else_explicit (gc->s, s);
         break;
         
     case ACT_CHP_SELECT:
@@ -62,7 +62,7 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p)
         expr_false->type = E_FALSE;
 
         gc = c->u.gc;
-        disj_gs->u.e.r = expr_expand(gc->g, ActNamespace::Global(), p->CurScope());
+        disj_gs->u.e.r = expr_expand(gc->g, ActNamespace::Global(), s);
         itr = disj_gs;
 
         for (gc = gc->next ; gc ; gc = gc->next)
@@ -72,7 +72,7 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p)
                 itr->u.e.l = gc->g;
                 NEW (tmp, Expr);
                 tmp->type = E_OR;
-                tmp->u.e.r = expr_expand(itr, ActNamespace::Global(), p->CurScope());
+                tmp->u.e.r = expr_expand(itr, ActNamespace::Global(), s);
                 NEW (itr, Expr);
                 itr = tmp;
             }
@@ -83,13 +83,13 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p)
                 NEW (inv_disj_gs, Expr);
                 inv_disj_gs->type = E_NOT;
                 inv_disj_gs->u.e.l = itr;
-                gc->g = expr_expand(inv_disj_gs, ActNamespace::Global(), p->CurScope());
+                gc->g = expr_expand(inv_disj_gs, ActNamespace::Global(), s);
             }
         }
 
         for (gc = c->u.gc ; gc ; gc = gc->next)
         {
-            fill_in_else_explicit (gc->s, p);
+            fill_in_else_explicit (gc->s, s);
         }
 
         break;
@@ -97,7 +97,7 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p)
     case ACT_CHP_SELECT_NONDET:
         for (gc = c->u.gc ; gc ; gc = gc->next)
         {
-            fill_in_else_explicit (gc->s, p);
+            fill_in_else_explicit (gc->s, s);
         }
 
         break;
@@ -122,10 +122,8 @@ void fill_in_else_explicit (act_chp_lang_t *c, Process *p)
     return;
 }
 
-void expand_self_assignments (act_chp_lang_t *&c, Process *p)
+void expand_self_assignments (act_chp_lang_t *&c, Scope *s)
 {
-  Scope *s = p->CurScope();
-
   switch (c->type) {
 
   case ACT_CHP_SKIP:
@@ -172,7 +170,7 @@ void expand_self_assignments (act_chp_lang_t *&c, Process *p)
     for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
     {   
       act_chp_lang_t *stmt = (act_chp_lang_t *) list_value (li);
-      expand_self_assignments (stmt, p);
+      expand_self_assignments (stmt, s);
     }
     break;
 
@@ -180,7 +178,7 @@ void expand_self_assignments (act_chp_lang_t *&c, Process *p)
   case ACT_CHP_DOLOOP:
   {
     act_chp_gc_t *gc = c->u.gc;
-    expand_self_assignments (gc->s, p);
+    expand_self_assignments (gc->s, s);
     Assert (!(gc->next), "more than one loop branch at top-level?");
   }
     break;
@@ -189,7 +187,7 @@ void expand_self_assignments (act_chp_lang_t *&c, Process *p)
   {
     act_chp_gc_t *gc = c->u.gc;
     while (gc) {
-      expand_self_assignments (gc->s, p);
+      expand_self_assignments (gc->s, s);
       gc = gc->next;
     }
   }
@@ -204,9 +202,8 @@ void expand_self_assignments (act_chp_lang_t *&c, Process *p)
   }
 }
 
-void flatten_lists (act_chp_lang_t *&c, Process *p)
+void flatten_lists (act_chp_lang_t *&c, Scope *s)
 {
-  Scope *s = p->CurScope();
 
   switch (c->type) {
 
@@ -244,7 +241,7 @@ void flatten_lists (act_chp_lang_t *&c, Process *p)
   case ACT_CHP_DOLOOP:
   {
     act_chp_gc_t *gc = c->u.gc;
-    flatten_lists (gc->s, p);
+    flatten_lists (gc->s, s);
     Assert (!(gc->next), "more than one loop branch at top-level?");
   }
     break;
@@ -253,7 +250,7 @@ void flatten_lists (act_chp_lang_t *&c, Process *p)
   {
     act_chp_gc_t *gc = c->u.gc;
     while (gc) {
-      flatten_lists (gc->s, p);
+      flatten_lists (gc->s, s);
       gc = gc->next;
     }
   }
@@ -268,10 +265,8 @@ void flatten_lists (act_chp_lang_t *&c, Process *p)
   }
 }
 
-void make_receives_unique (act_chp_lang_t *&c, Process *p)
+void make_receives_unique (act_chp_lang_t *&c, Scope *s)
 {
-  Scope *s = p->CurScope();
-
   switch (c->type) {
 
   case ACT_CHP_SKIP:
@@ -321,7 +316,7 @@ void make_receives_unique (act_chp_lang_t *&c, Process *p)
     for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
     {   
       act_chp_lang_t *stmt = (act_chp_lang_t *) list_value (li);
-      make_receives_unique (stmt, p);
+      make_receives_unique (stmt, s);
     }
     break;
 
@@ -329,7 +324,7 @@ void make_receives_unique (act_chp_lang_t *&c, Process *p)
   case ACT_CHP_DOLOOP:
   {
     act_chp_gc_t *gc = c->u.gc;
-    make_receives_unique (gc->s, p);
+    make_receives_unique (gc->s, s);
     Assert (!(gc->next), "more than one loop branch at top-level?");
   }
     break;
@@ -338,7 +333,7 @@ void make_receives_unique (act_chp_lang_t *&c, Process *p)
   {
     act_chp_gc_t *gc = c->u.gc;
     while (gc) {
-      make_receives_unique (gc->s, p);
+      make_receives_unique (gc->s, s);
       gc = gc->next;
     }
   }
@@ -451,4 +446,50 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
     return false;
     break;
   }
+}
+
+Act *a_mangle = NULL;
+
+static const int style_global = 0;
+
+void mangle_init ()
+{ 
+  char u[6];
+  a_mangle = new Act;
+  snprintf(u,6,"[],."); /// characters to mangle
+  a_mangle->mangle(u);
+}
+
+void revert_mangle ()
+{
+  if (config_exists ("act.mangle_letter")) {
+  const char *tmp = config_get_string ("act.mangle_letter");
+  if (!a_mangle->mangle_set_char (*tmp)) {
+    fatal_error ("act.mangle_letter: could not be used as a character!");
+  }
+  }
+  else {
+    a_mangle->mangle_set_char ('_');
+  }
+  if (config_exists ("act.mangle_chars")) {
+    a_mangle->mangle (config_get_string ("act.mangle_chars"));
+  }
+} 
+
+void get_true_name (char *buf, ActId *id, Scope *s, bool mangle)
+{
+  char str[1024];
+  id->sPrint(str,1024,NULL,style_global);
+  if (mangle && !(TypeFactory::isChanType(s->FullLookup((id->getName()))))) {
+    a_mangle->mangle_string(str,buf,1024);
+  }
+  else  
+    snprintf (buf, 1024, "%s", str);
+}
+
+void generate_array_suffix (char *buf, Array *a)
+{
+  char s[1024];
+  a->sPrint(s,1024,style_global);
+  a_mangle->mangle_string(s,buf,1024);
 }

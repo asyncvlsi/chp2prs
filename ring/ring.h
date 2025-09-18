@@ -21,6 +21,7 @@
  */
 
 #include "reqs.h"
+#include "ring_misc.h"
 
 /*
  * Base class for ring synthesis 

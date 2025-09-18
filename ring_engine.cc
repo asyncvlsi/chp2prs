@@ -24,7 +24,7 @@
 #include "engines.h"
 
 #include "ring/reqs.h"
-#include "ring/ring_else_gen.h"
+#include "ring/ring_misc.h"
 #include "ring/tiny_forge.h"
 #include "ring/ring_scan.h"
 
@@ -199,8 +199,8 @@ class RingSynth : public ActSynthesize {
     {
       Assert (c, "hmm no chp lol - something went wrong");
       mangle_init();
-      fill_in_else_explicit (c, p);
-      flatten_lists (c, p);
+      fill_in_else_explicit (c, p->CurScope());
+      flatten_lists (c, p->CurScope());
 
       ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
       b->run(p);
