@@ -154,8 +154,8 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
     xct.construct_tg();
     xct.run_maxcycle();
     auto r = xct.get_maxcycle();
-    double max_cycle_orig = r.first;
-    std::vector<double> max_cycles_trace = {-1.0};
+    double max_cycle_orig = r.ratio;
+    std::vector<double> max_cycles_trace = {-1000.0, -500.0}; // dummy vals
 
     if (verbose) {
         fprintf(stdout, "\n// Original : %f\n", max_cycle_orig);
@@ -165,24 +165,21 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         ct.construct_tg();
         ct.run_maxcycle();
         auto r1 = ct.get_maxcycle();
-        max_cycles_trace.push_back(r1.first);
-        auto max_cycle = max_cycles_trace.back();
-        auto hs = _get_candidates(ct);
-        HyperEdge best_h = {}; 
+        max_cycles_trace.push_back(r1.ratio);
         
-        double itr_best_cycle = std::numeric_limits<double>::max();
+        auto hs = _get_candidates_dynamic(ct, 20);
+        HyperEdge best_h = {}; 
+        double itr_best_cycle = r1.ratio;
+
+        if (verbose) {
+            fprintf(stdout, "\n// Latest at Start: %f", r1.ratio);
+        } 
         
         if (verbose) {
             fprintf(stdout, "\n// Hyperedge set size: %zu", hs.size());
             fprintf(stdout, "\n\n");
         } 
-        int j=0;
         for ( const auto &h : hs ) {
-            if (j==50) break;
-            j++;
-            if (verbose) {
-                fprintf(stdout, "\n%d", j);
-            }
 
             std::unordered_map<VarId, VarId> old_to_new = {};
             CopyLocMap clm = {};
@@ -208,9 +205,9 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
             ct_tmp.construct_tg();
             ct_tmp.run_maxcycle();
             auto r_tmp = ct_tmp.get_maxcycle();
-            if (itr_best_cycle > r_tmp.first) {
+            if (itr_best_cycle > r_tmp.ratio) {
                 best_h = h;
-                itr_best_cycle = r_tmp.first;
+                itr_best_cycle = r_tmp.ratio;
             }
             std::vector<ActId *> xnms;
 
@@ -226,13 +223,15 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         }
 
         CopyLocMap clm = {};
-        const auto &node = d_loc.find(best_h.first);
-        auto vars = get_defs(node);
-        if (vars.size()==1) {
-            for ( auto x : best_h.second ) {
-                d_loc.delete_edge (best_h.first, x);
+        if (best_h.first!=bot_id) {
+            const auto &node = d_loc.find(best_h.first);
+            auto vars = get_defs(node);
+            if (vars.size()==1) {
+                for ( auto x : best_h.second ) {
+                    d_loc.delete_edge (best_h.first, x);
+                }
+                auto newvar = _insert_hyperedge_copy (g_copy, d_loc, best_h, vars[0], clm);
             }
-            auto newvar = _insert_hyperedge_copy (g_copy, d_loc, best_h, vars[0], clm);
         }
 
         _build_procs(g_copy, d_loc);
@@ -277,20 +276,92 @@ static std::vector<std::vector<T>> power_set(const std::unordered_set<T>& s) {
     return result;
 }
 
-HyperEdgeVec Projection::_get_candidates(const ChpTiming &ct)
+// Try everything on the max-cycle
+HyperEdgeVec Projection::_get_candidates_all(const ChpTiming &ct)
 {
-    std::vector<NodeId> cand_nodes;
+    std::unordered_set<NodeId> cand_nodes;
     auto r = ct.get_maxcycle();
-    for ( const auto &x : r.second ) {
+    for ( const auto &x : r.cycle ) {
         if (ct.nmap.count(x)) {
             auto n = ct.nmap.at(x);
             if (n->t!=NodeType::LoopLoopPhi) {
-                cand_nodes.push_back(n->id);
+                cand_nodes.insert(n->id);
             }
             if (n->t==NodeType::Guard) {
                 auto children = ct.dfg->get_out_edges(n->id);
                 for ( const auto &y : children ) {
-                    cand_nodes.push_back(ct.dfg->find(y).id);
+                    cand_nodes.insert(ct.dfg->find(y).id);
+                }
+            }
+        }
+    }
+    HyperEdgeVec hs;
+    for ( const auto &id : cand_nodes ) {
+        auto all_outs = ct.dfg->get_out_edges(id);
+        std::unordered_set<NodeId> excl_same_scc = {};
+        for ( auto x : all_outs ) {
+            if (!ct.dfg->in_same_scc(id, x)) {
+                excl_same_scc.insert(x);
+            }
+        }
+        auto pow_set = power_set(excl_same_scc);
+        for ( auto outs : pow_set ) {
+            hs.push_back({id,std::unordered_set<NodeId>(outs.begin(),outs.end())});
+        }
+    }
+
+    return hs;
+}
+
+// Max-Cycle Bisection Heuristic
+HyperEdgeVec Projection::_get_candidates_bisect(const ChpTiming &ct, double lb, double ub)
+{
+    auto r = ct.get_maxcycle();
+
+    // find maximum segment and rotate to align
+    auto es = r.edges;
+    double max_seg_wt = 0.0;
+    double seg_wt = 0.0;
+    Assert (es.back().ticked, "Last not ticked!");
+    std::vector<TimingEdge>::iterator itr = es.begin();
+    for (auto it = es.begin(); it != es.end(); it++) {
+        seg_wt += (*it).weight;
+        if ((*it).ticked) {
+            if(max_seg_wt < seg_wt) {
+                itr = it;
+                max_seg_wt = seg_wt;    
+            }
+            seg_wt = 0;
+        }
+    }
+    std::rotate(es.begin(), itr, es.end());
+
+    // consider only nodes in neighborhood of midpoint of max-segment
+    Assert ((lb>=0 && lb <=1.0), "Huh");
+    Assert ((ub>=0 && ub <=1.0), "Huh");
+    Assert ((lb<=ub), "Huh");
+    seg_wt = 0.0;
+    std::vector<TNodeId> cand_tnodes;
+    for (auto it = es.begin(); it != es.end(); it++) {
+        if ((seg_wt > lb*max_seg_wt) && (seg_wt < ub*max_seg_wt)) {
+            cand_tnodes.push_back((*it).from);
+        }
+        seg_wt += (*it).weight;
+        if (seg_wt > ub*max_seg_wt) break; 
+    }
+
+    // pick dfg nodes based on timing nodes
+    std::unordered_set<NodeId> cand_nodes;
+    for ( const auto &x : cand_tnodes ) {
+        if (ct.nmap.count(x)) {
+            auto n = ct.nmap.at(x);
+            if (n->t!=NodeType::LoopLoopPhi) {
+                cand_nodes.insert(n->id);
+            }
+            if (n->t==NodeType::Guard) {
+                auto children = ct.dfg->get_out_edges(n->id);
+                for ( const auto &y : children ) {
+                    cand_nodes.insert(ct.dfg->find(y).id);
                 }
             }
         }
@@ -298,12 +369,32 @@ HyperEdgeVec Projection::_get_candidates(const ChpTiming &ct)
 
     HyperEdgeVec hs;
     for ( const auto &id : cand_nodes ) {
-        auto pow_set = power_set(ct.dfg->get_out_edges(id));
+        auto all_outs = ct.dfg->get_out_edges(id);
+        std::unordered_set<NodeId> excl_same_scc = {};
+        for ( auto x : all_outs ) {
+            if (!ct.dfg->in_same_scc(id, x)) {
+                excl_same_scc.insert(x);
+            }
+        }
+        auto pow_set = power_set(excl_same_scc);
         for ( auto outs : pow_set ) {
             hs.push_back({id,std::unordered_set<NodeId>(outs.begin(),outs.end())});
         }
     }
+    return hs;
+}
 
+HyperEdgeVec Projection::_get_candidates_dynamic(const ChpTiming &ct, int max_sz)
+{
+    double lb = 0.4;
+    double ub = 0.6;
+    double del = 0.05;
+    auto hs = _get_candidates_bisect(ct, lb, ub);
+    while (hs.size()<max_sz && lb>0.0 && ub<1.0) {
+        hs = _get_candidates_bisect(ct, lb, ub);
+        lb-=del; ub+=del;
+    }
+    if (hs.size()==0) hs = _get_candidates_all(ct);
     return hs;
 }
 

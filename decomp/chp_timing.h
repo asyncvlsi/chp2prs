@@ -95,6 +95,13 @@ class TimingGraph {
             return nodes[0];
         }
 
+        TimingEdge find_edge(const TNodeId& from, const TNodeId& to) {
+            auto it = std::find_if(edges.begin(), edges.end(),
+                    [&](const TimingEdge& e) 
+                    { return e.from == from && e.to == to; });
+            Assert (it!=edges.end(), "Edge not found!");
+            return *it;
+        }
 
     private:
         std::vector<TimingNode> nodes;
@@ -118,6 +125,13 @@ struct RawResult {
     std::vector<int> cycle; // one witness cycle, possibly empty if none
 };
 // ---------- Internal Use Only ----------
+
+struct TimingResult {
+    double ratio;  
+    std::vector<TNodeId> cycle; 
+    std::vector<TimingEdge> edges;
+    int n_ticks;
+};
 
 typedef std::unordered_map<ChanId, std::pair<TNodeId, TNodeId>> chan_to_nodes;
 
@@ -151,12 +165,12 @@ class ChpTiming : public ChpCost {
 
         void export_dot(std::string);
 
-        std::pair<double, std::vector<TNodeId>> maxcycle;
         void run_maxcycle ();
-        std::pair<double, std::vector<TNodeId>> get_maxcycle () const ;
+        TimingResult get_maxcycle () const ;
         RawResult run_max_ratio();
-
+        
         TimingGraph tg;
+        TimingResult maxcycle;
 
         std::unordered_map<TNodeId,int> id_to_idx;
         std::unordered_map<int,TNodeId> idx_to_id;

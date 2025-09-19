@@ -430,14 +430,29 @@ void ChpTiming::run_maxcycle()
     for ( auto id : r.cycle ) {
         ret.push_back(idx_to_id[id]);
     }
-    maxcycle = {r.ratio, ret};
+    
+    std::vector<TimingEdge> cycle_edges;
+    int nticks = 0;
+    for (size_t i = 0; i < ret.size(); i++) {
+        size_t j = (i + 1) % ret.size(); 
+        auto e = tg.find_edge(ret[i],ret[j]);
+        cycle_edges.push_back(e);
+        nticks += int(e.ticked);
+    }
+
+    auto it = std::find_if(cycle_edges.begin(), cycle_edges.end(),
+                [](const TimingEdge& e){ return e.ticked; });
+    std::rotate(cycle_edges.begin(), it, cycle_edges.end());
+    std::rotate(cycle_edges.begin(), cycle_edges.begin()+1, cycle_edges.end());
+    Assert (cycle_edges.back().ticked, "Huh");
+
+    maxcycle = {r.ratio, ret, cycle_edges, nticks};
 }
 
-std::pair<double, std::vector<TNodeId>> ChpTiming::get_maxcycle() const
+TimingResult ChpTiming::get_maxcycle() const
 {
     return maxcycle;
 }
-
 
 void ChpTiming::export_dot(std::string filename)
 {
