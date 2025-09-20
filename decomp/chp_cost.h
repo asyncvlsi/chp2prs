@@ -34,7 +34,7 @@ class ChpCost {
             _s = s;
             procs = {};
             _expr_id = 0;
-            eeo = new ExprCache("abc", bd, false, "/dev/null");
+            eeo = new ExprCache("abc", bd, false, "");
             Assert ((eeo), "Could not create mapper");
 
             config_set_int("expropt.verbose", 0);
