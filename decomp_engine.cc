@@ -156,6 +156,7 @@ class Decomp : public ActSynthesize {
       }
       // ----------------------------------------------------------------------
 
+      _trim_nested_same_int (top_chp, p->CurScope());
       act_chp_lang_t *l = top_chp;
       p->getlang()->getchp()->c = l;
 

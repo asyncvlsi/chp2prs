@@ -321,3 +321,258 @@ static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec = 0, int in
   }
   FREE (ib);
 }
+
+void _fill_in_else_explicit (act_chp_lang_t *c, Scope *s)
+{
+    listitem_t *li;
+    act_chp_lang_t *stmt;
+    act_chp_gc_t *gc;
+    Expr *g, *disj_gs, *tmp, *itr;
+    Expr *inv_disj_gs, *expr_false, *else_explicit;
+    if (!c) return;
+
+    switch (c->type) {
+    case ACT_CHP_COMMALOOP:
+    case ACT_CHP_SEMILOOP:
+        fatal_error ("Replication loops should've been removed..");
+        break;
+        
+    case ACT_CHP_COMMA:
+    case ACT_CHP_SEMI:
+        for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
+            stmt = (act_chp_lang_t *)(list_value(li));
+            _fill_in_else_explicit (stmt, s);
+        }
+        break;
+
+    case ACT_CHP_LOOP:
+    case ACT_CHP_DOLOOP:
+        gc = c->u.gc;
+        _fill_in_else_explicit (gc->s, s);
+        break;
+        
+    case ACT_CHP_SELECT:
+        NEW (disj_gs, Expr);
+        disj_gs->type = E_OR;
+
+        NEW (expr_false, Expr);
+        expr_false->type = E_FALSE;
+
+        gc = c->u.gc;
+        disj_gs->u.e.r = expr_expand(gc->g, ActNamespace::Global(), s);
+        itr = disj_gs;
+
+        for (gc = gc->next ; gc ; gc = gc->next) {
+            if (gc->g) {
+                itr->u.e.l = gc->g;
+                NEW (tmp, Expr);
+                tmp->type = E_OR;
+                tmp->u.e.r = expr_expand(itr, ActNamespace::Global(), s);
+                NEW (itr, Expr);
+                itr = tmp;
+            }
+            else {
+                // else exists => complement and insert
+                itr = itr->u.e.r;
+                NEW (inv_disj_gs, Expr);
+                inv_disj_gs->type = E_NOT;
+                inv_disj_gs->u.e.l = itr;
+                gc->g = expr_expand(inv_disj_gs, ActNamespace::Global(), s);
+            }
+        }
+
+        for (gc = c->u.gc ; gc ; gc = gc->next) {
+            _fill_in_else_explicit (gc->s, s);
+        }
+
+        break;
+
+    case ACT_CHP_SELECT_NONDET:
+        for (gc = c->u.gc ; gc ; gc = gc->next){
+            _fill_in_else_explicit (gc->s, s);
+        }
+        break;
+        
+    case ACT_CHP_SKIP:
+    case ACT_CHP_ASSIGN:
+    case ACT_CHP_ASSIGNSELF:
+    case ACT_CHP_RECV:
+    case ACT_CHP_SEND:
+        break;
+        
+    case ACT_CHP_FUNC:
+    case ACT_CHP_HOLE: /* to support verification */
+    case ACT_CHP_MACRO:
+    case ACT_HSE_FRAGMENTS:
+        break;
+
+    default:
+        fatal_error ("Unknown type");
+        break;
+    }
+    return;
+}
+
+void _trim_nested_same_int (act_chp_lang_t *&c, Scope *s)
+{
+  if (!c) return;
+
+  switch (c->type) {
+  case ACT_CHP_COMMALOOP:
+  case ACT_CHP_SEMILOOP:
+    fatal_error ("Replication loops should've been removed..");
+    break;
+      
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI:
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
+      act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
+      _trim_nested_same_int (stmt, s);
+    }
+    break;
+
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP: {
+    act_chp_gc_t *gc = c->u.gc;
+    _trim_nested_same_int (gc->g, s);
+    _trim_nested_same_int (gc->s, s);
+    break;
+  }
+      
+  case ACT_CHP_SELECT:
+  case ACT_CHP_SELECT_NONDET:
+  for (act_chp_gc_t *gc = c->u.gc ; gc ; gc = gc->next){
+    _trim_nested_same_int (gc->g, s);
+    _trim_nested_same_int (gc->s, s);
+  }
+  break;
+      
+  case ACT_CHP_SKIP:
+  case ACT_CHP_RECV:
+    break;
+  case ACT_CHP_ASSIGN:
+  case ACT_CHP_ASSIGNSELF: {
+      _trim_nested_same_int(c->u.assign.e, s);
+    }
+    break;
+  case ACT_CHP_SEND: {
+    if (c->u.comm.e)
+      _trim_nested_same_int(c->u.comm.e, s);
+    }
+    break;
+      
+  case ACT_CHP_FUNC:
+  case ACT_CHP_HOLE: /* to support verification */
+  case ACT_CHP_MACRO:
+  case ACT_HSE_FRAGMENTS:
+    break;
+
+  default:
+    fatal_error ("Unknown type");
+    break;
+  }
+  return;
+}
+
+void _trim_nested_same_int (Expr *&e, Scope *s)
+{
+  if (!e) return;
+
+#define BINARY_OP                         \
+  do {							                      \
+    _trim_nested_same_int (e->u.e.l, s);	\
+    _trim_nested_same_int (e->u.e.r, s);	\
+  } while (0)
+
+#define UNARY_OP                          \
+  do {							                      \
+    _trim_nested_same_int (e->u.e.l, s);	\
+  } while (0)
+  
+  switch (e->type) {
+  case E_AND:
+  case E_OR:
+  case E_XOR:
+  case E_PLUS:
+  case E_MINUS:
+  case E_LT:
+  case E_GT:
+  case E_LE:
+  case E_GE:
+  case E_EQ:
+  case E_NE:
+  case E_MULT:
+  case E_DIV:
+  case E_MOD:
+  case E_LSL:
+  case E_LSR:
+  case E_ASR:
+    BINARY_OP;
+    break;
+    
+  case E_UMINUS:
+  case E_NOT:
+  case E_COMPLEMENT:
+  case E_BUILTIN_BOOL:
+  UNARY_OP;
+  break;
+  case E_BUILTIN_INT: 
+  UNARY_OP;
+  {
+    auto y = e->u.e.r->u.ival.v;
+    if (e->u.e.l->type == E_BUILTIN_INT) {
+      Expr *ne = e->u.e.l;
+      if (ne->u.e.l->type == E_INT) {
+        auto x = ne->u.e.r->u.ival.v;
+        if (x==y) {
+          e = ne;
+        }
+      }
+    }
+  }
+  break;
+
+  case E_QUERY:
+    _trim_nested_same_int (e->u.e.l, s);
+    _trim_nested_same_int (e->u.e.r->u.e.l, s);
+    _trim_nested_same_int (e->u.e.r->u.e.r, s);
+    break;
+
+  case E_COLON:
+  case E_COMMA:
+    fatal_error ("Should have been handled elsewhere");
+    break;
+
+  case E_CONCAT: {
+      Expr *tmp = e;
+      while (tmp) {
+        _trim_nested_same_int (tmp->u.e.l, s);
+        tmp = tmp->u.e.r;
+      }
+    }
+    break;
+
+  case E_REAL:
+    fatal_error ("No real expressions please.");
+    break;
+
+  case E_TRUE:
+  case E_FALSE:
+  case E_INT:
+  case E_BITFIELD:
+  case E_VAR:
+  case E_PROBE:
+    break;
+    
+  case E_FUNCTION:
+    fatal_error ("function!");
+  case E_SELF:
+  default:
+    fatal_error ("Unknown expression type %d\n", e->type);
+    break;
+  }
+  return;
+#undef BINARY_OP
+#undef UNARY_OP
+
+}

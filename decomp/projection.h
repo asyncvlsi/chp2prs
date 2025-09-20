@@ -24,9 +24,9 @@
 #ifndef __PROJECTION_H__
 #define __PROJECTION_H__
 
-// #include <act/chp/ddg.h>
-#include "ddg.h"
-#include "chp_timing.h"
+#include <act/chp/ddg.h>
+#include <act/chp/chp_timing.h>
+#include <act/chp/pretty_print.h>
 
 DFG dfg1;
 DFG dfg2;
@@ -211,96 +211,5 @@ class Projection : protected ChoppingBlock {
 
         void _split_assignments (Sequence);
 };
-
-void _fill_in_else_explicit (act_chp_lang_t *c, Scope *s)
-{
-    listitem_t *li;
-    act_chp_lang_t *stmt;
-    act_chp_gc_t *gc;
-    Expr *g, *disj_gs, *tmp, *itr;
-    Expr *inv_disj_gs, *expr_false, *else_explicit;
-    if (!c) return;
-
-    switch (c->type) {
-    case ACT_CHP_COMMALOOP:
-    case ACT_CHP_SEMILOOP:
-        fatal_error ("Replication loops should've been removed..");
-        break;
-        
-    case ACT_CHP_COMMA:
-    case ACT_CHP_SEMI:
-        for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
-            stmt = (act_chp_lang_t *)(list_value(li));
-            _fill_in_else_explicit (stmt, s);
-        }
-        break;
-
-    case ACT_CHP_LOOP:
-    case ACT_CHP_DOLOOP:
-        gc = c->u.gc;
-        _fill_in_else_explicit (gc->s, s);
-        break;
-        
-    case ACT_CHP_SELECT:
-        NEW (disj_gs, Expr);
-        disj_gs->type = E_OR;
-
-        NEW (expr_false, Expr);
-        expr_false->type = E_FALSE;
-
-        gc = c->u.gc;
-        disj_gs->u.e.r = expr_expand(gc->g, ActNamespace::Global(), s);
-        itr = disj_gs;
-
-        for (gc = gc->next ; gc ; gc = gc->next) {
-            if (gc->g) {
-                itr->u.e.l = gc->g;
-                NEW (tmp, Expr);
-                tmp->type = E_OR;
-                tmp->u.e.r = expr_expand(itr, ActNamespace::Global(), s);
-                NEW (itr, Expr);
-                itr = tmp;
-            }
-            else {
-                // else exists => complement and insert
-                itr = itr->u.e.r;
-                NEW (inv_disj_gs, Expr);
-                inv_disj_gs->type = E_NOT;
-                inv_disj_gs->u.e.l = itr;
-                gc->g = expr_expand(inv_disj_gs, ActNamespace::Global(), s);
-            }
-        }
-
-        for (gc = c->u.gc ; gc ; gc = gc->next) {
-            _fill_in_else_explicit (gc->s, s);
-        }
-
-        break;
-
-    case ACT_CHP_SELECT_NONDET:
-        for (gc = c->u.gc ; gc ; gc = gc->next){
-            _fill_in_else_explicit (gc->s, s);
-        }
-        break;
-        
-    case ACT_CHP_SKIP:
-    case ACT_CHP_ASSIGN:
-    case ACT_CHP_ASSIGNSELF:
-    case ACT_CHP_RECV:
-    case ACT_CHP_SEND:
-        break;
-        
-    case ACT_CHP_FUNC:
-    case ACT_CHP_HOLE: /* to support verification */
-    case ACT_CHP_MACRO:
-    case ACT_HSE_FRAGMENTS:
-        break;
-
-    default:
-        fatal_error ("Unknown type");
-        break;
-    }
-    return;
-}
 
 #endif

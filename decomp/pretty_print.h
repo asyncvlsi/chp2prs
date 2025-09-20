@@ -22,6 +22,22 @@
 
 #include <act/act.h>
 
-void chp_pretty_print (FILE *fp, act_chp_lang_t *c);
+// Prettier CHP printing method
+void chp_pretty_print (FILE *, act_chp_lang_t *);
 
-static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec, int indent);
+static void _chp_pretty_print (FILE *, act_chp_lang_t *, int, int);
+
+// Replace else in selection with explicit form
+void _fill_in_else_explicit (act_chp_lang_t *, Scope *);
+
+/*
+    Replace:
+        int(int(val,x),y) 
+    with 
+        int(val,x)
+        
+    IFF x==y and val is a constant
+*/
+void _trim_nested_same_int (act_chp_lang_t *&, Scope *);
+
+void _trim_nested_same_int (Expr *&, Scope *);
