@@ -89,7 +89,6 @@ class Projection : protected ChoppingBlock {
 
         std::vector<act_chp_lang_t *> procs;
 
-        void step1(GraphWithChanNames &, DFG &);
         void step2(GraphWithChanNames &, DFG &);
         /*
             Construct CHP process from DFG
@@ -103,18 +102,6 @@ class Projection : protected ChoppingBlock {
         void _build_graph_edges (DFG &);
 
         void build_vardefmap (DFG &);
-        /*
-            Insert distributed assignment of 
-            guard variables before selections
-        */
-        void _insert_guard_comms (GraphWithChanNames &, DFG &);
-
-        /*
-            Remove distributed assignment of 
-            guard variables before selections,
-            if they are in same process
-        */
-        void _remove_guard_comms (GraphWithChanNames &, Sequence);
 
         /*
             Insert a distributed assignment for a given variable, 
@@ -124,6 +111,7 @@ class Projection : protected ChoppingBlock {
         VarId _insert_hyperedge_copy (GraphWithChanNames &, const DFG &, HyperEdge, VarId, CopyLocMap &);
         void _uninsert_hyperedge_copy (GraphWithChanNames &, const DFG &, HyperEdge, VarId, VarId, CopyLocMap &);
 
+        bool _breakable (const DFG_Node &);
         /*
             Replace use only in this block
         */

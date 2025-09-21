@@ -72,16 +72,6 @@ std::vector<act_chp_lang_t *> Projection::get_procs ()
     return procs;
 }
 
-void Projection::step1(GraphWithChanNames &g_in, DFG &d_in)
-{
-    d_in.clear();
-    ChpOptimize::putIntoNewStaticTokenForm(g_in.graph);
-    _build_graph(g_in.graph.m_seq, d_in);
-    ChpOptimize::takeOutOfNewStaticTokenForm(g_in.graph);
-    // _insert_guard_comms(g_in, d_in);
-    d_in.clear();
-}
-
 void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
 {
     d_in.clear();
@@ -99,9 +89,6 @@ void Projection::project(Strategy ss)
 
     // split multi-assignments into single
     split_assignments(g->graph);
-    
-    // insert guard bool communications
-    step1(*g, dfg1);
     
     // compute strongly-connected components info
     step2(*g, dfg1);
@@ -173,9 +160,6 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
 
         if (verbose) {
             fprintf(stdout, "\n// Latest at Start: %f", r1.ratio);
-        } 
-        
-        if (verbose) {
             fprintf(stdout, "\n// Hyperedge set size: %zu", hs.size());
             fprintf(stdout, "\n\n");
         } 
@@ -185,7 +169,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
             CopyLocMap clm = {};
             const auto &node = d_loc.find(h.first);
             auto vars = get_defs(node);
-            if (vars.size()==1) {
+            if (_breakable(node)) {
                 for ( auto x : h.second ) {
                     d_loc.delete_edge (h.first, x);
                 }
@@ -211,7 +195,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
             }
             std::vector<ActId *> xnms;
 
-            if (vars.size()==1) {
+            if (_breakable(node)) {
                 for ( auto x : h.second ) {
                     d_loc.add_edge (h.first, x);
                 }
@@ -226,7 +210,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         if (best_h.first!=bot_id) {
             const auto &node = d_loc.find(best_h.first);
             auto vars = get_defs(node);
-            if (vars.size()==1) {
+            if (_breakable(node)) {
                 for ( auto x : best_h.second ) {
                     d_loc.delete_edge (best_h.first, x);
                 }
@@ -398,6 +382,15 @@ HyperEdgeVec Projection::_get_candidates_dynamic(const ChpTiming &ct, int max_sz
     return hs;
 }
 
+bool Projection::_breakable (const DFG_Node &n)
+{
+    std::unordered_set<NodeType> allowed = 
+        {NodeType::Basic, NodeType::Guard, 
+            NodeType::Copy, NodeType::SelPhi, NodeType::PllPhi};
+    auto vars = get_defs(n);
+    return (vars.size()==1 && bool(allowed.count(n.t)));
+}
+
 /*
     This is the brute-force bit.
     Exponential in no. of SCC edges, at least (lol).
@@ -439,16 +432,16 @@ void Projection::_insert_copies_v6 (GraphWithChanNames &g, DFG &d_in)
         }
     }
     auto n_cand_edges = i;
-    // unsigned long long max_itr_edge = 1024*1024*1024;
-    unsigned long long max_itr_edge = 32;
-    unsigned long long n_itr_edge = std::min(max_itr_edge, 1ULL<<n_cand_edges);
+    unsigned long long max_itr = 1024*1024*1024;
+    // unsigned long long max_itr_edge = 32;
+    unsigned long long n_itr = std::min(max_itr, 1ULL<<n_cand_edges);
 
     if (verbose) {
         fprintf(stdout, "\n\n// hyperedge-copy subsets to check: %llu\n", (1ULL<<n_cand_edges));
-        fprintf(stdout, "// iteration limit: %llu\n\n", n_itr_edge);
+        fprintf(stdout, "// iteration limit: %llu\n\n", n_itr);
     }
 
-    for (unsigned long long mask=0; mask<n_itr_edge; mask++)
+    for (unsigned long long mask=0; mask<n_itr; mask++)
     {
         HyperEdgeSet h_subset = {};
         for (int i = 0; i < n_cand_edges; i++) {
@@ -467,7 +460,7 @@ void Projection::_insert_copies_v6 (GraphWithChanNames &g, DFG &d_in)
         for ( auto h : h_subset ) {
             const auto &node = d_loc.find(h.first);
             auto vars = get_defs(node);
-            if (vars.size()==1) {
+            if (_breakable(node)) {
                 for ( auto x : h.second ) {
                     d_loc.delete_edge (h.first, x);
                 }
@@ -493,7 +486,7 @@ void Projection::_insert_copies_v6 (GraphWithChanNames &g, DFG &d_in)
         for ( auto h : h_subset ) {
             const auto &node = d_loc.find(h.first);
             auto vars = get_defs(node);
-            if (vars.size()==1) {
+            if (_breakable(node)) {
                 for ( auto x : h.second ) {
                     d_loc.add_edge (h.first, x);
                 }
@@ -513,7 +506,7 @@ void Projection::_insert_copies_v6 (GraphWithChanNames &g, DFG &d_in)
             // use vardefmap to insert correct copies in original graph and finish
             const auto &node = d_loc.find(h.first);
             auto vars = get_defs(node);
-            if (vars.size()==1) {
+            if (_breakable(node)) {
                 Assert (vv_inv.count(vars[0]), "Var not in map");
                 auto var_in_old_g = vv_inv[vars[0]];
                 fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
@@ -633,7 +626,6 @@ void Projection::_build_procs (const GraphWithChanNames &gx, DFG &d_in)
         else {
             std::unordered_set<NodeId> tmp ((*itr).second.begin(), (*itr).second.end());
             _build_sub_proc_new (g1, d_loc, g1.graph.m_seq, tmp);
-            _remove_guard_comms (g1, g1.graph.m_seq);
         }
 
         ChpOptimize::takeOutOfNewStaticTokenForm(g1.graph);
@@ -1123,87 +1115,6 @@ void Projection::_build_graph_nodes (const Sequence &seq, DFG &d_in)
     }
 }
 
-void Projection::_insert_guard_comms (GraphWithChanNames &g_in, DFG &d_in)
-{
-    std::vector<Edge> to_add;
-    std::vector<Edge> to_delete;
-    // for ( int i = 0; i<d_in.nodes.size(); i++ )
-    for ( const auto &dn : d_in.nodes )
-    {
-        if (dn->t == NodeType::Basic) {
-            auto assn_blk = dn->b;
-            // for ( auto n = d_in.adj[i].begin(); n != d_in.adj[i].end(); n++ ) {
-            for ( auto n = d_in.adj.at(dn->id).begin(); n != d_in.adj.at(dn->id).end(); n++ ) {
-                const auto &nn = d_in.find(*n);
-                if (nn.t == NodeType::Guard) {
-
-                    hassert ( assn_blk->type() == BlockType::Basic) ;
-                    hassert ( assn_blk->u_basic().stmt.type() == StatementType::Assign );
-                    hassert ( assn_blk->u_basic().stmt.u_assign().ids.size() == 1 );
-                    hassert ( g_in.graph.id_pool().getBitwidth(assn_blk->u_basic().stmt.u_assign().ids[0]) == 1 );
-
-                    ChanId ci = g_in.graph.id_pool().makeUniqueChan(1, false);
-                    var_to_actvar vtoa(s, g_in.graph.id_pool());
-                    ActId *id = vtoa.chanMap(ci);
-                    g_in.name_from_chan.insert({ci, id});
-                    
-                    auto send = g_in.graph.blockAllocator().newBlock(
-                        Block::makeBasicBlock(Statement::makeSend(ci, 
-                        ChpExprSingleRootDag::makeVariableAccess(assn_blk->u_basic().stmt.u_assign().ids[0], 1))));
-                    
-                    VarId g_var = g_in.graph.id_pool().makeUniqueVar(1, false);
-
-                    auto recv = g_in.graph.blockAllocator().newBlock(
-                        Block::makeBasicBlock(Statement::makeReceive(ci, g_var)));
-
-                    // auto send_node = new DFG_Node (send, dfg.gen_id()); 
-                    d_in.add_node (DFG_Node (send));
-                    // printf("\nsend node id: %d", send_node->id);
-                    // hassert (dfg.count(send_node));
-
-                    // auto recv_node = new DFG_Node (recv, dfg.gen_id()); 
-                    // dfg.add_node (recv_node);
-                    d_in.add_node (DFG_Node (recv));
-                    // printf("\nrecv node id: %d", recv_node->id);
-                    // hassert (dfg.count(recv_node));
-
-                    to_add.push_back({dn->id, (d_in.find(send)).id});
-                    to_add.push_back({(d_in.find(recv)).id, nn.id});
-                    to_delete.push_back({dn->id,nn.id});
-
-                    auto dist_assn = g_in.graph.blockAllocator().newBlock(Block::makeParBlock());
-                    dist_assn->u_par().branches.push_back(g_in.graph.blockAllocator().newSequence({send}));
-                    dist_assn->u_par().branches.push_back(g_in.graph.blockAllocator().newSequence({recv}));
-
-                    auto orig_sel = nn.b;
-
-                    _splice_in_block_between (orig_sel->parent(), orig_sel, dist_assn);
-
-                    int i=0;
-                    int br_num = nn.g.first;
-                    for (auto ll = orig_sel->u_select().branches.begin(); ll != orig_sel->u_select().branches.end(); ll++)
-                    {
-                        if (i==br_num) {
-                            ll->g = IRGuard::makeExpression(ChpExprSingleRootDag::makeVariableAccess(g_var,1));
-                            break;
-                        }
-                        i++;
-                    }
-                    // create new block with send
-                    // insert and add correct edges in DFG
-                    // rip out this edge
-                }
-            }
-        }
-    }
-    for (auto x : to_add) {
-        d_in.add_edge (x.first, x.second);
-    }
-    for (auto x : to_delete) {
-        d_in.delete_edge (x.first, x.second);
-    }
-}
-
 NodeId Projection::_heuristic2(DFG &d_in, const DFG_Node &n, int nwcc)
 {
     std::vector<NodeId> src_nodes = {};
@@ -1471,69 +1382,6 @@ void Projection::_replace_use (GraphWithChanNames &gg, VarId oldvar, VarId newva
     break;
     }
 
-}
-
-/*
-    TODO: This could conflict with an actual
-    copy of a 1-bit var.
-*/
-void Projection::_remove_guard_comms (GraphWithChanNames &gg, Sequence seq)
-{
-    Block *curr = seq.startseq->child();
-
-    while (curr->type() != BlockType::EndSequence) {
-    switch (curr->type()) {
-    case BlockType::Basic:
-    break;
-      
-    case BlockType::Par: {
-        for (auto &branch : curr->u_par().branches) {
-            _remove_guard_comms (gg, branch);
-        }
-        if (curr->u_par().branches.size()==2) {
-            auto first = curr->u_par().branches.front();
-            auto second = curr->u_par().branches.back();
-            if (first.startseq->child()->type() == BlockType::Basic
-            && second.startseq->child()->type() == BlockType::Basic) {
-                // always (send,recv), never (recv,send)
-                auto &send = first.startseq->child()->u_basic().stmt;
-                auto &recv = second.startseq->child()->u_basic().stmt;
-                if (send.type()==StatementType::Send 
-                 && recv.type()==StatementType::Receive
-                 && send.u_send().chan == recv.u_receive().chan
-                 && (recv.u_receive().var)
-                 && gg.graph.id_pool().getBitwidth(send.u_send().chan) == 1) {
-                    auto assn = gg.graph.blockAllocator().newBlock(Block::makeBasicBlock(
-                        Statement::makeAssignment(*(recv.u_receive().var),
-                        ChpExprSingleRootDag::deep_copy(send.u_send().e))
-                    ));
-                    _splice_in_block_between(curr,curr->child(),assn);
-                    curr = _splice_out_block (curr);
-                    hassert (curr==assn);
-                }
-            }
-        }
-    }
-    break;
-      
-    case BlockType::Select: {
-        for (auto &branch : curr->u_select().branches) {
-            _remove_guard_comms (gg, branch.seq);
-        }
-    }
-    break;
-    case BlockType::DoLoop: {
-        _remove_guard_comms(gg, curr->u_doloop().branch);
-    }
-    break;
-    
-    case BlockType::StartSequence:
-    case BlockType::EndSequence:
-        hassert(false);
-        break;
-    }
-    curr = curr->child();
-    }
 }
 
 void Projection::print_subgraphs (FILE *ff, const std::unordered_map<UnionFind<int>::id, std::vector<int>> &sgs)
