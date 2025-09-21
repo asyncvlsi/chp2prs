@@ -208,7 +208,16 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
             tg.add_edge(finalid, merge_id, n, 0);
             i++;
         }
-        currid = merge_id;
+        auto itr = merge_id;
+        for ( auto &phi : curr->u_select().merges ) {
+            auto tmpid = tg.add_node("phi");
+            tg.add_edge(itr, tmpid, 0, 0);
+            Assert (dfg->find(curr, phi).id.get_raw() != bot_id.get_raw(), "what");
+            nmap[tmpid] = &dfg->find(curr, phi);
+            itr = tmpid;
+        }
+        currid = itr;
+        // currid = merge_id;
     }
     break;
       

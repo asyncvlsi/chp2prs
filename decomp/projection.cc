@@ -155,6 +155,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         max_cycles_trace.push_back(r1.ratio);
         
         auto hs = _get_candidates_dynamic(ct, 20);
+        // auto hs = _get_candidates_all(ct);
         HyperEdge best_h = {}; 
         double itr_best_cycle = r1.ratio;
 

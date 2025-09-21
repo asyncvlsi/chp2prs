@@ -1,0 +1,14 @@
+defproc dc10 (chan?(int) A, B; chan!(int) X, Y; chan?(int<1>) C)
+{
+    int x, y;
+    int<1> c;
+
+    chp {
+        *[
+            C?c; A?x; B?y;
+            [ c=0 -> X!x+1
+            []c=1 -> Y!y+2
+            ]
+        ]
+    }
+}
