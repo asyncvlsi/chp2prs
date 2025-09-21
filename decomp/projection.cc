@@ -110,6 +110,7 @@ void Projection::project(Strategy ss)
     }
     break;
     case Strategy::Timing: {
+        // export_dot("out.dot",dfg1);
         _insert_copies_v7 (*g, dfg1);
         skip = true;
     }
@@ -267,8 +268,7 @@ HyperEdgeVec Projection::_get_candidates_all(const ChpTiming &ct)
     std::unordered_set<NodeId> cand_nodes;
     auto r = ct.get_maxcycle();
     for ( const auto &x : r.cycle ) {
-        if (ct.nmap.count(x)) {
-            auto n = ct.nmap.at(x);
+        for ( auto n : ct.nmap.at(x) ) {
             if (n->t!=NodeType::LoopLoopPhi) {
                 cand_nodes.insert(n->id);
             }
@@ -338,8 +338,7 @@ HyperEdgeVec Projection::_get_candidates_bisect(const ChpTiming &ct, double lb, 
     // pick dfg nodes based on timing nodes
     std::unordered_set<NodeId> cand_nodes;
     for ( const auto &x : cand_tnodes ) {
-        if (ct.nmap.count(x)) {
-            auto n = ct.nmap.at(x);
+        for ( auto n : ct.nmap.at(x) ) {
             if (n->t!=NodeType::LoopLoopPhi) {
                 cand_nodes.insert(n->id);
             }
@@ -1498,7 +1497,15 @@ void Projection::export_dot(std::string filename, const DFG &d_in)
         std::ostringstream ss1;
         ss1 << ss.rdbuf();
         auto sl = ss1.str();
-        fprintf(ff, "\n_%d [label=\"%d: %s\"];", node->id.get_raw(), node->id.get_raw(), sl.c_str());
+        std::string attr = "[label=\""+std::to_string(node->id.get_raw())+": "+sl+"\"";
+        if (node->t==NodeType::Basic) {
+            attr += " shape=box color=black]";
+        } else if (node->t==NodeType::Guard) {
+            attr += " shape=parallelogram color=red]";
+        } else {
+            attr += " shape=ellipse color=blue]";
+        }
+        fprintf(ff, "\n_%d %s;", node->id.get_raw(), attr.c_str());
     }
     for ( auto sn : d_in.adj )
     {

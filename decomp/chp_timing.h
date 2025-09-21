@@ -156,7 +156,7 @@ class ChpTiming : public ChpCost {
 
         const GraphWithChanNames *g;
         const DFG *dfg;
-        std::unordered_map<TNodeId, const DFG_Node *> nmap;
+        std::unordered_map<TNodeId, std::vector<const DFG_Node *>> nmap;
 
         void construct_tg();
         void _construct_tg(Sequence, var_to_actvar&, chan_to_nodes&, chan_to_nodes&);

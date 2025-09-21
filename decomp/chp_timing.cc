@@ -99,8 +99,10 @@ void ChpTiming::construct_tg()
     for ( auto cc : c_s ) {
         auto sendnodes = c2n_send[cc];
         // FIXME : Correct delay
-        auto snk_term_req = tg.add_node("snk_term.r");
+        auto snk_term_req = tg.add_node("snk_term.r"); 
         auto snk_term_ack = tg.add_node("snk_term.a");
+        nmap[snk_term_req] = {};
+        nmap[snk_term_ack] = {};
         tg.add_edge(snk_term_req, snk_term_ack, capture_delay, false);
         tg.add_edge(snk_term_ack, snk_term_req, 1, true);
         tg.add_edge(sendnodes.first, snk_term_req, 0, false);
@@ -126,8 +128,8 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
             auto chan = curr->u_basic().stmt.u_receive().chan;
             auto reqid = tg.add_node(std::to_string(chan.m_id)+"?.r");
             auto ackid = tg.add_node(std::to_string(chan.m_id)+"?.a");
-            nmap[reqid] = &dfg->find(curr);
-            nmap[ackid] = &dfg->find(curr);
+            nmap[reqid] = {&dfg->find(curr)};
+            nmap[ackid] = {&dfg->find(curr)};
             Assert (!c2n_recv.count(curr->u_basic().stmt.u_receive().chan), "Multi Chan Access?");
             c2n_recv[curr->u_basic().stmt.u_receive().chan] = {reqid,ackid};
             tg.add_edge(currid, reqid, recv_delay, 0);
@@ -139,8 +141,8 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
             auto chan = curr->u_basic().stmt.u_send().chan;
             auto reqid = tg.add_node(std::to_string(chan.m_id)+"!.r");
             auto ackid = tg.add_node(std::to_string(chan.m_id)+"!.a");
-            nmap[reqid] = &dfg->find(curr);
-            nmap[ackid] = &dfg->find(curr);
+            nmap[reqid] = {&dfg->find(curr)};
+            nmap[ackid] = {&dfg->find(curr)};
             Assert (!c2n_send.count(chan), "Multi Chan Access?");
             c2n_send[chan] = {reqid,ackid};
             Expr *e = ChpOptimize::template_func_new_expr_from_irexpr (
@@ -159,7 +161,7 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
                         ActExprIntType::Int, varToId, chanToId);
             auto edel = expr_delay(e, g->graph.id_pool().getBitwidth(ids[0]));
             auto assnid = tg.add_node("assn");
-            nmap[assnid] = &dfg->find(curr);
+            nmap[assnid] = {&dfg->find(curr)};
             tg.add_edge(currid, assnid, assn_delay + capture_delay + edel, 0);
             currid = assnid;
         }
@@ -171,10 +173,13 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
     case BlockType::Par: {
         auto split_id = tg.add_node("par_split");
         auto merge_id = tg.add_node("par_merge");
+        nmap[split_id] = {};
+        nmap[merge_id] = {};
         tg.add_edge(currid, split_id, 0, 0);
         int n = curr->u_par().branches.size();
         for (auto &branch : curr->u_par().branches) {
             auto tmpid = tg.add_node();
+            nmap[tmpid] = {};
             tg.add_edge(split_id, tmpid, n, 0);
             auto finalid = _construct_subtg (branch, tmpid, table, c2n_recv, c2n_send, 0);
             tg.add_edge(finalid, merge_id, n, 0);
@@ -186,44 +191,46 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
     case BlockType::Select: {
         auto split_id = tg.add_node("sel_split");
         auto merge_id = tg.add_node("sel_merge");
+        nmap[split_id] = {};
+        nmap[merge_id] = {};
         tg.add_edge(currid, split_id, 0, 0);
         double max_delay_g = 0;
         int n = curr->u_select().branches.size();
+        for ( auto &phi_inv : curr->u_select().splits ) {
+            nmap[split_id].push_back(&dfg->find(curr, phi_inv));
+        }
+        int i=0;
         for ( auto &branch : curr->u_select().branches ) {
             auto &g = branch.g;
+            nmap[split_id].push_back(&dfg->find(curr, {i,IRGuard::deep_copy(g)}));
             Expr *e = ChpOptimize::template_func_new_expr_from_irexpr (
                         *branch.g.u_e().e.m_dag.roots[0],
                         ActExprIntType::Bool, varToId, chanToId);
             auto delay = expr_delay(e, 1);
             max_delay_g = std::max(delay, max_delay_g);
+            i++;
         }
-        int i=0;
         for ( auto &branch : curr->u_select().branches ) {
             auto tmpid = tg.add_node();
-            nmap[tmpid] = &dfg->find(curr, {i,IRGuard::deep_copy(branch.g)});
+            nmap[tmpid] = {};
             // FIXME : Correct delay
             tg.add_edge(split_id, tmpid, max_delay_g, 0);
             auto finalid = _construct_subtg (branch.seq, tmpid, table, c2n_recv, c2n_send, 0);
             // FIXME : Correct delay
             tg.add_edge(finalid, merge_id, n, 0);
-            i++;
         }
-        auto itr = merge_id;
         for ( auto &phi : curr->u_select().merges ) {
-            auto tmpid = tg.add_node("phi");
-            tg.add_edge(itr, tmpid, 0, 0);
-            Assert (dfg->find(curr, phi).id.get_raw() != bot_id.get_raw(), "what");
-            nmap[tmpid] = &dfg->find(curr, phi);
-            itr = tmpid;
+            nmap[merge_id].push_back(&dfg->find(curr, phi));
         }
-        currid = itr;
-        // currid = merge_id;
+        currid = merge_id;
     }
     break;
       
     case BlockType::DoLoop: {
         auto start = tg.add_node("Start");
         auto end = tg.add_node("End");
+        nmap[start] = {};
+        nmap[end] = {};
         tg.add_edge(end, start, 1, true);
         auto final = _construct_subtg(curr->u_doloop().branch, start, table, c2n_recv, c2n_send, 0);
         tg.add_edge(final, end, 0, false);
