@@ -151,8 +151,8 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
         
-        auto hhvec = _get_candidates_dynamic(ct, 20);
-        // auto hhvec = _get_candidates_all_pairs(ct);
+        // auto hhvec = _get_candidates_dynamic(ct, 20);
+        auto hhvec = _get_candidates_segment(ct);
         HyperEdgeVec best_hs = {}; 
         double itr_best_cycle = r1.ratio;
 
@@ -263,6 +263,89 @@ static std::vector<std::vector<T>> power_set(const std::unordered_set<T>& s) {
     return result;
 }
 
+// New thingy
+// gotta sort candnodes by id and take prefixes
+HyperEdgesVec Projection::_get_candidates_segment(const ChpTiming &ct)
+{
+    auto filter_insert = 
+    [](const ChpTiming &xct, std::unordered_set<NodeId> &s, const NodeId &n) {
+        if (xct.dfg->find(n).t!=NodeType::LoopLoopPhi)
+            s.insert(n);
+    };
+    auto filter_insert_ins = 
+    [](const ChpTiming &xct, std::unordered_set<NodeId> &s, const NodeId &n) {
+        auto ins = xct.dfg->get_in_edges(n);
+        for ( const auto &i : ins )
+            if (xct.dfg->find(i).t!=NodeType::LoopLoopPhi)
+                s.insert(i);
+    };
+    auto filter_insert_outs = 
+    [](const ChpTiming &xct, std::unordered_set<NodeId> &s, const NodeId &n) {
+        auto ins = xct.dfg->get_out_edges(n);
+        for ( const auto &i : ins )
+            if (xct.dfg->find(i).t!=NodeType::LoopLoopPhi)
+                s.insert(i);
+    };
+    
+    std::unordered_set<NodeId> cand_nodes;
+    auto r = ct.get_maxcycle();
+    std::vector<TNodeId> segs = {};
+    for ( const auto &x : r.cycle ) {
+        for ( auto n : ct.nmap.at(x) ) {
+            filter_insert(ct, cand_nodes, n->id);
+            if (n->t==NodeType::Guard) {
+                auto children = ct.dfg->get_out_edges(n->id);
+                for ( const auto &y : children ) {
+                    filter_insert(ct, cand_nodes, y);
+                    if (ct.dfg->find(y).t==NodeType::SelPhiInv) {
+                        filter_insert_ins(ct, cand_nodes, y);
+                        filter_insert_outs(ct, cand_nodes, y);
+                    }
+                    if (ct.dfg->find(y).t==NodeType::SelPhi) {
+                        filter_insert_ins(ct, cand_nodes, y);
+                    }
+                }
+            }
+        }
+    }
+    std::vector<NodeId> cands (cand_nodes.begin(), cand_nodes.end());
+    std::sort(cands.begin(), cands.end());
+    
+    auto is_subset = 
+    [](const std::unordered_set<NodeId> &s, const std::unordered_set<NodeId> &S) {
+        for ( const auto &e : s ) {
+            if (!S.count(e)) return false; 
+        } 
+        return true;
+    };
+
+    HyperEdgesVec hs = {};
+    std::unordered_set<NodeId> itr = {};
+    for ( const auto &id : cands ) {
+        itr.insert(id);
+        bool valid = true;
+        for ( const auto &id1 : itr ) {
+            valid &= is_subset(ct.dfg->get_in_edges(id1), itr);
+        }
+        if (valid) {
+            // break all edges out of this bunch at once
+            HyperEdgeVec hh = {};
+            for ( const auto &id1 : itr) {
+                auto outs = ct.dfg->get_out_edges(id1);
+                std::unordered_set<NodeId> breakouts = {};
+                for ( const auto &out : outs ) {
+                    if (!itr.count(out)) {
+                        // hh.push_back({id1,{out}});
+                        breakouts.insert(out);
+                    }
+                }
+                hh.push_back({id1,breakouts});
+            }
+            hs.push_back(hh);
+        }
+    }
+    return hs;
+}
 
 // Try every singleton on the max-cycle
 HyperEdgesVec Projection::_get_candidates_all(const ChpTiming &ct)
@@ -528,6 +611,8 @@ VarId Projection::_insert_hyperedge_copy (GraphWithChanNames &gg, const DFG &d_i
     for ( auto x : h.second ) {
         Assert (d_in.contains(x), "Node not found");
     }
+    if (h.second.empty()) { clm.insert({v, nullptr}); return v; }
+
     auto b_from = d_in.find(h.first).b;
 
     ChanId ci = gg.graph.id_pool().makeUniqueChan(gg.graph.id_pool().getBitwidth(v), false);
@@ -562,6 +647,7 @@ VarId Projection::_insert_hyperedge_copy (GraphWithChanNames &gg, const DFG &d_i
 void Projection::_uninsert_hyperedge_copy (GraphWithChanNames &gg, const DFG &d_in, 
     HyperEdge h, VarId copyvar, VarId origvar, CopyLocMap &clm)
 {
+    if (copyvar==origvar) return;
     auto b_from = d_in.find(h.first).b;
 
     Assert (clm.count(copyvar), "what");

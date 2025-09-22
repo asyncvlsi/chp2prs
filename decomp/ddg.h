@@ -410,6 +410,18 @@ class DFG {
         }
 
         /*
+            Get all incoming edges to a node
+        */
+        std::unordered_set<NodeId> get_in_edges (NodeId to) const {
+            std::unordered_set<NodeId> ret = {};
+            Assert (contains(to), "invalid to node");
+            for ( const auto &[x,y] : adj ) {
+                if (y.count(to)) { ret.insert(x); }
+            }
+            return ret;
+        }
+
+        /*
             Check if there exists a directed edge
             between the given nodes. 
         */
