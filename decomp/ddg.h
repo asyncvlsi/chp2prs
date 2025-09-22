@@ -91,7 +91,12 @@ template<> struct std::hash<HyperEdge> {
     }
 };
 
+// Vector of Hyperedges - this is typically a bunch to cut at once
 typedef std::vector<HyperEdge> HyperEdgeVec;
+
+// Vector of bunches - used as set to iterate over and try cutting
+typedef std::vector<HyperEdgeVec> HyperEdgesVec;
+
 typedef std::unordered_map<NodeId,std::unordered_set<NodeId>> HyperEdgeSet;
 
 typedef std::unordered_map<VarId, Block *> CopyLocMap;

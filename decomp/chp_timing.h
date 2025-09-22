@@ -145,6 +145,8 @@ class ChpTiming : public ChpCost {
             tg = TimingGraph();
             id_to_idx = {};
             idx_to_id = {};
+            construct_tg();
+            run_maxcycle();
         }
 
         ~ChpTiming () {
