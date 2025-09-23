@@ -263,86 +263,64 @@ static std::vector<std::vector<T>> power_set(const std::unordered_set<T>& s) {
     return result;
 }
 
-// New thingy
-// gotta sort candnodes by id and take prefixes
+template <typename T>
+auto union_ = 
+[](const std::unordered_set<T>& a, const std::unordered_set<T>& b) {
+    std::unordered_set<T> result = a;
+    result.insert(b.begin(), b.end());
+    return result;
+};
+
+// Based on TG, look at the SCC-Graph, in a topological order
+// Try prefixes of the topo-sorted list
 HyperEdgesVec Projection::_get_candidates_segment(const ChpTiming &ct)
 {
-    auto filter_insert = 
-    [](const ChpTiming &xct, std::unordered_set<NodeId> &s, const NodeId &n) {
-        if (xct.dfg->find(n).t!=NodeType::LoopLoopPhi)
-            s.insert(n);
-    };
-    auto filter_insert_ins = 
-    [](const ChpTiming &xct, std::unordered_set<NodeId> &s, const NodeId &n) {
-        auto ins = xct.dfg->get_in_edges(n);
-        for ( const auto &i : ins )
-            if (xct.dfg->find(i).t!=NodeType::LoopLoopPhi)
-                s.insert(i);
-    };
-    auto filter_insert_outs = 
-    [](const ChpTiming &xct, std::unordered_set<NodeId> &s, const NodeId &n) {
-        auto ins = xct.dfg->get_out_edges(n);
-        for ( const auto &i : ins )
-            if (xct.dfg->find(i).t!=NodeType::LoopLoopPhi)
-                s.insert(i);
-    };
-    
-    std::unordered_set<NodeId> cand_nodes;
     auto r = ct.get_maxcycle();
-    std::vector<TNodeId> segs = {};
+    auto all_sccs = ct.dfg->get_sccs_topo();
+    std::unordered_set<CompId> relevant_sccs = {};
+
     for ( const auto &x : r.cycle ) {
         for ( auto n : ct.nmap.at(x) ) {
-            filter_insert(ct, cand_nodes, n->id);
-            if (n->t==NodeType::Guard) {
-                auto children = ct.dfg->get_out_edges(n->id);
-                for ( const auto &y : children ) {
-                    filter_insert(ct, cand_nodes, y);
-                    if (ct.dfg->find(y).t==NodeType::SelPhiInv) {
-                        filter_insert_ins(ct, cand_nodes, y);
-                        filter_insert_outs(ct, cand_nodes, y);
-                    }
-                    if (ct.dfg->find(y).t==NodeType::SelPhi) {
-                        filter_insert_ins(ct, cand_nodes, y);
-                    }
-                }
-            }
+            relevant_sccs.insert(ct.dfg->find_scc_id(n->id));
         }
     }
-    std::vector<NodeId> cands (cand_nodes.begin(), cand_nodes.end());
-    std::sort(cands.begin(), cands.end());
-    
-    auto is_subset = 
-    [](const std::unordered_set<NodeId> &s, const std::unordered_set<NodeId> &S) {
-        for ( const auto &e : s ) {
-            if (!S.count(e)) return false; 
-        } 
-        return true;
-    };
+
+    all_sccs.erase( std::remove_if(all_sccs.begin(), all_sccs.end(),
+                [&](const CompId& val) { return relevant_sccs.count(val) == 0; }),
+                all_sccs.end());
+    auto relevant_sccs_topo = all_sccs;
 
     HyperEdgesVec hs = {};
-    std::unordered_set<NodeId> itr = {};
-    for ( const auto &id : cands ) {
-        itr.insert(id);
-        bool valid = true;
-        for ( const auto &id1 : itr ) {
-            valid &= is_subset(ct.dfg->get_in_edges(id1), itr);
-        }
-        if (valid) {
-            // break all edges out of this bunch at once
-            HyperEdgeVec hh = {};
-            for ( const auto &id1 : itr) {
-                auto outs = ct.dfg->get_out_edges(id1);
-                std::unordered_set<NodeId> breakouts = {};
-                for ( const auto &out : outs ) {
-                    if (!itr.count(out)) {
-                        // hh.push_back({id1,{out}});
-                        breakouts.insert(out);
-                    }
-                }
-                hh.push_back({id1,breakouts});
+    std::unordered_set<CompId> itr = {};
+    // try scc prefixes
+    for ( const auto &scc_id : relevant_sccs_topo ) {
+        itr.insert(scc_id);
+
+        std::unordered_set<Edge> all_outs = {};
+        for ( const auto &si : itr ) {
+            auto sccnodes = ct.dfg->find_scc(si);
+            for ( const auto &sn : sccnodes ) {
+                all_outs = union_<Edge> (all_outs, ct.dfg->get_out_edges1(sn));
             }
-            hs.push_back(hh);
         }
+
+        std::unordered_set<Edge> all_outs_filter = {};
+        // only edges that cross over from our scc prefix to downstream
+        for ( const auto &ee : all_outs ) {
+            if (itr.count(ct.dfg->find_scc_id(ee.first)) && !itr.count(ct.dfg->find_scc_id(ee.second))) 
+                all_outs_filter.insert(ee);
+        }
+
+        HyperEdgeSet tmp = {};
+        for (const auto &[u,v] : all_outs_filter) {
+            tmp[u].insert(v);
+        }
+        HyperEdgeVec hh = {};
+        for (const auto &[u,v] : tmp ) {
+            hh.push_back({u,v});
+        }
+
+        hs.push_back(hh);
     }
     return hs;
 }

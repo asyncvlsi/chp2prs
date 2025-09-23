@@ -323,8 +323,8 @@ class DFG_Node {
 */
 static DFG_Node bot(NodeId(-1));
 
-// TODO: Wrap node_id int in its own class for type-safety
-
+// TODO: Wrap CompId in its own class for type-safety
+using CompId = int;
 /*
     Class implementing the data-dependence graph.
     @param nodes Vector of DFG nodes
@@ -335,7 +335,8 @@ class DFG {
     public:
         std::vector<std::unique_ptr<DFG_Node>> nodes;
         std::unordered_map<NodeId,std::unordered_set<NodeId>> adj;
-        std::unordered_map<NodeId, int> sccs;
+        std::unordered_map<NodeId, CompId> sccs;
+        std::vector<CompId> sccs_toposorted;
         std::unordered_map<VarId, NodeId> vardefmap;
         bool sccs_built;
 
@@ -344,6 +345,7 @@ class DFG {
             nodes.clear();
             adj.clear();
             sccs.clear();
+            sccs_toposorted.clear();
             vardefmap.clear();
             NodeId::reset();
             sccs_built = false;
@@ -356,6 +358,7 @@ class DFG {
             nodes.clear();
             adj.clear();
             sccs.clear();
+            sccs_toposorted.clear();
             vardefmap.clear();
             NodeId::reset();
             sccs_built = false;
@@ -407,6 +410,13 @@ class DFG {
         std::unordered_set<NodeId> get_out_edges (NodeId from) const {
             Assert (contains(from), "invalid from node");
             return adj.at(from);
+        }
+        std::unordered_set<Edge> get_out_edges1 (NodeId from) const {
+            Assert (contains(from), "invalid from node");
+            auto dests = adj.at(from);
+            std::unordered_set<Edge> ret = {};
+            for ( const auto &d : dests ) ret.insert({from, d});
+            return ret;
         }
 
         /*
@@ -652,20 +662,76 @@ class DFG {
             std::unordered_map<NodeId,bool> visited;
             adj_cond.clear(); comps.clear(); visited.clear();
             scc_helper (comps, adj_cond, visited);
-            int i=0;
+            CompId i=0;
             for ( const auto &comp : comps ) {
                 for ( const auto n : comp ) {
                     sccs[n]=i;
                 }
                 i++;
             }
+            toposort_scc_ids();
             sccs_built = true;
         }
+
+        void toposort_scc_ids() {
+            // 1) Build condensation DAG: comp u -> comp v when there exists edge u->v with comp(u)!=comp(v).
+            std::unordered_map<CompId, std::unordered_set<CompId>> dag;
+            dag.reserve(sccs.size());
+            // Also collect the set of all component ids present.
+            std::unordered_set<CompId> comps;
+            comps.reserve(sccs.size());
+            for (const auto& [node, cid] : sccs) comps.insert(cid);
+
+            for (const auto& [u, nbrs] : adj) {
+                auto it_u = sccs.find(u);
+                Assert (it_u != sccs.end(), "hmm1");
+                CompId cu = it_u->second;
+
+                for (const auto& v : nbrs) {
+                    auto it_v = sccs.find(v);
+                    Assert (it_v != sccs.end(), "hmm2");
+                    CompId cv = it_v->second;
+                    if (cu == cv) continue; // ignore intra-SCC edges
+                    dag[cu].insert(cv);     // use set to avoid parallel edges
+                    if (!dag.count(cv)) dag.emplace(cv, std::unordered_set<CompId>{});
+                }
+                // ensure cu appears as key even if it has no outgoing edges
+                if (!dag.count(cu)) dag.emplace(cu, std::unordered_set<CompId>{});
+            }
+            // Some SCCs might be completely isolated (no edges in adj). Add them.
+            for (CompId c : comps) {
+                if (!dag.count(c)) dag.emplace(c, std::unordered_set<CompId>{});
+            }
+            // 2) Kahn’s algorithm on DAG of component ids
+            std::unordered_map<CompId, int> indeg;
+            indeg.reserve(dag.size() * 2);
+            for (const auto& [c, _] : dag) indeg[c] = 0;
+            for (const auto& [c, outs] : dag)
+                for (CompId d : outs) ++indeg[d];
+
+            std::vector<CompId> zero;
+            zero.reserve(indeg.size());
+            for (const auto& [c, d] : indeg) if (d == 0) zero.push_back(c);
+
+            std::vector<CompId> order; order.reserve(indeg.size());
+            while (!zero.empty()) {
+                CompId c = zero.back(); zero.pop_back();
+                order.push_back(c);
+                for (CompId d : dag[c]) {
+                    int& deg = indeg[d];
+                    if (--deg == 0) zero.push_back(d);
+                }
+            }
+            Assert((order.size() == indeg.size()), "Cycle in SCC-Graph?!"); 
+            sccs_toposorted = order;
+        }
+
+        std::vector<CompId> get_sccs_topo () const { return sccs_toposorted; }
 
         /*
             Find the SCC ID of a given node_id
         */
-       int find_scc_id (NodeId n1) const
+       CompId find_scc_id (NodeId n1) const
         {
             Assert (n1.get_raw()!=-1, "Invalid node");
             Assert (contains(n1), "Node does not exist");
@@ -686,12 +752,17 @@ class DFG {
             Get the complete SCC for a given node.
             Returns vector of node_id's
         */
-        std::vector<NodeId> find_scc (NodeId n1) const
+        std::unordered_set<NodeId> find_scc (NodeId n1) const
         {
-            std::vector<NodeId> ret = {};
+            std::unordered_set<NodeId> ret = {};
             auto scc_id = find_scc_id (n1);
+            return find_scc(scc_id);
+        }
+        std::unordered_set<NodeId> find_scc (CompId ci) const
+        {
+            std::unordered_set<NodeId> ret = {};
             for ( const auto &x : sccs ) {
-                if (x.second==scc_id) ret.push_back(x.first);
+                if (x.second==ci) ret.insert(x.first);
             }
             return ret;
         }
