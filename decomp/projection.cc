@@ -53,6 +53,7 @@ std::tuple<
         auto _g = ChpOptimize::chp_graph_from_act (v, s, 1);
         ChpOptimize::optimize_chp_basic (_g.graph, "brr", false);
         eliminate_unobservable(_g.graph, _g.graph.m_seq);
+        ChpOptimize::parallelizeStatements (_g.graph);
         std::vector<ActId *> tmp_names2;
         v = chp_graph_to_act (_g, tmp_names2, s);
         for ( auto x : tmp_names2 ) { names.insert(x); }
@@ -75,8 +76,10 @@ std::vector<act_chp_lang_t *> Projection::get_procs ()
 void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
 {
     d_in.clear();
-    if (!g_in.graph.is_static_token_form) 
+    if (!g_in.graph.is_static_token_form) {
+        ChpOptimize::parallelizeStatements(g_in.graph);
         ChpOptimize::putIntoNewStaticTokenForm(g_in.graph);
+    }
     _build_graph(g_in.graph.m_seq, d_in);
 
     // Compute SCCs
@@ -143,9 +146,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
     double max_cycle_orig = r.ratio;
     std::vector<double> max_cycles_trace = {-1000.0, -500.0}; // dummy vals
 
-    if (verbose) {
-        fprintf(stdout, "\n// Original : %f\n", max_cycle_orig);
-    }
+    if (verbose) { fprintf(stdout, "\n// Original Cycle : %.2f", max_cycle_orig); }
     do {
         ChpTiming ct(g_copy, d_loc, s);
         auto r1 = ct.get_maxcycle();
@@ -155,12 +156,8 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeVec best_hs = {}; 
         double itr_best_cycle = r1.ratio;
+        if (verbose) { fprintf(stdout, ", Hyperedge set : %zu", hhvec.size()); } 
 
-        if (verbose) {
-            fprintf(stdout, "\n// Latest at Start: %f", r1.ratio);
-            fprintf(stdout, "\n// Hyperedge set size: %zu", hhvec.size());
-            fprintf(stdout, "\n\n");
-        } 
         for ( const auto &hset : hhvec ) {
 
             std::unordered_map<VarId, VarId> old_to_new = {};
@@ -226,18 +223,11 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         _fill_in_else_explicit (top_chp, s);
         g_copy = chp_graph_from_act (top_chp, s, 1);
         step2(g_copy, d_loc);
-        if (verbose) {
-            fprintf(stdout, "\n// Latest: %f", max_cycles_trace.back());
-        } 
+        if (verbose) { fprintf(stdout, "\n// Latest   Cycle : %.2f", max_cycles_trace.back()); } 
     
     } while ( abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 1.0 );
 
-    if (verbose) {
-        fprintf(stdout, "\n// Trace : ");
-        for ( auto x : max_cycles_trace ) {
-            fprintf(stdout, "%f, ", x);
-        }
-    }
+    if (verbose) { fprintf(stdout, "\n\n// Cycle Trace : "); for (auto x:max_cycles_trace) { fprintf(stdout, "%.2f, ", x); } }
     _build_procs(g_copy, d_loc);
 }
 

@@ -22,7 +22,7 @@
 
 #include "pretty_print.h"
 
-static const int indent_inc = 2;
+static const int indent_inc = 1;
 char ib_inc[indent_inc+1];
 
 void chp_pretty_print (FILE *fp, act_chp_lang_t *c)
@@ -111,7 +111,7 @@ static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec = 0, int in
 
   case ACT_CHP_LOOP:
   case ACT_CHP_DOLOOP:
-    fprintf (fp, "*");
+    fprintf (fp, "\n%s*", ib_inc);
   case ACT_CHP_SELECT:
   case ACT_CHP_SELECT_NONDET:
   if (c->type == ACT_CHP_SELECT || c->type == ACT_CHP_SELECT_NONDET) {
@@ -163,7 +163,10 @@ static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec = 0, int in
     if (c->type == ACT_CHP_SELECT_NONDET) {
       fprintf (fp, "|");
     }
-    if (indent>0) {
+    if (c->type == ACT_CHP_DOLOOP) {
+      fprintf (fp, "]\n");
+    }
+    else if (indent>0) {
         fprintf (fp, "%s]",ib);
     }
     else {
