@@ -23,7 +23,7 @@
 #ifndef __ACT_RING_VARS_H__
 #define __ACT_RING_VARS_H__
 
-#include "reqs.h"
+#include <act/chp/reqs.h>
 
 /*
  *  Compute live variables at each point in a given CHP tree and 

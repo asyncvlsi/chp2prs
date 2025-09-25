@@ -20,7 +20,7 @@
  *************************************************************************
  */
 
-#include "ring_misc.h"
+#include <act/chp/ring_misc.h>
 
 static int counter = 0;
 
@@ -448,15 +448,15 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
   }
 }
 
-Act *a_mangle = NULL;
+static Act *a_mangle = NULL;
 
 static const int style_global = 0;
 
 void mangle_init ()
 { 
-  char u[6];
+  char u[8];
   a_mangle = new Act;
-  snprintf(u,6,"[],."); /// characters to mangle
+  snprintf(u,8,"[],.<>"); /// characters to mangle
   a_mangle->mangle(u);
 }
 
@@ -485,6 +485,22 @@ void get_true_name (char *buf, ActId *id, Scope *s, bool mangle)
   }
   else  
     snprintf (buf, 1024, "%s", str);
+}
+
+void mangle_it (char *buf, InstType *it)
+{
+  char name[10240];
+  it->sPrint(name, 10240);
+  if (!a_mangle) mangle_init();
+  a_mangle->mangle_string(name, buf, 10240);
+}
+
+void mangle_data (char *buf, Data *d)
+{
+  char name[10240];
+  d->snprintActName(name, 10240);
+  if (!a_mangle) mangle_init();
+  a_mangle->mangle_string(name, buf, 10240);
 }
 
 void generate_array_suffix (char *buf, Array *a)

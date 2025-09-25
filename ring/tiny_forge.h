@@ -20,6 +20,9 @@
  *************************************************************************
  */
 
+#ifndef __ACT_TINY_FORGE_H__
+#define __ACT_TINY_FORGE_H__
+
 #include "ring_forge.h"
 
 
@@ -73,3 +76,4 @@ class TinyForge : public RingForge {
         void _run_forge_new (act_chp_lang_t *, std::vector<Action>);
 
 };
+#endif

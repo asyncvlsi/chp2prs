@@ -34,6 +34,6 @@
 // #include <act/expropt.h>
 #include <act/expr_cache.h>
 
-#include "ring_synthesis_struct.h"
+#include <act/chp/ring_synthesis_struct.h>
 
 #endif

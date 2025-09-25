@@ -20,8 +20,8 @@
  *************************************************************************
  */
 
-#ifndef __ACT_RING_ELSE_GEN_H__
-#define __ACT_RING_ELSE_GEN_H__
+#ifndef __ACT_RING_MISC_H__
+#define __ACT_RING_MISC_H__
 
 #include <act/chp/reqs.h>
 
@@ -78,6 +78,9 @@ void mangle_init ();
 */
 void get_true_name (char *buf, ActId *id, Scope *s, bool mangle = true);
 
+void mangle_it (char *, InstType *);
+
+void mangle_data (char *, Data *);
 /*
 // Assert but error print location is parent
 template <typename T>

@@ -20,6 +20,9 @@
  *************************************************************************
  */
 
+#ifndef __ACT_RING_FORGE_H__
+#define __ACT_RING_FORGE_H__
+
 #include "ring_vars.h"
 #include "ring.h"
 
@@ -160,3 +163,5 @@ class RingForge : public RingEngine {
         long long runtime2;
 
 };
+
+#endif

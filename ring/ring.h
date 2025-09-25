@@ -20,8 +20,11 @@
  *************************************************************************
  */
 
-#include "reqs.h"
-#include "ring_misc.h"
+#ifndef __ACT_RING_H__
+#define __ACT_RING_H__
+
+#include <act/chp/reqs.h>
+#include <act/chp/ring_misc.h>
 
 /*
  * Base class for ring synthesis 
@@ -137,3 +140,4 @@ class RingEngine {
 
         unsigned int _branch_id;
 };
+#endif
