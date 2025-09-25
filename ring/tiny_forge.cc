@@ -119,10 +119,8 @@ bool TinyForge::_build_prog_signature (act_chp_lang_t *c, int root)
         break;
         
     case ACT_CHP_SELECT:
-        return false; break;
-
     case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS"); break;
+        return false; break;
         
     // should only get here for single action programs..
     case ACT_CHP_SKIP:
