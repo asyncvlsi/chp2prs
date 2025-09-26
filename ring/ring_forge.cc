@@ -135,7 +135,9 @@ bool RingForge::_structure_check (act_chp_lang_t *c)
             act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
             if (!(stmt->type==ACT_CHP_ASSIGN || stmt->type==ACT_CHP_LOOP 
                || stmt->type==ACT_CHP_DOLOOP || stmt->type==ACT_CHP_FUNC)) {
+                fprintf(stdout, "\n\nchp : (");
                 chp_print(stdout, stmt);
+                fprintf(stdout, ")\n");
                 fprintf(stdout, "\nstmt type: %d", stmt->type);
                 return false;
             }

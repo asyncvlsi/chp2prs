@@ -204,7 +204,6 @@ void expand_self_assignments (act_chp_lang_t *&c, Scope *s)
 
 void flatten_lists (act_chp_lang_t *&c, Scope *s)
 {
-
   switch (c->type) {
 
   case ACT_CHP_SKIP:
@@ -218,6 +217,7 @@ void flatten_lists (act_chp_lang_t *&c, Scope *s)
     for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
     {   
       act_chp_lang_t *stmt = (act_chp_lang_t *) list_value (li);
+      flatten_lists(stmt, s);
       if (stmt->type == c->type) 
       {
         list_splice (c->u.semi_comma.cmd, li, stmt->u.semi_comma.cmd);
