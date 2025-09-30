@@ -1408,16 +1408,8 @@ int RingForge::_generate_probe_circuit (Expr *g, int xid)
         while (tmp && tmp->type == E_AND && tmp->u.e.l->type == E_PROBE) {
             tmp = tmp->u.e.r;
         }
-        if (tmp->type == E_PROBE) {
-            int eid = _gen_expr_block_id ();
-            Expr *e1 = new Expr;
-            e1->type = E_INT;
-            e1->u.ival.v = 1;
-            _generate_expr_block_for_sel (e1,eid,true);
-            list_iappend (m, eid);
-            list_iappend (data_gl, eid);
-        }
-        else if (tmp->type == E_NOT && tmp->u.e.l->type == E_PROBE) {
+        if ( (tmp->type == E_PROBE) ||
+             (tmp->type == E_NOT && tmp->u.e.l->type == E_PROBE) ) {
             int eid = _gen_expr_block_id ();
             Expr *e1 = new Expr;
             e1->type = E_INT;
