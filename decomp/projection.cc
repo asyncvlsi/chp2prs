@@ -145,6 +145,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
     auto r = xct.get_maxcycle();
     double max_cycle_orig = r.ratio;
     std::vector<double> max_cycles_trace = {-1000.0, -500.0}; // dummy vals
+    // xct.export_dot("tg_orig.dot"); xct.print_result(stdout);
 
     if (verbose) { fprintf(stdout, "\n// Original Cycle : %.2f", max_cycle_orig); }
     do {
@@ -157,6 +158,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         HyperEdgeVec best_hs = {}; 
         double itr_best_cycle = r1.ratio;
         if (verbose) { fprintf(stdout, ", Hyperedge set : %zu", hhvec.size()); } 
+        int n_wcc_orig = d_loc.get_wccs().size();
 
         for ( const auto &hset : hhvec ) {
 
@@ -175,18 +177,21 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
                     }
                 }
             }
-
-            _build_procs(g_copy, d_loc);
-            auto [names, top_chp, nfc] = get_result();
-            _fill_in_else_explicit (top_chp, s);
-            auto g_tmp = chp_graph_from_act (top_chp, s, 1);
-            DFG d_tmp;
-            step2(g_tmp, d_tmp);
-            ChpTiming ct_tmp(g_tmp, d_tmp, s);
-            auto r_tmp = ct_tmp.get_maxcycle();
-            if (itr_best_cycle > r_tmp.ratio) {
-                best_hs = hset;
-                itr_best_cycle = r_tmp.ratio;
+            
+            int n_wcc = d_loc.get_wccs().size();
+            if (n_wcc > n_wcc_orig) {
+                _build_procs(g_copy, d_loc);
+                auto [names, top_chp, nfc] = get_result();
+                _fill_in_else_explicit (top_chp, s);
+                auto g_tmp = chp_graph_from_act (top_chp, s, 1);
+                DFG d_tmp;
+                step2(g_tmp, d_tmp);
+                ChpTiming ct_tmp(g_tmp, d_tmp, s);
+                auto r_tmp = ct_tmp.get_maxcycle();
+                if (itr_best_cycle > r_tmp.ratio) {
+                    best_hs = hset;
+                    itr_best_cycle = r_tmp.ratio;
+                }
             }
 
             for ( const auto &h : hset ) {
@@ -226,6 +231,8 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         if (verbose) { fprintf(stdout, "\n// Latest   Cycle : %.2f", max_cycles_trace.back()); } 
     
     } while ( abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 1.0 );
+
+    // ChpTiming yct(g_copy, d_loc, s); yct.export_dot("tg_final.dot"); yct.print_result(stdout);
 
     if (verbose) { fprintf(stdout, "\n\n// Cycle Trace : "); for (auto x:max_cycles_trace) { fprintf(stdout, "%.2f, ", x); } }
     _build_procs(g_copy, d_loc);

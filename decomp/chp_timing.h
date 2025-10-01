@@ -40,18 +40,21 @@ template <> struct std::hash<TNodeId> {
 
 class TimingNode {
     public:
-        TimingNode () {
+        TimingNode (int p) {
             id = TNodeId::generate();
             label = "<None>";
+            pid = p;
         }
         
-        TimingNode (std::string s) {
+        TimingNode (int p, std::string s) {
             id = TNodeId::generate();
             label = s;
+            pid = p;
         }
         
         TNodeId id;
         std::string label;
+        int pid;
 };
 
 class TimingEdge {
@@ -69,13 +72,13 @@ class TimingGraph {
             edges.clear();
         }
 
-        TNodeId add_node() {
-            nodes.emplace_back();
+        TNodeId add_node(int p) {
+            nodes.emplace_back(TimingNode(p));
             return nodes.back().id;
         }
 
-        TNodeId add_node(std::string s) {
-            nodes.push_back(TimingNode(s));
+        TNodeId add_node(int p, std::string s) {
+            nodes.push_back(TimingNode(p,s));
             return nodes.back().id;
         }
 
@@ -145,6 +148,7 @@ class ChpTiming : public ChpCost {
             tg = TimingGraph();
             id_to_idx = {};
             idx_to_id = {};
+            pctr = 0;
             construct_tg();
             run_maxcycle();
         }
@@ -166,6 +170,7 @@ class ChpTiming : public ChpCost {
                             chan_to_nodes&, chan_to_nodes&, int);
 
         void export_dot(std::string);
+        void print_result(FILE *);
 
         void run_maxcycle ();
         TimingResult get_maxcycle () const ;
@@ -173,6 +178,8 @@ class ChpTiming : public ChpCost {
         
         TimingGraph tg;
         TimingResult maxcycle;
+
+        int pctr; // process counter - for prettier dot graph
 
         std::unordered_map<TNodeId,int> id_to_idx;
         std::unordered_map<int,TNodeId> idx_to_id;
