@@ -140,18 +140,14 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
     DFG d_loc;
     step2(g_copy, d_loc);
 
-    // initialize timer
-    ChpTiming xct(g_copy, d_loc, s);
-    auto r = xct.get_maxcycle();
-    double max_cycle_orig = r.ratio;
-    std::vector<double> max_cycles_trace = {-1000.0, -500.0}; // dummy vals
-    // xct.export_dot("tg_orig.dot"); xct.print_result(stdout);
+    std::vector<double> max_cycles_trace = {0.0}; // dummy val
+    // ChpTiming xct(g_copy, d_loc, s); xct.export_dot("tg_orig.dot"); xct.print_result(stdout);
 
-    if (verbose) { fprintf(stdout, "\n// Original Cycle : %.2f", max_cycle_orig); }
     do {
         ChpTiming ct(g_copy, d_loc, s);
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
+        if (verbose) { fprintf(stdout, "\n// Latest   Cycle : %.2f", max_cycles_trace.back()); } 
         
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
@@ -228,7 +224,6 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         _fill_in_else_explicit (top_chp, s);
         g_copy = chp_graph_from_act (top_chp, s, 1);
         step2(g_copy, d_loc);
-        if (verbose) { fprintf(stdout, "\n// Latest   Cycle : %.2f", max_cycles_trace.back()); } 
     
     } while ( abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 1.0 );
 
