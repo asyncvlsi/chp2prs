@@ -709,8 +709,17 @@ defproc nds_two_way (bool gs[2]; a1of1 m1; a1of1 co[2])
 export template <pint N>
 defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N]) 
 {
-  { N>1 : "At least two-way non-deterministic selection" };
-
+  [ N=1  -> 
+  
+  bool _co_r;
+  co[0].a = m1.a;
+  prs {
+     m1.r & gs[0] -> _co_r-
+    ~m1.r         -> _co_r+
+    _co_r => co[0].r-
+  }
+  
+  []else ->
   // No. of NDS blocks
   pint M = N;
 
@@ -746,14 +755,24 @@ defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N])
   // nds[M-1].co[1].r = xor.A;
   xor1.A = reset_nor.Y;
   nds[M-1].co[1].r = inv_loop.A;
+  ]
 }
 
 // Non-deterministic split for stable guards
 export template <pint N>
 defproc nds_split_stable (bool? gs[N]; a1of1? m1; a1of1 co[N]) 
 {
-  { N>1 : "At least two-way non-deterministic selection" };
-
+  [ N=1  -> 
+  
+  bool _co_r;
+  co[0].a = m1.a;
+  prs {
+     m1.r & gs[0] -> _co_r-
+    ~m1.r         -> _co_r+
+    _co_r => co[0].r-
+  }
+  
+  []else ->
   // No. of NDS blocks = (Selection_way - 1)
   pint M = N-1;
 
@@ -788,7 +807,7 @@ defproc nds_split_stable (bool? gs[N]; a1of1? m1; a1of1 co[N])
   nds[M-1].gs[1] = gs[M];
   nds[M-1].co[0] = co[M-1];
   nds[M-1].co[1] = co[M];
-
+  ]
 }
 
 // ------------------------------------
@@ -924,7 +943,7 @@ defproc merge_mux_old_1(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 export template<pint N,W>
 defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 {
-  { N>1 : "Size two or greater merge mux only"};
+  // { N>1 : "Size two or greater merge mux only"};
   
   std::gates::xortree<N, false> xort(c);
   delay_line<R2P_MERGE_MUX_DELAY> delay_xor;
