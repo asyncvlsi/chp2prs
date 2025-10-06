@@ -514,10 +514,10 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         Expr *result = newExprStruct();
         result->type = E_PROBE;
         // TODO normalize this into a VarId{} here
-        ActId *id = actid_from_chanid(e.u_chvar().id);
+        ActId *id = actid_from_chanid(e.u_probe().id);
         result->u.e.l = (Expr *)(id); // this is really an (ActId*)
-        return typedFromInt(result,
-                            expectedType); // we only support "int" variables
+        return typedFromBool(result,
+                            expectedType);
     }
     case IRExprTypeKind::Bitfield: {
         if (e.u_bitfield().slice.lo() == 0) {

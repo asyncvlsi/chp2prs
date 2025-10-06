@@ -63,9 +63,6 @@ IRGuard new_irguard_from_expr(NameParsingIdPool &id_pool,
                               const ActExprStruct *o) {
     if (!o)
         return IRGuard::makeElse();
-    if (o->type == E_PROBE) {
-        hassert(false); // TODO figure out how to extract var id
-    }
     return IRGuard::makeExpression(
         ChpExprSingleRootDag ::of_expr(new_chpexpr_from_expr(id_pool, o)));
 }
