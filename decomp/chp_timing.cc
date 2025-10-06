@@ -112,6 +112,14 @@ void ChpTiming::construct_tg()
     
 }
 
+static std::string chan_act_name (const GraphWithChanNames *xg, const ChanId &c)
+{
+    char tmp[1024];
+    auto id = xg->name_from_chan.at(c);
+    id->sPrint(tmp, 1024);
+    return std::string(tmp);
+} 
+
 TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar &table, 
                         chan_to_nodes &c2n_recv, chan_to_nodes &c2n_send, int root)
 {
@@ -127,8 +135,8 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
         switch (curr->u_basic().stmt.type()) {
         case StatementType::Receive: {
             auto chan = curr->u_basic().stmt.u_receive().chan;
-            auto reqid = tg.add_node(pctr,std::to_string(chan.m_id)+"?.r");
-            auto ackid = tg.add_node(pctr,std::to_string(chan.m_id)+"?.a");
+            auto reqid = tg.add_node(pctr,chan_act_name(g, chan)+"?.r");
+            auto ackid = tg.add_node(pctr,chan_act_name(g, chan)+"?.a");
             nmap[reqid] = {&dfg->find(curr)};
             nmap[ackid] = {&dfg->find(curr)};
             Assert (!c2n_recv.count(curr->u_basic().stmt.u_receive().chan), "Multi Chan Access?");
@@ -140,8 +148,8 @@ TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar 
         break;
         case StatementType::Send: {
             auto chan = curr->u_basic().stmt.u_send().chan;
-            auto reqid = tg.add_node(pctr,std::to_string(chan.m_id)+"!.r");
-            auto ackid = tg.add_node(pctr,std::to_string(chan.m_id)+"!.a");
+            auto reqid = tg.add_node(pctr,chan_act_name(g, chan)+"!.r");
+            auto ackid = tg.add_node(pctr,chan_act_name(g, chan)+"!.a");
             nmap[reqid] = {&dfg->find(curr)};
             nmap[ackid] = {&dfg->find(curr)};
             Assert (!c2n_send.count(chan), "Multi Chan Access?");

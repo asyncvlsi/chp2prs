@@ -153,7 +153,19 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeVec best_hs = {}; 
         double itr_best_cycle = r1.ratio;
-        if (verbose) { fprintf(stdout, ", Hyperedge set : %zu", hhvec.size()); } 
+        if (verbose) { 
+            fprintf(stdout, ", Hyperedge set : %zu", hhvec.size()); 
+            for (const auto &hset : hhvec) {
+                fprintf(stdout, "\n");
+                for (const auto &h : hset) {
+                    fprintf(stdout, "%d : ", h.first.get_raw());
+                    for (const auto &out : h.second) { 
+                        fprintf(stdout, "%d, ", out.get_raw());
+                    }
+                    fprintf(stdout, "\n");
+                }
+            } 
+        } 
         int n_wcc_orig = d_loc.get_wccs().size();
 
         for ( const auto &hset : hhvec ) {
@@ -181,6 +193,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
                 _fill_in_else_explicit (top_chp, s);
                 auto g_tmp = chp_graph_from_act (top_chp, s, 1);
                 DFG d_tmp;
+                ChpOptimize::parallelizeStatements (g_tmp.graph);
                 step2(g_tmp, d_tmp);
                 ChpTiming ct_tmp(g_tmp, d_tmp, s);
                 auto r_tmp = ct_tmp.get_maxcycle();
@@ -223,9 +236,10 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         auto [names, top_chp, nfc] = get_result();
         _fill_in_else_explicit (top_chp, s);
         g_copy = chp_graph_from_act (top_chp, s, 1);
+        ChpOptimize::parallelizeStatements (g_copy.graph);
         step2(g_copy, d_loc);
     
-    } while ( abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 1.0 );
+    } while ( abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01 );
 
     // ChpTiming yct(g_copy, d_loc, s); yct.export_dot("tg_final.dot"); yct.print_result(stdout);
 
@@ -312,7 +326,24 @@ HyperEdgesVec Projection::_get_candidates_segment(const ChpTiming &ct)
             hh.push_back({u,v});
         }
 
-        hs.push_back(hh);
+        // TODO: this can be done better --------
+        // auto ps = power_set(all_outs_filter);
+        // for ( auto x1 : ps ) {
+        //     HyperEdgeSet tmp = {};
+        //     for (const auto &[u,v] : x1) {
+        //         tmp[u].insert(v);
+        //     }
+        //     HyperEdgeVec hh = {};
+        //     for (const auto &[u,v] : tmp ) {
+        //         hh.push_back({u,v});
+        //     }
+        //     if (!hh.empty())
+        //     hs.push_back(hh);
+        // }
+        // --------------------------------------
+
+        if (!hh.empty())
+            hs.push_back(hh);
     }
     return hs;
 }
