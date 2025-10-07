@@ -145,6 +145,10 @@ class MultiChan : public DecompAnalysis {
         void _insert_guard_comm_loop (Block *, ChanId, int);
 
         /*
+            [#C -> x:=C]
+        */
+        Block *_make_probed_assn (ChanId, VarId);
+        /*
             Update channel accesses in the CHP with
             accesses on the new alias channels 
         */
