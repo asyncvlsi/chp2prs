@@ -230,6 +230,7 @@ class Sequence {
     Block *endseq;   // a Block with type ScopeEnd
 
     [[nodiscard]] bool empty() const;
+    [[nodiscard]] bool dead() const;
 
     Sequence()
         : startseq{nullptr}
@@ -593,6 +594,17 @@ inline bool Sequence::empty() const {
     return b;
 }
 
+inline bool Sequence::dead() const {
+  hassert (startseq);
+  hassert (endseq);
+  Block *b = startseq;
+  while (b != endseq) {
+    if (b != startseq && (b->dead == false)) return false;
+    b = b->child();
+  }
+  return true;
+}
+
 class BlockAllocator {
     std::deque<Block> m_blocks;
 
@@ -814,6 +826,9 @@ act_chp_lang *chp_graph_to_act(const GraphWithChanNames &gr,
 			       std::vector<ActId *> &newnames,
 			       Scope *s);
 
+// @return true if there are no probes in guards/assignments
+bool isProbeFree (const ChpGraph &g);
+bool isProbeFree (const ChpExprDag &e);
 /*
     Requires:
     1. Input GraphWithChanNames

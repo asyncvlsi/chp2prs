@@ -38,7 +38,6 @@ SHOBJS=algos.os big-int.os ir-id.os \
 	deadcode.os \
 	livevars.os \
 	ir-to-dataflow.os \
-	opt-generic.os \
 	stmt-parallelize.os \
 	defuse.os 
 

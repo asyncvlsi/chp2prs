@@ -1846,6 +1846,8 @@ void elimDeadCycles (std::vector<Dataflow> &d, GraphWithChanNames &gr)
   delete a;
 }
 
+} /* private namespace */
+
 bool isProbeFree (const ChpExprDag &e)
 {
   bool retval = true;
@@ -1907,8 +1909,6 @@ bool isProbeFree (const Sequence &seq)
   return true;
 }
 
-
-} // namespace
 
 void printDataflowExpr (std::ostream &os, const DExpr &d)
 {
