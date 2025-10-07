@@ -271,9 +271,7 @@ bool RingForge::_fill_in_ics (act_chp_lang_t *&c)
                 assn->label = NULL;
                 assn->space = NULL;
                 assn->u.assign.id = id;
-                Expr *e = new Expr;
-                e->type = E_INT;
-                e->u.ival.v = 0;
+                Expr *e = const_expr (0);
                 assn->u.assign.e = e;
                 list_append_head (ics_assns, assn);
             }
@@ -1411,9 +1409,7 @@ int RingForge::_generate_probe_circuit (Expr *g, int xid)
         if ( (tmp->type == E_PROBE) ||
              (tmp->type == E_NOT && tmp->u.e.l->type == E_PROBE) ) {
             int eid = _gen_expr_block_id ();
-            Expr *e1 = new Expr;
-            e1->type = E_INT;
-            e1->u.ival.v = 1;
+            Expr *e1 = const_expr (1);
             _generate_expr_block_for_sel (e1,eid,true);
             list_iappend (m, eid);
             list_iappend (data_gl, eid);
@@ -2737,3 +2733,4 @@ int RingForge::_bitWidth (ActId *id)
   }
   return TypeFactory::totBitWidth (it);
 }
+

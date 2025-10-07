@@ -48,7 +48,7 @@ class ActSynthesize {
 		 char *outfile,
 		 char *exprfile = NULL);
   
-  ~ActSynthesize ();
+  virtual ~ActSynthesize ();
 
   /**
    * Override this function to include any imports that have to be
