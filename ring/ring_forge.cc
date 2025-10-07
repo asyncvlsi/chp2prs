@@ -872,6 +872,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
                             vi->name,latch_id,ring_block_prefix,block_id);
             fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
                                             vi->name,latch_id,chan_name);
+            // fprintf(_fp, "connect_chan_to_capture<%d,%d> cctc_%d(%s%s_%d.din,%s.d);\n", vi->width, bw, block_id,
+            //     capture_block_prefix, vi->name,latch_id,chan_name);
             fprintf(_fp, "%s%s_%d.tx.a = %s.a;\n",capture_block_prefix,
                                             vi->name,latch_id,chan_name);
         }
