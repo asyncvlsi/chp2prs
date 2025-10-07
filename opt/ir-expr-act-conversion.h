@@ -253,8 +253,17 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
     case E_VAR: {
       // this could be a channel variable too!
         auto [id, bit_width] = varid_from_actid((ActId *)o->u.e.l);
-        return std::make_unique<IRExpr_t>(
+	if (bit_width == -2) {
+	  // special indicator says the variable was not found; so it
+	  // should be a channel expression
+	  auto [id, bit_width] = chanid_from_actid((ActId *)o->u.e.l);
+	  return std::make_unique<IRExpr_t>(
+	    IRExpr_t:: makeChanVariable(id, bit_width));
+	}
+	else {
+	  return std::make_unique<IRExpr_t>(
             IRExpr_t::makeVariableAccess(id, bit_width));
+	}
     }
       
     case E_PROBE: {
@@ -274,12 +283,23 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
         hassert(o->u.e.r->u.e.r->type == E_INT);
 
         auto [id, bit_width] = varid_from_actid((ActId *)o->u.e.l);
-
+	if (bit_width == -2) {
+	  // special indicator says the variable was not found; so it
+	  // should be a channel expression
+	  auto [id, bit_width] = chanid_from_actid((ActId *)o->u.e.l);
+        return std::make_unique<IRExpr_t>(IRExpr_t::makeBitfield(
+            std::make_unique<IRExpr_t>(
+                IRExpr_t::makeChanVariable(id, bit_width)),
+            detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32(),
+            o->u.e.r->u.e.l ?  detail::bigint_from_int_expr(o->u.e.r->u.e.l).first.getI32() : detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32()));
+	}
+	else {
         return std::make_unique<IRExpr_t>(IRExpr_t::makeBitfield(
             std::make_unique<IRExpr_t>(
                 IRExpr_t::makeVariableAccess(id, bit_width)),
             detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32(),
             o->u.e.r->u.e.l ?  detail::bigint_from_int_expr(o->u.e.r->u.e.l).first.getI32() : detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32()));
+	}
     }
     case E_RAWFREE:
     case E_NUMBER: {

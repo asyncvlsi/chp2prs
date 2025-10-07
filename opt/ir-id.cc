@@ -92,6 +92,10 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
     bool is_enum = TypeFactory::isUserEnum (varType);
 
     /* XXX: will fail for data types and structures */
+    if (!(varInt || is_bool || is_enum)) {
+      // this is not available; perhaps it is a channel?
+      return OptionalVarId::null_id();
+    }
     hassert(varInt || is_bool || is_enum);
     
     int bitwidth = varInt ? TypeFactory::bitWidth(varInt) :

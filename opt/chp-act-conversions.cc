@@ -36,8 +36,13 @@ std::unique_ptr<ChpExpr> new_chpexpr_from_expr(NameParsingIdPool &id_pool,
     return template_func_new_irexpr_from_expr<ChpTag, VarId, ChanId, ManageMemory::yes>(
         o, [&](ActId *act_id) -> std::pair<VarId, int> {
             OptionalVarId id = id_pool.varIdFromActId(act_id);
-            hassert(id);
-            return {*id, id_pool.getBitwidth(*id)};
+	    if (id) {
+	      return {*id, id_pool.getBitwidth(*id)};
+	    }
+	    else {
+	      // special -2 bitwidth indicates that no variable was found!
+	      return {VarId(1), -2};
+	    }
         },
 	[&](ActId *act_id) -> std::pair<ChanId, int> {
 	  OptionalChanId id = id_pool.chanIdFromActId(act_id);
