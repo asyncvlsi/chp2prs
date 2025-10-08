@@ -63,6 +63,13 @@ void ExternOptSDT::_emit_expr (int *id, int tgt_width, Expr *e)
   /*-- emit leaves --*/
   _expr_collect_vars (e, 0);
 
+  for (li = list_first (all_leaves); li; li = list_next (li)) {
+    ihash_bucket_t *x = ihash_lookup (_inexprmap, (long) list_value (li));
+    if (x->i < 0) {
+      x->i = -x->i;
+    }
+  }
+
   //convert std expr channel to array of expr channels
   if (bundled_data != 1) 
   {
