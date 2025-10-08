@@ -149,7 +149,12 @@ class RingSynth : public ActSynthesize {
     char name[10240];
     td->sPrint(name, 10240);
     char mname[10240];
-    ActNamespace::Act()->msnprintf(mname, 10240, name);
+    std::string ns = "";
+    if (td->getNamespace() && td->getNamespace() != ActNamespace::Global()) {
+      ns = td->getNamespace()->Name(true);
+    }
+    ns = ns + name;
+    ActNamespace::Act()->msnprintf(mname, 10240, ns.c_str());
     snprintf (buf, sz, "chan_%s", mname);
   }
 
