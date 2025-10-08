@@ -1,0 +1,17 @@
+import "9decomp.act";
+
+defproc test ()
+{
+    chan(int<8>) A, B, C;
+    decomp_dc9 m(A, B, C);
+
+    int<8> y1, y2;
+
+    chp {
+        (A!4;A!2), (B!2;B!3), (C?y1;C?y2);
+        [ y1=64 & y2=36 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+

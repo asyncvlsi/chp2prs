@@ -1,0 +1,31 @@
+import "33.act";
+import "33_df_chp.act";
+
+defproc test()
+{
+  chan(int) X;
+  chan(int) Y;
+  
+  df_testproc d(X,Y);
+
+  int a, b, c;
+  int i;
+  bool success;
+
+  chp {
+      i := 0;
+      success+;
+       X!15; Y?a; [ a != 60 -> success- [] else -> skip ];
+       log ("init ", a);
+   *[  i < 10 ->
+       X!100;
+       log ("send-1");
+       X!3;
+       log ("send-2");
+       Y?a; [ a != 12 -> success- [] else -> skip ];
+       log ("recv ", a);
+       i := i + 1
+    ];
+    [ success -> log ("SUCCESS") [] else -> log ("FAIL") ]
+  }
+}

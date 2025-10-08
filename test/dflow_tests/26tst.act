@@ -1,0 +1,34 @@
+import "26.act";
+import "26_df_chp.act";
+
+defproc test()
+{
+  chan(int) X;
+  chan(int) Y;
+  
+  df_testproc d(X,Y);
+
+  int a, b, c;
+  int i;
+  bool success;
+
+  lib::onebuf<32> x1, x2, x3;
+  x1.out = x2.in;
+  x2.out = x3.in;
+  x3.out = X;
+
+  chp {
+      i := 0;
+      success+;
+       x1.in!15; Y?a; [ a != 5 -> success- [] else -> skip ];
+       log ("init");
+   *[  i < 10 ->
+       x1.in!18; Y?a; [ a != 5 -> success- [] else -> skip ];
+       log ("recv 1");
+       x1.in!13; Y?c; [ c = 31 -> skip [] else -> success-; log ("FAILURE: ", a, " c=", c) ];
+       log ("recv 2");
+    i := i + 1
+    ];
+    [ success -> log ("SUCCESS") [] else -> skip ]
+  }
+}

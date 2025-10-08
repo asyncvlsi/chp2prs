@@ -1,0 +1,14 @@
+defproc dc9 (chan?(int<8>) A, B; chan!(int<8>) C)
+{
+    int<8> x1, x2, x3;
+    chp {
+        *[
+
+            A?x1, B?x2;
+            x3:=x1*x2;
+            C!(x3*x3)
+
+        ]
+    }
+
+}

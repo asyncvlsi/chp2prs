@@ -33,6 +33,8 @@ echo
 echo "${und}BD external EXPRESSION syntesis MODE${normal}"
 echo
 
+./run_expr_bdopt.sh abc || exit 1
+
 if ! command -v yosys >/dev/null; then
   echo "yosys not found skipping yosys tests"
 else
@@ -45,9 +47,3 @@ else
 ./run_expr_bdopt.sh genus || exit 1
 fi
 
-if [ `grep FOUND_abc ../config_pkg.h | wc -l` -eq 0 ]
-then
-	echo "abc not found; skipping abc tests"
-else
-	./run_expr_bdoptabc.sh || exit 1
-fi

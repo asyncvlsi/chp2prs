@@ -1,0 +1,13 @@
+defproc mc4 (chan?(int) A; chan!(int) B, D)
+{
+    int x, y;
+    chp {
+        *[ 
+            A?x ; 
+            [ x=0 -> A?y ; D!y
+            []x=1 -> skip
+            ];
+            B!x 
+        ]
+    }
+}

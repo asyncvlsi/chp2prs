@@ -1,0 +1,121 @@
+
+import std;
+import std::cells;
+open std::cells;
+import std::gates;
+
+import "syn/qdi/_all_.act";
+import syn::ring;
+open syn::ring;
+
+defproc or2 <: std::gates::ortree<2,false> () {}
+defproc or3 <: std::gates::ortree<3,false> () {}
+defproc or4 <: std::gates::ortree<4,false> () {}
+defproc or5 <: std::gates::ortree<5,false> () {}
+defproc or6 <: std::gates::ortree<6,false> () {}
+defproc or7 <: std::gates::ortree<7,false> () {}
+defproc or8 <: std::gates::ortree<8,false> () {}
+
+defproc mux2 <: syn::ring::merge_mux_ohc_opt<2,1> () {}
+defproc mux3 <: syn::ring::merge_mux_ohc_opt<3,1> () {}
+defproc mux4 <: syn::ring::merge_mux_ohc_opt<4,1> () {}
+defproc mux5 <: syn::ring::merge_mux_ohc_opt<5,1> () {}
+defproc mux6 <: syn::ring::merge_mux_ohc_opt<6,1> () {}
+defproc mux7 <: syn::ring::merge_mux_ohc_opt<7,1> () {}
+defproc mux8 <: syn::ring::merge_mux_ohc_opt<8,1> () {}
+
+defcell bufx2 <: std::cells::BUFX2 () {}
+defcell invx1 <: std::cells::INVX1 () {}
+defcell latchlo <: std::cells::LATCHLO () {}
+
+/*
+defproc asym_c_char (bool? A, B, C; bool! Y)
+{
+    prs {
+        ( ~A & ~B & ~C ) -> Y+
+        (       B &  C ) -> Y- 
+    }
+}
+
+defproc assn (a1of1 m1; a1of1 zero; a1of1 p1)
+{
+  bool _m1_r;
+
+  zero.a = p1.r;
+  zero.r = m1.a;
+
+  prs {
+      (~_m1_r & ~zero.a & ~p1.a) -> zero.r+ 
+      (_m1_r &  zero.a &  p1.a)  -> zero.r-
+      m1.r => _m1_r-
+  }
+  sizing { 
+      zero.r{-1} 
+  }
+}
+
+defproc send (a1of1 m1; a1of1 zero; a1of1 p1)
+{
+    inverter im1r, izeroa;
+    im1r.in = m1.r;
+    izeroa.in = zero.a;
+
+    asym_c_char ac;
+    ac.A = im1r.out;
+    ac.B = zero.a;
+    ac.C = m1.a;
+    ac.Y = zero.r;
+
+    m1.a = p1.r;
+
+    prs {
+      ( ~im1r.out & ~izeroa.out & ~p1.a ) -> m1.a+
+      (  im1r.out &  izeroa.out &  p1.a ) -> m1.a-
+    }
+}
+
+export defproc recv (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
+{
+  bool _m1_r, _zero_r;
+  inverter m1_inv(m1.r,_m1_r);
+  inverter zr_inv(zero.r,_zero_r);
+
+  asym_c_char ac;
+  ac.A = _m1_r;
+  ac.B = _zero_r;
+  ac.C = m1.a;
+  ac.Y = data.r;
+
+  bool _data_a;
+  inverter da_inv(data.a,_data_a);
+  data.a = zero.a;
+  data.a = data.r;
+  _zero_r = zero.a;
+  
+  m1.a = p1.r;
+
+  prs {
+      (~_m1_r &  ~_data_a & ~p1.a) -> p1.r+ 
+       (_m1_r &   _data_a &  p1.a) -> p1.r-
+  }
+  sizing { 
+      p1.r{-1} 
+  }
+}
+*/
+
+defproc characterize()
+{
+  bufx2 g1;
+  invx1 g2;
+  
+  or2 g3;
+  or3 g4;
+  
+  mux2 g5;
+  mux3 g6;
+  
+  latchlo g7;
+}
+
+characterize c;

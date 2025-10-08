@@ -1,0 +1,4 @@
+*
+* Include .lib for all the devices
+*
+.lib '/path/to/spice/lib/' TT

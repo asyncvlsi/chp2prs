@@ -1,0 +1,12 @@
+defproc dc5 (chan?(int) A; chan!(int) Z)
+{
+    int x, z;
+    chp {
+        z:=0;
+        *[ A?x;
+            *[x>0 -> z := z+x; x:=x-1];
+            Z!z;
+            z:=z+1
+        ]
+    }
+}

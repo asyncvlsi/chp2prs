@@ -1,0 +1,18 @@
+import "23.act";
+import "23_df_chp.act";
+
+defproc test()
+{
+  chan(int) X, Y;
+  
+  df_testproc d(X,Y);
+
+  int a, b;
+
+  chp {
+    X!15;
+    Y?a;
+    Y?b;
+    [ a = 17 & b = 15 -> log ("SUCCESS") [] else -> log ("FAILURE") ]
+  }
+}

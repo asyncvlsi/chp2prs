@@ -27,12 +27,6 @@
 #include <act/act.h>
 #include <act/iter.h>
 #include <act/passes.h>
-#include "config_pkg.h"
-
-#ifdef FOUND_chp_opt
-#include <act/chp-opt/optimize.h>
-#endif
-
 
 static void usage(char *name)
 {
@@ -271,11 +265,7 @@ int main(int argc, char **argv)
 
   if (chpopt)
   {
-#ifdef FOUND_chp_opt    
-    ChpOptPass *copt = new ChpOptPass (a);
-#else
-    fatal_error ("Optimize flag is not currently enabled in the build.");
-#endif
+    warning ("-O is ignored");
   }
 
   ActApplyPass *app = new ActApplyPass (a);

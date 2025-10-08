@@ -1,0 +1,17 @@
+import "0decomp.act";
+
+defproc test ()
+{
+    chan(int) X1, X2, Y1, Y2;
+    decomp_le0 m(X1,X2,Y1,Y2);
+
+    int y1, y2_1, y2_2;
+
+    chp {
+        (X1!0) , (X2!0 ; X2!7) , (Y1?y1) , (Y2?y2_1 ; Y2?y2_2) ;
+        [ y1=7 & y2_1=0 & y2_2=7 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+

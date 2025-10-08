@@ -1,0 +1,42 @@
+
+defproc buf (chan?(int<8>) L1, L2; chan!(int<8>) R; bool b)
+{
+    int<8> x, y, z;
+    chp {
+        *[
+            L1?x; L2?y; 
+
+            R! ( b ? (x+y) : (x-y) )
+        ]
+    }
+}
+
+defproc src1 (chan!(int<8>) r)
+{
+	chp{
+		*[r!10]
+	}
+}
+
+defproc src2 (chan!(int<8>) r)
+{
+	chp{
+		*[r!5]
+	}
+}
+
+defproc snk (chan?(int<8>) l)
+{
+	int<8> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<8>) X1, X2; chan!(int<8>) Y; bool e)
+{
+  buf b(X1,X2,Y,e);
+  src1 i1(X1);
+  src2 i2(X2);
+  snk o(Y);
+}
