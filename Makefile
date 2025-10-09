@@ -18,7 +18,7 @@
 #  Boston, MA  02110-1301, USA.
 #
 #-------------------------------------------------------------------------
-BINARY=chp2prs_dev.$(EXT) 
+BINARY=chp2prs.$(EXT) 
 
 TARGETS=$(BINARY) synth2.$(EXT)
 TARGETLIBS=libactchp2prspass_$(EXT).so
