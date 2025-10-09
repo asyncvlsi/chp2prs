@@ -1,0 +1,68 @@
+template<pint N, B> defproc neuron (chan?(int<B>) input; chan!(int<1>) output ) 
+{
+    int<B> lambdaP;
+    int<B> tauStar;
+	int<6> tauStar6;
+    int<B> vth;
+    int<B> wIJ[N];
+    int<B> bi;
+    int<B> vt;
+    int<B> mu;
+    int<B> j;
+    int<B> offset;
+	int<B> compmuo;
+	int<1> a;
+	int<2> c;
+
+    chp{
+		// programming phase: read constants in order
+		c:=0;
+       *[
+			[c=0 ->
+				input?lambdaP; 
+				input?tauStar; 
+				input?vth; // globals
+				input?bi; 
+				(; k: N:input?wIJ[k]);
+
+				offset := (1 << (B-1));
+
+				// initialize time-dependent variables
+				tauStar6 := tauStar{5..0};
+
+				mu := (bi << tauStar6) + offset;
+				log ("init mu: ", mu);
+				a := 0; //false
+				j := 0; // temporary variable for index of spiking neuron
+				c:=1
+
+			[]c=1 ->
+			//run phase
+				// update voltage
+			vt:= (vt - offset) + (mu - lambdaP); 
+				[vt < offset -> vt := offset
+				[] else -> skip
+				]; // handle overflow. May or may not be correct
+
+				[vth < vt -> vt := offset; a := 1 //spike occurs
+				[] else -> a := 0
+				];  // no spike, reset flag
+				// update current:
+				mu := mu + bi - (mu >> tauStar) + (offset >> tauStar); 
+			output!a; // send spike
+			c:=2
+			
+			[]c=2 ->
+					input?j;
+					[([]k:N: j = k -> mu := mu - wIJ[k];// + offset;
+					compmuo := (1 + 3*(offset >> 1) - (vth >> 1));
+					[mu < compmuo -> mu := compmuo 
+					[] else -> skip])
+					[] j = N -> c:=1
+					]
+			] // loop over all spikes
+			]
+       }
+}
+
+defproc mc7 <: neuron<1,32> () {}

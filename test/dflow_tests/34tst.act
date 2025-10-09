@@ -1,0 +1,36 @@
+import "34.act";
+import "34_df_chp.act";
+import sim::rand;
+
+defproc test()
+{
+  chan(int) X;
+  chan(int) Y;
+  
+  df_testproc d(X,Y);
+
+  int a, b;
+  int i;
+  bool success;
+  int idx;
+  bool fail;
+
+  chp {
+      idx := sim::rand::init(8); 
+      i := 0;
+      success+;
+   *[  i < 1000 ->
+       a := sim::rand::get(idx);
+       X!a;
+       [ a{0} != 0 & a{1} != 0 -> 
+	  Y?b; [ b != 4*a -> fail+; success- [] else -> fail- ];
+         [ fail -> log (">>> send ", a, ": recv ", b)
+         [] else -> log ("send ", a, "; recv ", b)
+         ]
+       [] else -> log ("send ", a, " no-recv")
+       ];
+       i := i + 1
+    ];
+    [ success -> log ("SUCCESS") [] else -> log ("FAIL") ]
+  }
+}

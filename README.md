@@ -1,20 +1,46 @@
-# chp2prs: Syntax-directed translation of CHP programs into production rules
+# chp2prs: Translation of CHP programs into production rules
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/asyncvlsi/chp2prs/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/asyncvlsi/chp2prs/tree/master)
 
 ### Usage
 
 ```
-Usage: [executable] [-Ob] [-e <exprfile>] [-o yosys] <actfile> <process> <outfile>
+Usage: [executable] [-OdRbh] [-e <exprfile>] [-o <file>] [-E abc|yosys|genus] [-p <proc>] <actfile>
 ```
+
 The options are:
-   * `-b` : use bundled data datapath. Default is to use a QDI datapath
+
+   * `-h` : show this message
    * `-O` : run CHP optimizations. Requires the chp-opt package.
-   * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. The default is `expr.act`
-   * `-o yosys` : run expression optimization using `yosys`. Requires the expropt package.
-   * `<actfile>` : the input ACT file that contains the design
-   * `<process>` : the name of the ACT process to be translated (the top-level process)
-   * `<outfile>` : where the result should be saved.
+   * `-P <int>` : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3  (default 0)
+   * `-F dataflow|sdt|ring|decomp` : select synthesis output format.
+      * `dataflow` : dataflow output generation.
+      * `sdt` : syntax-directed translation for prs generation.
+      * `ring` : ring-based synthesis for prs generation.
+      * `decomp` : decompose chp into more concurrent chp; not a prs generation step. 
+   * `-R` : synthesize with ring approach. [deprecated, use `-F ring`]
+   * `-G` : Non-SSA style datapath [only ring]
+   * `-C qdi|bd|bd2|bdp|di|ditest`: Circuit / Datapath family
+      * `qdi` : quasi delay insensitive (default)
+      * `bd` : bundled data
+      * `bd2` : bundled data 2 phase handshake [only ring?]
+      * `bdp` : bundled data pulsed [only ring]
+      * `di` : delay insensitive [only ring]
+      * `ditest` : delay insensitive - testing for signal forks with extra buffers - not synthesizable [only ring]
+   * `-b` : bundled-data datapath for SDT (default QDI) [deprecated use -C]
+   * `-m <int>` : matched delay-line multiplier (in percentage) for ring synthesis. Default is 100 (1x).
+   * `-X` : Enable projection during decomposition (w.i.p.) 
+   * `-P <int>` : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3 (or) 4 (default 0)
+         * 0 : Only necessary decomposition
+         * 1 : Break at receives
+         * 2 : Break at selections
+         * 3 : Break at minimum live variable points
+         * 4 : Break at assignments, receives and parallel branches
+   * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. Default is `expr.act`
+   * `-E abc|yosys|genus` : run expression optimization using the specified logic synthesis engine.
+   * `-p <proc>` : the name of the ACT process to be translated (the top-level process). This is required.
+   * `-o <file>` : where the result should be saved. Default is stdout.
+   * `<actfile>` : the input ACT file that contains the design.
 
 
 ### Installation
@@ -28,6 +54,8 @@ This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act)
 
 
 ### Overview
+
+**XXX: update this!**
 
 A continuation of a project with Rajit Manohar's AVLSI group (see [the original](https://github.com/zebmehring/ADCO), which was developed by Zeb Mehring as part of his senior project at Yale). A program which takes in an `.act` file of the form:
 ```
@@ -63,10 +91,14 @@ that provide supporting library functions (the lib/ directory) are released unde
 ### Contributors and History
 
 Many have contributed to this implementation over the years, and the history is roughly the following. 
-The initial version was hacked together by Rajit Manohar, as a sample solution to a class lab assignment, with support for a small subset of CHP. 
-Zeb Mehring took this and turned it into a much more complete implementation (see [the original](https://github.com/zebmehring/ADCO)) as part of his senior project at Yale (~2018).
-As part of her senior project, Amanda Hansen took Zeb's version, added many of the tests, and made many significant changes to the generated ACT as well as the library.
-In collaboration with Linc Berkeley, she also added certain optimizations to the translation to reduce overhead (~2020).
-After several discussions with Marly Roncken and Ebele Esimai who were modifying the tool to support their own flow, the entire implementation was re-factored
-in summer/fall 2020. The tool was converted over to the ACT pass framework in 2021.
-In 2021, Ole Richter added external expression optimization that invokes existing logic synthesis tools to optimize the logic for expressions.
+
+   * 2017: The initial version was hacked together by Rajit Manohar, as a sample solution to a class lab assignment, with support for a small subset of CHP.
+   * 2018: Zeb Mehring took this and turned it into a much more complete implementation (see [the original](https://github.com/zebmehring/ADCO)) as part of his senior project at Yale.
+   * 2020: As part of her senior project, Amanda Hansen took Zeb's version, added many of the tests, and made many significant changes to the generated ACT as well as the library.
+In collaboration with Linc Berkeley, she also added certain optimizations to the translation to reduce overhead (2020). After several discussions with Marly Roncken and Ebele Esimai who were modifying the tool to support their own flow, the entire implementation was re-factored
+in summer/fall 2020.
+   * 2021: The tool was converted over to the ACT pass framework. Ole Richter added external expression optimization that invokes existing logic synthesis tools to optimize the logic for expressions.
+   * 2021: Linc Berkeley implemented a number of CHP and dataflow optimizations
+   * 2022: Henry Heffan designed a cleaner intermediate representation, and moved over and updated the CHP optimizations Linc had implemented into the new data structures.
+   * 2023: Rajit integrated all the CHP optimizations into the core synthesis framework and implemented dataflow generation. The entire codebase was re-factored so that different synthesis engines could be added to the framework. Karthi Srinivasan added a new ring-based synthesis approach as an alternative to syntax-directed translation.
+

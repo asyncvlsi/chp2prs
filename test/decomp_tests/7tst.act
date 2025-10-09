@@ -1,0 +1,28 @@
+import "7decomp.act";
+
+defproc test ()
+{
+    chan(int<1>) UZ, VA; 
+    chan(int<2>) UN; 
+    chan(int<32>) EPC; 
+    chan(int<4>) EX0, EX1; 
+    chan(int<1>) REG, MEM, MULT, EX; 
+    chan(int<32>) CP0pc; 
+    chan(int<4>) CP0e;
+
+    decomp_dc7 m(UZ, VA, UN, EPC, EX0, EX1, REG, MEM, MULT, EX, CP0pc, CP0e);
+    int<1> y1, y2;
+
+    int<1> ex;
+    int<32> cp0pc;
+    int<4> cp0e;
+
+    chp {
+        (UZ!0;UZ!0) , (VA!0;VA!1) , (UN!1;UN!1) , (EPC!42;EPC!42) , (EX1!7;EX1!7) ,
+        (MEM?y1;MEM?y2), EX?ex, CP0pc?cp0pc, CP0e?cp0e;
+        [ y1=0 & y2=0 & ex=0 & cp0pc=42 & cp0e=7 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+

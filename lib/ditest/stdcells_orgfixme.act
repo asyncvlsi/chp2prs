@@ -1,0 +1,576 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2022 Rajit Manohar
+ *  Copyright (c) 2021, 2024 Ole Richter - Yale University
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+
+import globals;
+
+/**
+ * This library contains DI versions of stdcell library, with single bit channels.
+ * for HA and FA multi output cells it assumes the request signal is the same and will short it.
+ */
+
+namespace syn {
+  //export namespace diopt{
+    export template<pint N>
+    defproc syndioptcopy(sdtexprchan<1> in; sdtexprchan<1> out[N]) {
+      ( i : N:
+        in = out[i];
+      )
+    }
+
+    export
+    defproc syndioptsource_GND(sdtexprchan<1> out) {
+      bool _f;
+      prs {
+        out.r => _f-
+        _f => out.d.d[0].f-
+      }
+      out.d.d[0].t = GND;
+      sizing{
+        p_n_mode <- 1;
+        _f{- 1};
+        out.d.d[0].f{- 1}
+      }
+    }
+
+    export
+    defproc syndioptsource_Vdd(sdtexprchan<1> out) {
+      bool _t;
+      prs {
+        out.r => _t-
+        _t => out.d.d[0].t-
+      }
+      out.d.d[0].f = GND;
+      sizing{
+        p_n_mode <- 1;
+        _t{- 1};
+        out.d.d[0].t{- 1}
+      }
+    }
+
+    /*-- inverters --*/
+
+    export template<pint X>
+    defcell syndioptinv(sdtexprchan?<1> A; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      [ X<=1 -> A.d.d[0].t = Y.d.d[0].f; A.d.d[0].f = Y.d.d[0].t; 
+      [] else -> 
+      std::gates::sigbuf<X> _f(A.d.d[0].t);
+      _f.out[0] = Y.d.d[0].f;
+      std::gates::sigbuf<X> _t(A.d.d[0].f);
+      _t.out[0] = Y.d.d[0].t;
+      ]
+    }
+
+    export 
+    defcell syndioptINVX1 <: syndioptinv<1> () {}
+    export 
+    defcell syndioptINVX2 <: syndioptinv<2> () {}
+    export 
+    defcell syndioptINVX4 <: syndioptinv<4> () {}
+    export 
+    defcell syndioptINVX8 <: syndioptinv<8> () {}
+
+    /*-- clock delay buffers --*/
+
+    template<pint N>
+    defcell syndioptdbuf(bool? in; bool! out) {
+      { false : "should not have been used by the syntesis tool no qdi equivilent" };
+      bool sig[2 * N + 1];
+      sig[0] = in;
+      sig[2 * N] = out;
+      prs {
+        ( i : 2 * N :
+          ~sig[i]<80; 2> -> sig[i + 1]+
+          sig[i]<40; 2> -> sig[i + 1]- )
+      }
+    }
+
+    export
+    defcell syndioptCLKBUF1 <: syndioptdbuf<2> () {}
+    export
+    defcell syndioptCLKBUF2 <: syndioptdbuf<3> () {}
+    export
+    defcell syndioptCLKBUF3 <: syndioptdbuf<4> () {}
+
+    /*--  signal buffers --*/
+
+    export template<pint N>
+    defcell syndioptbuf(sdtexprchan?<1> A; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      std::gates::sigbuf<N> _f(A.d.d[0].f);
+      _f.out[0] = Y.d.d[0].f;
+      std::gates::sigbuf<N> _t(A.d.d[0].t);
+      _t.out[0] = Y.d.d[0].t;
+    }
+
+    export
+    defcell syndioptBUFX1 <: syndioptbuf<1> () {}
+    export
+    defcell syndioptBUFX2 <: syndioptbuf<2> () {}
+    export
+    defcell syndioptBUFX4 <: syndioptbuf<4> () {}
+
+    /*-- simple gates --*/
+
+
+    
+    defcell nor2(sdtexprchan?<1> A, B; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      bool _f, _t;
+      prs {
+        A.d.d[0].f & B.d.d[0].f -> _t-
+        A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f -> _f-
+        ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _t+
+        ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f -> _f+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+    
+    export
+    defcell syndioptNOR2X1 <: nor2 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell nor3(sdtexprchan?<1> A, B, C; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      C.r = Y.r;
+      bool _f, _t;
+      prs {
+        A.d.d[0].f & B.d.d[0].f & C.d.d[0].f -> _t-
+        ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f -> _t+
+        A.d.d[0].t & (B.d.d[0].t | B.d.d[0].f) & (C.d.d[0].t | C.d.d[0].f) | B.d.d[0].t & A.d.d[0].f & (C.d.d[0].f | C.d.d[0].t) | C.d.d[0].t & B.d.d[0].f & A.d.d[0].f -> _f-
+        ~A.d.d[0].t & ~B.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f & ~A.d.d[0].f -> _f+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptNOR3X1 <: nor3 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell or2(sdtexprchan?<1> A, B; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      bool _f, _t;
+      prs {
+        A.d.d[0].f & B.d.d[0].f -> _f-
+        ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _f+
+        A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f -> _t-
+        ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f -> _t+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptOR2X1 <: or2 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    export
+    defcell syndioptOR2X2 <: or2 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 2};
+        Y.d.d[0].f{- 2};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell nand2(sdtexprchan?<1> A, B; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      bool _f, _t;
+      prs {
+        A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t  -> _t-
+        ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _t+
+        A.d.d[0].t & B.d.d[0].t -> _f-
+        ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t &  ~B.d.d[0].t -> _f+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptNAND2X1 <: nand2 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 2};
+        Y.d.d[0].f{- 2};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell nand3(sdtexprchan?<1> A, B, C; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      C.r = Y.r;
+      bool _f, _t;
+      prs {
+        A.d.d[0].f & (B.d.d[0].f | B.d.d[0].t) & (C.d.d[0].f | C.d.d[0].t) | B.d.d[0].f & A.d.d[0].t & (C.d.d[0].t | C.d.d[0].f) | C.d.d[0].f & B.d.d[0].t & A.d.d[0].t  -> _t-
+        ~A.d.d[0].f & ~B.d.d[0].f & ~B.d.d[0].t & ~C.d.d[0].f & ~C.d.d[0].t & ~A.d.d[0].t -> _t+
+        A.d.d[0].t & B.d.d[0].t & C.d.d[0].t -> _f-
+        ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].t -> _f+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+    
+    export
+    defcell syndioptNAND3X1 <: nand3 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    
+    defcell and2(sdtexprchan?<1> A, B; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      bool _f, _t;
+      prs {
+        A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t -> _f-
+        ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _f+
+        A.d.d[0].t & B.d.d[0].t -> _t-
+        ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _t+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptAND2X1 <: and2 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    export
+    defcell syndioptAND2X2 <: and2 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 2};
+        Y.d.d[0].f{- 2};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell xor2(sdtexprchan?<1> A, B; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      bool _f, _t;
+      prs {
+        A.d.d[0].f & B.d.d[0].t | A.d.d[0].t & B.d.d[0].f -> _t-
+        A.d.d[0].f & B.d.d[0].f | A.d.d[0].t & B.d.d[0].t -> _f-
+        ~A.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].f -> _t+
+        ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _f+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptXOR2X1 <: xor2 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell xnor2(sdtexprchan?<1> A, B; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      bool _f, _t;
+      prs {
+        A.d.d[0].f & B.d.d[0].t | A.d.d[0].t & B.d.d[0].f -> _f-
+        A.d.d[0].f & B.d.d[0].f | A.d.d[0].t & B.d.d[0].t -> _t-
+        ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _t+
+        ~A.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].f -> _f+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptXNOR2X1 <: xnor2 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell mux2(sdtexprchan?<1> A, B, S; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      S.r = Y.r;
+      bool _f, _t;
+      prs {
+        A.d.d[0].t & S.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & S.d.d[0].f & (A.d.d[0].f | A.d.d[0].t) -> _f-
+        ~A.d.d[0].t & ~S.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~S.d.d[0].f & ~A.d.d[0].f -> _f+
+        A.d.d[0].f & S.d.d[0].t & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & S.d.d[0].f & (A.d.d[0].f | A.d.d[0].t) -> _t-
+        ~A.d.d[0].f & ~S.d.d[0].t & ~B.d.d[0].t & ~B.d.d[0].f & ~S.d.d[0].f & ~A.d.d[0].t-> _t+
+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptMUX2X1 <: mux2 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell oai21(sdtexprchan?<1> A, B, C; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      C.r = Y.r;
+      bool _f, _t;
+      prs {
+        A.d.d[0].f & B.d.d[0].f & C.d.d[0].t | C.d.d[0].f & (A.d.d[0].t | A.d.d[0].f) & (B.d.d[0].t | B.d.d[0].f) -> _t-
+        ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t-> _t+
+        (A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f) & C.d.d[0].t -> _f-
+        ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f & ~C.d.d[0].t & ~C.d.d[0].f -> _f+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptOAI21X1 <: oai21 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell aoi21(sdtexprchan?<1> A, B, C; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      C.r = Y.r;
+      bool _f, _t;
+      prs {
+        (A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t) & C.d.d[0].f -> _t-
+        ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t & ~C.d.d[0].f & ~C.d.d[0].t -> _t+
+        (A.d.d[0].t & B.d.d[0].t & C.d.d[0].f) | C.d.d[0].t & ( A.d.d[0].f | A.d.d[0].t) & (B.d.d[0].f |B.d.d[0].t ) -> _f-
+        ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].f & ~C.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f -> _f+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+        
+    export
+    defcell syndioptAOI21X1 <: aoi21 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell oai22(sdtexprchan?<1> A, B, C, D; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      C.r = Y.r;
+      D.r = Y.r;
+      bool _f, _t;
+      prs {
+        (A.d.d[0].f & B.d.d[0].f & (C.d.d[0].f | C.d.d[0].t) & (D.d.d[0].f | D.d.d[0].t)) | (C.d.d[0].f & D.d.d[0].f & (A.d.d[0].t | A.d.d[0].f) & (B.d.d[0].t | B.d.d[0].f)) -> _t-
+        ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f & ~C.d.d[0].t & ~D.d.d[0].f & ~D.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].t-> _t+
+        (A.d.d[0].t & (B.d.d[0].f | B.d.d[0].t) | B.d.d[0].t & A.d.d[0].f) & (C.d.d[0].t & (D.d.d[0].f | D.d.d[0].t) | D.d.d[0].t & C.d.d[0].f) -> _f-
+        ~A.d.d[0].t & ~B.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].f & ~C.d.d[0].t & ~D.d.d[0].f & ~D.d.d[0].t & ~C.d.d[0].f -> _f+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptOAI22X1 <: oai22 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    defcell aoi22(sdtexprchan?<1> A, B, C, D; sdtexprchan!<1> Y) {
+      A.r = Y.r;
+      B.r = Y.r;
+      C.r = Y.r;
+      D.r = Y.r;
+      bool _f, _t;
+      prs {
+        (A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t) & (C.d.d[0].f & (D.d.d[0].t | D.d.d[0].f) | D.d.d[0].f & C.d.d[0].t) -> _t-
+        ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t  & ~C.d.d[0].f & ~D.d.d[0].t & ~D.d.d[0].f & ~C.d.d[0].t -> _t+
+        (A.d.d[0].t & B.d.d[0].t & (C.d.d[0].t | C.d.d[0].f) & (D.d.d[0].t | D.d.d[0].f)) | (C.d.d[0].t & D.d.d[0].t & (A.d.d[0].f | A.d.d[0].t) & (B.d.d[0].f | B.d.d[0].t)) -> _f-
+        ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].t & ~C.d.d[0].f & ~D.d.d[0].t & ~D.d.d[0].f & ~A.d.d[0].f & ~B.d.d[0].f -> _f+
+        _f => Y.d.d[0].f-
+        _t => Y.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptAOI22X1 <: aoi22 () {
+      sizing{
+        p_n_mode <- 1;
+        Y.d.d[0].t{- 1};
+        Y.d.d[0].f{- 1};
+        _t{- 1};
+        _f{- 1}
+      }
+    }
+
+    /*--- arithmetic ---*/
+
+    defcell ha(sdtexprchan?<1> A, B; sdtexprchan!<1> YC, YS) {
+      A.r = YS.r;
+      B.r = YS.r;
+      YC.r = YS.r;
+      bool _fc, _tc, _fs, _ts;
+      prs {
+        A.d.d[0].f & (B.d.d[0].t | B.d.d[0].f) | B.d.d[0].f & A.d.d[0].t -> _fc-
+        A.d.d[0].t & B.d.d[0].t -> _tc-
+        ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _tc+
+        ~A.d.d[0].f & ~B.d.d[0].t & ~B.d.d[0].f & ~A.d.d[0].t -> _fc+
+        _fc => YC.d.d[0].f-
+        _tc => YC.d.d[0].t-
+
+        A.d.d[0].f & B.d.d[0].t | A.d.d[0].t & B.d.d[0].f -> _ts-
+        A.d.d[0].f & B.d.d[0].f | A.d.d[0].t & B.d.d[0].t -> _fs-
+        ~A.d.d[0].f & ~B.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].f -> _ts+
+        ~A.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].t & ~B.d.d[0].t -> _fs+
+        _fs => YS.d.d[0].f-
+        _ts => YS.d.d[0].t-
+      }
+    }
+
+    export
+    defcell syndioptHAX1 <: ha () {
+      sizing{
+        p_n_mode <- 1;
+        YS.d.d[0].t{- 1};
+        YS.d.d[0].f{- 1};
+        _tc{- 1};
+        _fc{- 1};
+        YC.d.d[0].t{- 1};
+        YC.d.d[0].f{- 1};
+        _tc{- 1};
+        _fc{- 1}
+      }
+    }
+
+    
+    defcell fa(sdtexprchan?<1> A, B, C; sdtexprchan!<1> YC, YS) {
+      A.r = YS.r;
+      B.r = YS.r;
+      C.r = YS.r;
+      YC.r = YS.r;
+      bool _st, _sf, _ct, _cf;
+      prs {
+        A.d.d[0].t & B.d.d[0].t | (A.d.d[0].t | B.d.d[0].t) & C.d.d[0].t -> _ct-
+        ~A.d.d[0].t & ~B.d.d[0].t & ~C.d.d[0].t & ~C.d.d[0].f & ~B.d.d[0].f & ~A.d.d[0].f-> _ct+
+
+        A.d.d[0].f & B.d.d[0].f | (A.d.d[0].f | B.d.d[0].f) & C.d.d[0].f -> _cf-
+        ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f  & ~C.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].t -> _cf+
+
+        C.d.d[0].t & (A.d.d[0].t & B.d.d[0].t | A.d.d[0].f & B.d.d[0].f) | C.d.d[0].f & (A.d.d[0].t & B.d.d[0].f | A.d.d[0].f & B.d.d[0].t) -> _st-
+        ~C.d.d[0].t & ~A.d.d[0].t & ~B.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].f & ~C.d.d[0].f -> _st+
+
+        C.d.d[0].t & (A.d.d[0].f & B.d.d[0].t | A.d.d[0].t & B.d.d[0].f) | C.d.d[0].f & (A.d.d[0].f & B.d.d[0].f | A.d.d[0].t & B.d.d[0].t) -> _sf-
+        ~C.d.d[0].t & ~A.d.d[0].f & ~B.d.d[0].t &  ~A.d.d[0].t & ~B.d.d[0].f & ~C.d.d[0].f -> _sf+
+
+        _ct => YC.d.d[0].t-
+        _cf => YC.d.d[0].f-
+        _st => YS.d.d[0].t-
+        _sf => YS.d.d[0].f-
+      }
+    }
+    
+    export
+    defcell syndioptFAX1 <: fa () {
+      sizing{
+        p_n_mode <- 1;
+        YC.d.d[0].t{- 1};
+        YC.d.d[0].f{- 1};
+        YS.d.d[0].t{- 1};
+        YS.d.d[0].f{- 1};
+        _st{- 1};
+        _sf{- 1};
+        _ct{- 1};
+        _cf{- 1}
+      }
+    }
+  //}
+} 

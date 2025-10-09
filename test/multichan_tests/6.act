@@ -1,0 +1,11 @@
+defproc mc6 (chan?(int) A; chan!(int) B, D)
+{
+	int x;
+	chp {
+		*[
+			A?x; 
+			*[x=3 -> A?x;D!(x+1)];
+			B!x
+		 ] 
+	}
+}

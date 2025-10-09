@@ -18,44 +18,41 @@
 #  Boston, MA  02110-1301, USA.
 #
 #-------------------------------------------------------------------------
-BINARY=chp2prs.$(EXT)
+BINARY=chp2prs_dev.$(EXT) 
 
-TARGETS=$(BINARY)
+TARGETS=$(BINARY) synth2.$(EXT)
 TARGETLIBS=libactchp2prspass_$(EXT).so
 
-include config.mk
+CPPSTD=c++20
 
-OBJS=main.o
+OBJS1=main.o
 
-SHOBJS=chp2prs_pass.os sdt.os basicsdt.os
+OBJS2=main2.o sdt_engine.o df_engine.o ring_engine.o decomp_engine.o
 
-ifdef expropt_INCLUDE 
-SHOBJS+=externoptsdt.os
-endif
+OBJS=$(OBJS1) $(OBJS2)
+
+TARGETCONF=synth.conf
+
+SHOBJS=chp2prs_pass.os synth.os synth_pass.os
 
 SRCS=$(OBJS:.o=.cc) $(SHOBJS:.os=.cc)
 
-ifdef chp_opt_INCLUDE
-CHPOPT=-lchpopt
-else
-CHPOPT=
-endif
-
-SUBDIRS=lib
+SUBDIRS=lib opt sdt ring decomp
 
 include $(ACT_HOME)/scripts/Makefile.std
 
-ifdef expropt_INCLUDE
 EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
-else
-EXPRLIB=
-endif
 
-$(BINARY): $(LIB) $(OBJS) $(ACTDEPEND)
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS) -o $(BINARY) $(CHPOPT) $(SHLIBACTPASS) 
+SYNTHLIB=-lactchpopt -lactchpsdt -lactchpring -lactchpdecomp
+
+$(BINARY): $(LIB) $(OBJS1) $(ACTDEPEND)
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(SHLIBACTPASS)
+
+synth2.$(EXT): $(LIB) $(OBJS2) $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS2) -o synth2.$(EXT) $(SHLIBACTPASS) $(SYNTHLIB) -lactchp2prspass $(EXPRLIB)
 
 $(TARGETLIBS): $(SHOBJS)
-	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB)
+	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB) -lactchpsdt
 
 testreps:
 	@if [ -d test -a -x test/repeat_unit.sh ]; \
@@ -99,6 +96,11 @@ start_lldb:
 	@if [ -x ${BINARY} ] ; \
 	then \
 		(lldb ./$(BINARY)); \
+	fi
+start_lldb2:
+	@if [ -x synth2.$(EXT) ] ; \
+	then \
+		(lldb ./synth2.$(EXT)); \
 	fi
 
 -include Makefile.deps

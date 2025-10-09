@@ -1,0 +1,17 @@
+defproc actualproc(chan?(int) X; chan!(int) Y)
+{
+  int a, b, c, d;
+
+   chp {
+      X?a;
+      b := a + 1;
+      Y!b;
+      b := a * 3;
+      Y!b
+   }
+}
+
+defproc testproc(chan?(int) X; chan!(int) Y)
+{
+   actualproc a(X,Y);
+}

@@ -1,0 +1,17 @@
+import "4decomp.act";
+
+defproc test ()
+{
+    chan(int<8>) X1;
+    chan(int<16>) X2, Y;
+    decomp_le4 m(X1, X2, Y);
+
+    int<16> y;
+
+    chp {
+        ( X1!13 , X2!57 , Y?y ) ;
+        [ y=741 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}

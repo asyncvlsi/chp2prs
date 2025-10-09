@@ -3,6 +3,7 @@ i386*
 x86_64*
 *.x86_64*
 arm64_*
+aarch64_*
 *.arm64_*
 *~
 *.deps
@@ -21,3 +22,9 @@ config.mk
 *.so
 .idea
 cmake-build-debug
+.actsim_history
+/.vscode
+z_*.act
+expr*.act
+zz_*
+*.scr

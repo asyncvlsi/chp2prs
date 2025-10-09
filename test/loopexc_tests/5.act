@@ -1,0 +1,14 @@
+defproc le5 (chan?(int) A, B; chan!(int) D, E, F)
+{
+    int w, x, y, z;
+    chp {
+        *[
+            A?x; 
+            B?y;
+            *[x<y -> A?z; D!(x+z); x := x+1
+            []x>y -> A?w; E!(x+w); x := x-1
+            ];
+            F!(y)
+        ]
+    }
+}

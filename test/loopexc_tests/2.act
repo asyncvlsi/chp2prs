@@ -1,0 +1,13 @@
+defproc le2 (chan?(int) l1; chan?(int) l2; chan!(int) r1)
+{
+	int x, y;
+	chp{
+		*[ 
+			l1?x; l2?y; 
+			*[x>y -> x:=x-y
+			[]y>x -> y:=y-x
+			];
+			r1!x
+		]
+	}
+}

@@ -1,0 +1,62 @@
+
+defproc fib (chan?(int<4>) l; chan!(int<8>) r)
+{
+	int<4> c;
+	int<4> c1;
+	int<8> x, y;
+	int<8> x1, y1;
+
+    chan(int<4>) CS, CR;
+    chan(int<8>) XS, XR;
+    chan(int<8>) YS, YR;
+
+	chp {
+        // top_decomp: (
+        //     qdi_itb:(c1:=0;*[CS!c1;CR?c1]) 
+        //     ,
+        //     qdi_itb:(x1:=0;*[XS!x1;XR?x1]) 
+        //     ,
+        //     qdi_itb:(y1:=0;*[YS!y1;YR?y1]) 
+        //     ,
+        //     (
+        //     *[
+        //         CS?c,YS?y,XS?x;
+        //         [ c=0 -> r!x; l?c , x:=0 , y:=1
+        //         []c>0 -> x := x+y ; y := x+y ; c := c-1
+        //         ];
+        //         CR!c,YR!y,XR!x
+        //     ]
+        //     )
+		// )
+            c:=0; y:=0; x:=0;
+            *[
+                [ c=0 -> r!x; l?c , x:=0 , y:=1
+                []c>0 -> x := x+y ; y := x+y ; c := c-1
+                ]
+            ]
+	}
+}
+
+defproc src5 (chan!(int<4>) r)
+{
+	chp{
+		*[r!5]
+	}
+}
+
+defproc snk (chan?(int<8>) l)
+{
+	int<8> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<4>) X; chan!(int<8>) Y)
+{
+  fib f(X,Y);
+
+  src5 ix(X);
+
+  snk o(Y);
+}

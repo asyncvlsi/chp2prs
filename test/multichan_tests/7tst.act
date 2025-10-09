@@ -1,0 +1,26 @@
+import "7decomp.act";
+
+defproc test ()
+{
+    chan(int<32>) X;
+    chan(int<1>) Y;
+
+    decomp_mc7 m(X, Y);
+
+    int<1> x1, x2, x3;
+
+    chp {
+
+        X!838861; X!7; X!(1073741824 + 2147483648); X!101325; X!1;
+        
+        (Y?x1;X!(~x1));
+        (Y?x2;X!(~x2));
+        (Y?x3;X!(~x3));
+
+        [ (x1=0) & (x2=0) & (x3=0) -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+
+    }
+}
+

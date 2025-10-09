@@ -1,0 +1,13 @@
+defproc dc2 (chan?(int) A, B, C; chan!(int) D)
+{
+    int x,y;
+    chp {
+        *[ 
+            A?x ; 
+            [x=1   -> B?y
+            []else -> C?y
+            ];
+            D!(2*y)
+        ]
+    }
+}

@@ -1,0 +1,15 @@
+defproc le4 (chan?(int<8>) l1; chan?(int<16>) l2; chan!(int<16>) r)
+{
+    int<16> x, acc;
+    int<8> y;
+    chp {
+        *[  l1?y ; l2?x ; acc:=0 ;
+            *[ ~(y=0) -> [y{0}=0 -> skip
+                         [] else -> acc :=acc+x  
+                         ];
+                         x:=x<<1 ; y:=y>>1
+            ] ;
+            r!acc
+        ]
+    }
+}
