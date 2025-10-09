@@ -2,10 +2,36 @@
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/asyncvlsi/chp2prs/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/asyncvlsi/chp2prs/tree/master)
 
-### Usage
+### Tools in this repository
+
+There are two executables built by this version of chp2prs:
+   * `chp2prs`, which corresponds to the previous major version of `chp2prs`
+   * `synth2`, which corresponds to a new synthesis method
+
+The plan is for `synth2` to be replaced with a general synthesis engine for
+ACT, so this executable is a work-in-progress and will be replaced by mid
+2026 even though the functionality will be preserved.
+
+### Usage for `chp2prs`
 
 ```
-Usage: [executable] [-OdRbh] [-e <exprfile>] [-o <file>] [-E abc|yosys|genus] [-p <proc>] <actfile>
+Usage: chp2prs [-Ob] [-e <exprfile>] [-o yosys] <actfile> <process> <outfile>
+```
+
+The options are:
+   * `-b` : use bundled data datapath. Default is to use a QDI datapath
+   * `-O` : run CHP optimizations. Requires the chp-opt package.
+   * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. The default is `expr.act`
+   * `-o yosys` : run expression optimization using `yosys`. Requires the expropt package.
+   * `<actfile>` : the input ACT file that contains the design
+   * `<process>` : the name of the ACT process to be translated (the top-level process)
+   * `<outfile>` : where the result should be saved.
+
+
+### Usage for `synth2`
+
+```
+Usage: synth2 [-OdRbh] [-e <exprfile>] [-o <file>] [-E abc|yosys|genus] [-p <proc>] <actfile>
 ```
 
 The options are:
@@ -49,7 +75,6 @@ This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act)
 
    * Please install the ACT toolkit first; installation instructions are [here](https://github.com/asyncvlsi/act/blob/master/README.md).
    * Install the ACT standard [library](https://github.com/asyncvlsi/stdlib)
-   * Run ./configure
    * Build this program using the standard ACT tool install instructions [here](https://github.com/asyncvlsi/act/blob/master/README_tool.md).
 
 
@@ -100,5 +125,12 @@ in summer/fall 2020.
    * 2021: The tool was converted over to the ACT pass framework. Ole Richter added external expression optimization that invokes existing logic synthesis tools to optimize the logic for expressions.
    * 2021: Linc Berkeley implemented a number of CHP and dataflow optimizations
    * 2022: Henry Heffan designed a cleaner intermediate representation, and moved over and updated the CHP optimizations Linc had implemented into the new data structures.
-   * 2023: Rajit integrated all the CHP optimizations into the core synthesis framework and implemented dataflow generation. The entire codebase was re-factored so that different synthesis engines could be added to the framework. Karthi Srinivasan added a new ring-based synthesis approach as an alternative to syntax-directed translation.
+   * 2023: Rajit integrated all the CHP optimizations into the core synthesis framework and implemented dataflow generation. The entire codebase was re-factored so that different synthesis engines could be added to the framework. 
+   * 2023: Karthi Srinivasan added a new ring-based synthesis approach as an alternative to syntax-directed translation.
 
+
+Papers that correspond to some of the methods used by the tools
+for generating asynchronous circuits:
+
+   * Karthi Srinivasan and Rajit Manohar. Maelstrom: A Logic Synthesis Technique for Asynchronous Circuits. IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), May 2025. doi:10.1109/TCAD.2025.3572364
+   * Xiayuan Wen, Rui Li, and Rajit Manohar. Translating General Slack Elastic Programs into Dataflow Circuits. IEEE International Symposium on Asynchronous Circuits and Systems (ASYNC), May 2025. doi:10.1109/ASYNC65240.2025.00020
