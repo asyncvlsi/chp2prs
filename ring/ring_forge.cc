@@ -1067,7 +1067,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     _inwidthmap = ihash_new (0);
 
     auto ss1 = high_resolution_clock::now();
-    e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
+    e = expr_dup(e);
     e = expr_dag(e);
 
     _reset_expr_id();
@@ -1163,7 +1163,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     ac.clear();
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
-    e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
+    e = expr_dup(e);
     e = expr_dag(e);
     
     _reset_expr_id();
@@ -1239,7 +1239,7 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
     for (auto &e : e_list) {
-        e = expr_expand(e, ActNamespace::Global(), _p->CurScope());
+        e = expr_dup(e);
         e = expr_dag(e);
         _expr_collect_vars (e, 1);
     }
