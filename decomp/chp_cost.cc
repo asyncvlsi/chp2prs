@@ -138,7 +138,7 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
 
-    e = expr_expand(e, ActNamespace::Global(), _s);
+    e = expr_dup(e);
     e = expr_dag(e);
 
     _expr_collect_vars (e);
@@ -378,7 +378,7 @@ void ChpCost::fill_in_else_explicit (act_chp_lang_t *c)
         expr_false->type = E_FALSE;
 
         gc = c->u.gc;
-        disj_gs->u.e.r = expr_expand(gc->g, ActNamespace::Global(), _s);
+        disj_gs->u.e.r = expr_dup(gc->g);
         itr = disj_gs;
 
         for (gc = gc->next ; gc ; gc = gc->next)
@@ -388,7 +388,7 @@ void ChpCost::fill_in_else_explicit (act_chp_lang_t *c)
                 itr->u.e.l = gc->g;
                 NEW (tmp, Expr);
                 tmp->type = E_OR;
-                tmp->u.e.r = expr_expand(itr, ActNamespace::Global(), _s);
+                tmp->u.e.r = expr_dup(itr);
                 NEW (itr, Expr);
                 itr = tmp;
             }
@@ -399,7 +399,7 @@ void ChpCost::fill_in_else_explicit (act_chp_lang_t *c)
                 NEW (inv_disj_gs, Expr);
                 inv_disj_gs->type = E_NOT;
                 inv_disj_gs->u.e.l = itr;
-                gc->g = expr_expand(inv_disj_gs, ActNamespace::Global(), _s);
+                gc->g = expr_dup(inv_disj_gs);
             }
         }
 
