@@ -584,10 +584,7 @@ defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka)
     mk_excllo(_u,_v)
   }
   
-  std::cells::OR2X1 or_ka;
-  or_ka.A = u;
-  or_ka.B = v;
-  or_ka.Y = _ka;
+  bool ka;
 
   prs {
     // inverted Reset to initialize correctly
@@ -604,6 +601,8 @@ defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka)
     passp<10>(_u,_v,u)
     passp<10>(_v,_u,v)
 
+    u | v => ka-
+    ka => _ka-
 
   }
   sizing {
