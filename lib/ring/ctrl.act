@@ -37,7 +37,7 @@ namespace syn {
 
 defproc inverter (bool? in; bool! out)
 {
-    prs{
+    prs *{
         in => out-
     }
     sizing { 
@@ -48,7 +48,7 @@ defproc inverter (bool? in; bool! out)
 export defproc sink_brs (a1of1 c)
 {
   bool x;
-  prs{
+  prs *{
       c.r => x-
       x   => c.a-
   }
@@ -57,7 +57,7 @@ export defproc sink_brs (a1of1 c)
 
 export defproc source_brs (a1of1 c)
 {
-  prs{
+  prs *{
         ~c.a => c.r+
   }
   sizing { c.r{-1} }
@@ -211,7 +211,7 @@ defproc probe_access(bd<W> C; bool dout[1])
 export template<pint W>
 defproc probe_access_neg(bd<W> C; bool dout[1])
 {
-  prs {
+  prs * {
     C.r => dout[0]-
   }
 }
@@ -233,7 +233,7 @@ defproc probe_clause(bool? g[N]; bool? probe[T]; bool! out[1]) {
     tmp = tmp + 1; ]
   { T = tstval : "Inconsistent template parameters" };
   bool _out, _Reset;
-  prs {
+  prs * {
     // inverted Reset to initialize correctly
     Reset => _Reset-
 
@@ -350,7 +350,7 @@ defproc itb_wrapper (bd<W> R_out; bd<W> S_in)
 
 export defproc asym_c_brs (bool? A, B, C; bool! Y)
 {
-    prs {
+    prs * {
         ~Reset & ( ~A & ~B & ~C ) -> Y+
          Reset | (       B &  C ) -> Y- 
     }
@@ -370,7 +370,7 @@ export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
 
     m1.a = p1.r;
 
-    prs {
+    prs * {
         ~Reset & ( ~im1r.out & ~izeroa.out & ~p1.a ) -> m1.a+
          Reset | (  im1r.out &  izeroa.out &  p1.a ) -> m1.a-
     }
@@ -393,7 +393,7 @@ export defproc elem_c_paa_shared (a1of1 m1; a1of1 zero; a1of1 p1)
 
     m1.a = pre_p1r;
 
-    prs {
+    prs * {
         ~Reset & ( ~im1r.out & ~izeroa.out ) -> pre_p1r+
          Reset | (  im1r.out &  izeroa.out ) -> pre_p1r-
 
@@ -421,7 +421,7 @@ export defproc elem_c_paa_c_t (a1of1 m1; a1of1 zero; a1of1 p1)
   zero.a = p1.r;
   zero.r = m1.a;
 
-  prs {
+  prs * {
       ~Reset & (~_m1_r & ~zero.a & ~p1.a) -> zero.r+ 
         Reset | (_m1_r &  zero.a &  p1.a) -> zero.r-
   }
@@ -459,7 +459,7 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
   data.a = zero.a;
   data.r = m1.a;
 
-  prs {
+  prs * {
       ~Reset & (~_m1_r &  ~_zero_r & ~p1.a) -> data.r+ 
         Reset | (_m1_r &   _zero_r &  p1.a) -> data.r-
   }
@@ -487,7 +487,7 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
   
   m1.a = p1.r;
 
-  prs {
+  prs * {
       ~Reset & (~_m1_r &  ~_data_a & ~p1.a) -> p1.r+ 
         Reset | (_m1_r &   _data_a &  p1.a) -> p1.r-
   }
@@ -520,7 +520,7 @@ export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
 
   std::cells::NOR2X1 and1(_m1_r, _u, pause.a);
 
-  prs {
+  prs * {
       ~Reset & (~_m1_r & ~p1.r & ~p1.a) -> m1.a+ 
         Reset | (_m1_r &  p1.r &  p1.a) -> m1.a-
   }
@@ -535,7 +535,7 @@ export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
 
 export defproc elem_c_itb (a1of1 m1; a1of1 p1)
 {
-    prs {
+    prs * {
         ~Reset & (~m1.r & ~p1.a) -> p1.r+
          Reset | ( m1.r &  p1.a) -> p1.r-
     }
@@ -623,7 +623,7 @@ defproc selection_merge(a1of1 ci[N]; a1of1! p1)
 defproc c1 (bool ctrl, ka, a, out)
 {
     bool _out;
-    prs {
+    prs * {
         [after=0] a & ctrl -> _out-
         [after=0] ~ka & ~ctrl -> _out+
         [after=0] _out => out-
@@ -633,7 +633,7 @@ defproc c1 (bool ctrl, ka, a, out)
 defproc c2 (bool A, B, ack, out)
 {
     bool _out;
-    prs {
+    prs * {
         // ack -> _out-
         // ~ack & ~A & ~B -> _out+
         // _out => out-
@@ -655,7 +655,7 @@ defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka)
   
   bool ka;
 
-  prs {
+  prs * {
     // inverted Reset to initialize correctly
     Reset => _Reset-
     /* cross coupled nand gates, with kill tail NMOS */
@@ -724,7 +724,7 @@ defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N])
   
   bool _co_r;
   co[0].a = m1.a;
-  prs {
+  prs * {
      m1.r & gs[0] -> _co_r-
     ~m1.r         -> _co_r+
     _co_r => co[0].r-
@@ -777,7 +777,7 @@ defproc nds_split_stable (bool? gs[N]; a1of1? m1; a1of1 co[N])
   
   bool _co_r;
   co[0].a = m1.a;
-  prs {
+  prs * {
      m1.r & gs[0] -> _co_r-
     ~m1.r         -> _co_r+
     _co_r => co[0].r-
@@ -797,7 +797,7 @@ defproc nds_split_stable (bool? gs[N]; a1of1? m1; a1of1 co[N])
   nds[0].m1.r = r0;
 
   // evaluation trigger
-  prs {
+  prs * {
     ~m1.r -> _r0+
     m1.r & (|i : N : gs[i] ) -> _r0- 
     _r0 => r0-
@@ -1074,7 +1074,7 @@ defproc fblock_impl (ring_chan<LW> L; ring_chan<RW> R; bool ei[LW]; bool eo[RW];
   latch_x_0.din = L.d;
   latch_x_0.tx.a = L.a;
 
-  prs {
+  prs * {
     block_1.m1.a => block_1.m1.r-
   }
 
