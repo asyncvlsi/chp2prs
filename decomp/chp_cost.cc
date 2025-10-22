@@ -23,6 +23,97 @@
 #include "chp_cost.h"
 
 
+void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, std::string proc_name)
+{
+  fill_in_else_explicit(c);
+  FILE *ff = fopen(conf_file.c_str(), "w");
+  Assert (ff, "Could not open output file to write actsim configuration");
+  fprintf(ff, "begin sim\n");
+  fprintf(ff, "   begin chp\n");
+  fprintf(ff, "      int detailed_delay_annotation 1\n");
+  fprintf(ff, "      begin %s\n", proc_name.c_str());
+  fprintf(ff, "      real_table delays ");
+  _dump_actsim_conf (ff, c);
+  fflush (ff);
+  fprintf(ff, "\n      end");
+  fprintf(ff, "\n   end");
+  fprintf(ff, "\nend");
+  fprintf(ff, "\n");
+}
+
+void ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
+{
+  if (!c) return;
+  switch (c->type) {
+  case ACT_CHP_SKIP:
+  break;
+  case ACT_CHP_ASSIGN:
+      fprintf(cf, "%.2f ", assn_delay + capture_delay + expr_delay (c->u.assign.e, bitwidth(c->u.assign.id)) );
+  break;
+  case ACT_CHP_SEND:
+      fprintf(cf, "%.2f ", send_delay + expr_delay (c->u.comm.e, bitwidth(c->u.comm.chan)) );
+  break;
+  case ACT_CHP_RECV:
+      fprintf(cf, "%.2f ",  recv_delay + capture_delay );
+  break;
+
+  case ACT_CHP_COMMA: {
+      if (list_length(c->u.semi_comma.cmd)>1) {
+        fprintf(cf, "%.2f ", float(list_length(c->u.semi_comma.cmd))); // dummy val for now
+      }
+      for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+      {
+        _dump_actsim_conf (cf, (act_chp_lang_t *) list_value (li));
+      }
+  }
+  break;
+
+  case ACT_CHP_SEMI: {
+      for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+      {
+        _dump_actsim_conf (cf, (act_chp_lang_t *) list_value (li));
+      }
+  }
+  break;
+
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP: {
+    fprintf(cf, "%.2f ", 0.1); // dummy val for now
+    _dump_actsim_conf (cf, c->u.gc->s);
+    return;
+  }
+  break;
+
+  case ACT_CHP_SELECT_NONDET:
+  case ACT_CHP_SELECT: {
+      Assert (selection_way(c) < max_way, "Selection way beyond allowed range");
+      double max_del = 0;
+      act_chp_gc_t *gc = c->u.gc;
+      while (gc) {
+        double br_del = expr_delay (gc->g, 1) + capture_delay;
+        if (br_del > max_del) max_del = br_del;
+        gc = gc->next;
+      }
+      fprintf(cf, "%.2f ", max_del);
+      gc = c->u.gc;
+      while (gc) {
+        _dump_actsim_conf (cf, gc->s);
+        gc = gc->next;
+      }
+  }
+  break;
+
+  case ACT_CHP_FUNC:
+  fatal_error ("function");
+  break;
+  default:
+  fatal_error ("What?");
+  break;
+  }
+  return;
+}
+
+
 void ChpCost::add_procs (std::vector<act_chp_lang_t *> cs)
 {
     procs.insert( procs.end(), cs.begin(), cs.end() );

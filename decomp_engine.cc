@@ -26,6 +26,7 @@
 #include <act/chp/projection.h>
 #include <act/chp/pretty_print.h>
 #include <act/chp/multichan.h>
+#include <act/chp/chp_cost.h>
 
 #include <act/chp/chp-opt.h>
 #include <act/chp/static-tokens.h>
@@ -157,6 +158,10 @@ class Decomp : public ActSynthesize {
       // ----------------------------------------------------------------------
 
       _trim_nested_same_int (top_chp, p->CurScope());
+      ChpCost cc(p->CurScope());
+      // TODO : fix fullname
+      cc.dump_actsim_conf("decomp_sim.conf", top_chp, 
+        "decomp_" + std::string(p->getName()));
       act_chp_lang_t *l = top_chp;
       p->getlang()->getchp()->c = l;
 
