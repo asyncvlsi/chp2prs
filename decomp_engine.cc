@@ -158,10 +158,10 @@ class Decomp : public ActSynthesize {
       // ----------------------------------------------------------------------
 
       _trim_nested_same_int (top_chp, p->CurScope());
-      ChpCost cc(p->CurScope());
-      // TODO : fix fullname
-      cc.dump_actsim_conf("decomp_sim.conf", top_chp, 
-        "decomp_" + std::string(p->getName()));
+      
+      // ChpCost cc(p->CurScope());
+      // cc.dump_actsim_conf("decomp_sim.conf", top_chp, p);
+
       act_chp_lang_t *l = top_chp;
       p->getlang()->getchp()->c = l;
 

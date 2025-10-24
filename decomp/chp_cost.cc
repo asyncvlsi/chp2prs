@@ -23,83 +23,98 @@
 #include "chp_cost.h"
 
 
-void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, std::string proc_name)
+void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, Process *p)
 {
+  char buf[10240];
+  ActNamespace::Act()->msnprintfproc (buf, 10240, p);
+
   fill_in_else_explicit(c);
-  FILE *ff = fopen(conf_file.c_str(), "w");
+  FILE *ff = fopen(conf_file.c_str(), "a");
   Assert (ff, "Could not open output file to write actsim configuration");
   fprintf(ff, "begin sim\n");
   fprintf(ff, "   begin chp\n");
   fprintf(ff, "      int detailed_delay_annotation 1\n");
-  fprintf(ff, "      begin %s\n", proc_name.c_str());
-  fprintf(ff, "      real_table delays ");
+  fprintf(ff, "      begin decomp_%s<>\n", buf);
+  fprintf(ff, "      int_table delays ");
   _dump_actsim_conf (ff, c);
-  fflush (ff);
   fprintf(ff, "\n      end");
   fprintf(ff, "\n   end");
   fprintf(ff, "\nend");
   fprintf(ff, "\n");
+  fclose(ff);
 }
 
-void ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
+bool ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
 {
-  if (!c) return;
+  if (!c) return false;
   switch (c->type) {
   case ACT_CHP_SKIP:
+    return false;
   break;
   case ACT_CHP_ASSIGN:
-      fprintf(cf, "%.2f ", assn_delay + capture_delay + expr_delay (c->u.assign.e, bitwidth(c->u.assign.id)) );
+      fprintf(cf, "%d ", int(assn_delay + capture_delay + expr_delay(c->u.assign.e,bitwidth(c->u.assign.id))) );
+      return true;
   break;
   case ACT_CHP_SEND:
-      fprintf(cf, "%.2f ", send_delay + expr_delay (c->u.comm.e, bitwidth(c->u.comm.chan)) );
+      fprintf(cf, "%d ", int(send_delay + expr_delay(c->u.comm.e,bitwidth(c->u.comm.chan))) );
+      return true;
   break;
   case ACT_CHP_RECV:
-      fprintf(cf, "%.2f ",  recv_delay + capture_delay );
+      fprintf(cf, "%d ", int(recv_delay + capture_delay) );
+      return true;
   break;
 
   case ACT_CHP_COMMA: {
-      if (list_length(c->u.semi_comma.cmd)>1) {
-        fprintf(cf, "%.2f ", float(list_length(c->u.semi_comma.cmd))); // dummy val for now
-      }
-      for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
-      {
-        _dump_actsim_conf (cf, (act_chp_lang_t *) list_value (li));
-      }
+    bool exists = false;
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {
+      exists |= _dump_actsim_conf (cf, (act_chp_lang_t *) list_value (li));
+    }
+    if (list_length(c->u.semi_comma.cmd)>1 && exists) {
+      fprintf(cf, "%d ", int(list_length(c->u.semi_comma.cmd))); // dummy val for now
+    }
+    return exists;
   }
   break;
 
   case ACT_CHP_SEMI: {
-      for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
-      {
-        _dump_actsim_conf (cf, (act_chp_lang_t *) list_value (li));
-      }
+    bool exists = false;
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {
+      exists |= _dump_actsim_conf (cf, (act_chp_lang_t *) list_value (li));
+    }
+    return exists;
   }
   break;
 
-  case ACT_CHP_LOOP:
   case ACT_CHP_DOLOOP: {
-    fprintf(cf, "%.2f ", 0.1); // dummy val for now
     _dump_actsim_conf (cf, c->u.gc->s);
-    return;
+  } 
+  case ACT_CHP_LOOP: {
+    fprintf(cf, "%d ", 1); // dummy val for now
+    bool exists = _dump_actsim_conf (cf, c->u.gc->s);
+    return exists;
   }
   break;
 
   case ACT_CHP_SELECT_NONDET:
   case ACT_CHP_SELECT: {
-      Assert (selection_way(c) < max_way, "Selection way beyond allowed range");
-      double max_del = 0;
-      act_chp_gc_t *gc = c->u.gc;
-      while (gc) {
-        double br_del = expr_delay (gc->g, 1) + capture_delay;
-        if (br_del > max_del) max_del = br_del;
-        gc = gc->next;
-      }
-      fprintf(cf, "%.2f ", max_del);
-      gc = c->u.gc;
-      while (gc) {
-        _dump_actsim_conf (cf, gc->s);
-        gc = gc->next;
-      }
+    bool exists = false;
+    Assert (selection_way(c) < max_way, "Selection way beyond allowed range");
+    double max_del = 0;
+    act_chp_gc_t *gc = c->u.gc;
+    while (gc) {
+      double br_del = expr_delay (gc->g, 1) + capture_delay;
+      if (br_del > max_del) max_del = br_del;
+      gc = gc->next;
+    }
+    fprintf(cf, "%d ", int(max_del));
+    gc = c->u.gc;
+    while (gc) {
+      exists |= _dump_actsim_conf (cf, gc->s);
+      gc = gc->next;
+    }
+    return exists;
   }
   break;
 
@@ -110,7 +125,7 @@ void ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
   fatal_error ("What?");
   break;
   }
-  return;
+  return false;
 }
 
 
@@ -367,7 +382,6 @@ void ChpCost::_expr_collect_vars (Expr *e)
     break;
 
   case E_PROBE: {
-        fatal_error("no probes");
 
         // make dummy variable to stand in for probe
         InstType *it = TypeFactory::Factory()->NewInt (_s, Type::NONE, 0, const_expr(1));
