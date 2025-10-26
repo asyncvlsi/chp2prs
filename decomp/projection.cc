@@ -159,12 +159,14 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
-        HyperEdgeVec best_hs = {}; 
+        HyperEdgeSet best_hs = {}; 
         double itr_best_cycle = r1.ratio;
         t3 = high_resolution_clock::now();
         if (verbose) { 
+            int sz=0;
             fprintf(stdout, ", Hyperedge set : %zu", hhvec.size()); 
             for (const auto &hset : hhvec) {
+                sz++;
                 fprintf(stdout, "\nSet: {\n");
                 for (const auto &h : hset) {
                     fprintf(stdout, "%d : ", h.first.get_raw());
@@ -175,11 +177,11 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
                 }
                 fprintf(stdout, "}\n");
             } 
+            fprintf(stdout, "\n ---- end list, size: %d ---- \n", sz); 
         } 
         int n_wcc_orig = d_loc.get_wccs().size();
 
         for ( const auto &hset : hhvec ) {
-
             std::unordered_map<VarId, VarId> old_to_new = {};
             CopyLocMap clm = {};
             for ( const auto &h : hset ) {
@@ -207,7 +209,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
                 step2(g_tmp, d_tmp);
                 ChpTiming ct_tmp(g_tmp, d_tmp, s);
                 auto r_tmp = ct_tmp.get_maxcycle();
-                if (itr_best_cycle > r_tmp.ratio) {
+                if (itr_best_cycle - r_tmp.ratio > -0.1) {
                     best_hs = hset;
                     itr_best_cycle = r_tmp.ratio;
                 }
@@ -302,7 +304,7 @@ auto union_ =
 
 // Based on TG, look at the SCC-Graph, in a topological order
 // Try prefixes of the topo-sorted list
-HyperEdgesVec Projection::_get_candidates_segment(const ChpTiming &ct)
+HyperEdgeSetVec Projection::_get_candidates_segment(const ChpTiming &ct)
 {
     auto r = ct.get_maxcycle();
     auto all_sccs = ct.dfg->get_sccs_topo();
@@ -320,7 +322,7 @@ HyperEdgesVec Projection::_get_candidates_segment(const ChpTiming &ct)
                 all_sccs.end());
     auto relevant_sccs_topo = all_sccs;
 
-    HyperEdgesVec hs = {};
+    HyperEdgeSetVec hs = {};
     std::unordered_set<CompId> itr = {};
     // try scc prefixes
     for ( const auto &scc_id : relevant_sccs_topo ) {
@@ -345,13 +347,8 @@ HyperEdgesVec Projection::_get_candidates_segment(const ChpTiming &ct)
         for (const auto &[u,v] : all_outs_filter) {
             tmp[u].insert(v);
         }
-        HyperEdgeVec hh = {};
-        for (const auto &[u,v] : tmp ) {
-            hh.push_back({u,v});
-        }
-
-        if (!hh.empty())
-            hs.push_back(hh);
+        if (!tmp.empty())
+            hs.push_back(tmp);
 
         // TODO: this can be done better --------
         // auto ps = power_set(all_outs_filter);
@@ -360,12 +357,8 @@ HyperEdgesVec Projection::_get_candidates_segment(const ChpTiming &ct)
         //     for (const auto &[u,v] : x1) {
         //         tmp[u].insert(v);
         //     }
-        //     HyperEdgeVec hh = {};
-        //     for (const auto &[u,v] : tmp ) {
-        //         hh.push_back({u,v});
-        //     }
-        //     if (!hh.empty())
-        //         hs.push_back(hh);
+        //     if (!tmp.empty())
+        //         hs.push_back(tmp);
         // }
         // --------------------------------------
     }
