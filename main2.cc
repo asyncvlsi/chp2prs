@@ -283,6 +283,7 @@ int main(int argc, char **argv)
       c2p->setParam ("prefix", (void *)Strdup ("decomp"));
       c2p->setParam ("parallelism", parallelism);
       c2p->setParam ("project", project);
+      c2p->setParam ("run_time", run_time);
     }
     else {
       c2p->setParam ("engine", (void *) gen_sdt_engine);

@@ -30,22 +30,15 @@
 #include <act/chp/static-tokens.h>
 #include <act/chp/union-find.h>
 
-
-enum class NodeType { Basic, Copy, Guard, LoopGuard, LoopInPhi, LoopOutPhi, LoopLoopPhi, SelPhi, SelPhiInv, PllPhi, PllPhiInv };
-
 template <class G>
 class NodeIdT {
 public:
     NodeIdT() : id_(-1) {}
     explicit NodeIdT(int id) : id_(id) {}
 
-    static NodeIdT generate() {
-        return NodeIdT(counter_++); 
-    }
+    static NodeIdT generate() { return NodeIdT(counter_++); }
 
-    static void reset() {
-        counter_ = 0;
-    }
+    static void reset() { counter_ = 0; }
 
     int get_raw() const { return id_; }
 
@@ -110,161 +103,114 @@ template<> struct std::hash<Edge> {
     }
 };
 
+enum class NodeType { Null, Basic, 
+                      Guard, LoopGuard, 
+                      LoopInPhi, LoopOutPhi, LoopLoopPhi, 
+                      SelPhi, SelPhiInv, 
+                      PllPhi, PllPhiInv };
+
+typedef std::variant<
+    std::monostate,
+    Block::Variant_Select::PhiSplit, 
+    Block::Variant_Select::PhiMerge, 
+    Block::Variant_Par::PhiSplit,
+    Block::Variant_Par::PhiMerge,
+    std::pair<int, IRGuard>,
+    Block::Variant_DoLoop::InPhi,
+    Block::Variant_DoLoop::OutPhi,
+    Block::Variant_DoLoop::LoopPhi
+    > NodeData;
+
+template<class... Ts> struct Overload : Ts... { using Ts::operator()...; };
+template<class... Ts> Overload(Ts...) -> Overload<Ts...>;
+
+static NodeType get_node_type (const NodeData &d) {
+    return std::visit(Overload{
+        [](const std::monostate                  &x) { return NodeType::Basic;      },
+        [](const Block::Variant_Select::PhiSplit &x) { return NodeType::SelPhiInv;  },
+        [](const Block::Variant_Select::PhiMerge &x) { return NodeType::SelPhi;     },
+        [](const Block::Variant_Par::PhiSplit    &x) { return NodeType::PllPhiInv;  },
+        [](const Block::Variant_Par::PhiMerge    &x) { return NodeType::PllPhi;     },
+        [](const std::pair<int, IRGuard>         &x) { return NodeType::Guard;      },
+        [](const Block::Variant_DoLoop::InPhi    &x) { return NodeType::LoopInPhi;  },
+        [](const Block::Variant_DoLoop::OutPhi   &x) { return NodeType::LoopOutPhi; },
+        [](const Block::Variant_DoLoop::LoopPhi  &x) { return NodeType::LoopLoopPhi;}
+    }, d);
+}
+
 /*
     Class that implements a single node in the 
     data-dependence graph.
-    @param NodeType t Type of the node
+    @param t Type of the node
     @param b ChpGraph Block corresponding to the node  
-    @param phi_inv Selection-Phi-Inverse 
-    @param phi Selection-Phi
-    @param pll_phi_inv Parallel-Phi-Inverse
-    @param pll_phi Parallel-Phi
-    @param g Pair of guard expr and branch id in a selection
-    @param lip Loop-In-Phi
-    @param lop Loop-Out-Phi
-    @param llp Loop-Loop-Phi 
+    @param data Contains data for non-basic nodes
     @param id Unique node ID
-    @param set_n Set number for the node
-
 */
 class DFG_Node {
     public:
         NodeType t;
         Block *b;
-
-        // should be union
-            Block::Variant_Select::PhiSplit phi_inv;
-            Block::Variant_Select::PhiMerge phi;
-            Block::Variant_Par::PhiSplit    pll_phi_inv;
-            Block::Variant_Par::PhiMerge    pll_phi;
-            std::pair<int, IRGuard>         g;
-            Block::Variant_DoLoop::InPhi    lip;
-            Block::Variant_DoLoop::OutPhi   lop;
-            Block::Variant_DoLoop::LoopPhi  llp;
-        // should be union
+        NodeData data;
 
         NodeId id;
-        int set_n;
 
         explicit operator bool() const {
             return (id.get_raw()!=-1);
         }
 
-        DFG_Node (const DFG_Node &other) {
-            t = other.t;
-            b = other.b;
-            phi_inv = other.phi_inv;
-            phi = other.phi;
-            pll_phi_inv = other.pll_phi_inv;
-            pll_phi = other.pll_phi;
-            g = {other.g.first,IRGuard::deep_copy(other.g.second)};
-            lip = other.lip;
-            lop = other.lop;
-            llp = other.llp;
-            id = other.id;
-            set_n = other.set_n;
-        }
-
         // Do not use !!
         DFG_Node (NodeId idx) 
         {
-            t = NodeType::Copy;
+            t = NodeType::Null;
             b = NULL;
             id = NodeId(idx.get_raw());
-            set_n = -1;
         }
         DFG_Node (Block *_b) 
         {
             hassert (_b->type() == BlockType::Basic);
             t = NodeType::Basic;
             b = _b;
+            data = std::monostate{};
             id = NodeId::generate();
-            set_n = -1;
         }
-        DFG_Node (Block *_b, int br, IRGuard _g) 
-        {
-            hassert (_b->type() == BlockType::Select);
-            t = NodeType::Guard;
+        DFG_Node (Block *_b, NodeData d) {
             b = _b;
-            g = {br, IRGuard::deep_copy(_g)};
+            data = std::move(d);
+            t = get_node_type(data);
             id = NodeId::generate();
-            set_n = -1;
+        } 
+        const Block::Variant_Select::PhiSplit &phi_inv() const {
+            hassert (std::holds_alternative<Block::Variant_Select::PhiSplit>(data));
+            return std::get<Block::Variant_Select::PhiSplit>(data);
         }
-        // Note: Don't think this nodetype is necessary, but 
-        // leaving it in for now..
-        DFG_Node (Block *_b, const ChpExprSingleRootDag &_g) 
-        {
-            hassert (_b->type() == BlockType::DoLoop);
-            t = NodeType::LoopGuard;
-            b = _b;
-            g = {0, IRGuard::makeExpression(ChpExprSingleRootDag::deep_copy(_g))};
-            id = NodeId::generate();
-            set_n = -1;
+        const Block::Variant_Select::PhiMerge &phi() const {
+            hassert (std::holds_alternative<Block::Variant_Select::PhiMerge>(data));
+            return std::get<Block::Variant_Select::PhiMerge>(data);
         }
-        DFG_Node (Block *_b, const Block::Variant_Select::PhiSplit &x) 
-        {
-            hassert (_b->type() == BlockType::Select);
-            t = NodeType::SelPhiInv;
-            b = _b;
-            phi_inv = x;
-            id = NodeId::generate();
-            set_n = -1;
+        const Block::Variant_Par::PhiSplit &pll_phi_inv() const {
+            hassert (std::holds_alternative<Block::Variant_Par::PhiSplit>(data));
+            return std::get<Block::Variant_Par::PhiSplit>(data);
         }
-        DFG_Node (Block *_b, const Block::Variant_Select::PhiMerge &x) 
-        {
-            hassert (_b->type() == BlockType::Select);
-            t = NodeType::SelPhi;
-            b = _b;
-            phi = x;
-            id = NodeId::generate();
-            set_n = -1;
+        const Block::Variant_Par::PhiMerge &pll_phi() const {
+            hassert (std::holds_alternative<Block::Variant_Par::PhiMerge>(data));
+            return std::get<Block::Variant_Par::PhiMerge>(data);
         }
-        DFG_Node (Block *_b, const Block::Variant_Par::PhiSplit &x) 
-        {
-            hassert (_b->type() == BlockType::Par);
-            t = NodeType::PllPhiInv;
-            b = _b;
-            pll_phi_inv = x;
-            id = NodeId::generate();
-            set_n = -1;
+        const std::pair<int, IRGuard> &g() const {
+            hassert ((std::holds_alternative<std::pair<int, IRGuard>>(data)));
+            return std::get<std::pair<int, IRGuard>>(data);
         }
-        DFG_Node (Block *_b, const Block::Variant_Par::PhiMerge &x) 
-        {
-            hassert (_b->type() == BlockType::Par);
-            t = NodeType::PllPhi;
-            b = _b;
-            pll_phi = x;
-            id = NodeId::generate();
-            set_n = -1;
+        const Block::Variant_DoLoop::InPhi &lip() const {
+            hassert (std::holds_alternative<Block::Variant_DoLoop::InPhi>(data));
+            return std::get<Block::Variant_DoLoop::InPhi>(data);
         }
-        DFG_Node (Block *_b, const Block::Variant_DoLoop::InPhi &x) 
-        {
-            hassert (_b->type() == BlockType::DoLoop);
-            t = NodeType::LoopInPhi;
-            b = _b;
-            lip = x;
-            id = NodeId::generate();
-            set_n = -1;
+        const Block::Variant_DoLoop::OutPhi &lop() const {
+            hassert (std::holds_alternative<Block::Variant_DoLoop::OutPhi>(data));
+            return std::get<Block::Variant_DoLoop::OutPhi>(data);
         }
-        DFG_Node (Block *_b, const Block::Variant_DoLoop::OutPhi &x) 
-        {
-            hassert (_b->type() == BlockType::DoLoop);
-            t = NodeType::LoopOutPhi;
-            b = _b;
-            lop = x;
-            id = NodeId::generate();
-            set_n = -1;
+        const Block::Variant_DoLoop::LoopPhi &llp() const {
+            hassert (std::holds_alternative<Block::Variant_DoLoop::LoopPhi>(data));
+            return std::get<Block::Variant_DoLoop::LoopPhi>(data);
         }
-        DFG_Node (Block *_b, const Block::Variant_DoLoop::LoopPhi &x) 
-        {
-            hassert (_b->type() == BlockType::DoLoop);
-            t = NodeType::LoopLoopPhi;
-            b = _b;
-            llp = x;
-            id = NodeId::generate();
-            set_n = -1;
-        }
-
         /*
             Print the DFG Node
         */
@@ -282,13 +228,17 @@ class DFG_Node {
                 ss << "l";
             } 
             case NodeType::Guard: {
-                ss << "guard: " << g.first;
+                auto u_g = std::get_if<std::pair<int, IRGuard>>(&data);
+                hassert (u_g);
+                ss << "guard: " << (*u_g).first;
             }
             break;
             case NodeType::SelPhi: {
-                ss << strofid(phi.post_id) << " = phi(";
+                auto u_phi = std::get_if<Block::Variant_Select::PhiMerge>(&data);
+                hassert(u_phi);
+                ss << strofid((*u_phi).post_id) << " = phi(";
                 bool first = true;
-                for (const auto &id : phi.branch_ids) {
+                for (const auto &id : (*u_phi).branch_ids) {
                     if (!first) ss << ", ";
                     first = false;
                     ss << strofid(id);
@@ -299,16 +249,21 @@ class DFG_Node {
             case NodeType::SelPhiInv: {
                 bool first = true;
                 ss << "(";
-                for (const auto &id : phi_inv.branch_ids) {
+                auto u_phi_inv = std::get_if<Block::Variant_Select::PhiSplit>(&data);
+                hassert(u_phi_inv);
+                for (const auto &id : (*u_phi_inv).branch_ids) {
                     if (!first) ss << ", ";
                     ss << strofid(id);
                     first = false;
                 }
-                ss << ") = phi_inv(" << strofid(phi_inv.pre_id) <<")";
+                ss << ") = phi_inv(" << strofid((*u_phi_inv).pre_id) <<")";
             }
             break;
             case NodeType::LoopLoopPhi: {
-                ss << "(" << strofid(llp.post_id) << ", " << strofid(llp.bodyin_id) << ") = phiL(" << strofid(llp.pre_id) << ", " << strofid(llp.bodyout_id) << ")";
+                auto u_llp = std::get_if<Block::Variant_DoLoop::LoopPhi>(&data);
+                hassert(u_llp);
+                ss << "(" << strofid((*u_llp).post_id) << ", " << strofid((*u_llp).bodyin_id) 
+                    << ") = phiL(" << strofid((*u_llp).pre_id) << ", " << strofid((*u_llp).bodyout_id) << ")";
             }
             break;
             default:
@@ -329,7 +284,9 @@ using CompId = int;
     Class implementing the data-dependence graph.
     @param nodes Vector of DFG nodes
     @param adj Adjancency list encoding edges between DFG nodes
-    @param id Internal ID counter to enumerate nodes
+    @param sccs Map from `NodeId` to its strongly-connected component ID
+    @param sccs_toposorted SCC IDs in topological order
+    @param vardefmap Map from `VarId` to the `NodeId` where that var is defined 
 */
 class DFG {
     public:
@@ -368,7 +325,7 @@ class DFG {
             Add a given node to the DFG.
         */
         void add_node (DFG_Node n) {
-            nodes.push_back(std::make_unique<DFG_Node> (n));
+            nodes.push_back(std::make_unique<DFG_Node> (std::move(n)));
             adj[nodes.back()->id] = {};
             sccs_built = false;
         }
@@ -452,16 +409,6 @@ class DFG {
         }
 
         /*
-            Check if a node with the given Block* exists in the DFG.
-        */
-        bool contains (const Block *b) const {
-            for ( const auto &n1 : nodes ) {
-                if (b==(n1->b)) return true;
-            }
-            return false;
-        }
-
-        /*
             Find a given basic block in the DFG.
         */
         const DFG_Node &find (NodeId node_id) const {
@@ -492,8 +439,8 @@ class DFG {
             hassert (b->type()==BlockType::Par);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::PllPhiInv) 
-                    && (n1->pll_phi_inv.pre_id == ps.pre_id) && 
-                    (n1->pll_phi_inv.branch_ids == ps.branch_ids) ) 
+                    && (n1->pll_phi_inv().pre_id == ps.pre_id) && 
+                    (n1->pll_phi_inv().branch_ids == ps.branch_ids) ) 
                         return *n1;
             }
             return bot;
@@ -502,8 +449,8 @@ class DFG {
             hassert (b->type()==BlockType::Par);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::PllPhi) 
-                    && (n1->pll_phi.post_id == pm.post_id) && 
-                    (n1->pll_phi.branch_ids == pm.branch_ids) ) 
+                    && (n1->pll_phi().post_id == pm.post_id) && 
+                    (n1->pll_phi().branch_ids == pm.branch_ids) ) 
                         return *n1;
             }
             return bot;
@@ -512,8 +459,8 @@ class DFG {
             hassert (b->type()==BlockType::Select);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::SelPhiInv) 
-                    && (n1->phi_inv.pre_id == ps.pre_id) && 
-                    (n1->phi_inv.branch_ids == ps.branch_ids) ) 
+                    && (n1->phi_inv().pre_id == ps.pre_id) && 
+                    (n1->phi_inv().branch_ids == ps.branch_ids) ) 
                         return *n1;
             }
             return bot;
@@ -522,8 +469,8 @@ class DFG {
             hassert (b->type()==BlockType::Select);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::SelPhi) 
-                    && (n1->phi.post_id == pm.post_id) && 
-                    (n1->phi.branch_ids == pm.branch_ids) ) 
+                    && (n1->phi().post_id == pm.post_id) && 
+                    (n1->phi().branch_ids == pm.branch_ids) ) 
                         return *n1;
             }
             return bot;
@@ -532,7 +479,7 @@ class DFG {
             hassert (b->type()==BlockType::Select);
             for ( const auto &n1 : nodes ) {
                 if ( b==(n1->b) && (n1->t == NodeType::Guard) 
-                    && n1->g.first == g.first ) 
+                    && n1->g().first == g.first ) 
                         return *n1;
             }
             return bot;
@@ -544,7 +491,7 @@ class DFG {
         void print_adj (FILE *fp) const {
             fprintf (fp, "\n/* ------ adj list ------\n");
             for (auto x : adj) {
-                auto node = find(x.first);
+                const auto &node = find(x.first);
                 fprintf(fp, "\n %d (type: %d): (", x.first.get_raw(), int(node.t));
                 node.print(std::cout);
                 fprintf(fp, "): ");

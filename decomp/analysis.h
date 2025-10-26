@@ -69,12 +69,12 @@ class DecompAnalysis {
     public:
 
         DecompAnalysis (GraphWithChanNames &g_in, Scope *s_in)
-            {   
-                fp = stdout;
-                g = &g_in;
-                s = s_in;
-                decomp_info_map.clear();
-            } 
+        {   
+            fp = stdout;
+            g = &g_in;
+            s = s_in;
+            decomp_info_map.clear();
+        } 
 
         /*
             Call live-vars analysis in opt/

@@ -31,6 +31,9 @@
 #include <act/chp/chp-opt.h>
 #include <act/chp/static-tokens.h>
 
+#include <chrono>
+using namespace std::chrono;
+
 class Decomp : public ActSynthesize {
  public:
   Decomp (const char *prefix,
@@ -118,6 +121,8 @@ class Decomp : public ActSynthesize {
       top_chp->type = ACT_CHP_COMMA;
       top_chp->u.semi_comma.cmd = list_new();
 
+
+      auto t1 = high_resolution_clock::now();
       // necessary rewrites for ring synthesis --------------------------------
       MultiChan *mc = new MultiChan (g, p->CurScope());
       mc->process_multichans();
@@ -136,7 +141,8 @@ class Decomp : public ActSynthesize {
         }
       }
       // ----------------------------------------------------------------------
-      
+      auto t2 = high_resolution_clock::now();
+
       // projection/decomposition for slack elastic programs ------------------
       std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
       if (project) {
@@ -159,6 +165,18 @@ class Decomp : public ActSynthesize {
 
       _trim_nested_same_int (top_chp, p->CurScope());
       
+      auto t3 = high_resolution_clock::now();
+
+      auto d1 = duration_cast<microseconds>(t2 - t1);
+      auto d2 = duration_cast<microseconds>(t3 - t2);
+      int print_rt = dp->getIntParam ("run_time");
+      if (print_rt) {
+        fprintf(stdout, "// %s : ",p->getName());
+        fprintf(stdout, "\n// ----------- Process Runtimes ----------- ");
+        fprintf(stdout, "\n// Multichan + Loop Exc. : %-8lld microseconds", d1.count());
+        fprintf(stdout, "\n// Projection            : %-8lld microseconds", d2.count());
+        fprintf(stdout, "\n");
+      }
       // ChpCost cc(p->CurScope());
       // cc.dump_actsim_conf("decomp_sim.conf", top_chp, p);
 

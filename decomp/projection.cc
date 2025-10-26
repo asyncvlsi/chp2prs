@@ -473,7 +473,7 @@ bool Projection::_breakable (const DFG_Node &n)
 {
     std::unordered_set<NodeType> allowed = 
         {NodeType::Basic, NodeType::Guard, 
-            NodeType::Copy, NodeType::SelPhi, NodeType::PllPhi};
+            NodeType::SelPhi, NodeType::PllPhi};
     auto vars = get_defs(n);
     return (vars.size()==1 && bool(allowed.count(n.t)));
 }
@@ -947,41 +947,41 @@ std::vector<VarId> Projection::get_defs (const DFG_Node &node)
     }
     break;
     case NodeType::SelPhi: {
-        auto phi = node.phi;
+        auto phi = node.phi();
         ret.push_back(phi.post_id);
     }
     break;
     case NodeType::SelPhiInv: {
-        auto phi_inv = node.phi_inv;
+        auto phi_inv = node.phi_inv();
         for ( auto y : phi_inv.branch_ids ) {
             if (y) ret.push_back(*y);
         }
     }
     break;
     case NodeType::PllPhi: {
-        auto phi = node.pll_phi;
+        auto phi = node.pll_phi();
         ret.push_back(phi.post_id);
     }
     break;
     case NodeType::PllPhiInv: {
-        auto phi_inv = node.pll_phi_inv;
+        auto phi_inv = node.pll_phi_inv();
         for ( auto y : phi_inv.branch_ids ) {
             if (y) ret.push_back(*y);
         }
     }
     break;
     case NodeType::LoopInPhi: {
-        auto lip = node.lip;
+        auto lip = node.lip();
         ret.push_back(lip.bodyin_id);
     }
     break;
     case NodeType::LoopOutPhi: {
-        auto lop = node.lop;
+        auto lop = node.lop();
         ret.push_back(lop.post_id);
     }
     break;
     case NodeType::LoopLoopPhi: {
-        auto llp = node.llp;
+        auto llp = node.llp();
         ret.push_back(llp.bodyin_id);
         if (llp.post_id) {
             ret.push_back(*llp.post_id);
@@ -1018,45 +1018,47 @@ std::unordered_set<VarId> Projection::get_uses (const DFG_Node &node)
     }
     break;
     case NodeType::Guard: {
-        ret = getIdsUsedByExpr(node.g.second.u_e().e);
+        ret = getIdsUsedByExpr(node.g().second.u_e().e);
     }
+    break;
     case NodeType::LoopGuard: {
-        ret = getIdsUsedByExpr(node.g.second.u_e().e);
+        ret = getIdsUsedByExpr(node.g().second.u_e().e);
     }
+    break;
     case NodeType::SelPhi: {
-        auto phi = node.phi;
+        auto phi = node.phi();
         for ( auto x : phi.branch_ids )
             ret.insert(x);
     }
     break;
     case NodeType::SelPhiInv: {
-        auto phi_inv = node.phi_inv;
+        auto phi_inv = node.phi_inv();
         ret.insert(phi_inv.pre_id);
     }
     break;
     case NodeType::PllPhi: {
-        auto phi = node.pll_phi;
+        auto phi = node.pll_phi();
         for ( auto x : phi.branch_ids )
             if (x) ret.insert(*x);
     }
     break;
     case NodeType::PllPhiInv: {
-        auto phi_inv = node.pll_phi_inv;
+        auto phi_inv = node.pll_phi_inv();
         ret.insert(phi_inv.pre_id);
     }
     break;
     case NodeType::LoopInPhi: {
-        auto lip = node.lip;
+        auto lip = node.lip();
         ret.insert(lip.pre_id);
     }
     break;
     case NodeType::LoopOutPhi: {
-        auto lop = node.lop;
+        auto lop = node.lop();
         ret.insert(lop.bodyout_id);
     }
     break;
     case NodeType::LoopLoopPhi: {
-        auto llp = node.llp;
+        auto llp = node.llp();
         ret.insert(llp.bodyout_id);
         ret.insert(llp.pre_id);
     }
@@ -1086,8 +1088,8 @@ bool Projection::_check_guard_phi_inv_dependence (const DFG_Node &guard_node, co
 
     if (guard_node.b != phi_inv_node.b) return false;
 
-    auto br_ids = phi_inv_node.phi_inv.branch_ids;
-    int br = guard_node.g.first;
+    auto br_ids = phi_inv_node.phi_inv().branch_ids;
+    int br = guard_node.g().first;
     hassert (br < br_ids.size());
     auto br_id = (br_ids[br]);
     return (br_id) ? true : false; // this is just for my own sanity
@@ -1162,7 +1164,7 @@ void Projection::_build_graph_nodes (const Sequence &seq, DFG &d_in)
         // guard nodes
         int i=0;
         for ( auto &branch : curr->u_select().branches ) {
-            d_in.add_node(DFG_Node (curr, i, IRGuard::deep_copy(branch.g)));
+            d_in.add_node(DFG_Node (curr, std::make_pair(i, IRGuard::deep_copy(branch.g))));
             i++;
         }
         // branches
@@ -1189,7 +1191,8 @@ void Projection::_build_graph_nodes (const Sequence &seq, DFG &d_in)
         /*
             // Assuming top-level loop guard is always `true` 
         */
-        d_in.add_node(DFG_Node (curr, curr->u_doloop().guard));
+        d_in.add_node(DFG_Node (curr, std::make_pair(0,
+            IRGuard::makeExpression( ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard) ))) );
         for ( auto ophi : curr->u_doloop().out_phis ) {
             d_in.add_node(DFG_Node (curr, ophi));
         }
@@ -1337,7 +1340,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, DFG &d_in, Sequence 
             _insert_copies_v3 (gg, d_in, branch.seq, nwcc, root, inserted);
         }
         for (auto &merge : curr->u_select().merges) {
-            auto n = d_in.find(curr, merge);
+            const auto &n = d_in.find(curr, merge);
             auto vars = get_defs(n);
             if (root==0 && _heuristic3(d_in, n, nwcc)!=bot_id) {
                 _insert_hyperedge_copy (gg, d_in, {n.id,d_in.adj.at(n.id)}, merge.post_id, clm);
@@ -1412,7 +1415,7 @@ void Projection::_replace_use (GraphWithChanNames &gg, VarId oldvar, VarId newva
     case NodeType::Guard: {
         auto br = nn.b->u_select().branches.begin();
         for (int i=0; i<nn.b->u_select().branches.size();i++) {
-            if (i==nn.g.first) break;
+            if (i==nn.g().first) break;
             br++;
         }
         if (br->g.type()==IRGuardType::Expression) {
