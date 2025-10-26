@@ -31,12 +31,11 @@ static void _chp_pretty_print (FILE *, act_chp_lang_t *, int, int);
 void _fill_in_else_explicit (act_chp_lang_t *, Scope *);
 
 /*
-    Replace:
+    Recursively replace:
         int(int(val,x),y) 
     with 
         int(val,x)
-        
-    IFF x==y and val is a constant
+    IFF x==y
 */
 void _trim_nested_same_int (act_chp_lang_t *&, Scope *);
 

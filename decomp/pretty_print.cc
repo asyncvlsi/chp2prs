@@ -521,12 +521,16 @@ void _trim_nested_same_int (Expr *&e, Scope *s)
   break;
   case E_BUILTIN_INT: 
   UNARY_OP;
-  {
-    auto y = e->u.e.r->u.ival.v;
+  if (e->u.e.r) {
+    int y;
+    Assert (expr_is_a_const(e->u.e.r), "e what!");
+    Assert (act_expr_getconst_int (e->u.e.r, &y), "int val y extract failure");
     if (e->u.e.l->type == E_BUILTIN_INT) {
       Expr *ne = e->u.e.l;
-      if (ne->u.e.l->type == E_INT) {
-        auto x = ne->u.e.r->u.ival.v;
+      if (ne) {
+        int x;
+        Assert (expr_is_a_const(ne->u.e.r), "ne what!");
+        Assert (act_expr_getconst_int (ne->u.e.r, &x), "int val x extract failure");
         if (x==y) {
           e = ne;
         }
