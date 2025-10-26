@@ -45,12 +45,6 @@ class ChoppingBlock {
         }
 
         /*
-            Break the graph based on breakpoints
-            [DEPRECATED]
-        */
-        void chop_graph();
-
-        /*
             Convert nested loops into multiple parallel loops
         */
         void excise_internal_loops();
@@ -72,20 +66,6 @@ class ChoppingBlock {
         std::vector<Sequence> v_seqs;
         Scope *s;
         IdPool idpool;
-
-        void _chop_graph (Sequence seq, int root);
-
-        /*
-            Replace loop-carried dependencies with sends and 
-            receives at the start and end of a loop 
-
-        */
-        void _handle_ic_lcd (Sequence seq);
-        
-        /*
-            Helper function to handle loop-carries
-        */
-        void _handle_ic_lcd_helper (Block *doloop);
         
         /*
             Recursively extract loops
@@ -117,37 +97,6 @@ class ChoppingBlock {
         Block *_generate_send_to_be_sent_from (Block *bb);
 
         /*
-            Find next break_after point in current sequence.
-        */
-        Block *_find_next_break_after (Block *b);
-
-        /*
-            Find next break_before point in current sequence.
-        */
-        Block *_find_next_break_before (Block *b);
-
-        /*
-            Splice out blocks from b_start to b_end.
-            b_start included, b_end excluded.
-            Both must be part of the same sequence.
-        */
-        std::vector<Block *> _split_sequence_from_to(Block *b_start, Block *b_end);
-
-        /*
-            Splice out blocks from b_start to b_end.
-            b_start and b_end included.
-            Both must be part of the same sequence.
-        */
-        std::vector<Block *> _split_sequence_from_to_new(Block *b_start, Block *b);
-
-        /*
-            Splice out a set of blocks, emplace a send
-            at the end and construct a process from it.
-            Also return the tail-emplaced send
-        */
-        Block *_build_sequence(Block *b_start, Block *b_end, int type);
-
-        /*
             Return vector of assignment blocks that initialized 
             variables before the start of an excised loop.
         */
@@ -169,35 +118,6 @@ class ChoppingBlock {
             the right place, for a given send
         */
         int _splice_in_recv_before (Block *bb, Block *send, int type);
-
-        /*
-            Handle extraction of a selection block
-        */
-        Block *_process_selection (Block *sel, int n);
-
-        /*
-            Handle extraction of a parallel block
-        */
-        Block *_process_parallel (Block *sel, int n);
-
-        /*
-            Generate blocks for the control transmission, live-var
-            transmissions and merges after exiting a selection
-            *[C?live_in; { live_1 := live_in{0..i}, live_2 := live_in{i+1..j} ... };
-                [ G1 -> Ctrl!1 , Co1!live_out_1
-                []G2 -> Ctrl!2 , Co2!live_out_2
-                ..
-                []Gn -> Ctrl!n , Con!live_out_n
-                ]
-            ]
-        */
-        std::tuple<Block *, Block *, Block *> _generate_split_merge_and_seed_branches (Block *sel);
-
-        /*
-            Generate blocks for the live-var transmissions
-            for the start and end of a parallel block 
-        */
-        std::pair<Block *, Block *> _generate_pll_send_recv_and_seed_branches (Block *pll);
 
         /*
             Core loop excision logic. Essentially converts this:
