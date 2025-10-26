@@ -89,6 +89,7 @@ void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
 void Projection::project(Strategy ss)
 {
     bool printt = false;
+    DFG dfg1;
 
     // split multi-assignments into single
     split_assignments(g->graph);
@@ -143,20 +144,28 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
     std::vector<double> max_cycles_trace = {0.0}; // dummy val
     // ChpTiming xct(g_copy, d_loc, s); xct.export_dot("tg_orig.dot"); xct.print_result(stdout);
 
+    auto t1 = high_resolution_clock::now();
+    auto t2 = high_resolution_clock::now();
+    auto t3 = high_resolution_clock::now();
+    auto t4 = high_resolution_clock::now();
+    auto t5 = high_resolution_clock::now();
     do {
+        t1 = high_resolution_clock::now();
         ChpTiming ct(g_copy, d_loc, s);
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
+        t2 = high_resolution_clock::now();
         if (verbose) { fprintf(stdout, "\n// Latest   Cycle : %.2f", max_cycles_trace.back()); } 
         
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeVec best_hs = {}; 
         double itr_best_cycle = r1.ratio;
+        t3 = high_resolution_clock::now();
         if (verbose) { 
             fprintf(stdout, ", Hyperedge set : %zu", hhvec.size()); 
             for (const auto &hset : hhvec) {
-                fprintf(stdout, "\n");
+                fprintf(stdout, "\nSet: {\n");
                 for (const auto &h : hset) {
                     fprintf(stdout, "%d : ", h.first.get_raw());
                     for (const auto &out : h.second) { 
@@ -164,6 +173,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
                     }
                     fprintf(stdout, "\n");
                 }
+                fprintf(stdout, "}\n");
             } 
         } 
         int n_wcc_orig = d_loc.get_wccs().size();
@@ -232,12 +242,25 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
             }
         }
 
+        t4 = high_resolution_clock::now();
+
         _build_procs(g_copy, d_loc);
         auto [names, top_chp, nfc] = get_result();
         _fill_in_else_explicit (top_chp, s);
         g_copy = chp_graph_from_act (top_chp, s, 1);
         ChpOptimize::parallelizeStatements (g_copy.graph);
         step2(g_copy, d_loc);
+
+        t5 = high_resolution_clock::now();
+
+        if (verbose) {
+            fprintf(stdout, "\n --- Runtime --- \n");
+            fprintf(stdout, "t2 - t1 : %-8lld microseconds\n", duration_cast<microseconds>(t2 - t1).count());
+            fprintf(stdout, "t3 - t2 : %-8lld microseconds\n", duration_cast<microseconds>(t3 - t2).count());
+            fprintf(stdout, "t4 - t3 : %-8lld microseconds\n", duration_cast<microseconds>(t4 - t3).count());
+            fprintf(stdout, "t5 - t4 : %-8lld microseconds\n", duration_cast<microseconds>(t5 - t4).count());
+            fprintf(stdout, "\n --- ------- --- \n");
+        }
     
     } while ( abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01 );
 
@@ -291,6 +314,7 @@ HyperEdgesVec Projection::_get_candidates_segment(const ChpTiming &ct)
         }
     }
 
+    // only keep ones on the critical cycle
     all_sccs.erase( std::remove_if(all_sccs.begin(), all_sccs.end(),
                 [&](const CompId& val) { return relevant_sccs.count(val) == 0; }),
                 all_sccs.end());
@@ -326,6 +350,9 @@ HyperEdgesVec Projection::_get_candidates_segment(const ChpTiming &ct)
             hh.push_back({u,v});
         }
 
+        if (!hh.empty())
+            hs.push_back(hh);
+
         // TODO: this can be done better --------
         // auto ps = power_set(all_outs_filter);
         // for ( auto x1 : ps ) {
@@ -338,12 +365,9 @@ HyperEdgesVec Projection::_get_candidates_segment(const ChpTiming &ct)
         //         hh.push_back({u,v});
         //     }
         //     if (!hh.empty())
-        //     hs.push_back(hh);
+        //         hs.push_back(hh);
         // }
         // --------------------------------------
-
-        if (!hh.empty())
-            hs.push_back(hh);
     }
     return hs;
 }

@@ -28,8 +28,6 @@
 #include <act/chp/chp_timing.h>
 #include <act/chp/pretty_print.h>
 
-DFG dfg1;
-
 /*
     Projection Copy-Insertion Strategy
 */
@@ -49,7 +47,6 @@ class Projection : protected ChoppingBlock {
             : ChoppingBlock (g_in, s_in) 
             {
                 procs.clear();
-                dfg1.clear();
             }
         
         std::tuple<
