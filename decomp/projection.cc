@@ -144,24 +144,16 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
     std::vector<double> max_cycles_trace = {0.0}; // dummy val
     // ChpTiming xct(g_copy, d_loc, s); xct.export_dot("tg_orig.dot"); xct.print_result(stdout);
 
-    auto t1 = high_resolution_clock::now();
-    auto t2 = high_resolution_clock::now();
-    auto t3 = high_resolution_clock::now();
-    auto t4 = high_resolution_clock::now();
-    auto t5 = high_resolution_clock::now();
     do {
-        t1 = high_resolution_clock::now();
         ChpTiming ct(g_copy, d_loc, s);
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
-        t2 = high_resolution_clock::now();
         if (verbose) { fprintf(stdout, "\n// Latest   Cycle : %.2f", max_cycles_trace.back()); } 
         
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeSet best_hs = {}; 
         double itr_best_cycle = r1.ratio;
-        t3 = high_resolution_clock::now();
         if (verbose) { 
             int sz=0;
             fprintf(stdout, ", Hyperedge set : %zu", hhvec.size()); 
@@ -244,25 +236,12 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
             }
         }
 
-        t4 = high_resolution_clock::now();
-
         _build_procs(g_copy, d_loc);
         auto [names, top_chp, nfc] = get_result();
         _fill_in_else_explicit (top_chp, s);
         g_copy = chp_graph_from_act (top_chp, s, 1);
         ChpOptimize::parallelizeStatements (g_copy.graph);
         step2(g_copy, d_loc);
-
-        t5 = high_resolution_clock::now();
-
-        if (verbose) {
-            fprintf(stdout, "\n --- Runtime --- \n");
-            fprintf(stdout, "t2 - t1 : %-8lld microseconds\n", duration_cast<microseconds>(t2 - t1).count());
-            fprintf(stdout, "t3 - t2 : %-8lld microseconds\n", duration_cast<microseconds>(t3 - t2).count());
-            fprintf(stdout, "t4 - t3 : %-8lld microseconds\n", duration_cast<microseconds>(t4 - t3).count());
-            fprintf(stdout, "t5 - t4 : %-8lld microseconds\n", duration_cast<microseconds>(t5 - t4).count());
-            fprintf(stdout, "\n --- ------- --- \n");
-        }
     
     } while ( abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01 );
 
