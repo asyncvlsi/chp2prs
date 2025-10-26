@@ -29,6 +29,7 @@
 
 #include <act/chp/static-tokens.h>
 #include <act/chp/union-find.h>
+#include <variant>
 
 template <class G>
 class NodeIdT {

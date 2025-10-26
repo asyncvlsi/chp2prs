@@ -129,7 +129,6 @@ bool ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
   return false;
 }
 
-
 void ChpCost::add_procs (std::vector<act_chp_lang_t *> cs)
 {
     procs.insert( procs.end(), cs.begin(), cs.end() );
