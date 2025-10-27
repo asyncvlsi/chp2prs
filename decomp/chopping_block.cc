@@ -138,30 +138,30 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
         return NULL;
 
     hassert (vmap.count(bb));
-    decomp_info_t *di = (vmap.find(bb))->second;
-    di->live_in_vec = std::vector<VarId> {di->live_in_vars.begin(), di->live_in_vars.end()};
+    decomp_info_t di = (vmap.find(bb))->second;
+    di.live_in_vec = std::vector<VarId> {di.live_in_vars.begin(), di.live_in_vars.end()};
 
-    if (di->total_bitwidth_in == 0)
+    if (di.total_bitwidth_in == 0)
     {
         return NULL;
     }
 
-    ChanId chan_id = g->graph.id_pool().makeUniqueChan(di->total_bitwidth_in, false);
+    ChanId chan_id = g->graph.id_pool().makeUniqueChan(di.total_bitwidth_in, false);
     var_to_actvar vtoa(s, g->graph.id_pool());
     ActId *id = vtoa.chanMap(chan_id);
     g->name_from_chan.insert({chan_id, id});
 
-    if (di->live_in_vars.size() == 1)
+    if (di.live_in_vars.size() == 1)
     {
-        VarId var_id = *di->live_in_vars.begin();
+        VarId var_id = *di.live_in_vars.begin();
         Block *send =
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
-                chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di->total_bitwidth_in))));
+                chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di.total_bitwidth_in))));
         
 
-        decomp_info_t *di_new = _deepcopy_decomp_info(di);
-        di_new->break_after = false;
-        di_new->break_before = false;
+        decomp_info_t di_new = _deepcopy_decomp_info(di);
+        di_new.break_after = false;
+        di_new.break_before = false;
         vmap.insert({send, di_new});
         
         return send;
@@ -169,9 +169,9 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
 
     ChpExprSingleRootDag conc_vars;
 
-    for ( auto var : di->live_in_vars )
+    for ( auto var : di.live_in_vars )
     {
-        if (var == *di->live_in_vars.begin())
+        if (var == *di.live_in_vars.begin())
         {
             conc_vars = ChpExprSingleRootDag::makeVariableAccess(var, g->graph.id_pool().getBitwidth(var));
         }
@@ -188,9 +188,9 @@ Block *ChoppingBlock::_generate_send_to_be_recvd_by(Block *bb)
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
                 chan_id, std::move(conc_vars))));
 
-    decomp_info_t *di_new = _deepcopy_decomp_info(di);
-    di_new->break_after = false;
-    di_new->break_before = false;
+    decomp_info_t di_new = _deepcopy_decomp_info(di);
+    di_new.break_after = false;
+    di_new.break_before = false;
     vmap.insert({send, di_new});
     return send;
 }
@@ -207,29 +207,29 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
     }
 
     hassert (vmap.count(bb));
-    decomp_info_t *di = (vmap.find(bb))->second;
-    di->live_out_vec = std::vector<VarId> {di->live_out_vars.begin(), di->live_out_vars.end()};
+    decomp_info_t di = (vmap.find(bb))->second;
+    di.live_out_vec = std::vector<VarId> {di.live_out_vars.begin(), di.live_out_vars.end()};
 
-    if (di->total_bitwidth_out == 0)
+    if (di.total_bitwidth_out == 0)
     {
         return NULL;
     }
 
-    ChanId chan_id = g->graph.id_pool().makeUniqueChan(di->total_bitwidth_out, false);
+    ChanId chan_id = g->graph.id_pool().makeUniqueChan(di.total_bitwidth_out, false);
     var_to_actvar vtoa(s, g->graph.id_pool());
     ActId *id = vtoa.chanMap(chan_id);
     g->name_from_chan.insert({chan_id, id});
 
-    if (di->live_out_vars.size() == 1)
+    if (di.live_out_vars.size() == 1)
     {
-        VarId var_id = *di->live_out_vars.begin();
+        VarId var_id = *di.live_out_vars.begin();
         Block *send =
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
-                chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di->total_bitwidth_out))));
+                chan_id, ChpExprSingleRootDag::makeVariableAccess(var_id, di.total_bitwidth_out))));
 
-        decomp_info_t *di_new = _deepcopy_decomp_info(di);
-        di_new->break_after = false;
-        di_new->break_before = false;
+        decomp_info_t di_new = _deepcopy_decomp_info(di);
+        di_new.break_after = false;
+        di_new.break_before = false;
         vmap.insert({send, di_new});
         
         return send;
@@ -237,9 +237,9 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
 
     ChpExprSingleRootDag conc_vars;
 
-    for ( auto var : di->live_out_vars )
+    for ( auto var : di.live_out_vars )
     {
-        if (var == *di->live_out_vars.begin())
+        if (var == *di.live_out_vars.begin())
         {
             conc_vars = ChpExprSingleRootDag::makeVariableAccess(var, g->graph.id_pool().getBitwidth(var));
         }
@@ -256,9 +256,9 @@ Block *ChoppingBlock::_generate_send_to_be_sent_from(Block *bb)
             g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
                 chan_id, std::move(conc_vars))));
 
-    decomp_info_t *di_new = _deepcopy_decomp_info(di);
-    di_new->break_after = false;
-    di_new->break_before = false;
+    decomp_info_t di_new = _deepcopy_decomp_info(di);
+    di_new.break_after = false;
+    di_new.break_before = false;
     vmap.insert({send, di_new});
 
     // fprintf (stdout, "\nsize n\n");
@@ -524,14 +524,14 @@ std::vector<Block *> ChoppingBlock::_initialize_ics(Block *curr)
     std::vector<Block *> v_inits;
     hassert (vmap.count(curr));
     hassert (curr->type() == BlockType::DoLoop);
-    decomp_info_t *di = (vmap.find(curr))->second;
+    decomp_info_t di = (vmap.find(curr))->second;
     
-    if (di->live_in_vars.size() == 0)
+    if (di.live_in_vars.size() == 0)
     {
         return {};
     }
 
-    for ( auto var : di->live_in_vars )
+    for ( auto var : di.live_in_vars )
     {
         Block *init_v = g->graph.blockAllocator().newBlock(
         Block::makeBasicBlock(Statement::makeAssignment(var,ChpExprSingleRootDag::makeConstant(BigInt(0),1))));
@@ -563,19 +563,19 @@ int ChoppingBlock::_splice_in_recv_before(Block *bb, Block *send, int type)
 std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block *send, int type)
 {
     hassert (vmap.count(send));
-    decomp_info_t *di = (vmap.find(send))->second;
+    decomp_info_t di = (vmap.find(send))->second;
 
     // std::unordered_set<VarId> vars;
     std::vector<VarId> vars;
     vars.clear();
     int bitwidth;
     if (type==LIVE_IN) {
-        vars = di->live_in_vec;
-        bitwidth = di->total_bitwidth_in;
+        vars = di.live_in_vec;
+        bitwidth = di.total_bitwidth_in;
     }
     else {
-        vars = di->live_out_vec;
-        bitwidth = di->total_bitwidth_out;
+        vars = di.live_out_vec;
+        bitwidth = di.total_bitwidth_out;
     }
 
     if (vars.size() == 0)
@@ -593,9 +593,9 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
         Block *receive = g->graph.blockAllocator().newBlock(
                 Block::makeBasicBlock(Statement::makeReceive(chan_id, ovid)));
         // test
-        decomp_info_t *di_new = _deepcopy_decomp_info(di);
-        di_new->break_after = false;
-        di_new->break_before = false;
+        decomp_info_t di_new = _deepcopy_decomp_info(di);
+        di_new.break_after = false;
+        di_new.break_before = false;
         vmap.insert({receive, di_new});
         // test
 
@@ -609,9 +609,9 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
             Block::makeBasicBlock(Statement::makeReceive(chan_id, ovid)));
     
     // test
-    decomp_info_t *di_new = _deepcopy_decomp_info(di);
-    di_new->break_after = false;
-    di_new->break_before = false;
+    decomp_info_t di_new = _deepcopy_decomp_info(di);
+    di_new.break_after = false;
+    di_new.break_before = false;
     vmap.insert({receive, di_new});
     // test
 

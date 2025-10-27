@@ -62,7 +62,7 @@ class ChoppingBlock {
     protected:
 
         GraphWithChanNames *g;
-        std::unordered_map<const Block *, decomp_info_t *> vmap;
+        std::unordered_map<const Block *, decomp_info_t> vmap;
         std::vector<Sequence> v_seqs;
         Scope *s;
         IdPool idpool;

@@ -44,18 +44,18 @@ typedef struct decomp_info {
     bool break_after;
 } decomp_info_t;
 
-static decomp_info_t *_deepcopy_decomp_info(decomp_info_t *di)
+static decomp_info_t _deepcopy_decomp_info(decomp_info_t di)
 {
-    decomp_info_t *di_new;
-    di_new = new decomp_info_t;
-    di_new->live_in_vars = di->live_in_vars;
-    di_new->live_in_vec = di->live_in_vec;
-    di_new->live_out_vars = di->live_out_vars;
-    di_new->live_out_vec = di->live_out_vec;
-    di_new->total_bitwidth_in = di->total_bitwidth_in;
-    di_new->total_bitwidth_out = di->total_bitwidth_out;
-    di_new->break_before = di->break_before;
-    di_new->break_after = di->break_after;
+    decomp_info_t di_new;
+    // di_new = new decomp_info_t;
+    di_new.live_in_vars = di.live_in_vars;
+    di_new.live_in_vec = di.live_in_vec;
+    di_new.live_out_vars = di.live_out_vars;
+    di_new.live_out_vec = di.live_out_vec;
+    di_new.total_bitwidth_in = di.total_bitwidth_in;
+    di_new.total_bitwidth_out = di.total_bitwidth_out;
+    di_new.break_before = di.break_before;
+    di_new.break_after = di.break_after;
     return di_new;
 }
 
@@ -88,7 +88,7 @@ class DecompAnalysis {
         /*
             Returns map from block to info about block
         */
-        std::unordered_map<const Block *, decomp_info_t *> get_decomp_info_map ();
+        std::unordered_map<const Block *, decomp_info_t> get_decomp_info_map ();
     
     protected: 
 
@@ -99,7 +99,7 @@ class DecompAnalysis {
         /*
             Map from a block to info about that block
         */
-        std::unordered_map<const Block *, decomp_info_t *> decomp_info_map;
+        std::unordered_map<const Block *, decomp_info_t> decomp_info_map;
 
         /*
             Populate the map based on information from the 
@@ -120,7 +120,7 @@ class DecompAnalysis {
         void _print_decomp_info (Sequence seq,  int root);
 
         // print a decomp_info_t object
-        void _print_decomp_info (decomp_info *di);
+        void _print_decomp_info (const decomp_info &di);
 };
 
 #endif
