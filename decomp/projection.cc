@@ -241,6 +241,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         auto [names, top_chp, nfc] = get_result();
         _fill_in_else_explicit (top_chp, s);
         g_copy = chp_graph_from_act (top_chp, s, 1);
+        delete top_chp;
         ChpOptimize::parallelizeStatements (g_copy.graph);
         step2(g_copy, d_loc);
     

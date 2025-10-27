@@ -153,13 +153,6 @@ class ChpTiming : public ChpCost {
             run_maxcycle();
         }
 
-        ~ChpTiming () {
-            if (eeo) {
-                eeo->~ExprCache();
-                eeo = NULL;
-            }
-        }
-
         const GraphWithChanNames *g;
         const DFG *dfg;
         std::unordered_map<TNodeId, std::vector<const DFG_Node *>> nmap;

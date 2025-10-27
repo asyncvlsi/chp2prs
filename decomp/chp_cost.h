@@ -25,16 +25,17 @@
 
 #include <act/chp/chopping_block.h>
 #include <act/expr_cache.h>
+#include <memory>
 
 class ChpCost {
     public:
 
         ChpCost (Scope *s)
+        : eeo (std::make_unique<ExprCache> ("abc", bd, false, ""))
         {
             _s = s;
             procs = {};
             _expr_id = 0;
-            eeo = new ExprCache("abc", bd, false, "");
             Assert ((eeo), "Could not create mapper");
 
             config_set_int("expropt.verbose", 0);
@@ -56,14 +57,6 @@ class ChpCost {
             double *tmp2 = config_get_table_real("synth.ring.bundled.or_delays");
             sel_delays = std::vector<double> (tmp,tmp+sel_sz);
             or_delays = std::vector<double> (tmp2,tmp2+sel_sz);
-        }
-
-        ~ChpCost ()
-        {
-            if (eeo) {
-                eeo->~ExprCache();
-                eeo = NULL;
-            }
         }
 
         void dump_actsim_conf(std::string, act_chp_lang_t *, Process *);
@@ -93,7 +86,7 @@ class ChpCost {
         Scope *_s;
 
         // mapper object
-        ExprCache *eeo;
+        std::unique_ptr<ExprCache> eeo;
 
         int _expr_id;
         
