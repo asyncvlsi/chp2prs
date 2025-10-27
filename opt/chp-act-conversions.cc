@@ -757,7 +757,7 @@ std::unordered_map<VarId, VarId> &vv_in
 )
 {
   GraphWithChanNames ret;
-  cc.clear();
+  cc.clear(); // fix these static guys - need for multithreading
   vv.clear();
   ret.graph.m_seq = deep_copy_seq (g.graph.m_seq, ret.graph, g.graph);
   for ( const auto &x : g.name_from_chan ) {

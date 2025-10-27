@@ -154,7 +154,7 @@ class Decomp : public ActSynthesize {
           auto gnew = chp_graph_from_act (top_chp, p->CurScope(), 1);
           Projection pr2 = Projection (gnew, p->CurScope());
           pr2.project(ss);
-          auto [names2, top_chp2, nfc2] = pr2.get_result();
+          auto [names2, top_chp2, nfc2] = pr2.get_final_result();
           for ( auto x : names2 ) { newnames.insert(x); }
           for ( auto x : nfc2 ) { nfc.push_back(x); }
 

@@ -53,7 +53,13 @@ class Projection : protected ChoppingBlock {
             std::unordered_set<ActId *>, 
             act_chp_lang_t *,
             std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>>
-            > get_result ();
+            > get_final_result ();
+        
+        std::tuple<
+            std::unordered_set<ActId *>, 
+            act_chp_lang_t *,
+            std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>>
+            > get_result (std::vector<act_chp_lang_t *>);
 
         /*
             Compute the projected processes
@@ -88,7 +94,7 @@ class Projection : protected ChoppingBlock {
         /*
             Construct CHP process from DFG
         */
-        void _build_procs (const GraphWithChanNames &, DFG &d_in);
+        std::vector<act_chp_lang_t *> _build_procs (const GraphWithChanNames &, DFG &d_in);
         /*
             Construct DFG from ChpGraph
         */
@@ -128,6 +134,12 @@ class Projection : protected ChoppingBlock {
         */
         void _insert_copies_v7 (GraphWithChanNames &, DFG &);
         void _insert_copies_v7_multithreaded (GraphWithChanNames &, DFG &);
+        
+        using ThreadResult = std::tuple<int, HyperEdgeSet, double>;
+
+        ThreadResult _worker_thread (HyperEdgeSet, const GraphWithChanNames &, const Scope *, 
+                            double, int);
+
         HyperEdgeSetVec _get_candidates_segment (const ChpTiming &);
         HyperEdgesVec _get_candidates_all (const ChpTiming &);
         HyperEdgesVec _get_candidates_bisect (const ChpTiming &, double, double);
