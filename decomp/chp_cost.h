@@ -31,21 +31,18 @@ class ChpCost {
     public:
 
         ChpCost (Scope *s)
-        : eeo (std::make_unique<ExprCache> ("abc", bd, false, ""))
+        : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
+        _s (s), procs({}), _expr_id(0),
+        send_delay (config_get_real("synth.ring.bundled.send_delay")),
+        recv_delay (config_get_real("synth.ring.bundled.recv_delay")),
+        assn_delay (config_get_real("synth.ring.bundled.assn_delay")),
+        capture_delay (config_get_real("synth.ring.bundled.capture_delay"))
         {
-            _s = s;
-            procs = {};
-            _expr_id = 0;
             Assert ((eeo), "Could not create mapper");
 
             config_set_int("expropt.verbose", 0);
             config_set_int("expropt.abc_use_constraints", 1);
             config_set_int("expropt.vectorize_all_ports", 1);
-            
-            send_delay = config_get_real("synth.ring.bundled.send_delay");
-            recv_delay = config_get_real("synth.ring.bundled.recv_delay");
-            assn_delay = config_get_real("synth.ring.bundled.assn_delay");
-            capture_delay = config_get_real("synth.ring.bundled.capture_delay");
 
             int sel_sz = config_get_table_size("synth.ring.bundled.sel_delays");
             int or_sz = config_get_table_size("synth.ring.bundled.or_delays");
@@ -79,6 +76,7 @@ class ChpCost {
 
         void fill_in_else_explicit (act_chp_lang_t *);
 
+    private:
         // Expression handling for Expropt
         iHashtable *_inexprmap;
         iHashtable *_inwidthmap;

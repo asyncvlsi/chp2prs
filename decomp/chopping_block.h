@@ -35,10 +35,8 @@ class ChoppingBlock {
     public:
 
         ChoppingBlock (GraphWithChanNames &g_in, Scope *s_in)
+        : g(&g_in), vmap(), v_seqs(), s(s_in), idpool (g->graph.id_pool())
         {
-            g = &g_in;
-            s = s_in;
-            idpool = g->graph.id_pool();
             DecompAnalysis dca = DecompAnalysis (*g, s);
             dca.analyze();
             vmap = dca.get_decomp_info_map();

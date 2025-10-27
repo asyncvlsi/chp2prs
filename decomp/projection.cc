@@ -647,7 +647,6 @@ void Projection::_uninsert_hyperedge_copy (GraphWithChanNames &gg, const DFG &d_
     HyperEdge h, VarId copyvar, VarId origvar, CopyLocMap &clm)
 {
     if (copyvar==origvar) return;
-    auto b_from = d_in.find(h.first).b;
 
     Assert (clm.count(copyvar), "what");
     auto dist_assn = clm.at(copyvar);

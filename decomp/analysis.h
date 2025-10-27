@@ -69,12 +69,8 @@ class DecompAnalysis {
     public:
 
         DecompAnalysis (GraphWithChanNames &g_in, Scope *s_in)
-        {   
-            fp = stdout;
-            g = &g_in;
-            s = s_in;
-            decomp_info_map.clear();
-        } 
+        : fp (stdout), g(&g_in), s(s_in), decomp_info_map({})
+        {} 
 
         /*
             Call live-vars analysis in opt/
@@ -113,8 +109,6 @@ class DecompAnalysis {
             Compute total bitwidth of set of vars
         */
         int _compute_total_bits (std::unordered_set<VarId> vars);
-
-        unsigned int total_bits;
 
         // print decomp_info_t's for the whole graph
         void _print_decomp_info (Sequence seq,  int root);

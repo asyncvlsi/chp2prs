@@ -165,7 +165,7 @@ class DFG_Node {
         DFG_Node (NodeId idx) 
         {
             t = NodeType::Null;
-            b = NULL;
+            b = nullptr;
             id = NodeId(idx.get_raw());
         }
         DFG_Node (Block *_b) 
@@ -279,7 +279,7 @@ class DFG_Node {
     bottom/null element for this class.
     idk what the idiomatic C/C++ way to do this is.
 */
-static DFG_Node bot(NodeId(-1));
+static const DFG_Node bot(NodeId(-1));
 
 // TODO: Wrap CompId in its own class for type-safety
 using CompId = int;
