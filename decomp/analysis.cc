@@ -25,7 +25,7 @@
 using namespace ChpOptimize;
 
 // TODO: fix this name generation, need to get the original mapped names
-std::string str_of_id(OptionalVarId id) {
+std::string str_of_id(const OptionalVarId &id) {
     return id ? "_va" + std::to_string(((*id).m_id)-1) : "vNULL";
 }
 
@@ -90,19 +90,18 @@ void DecompAnalysis::_print_decomp_info (const decomp_info_t &di)
     fprintf(fp, "\n-----------");
     fprintf(fp, "\nnecessary input transmissions");
     fprintf(fp, "\nif ring is broken just before here:\n");
-    std::unordered_set<VarId>::iterator itr;
 
-    for (itr = di.live_in_vars.begin(); itr != di.live_in_vars.end(); itr++)
+    for (const auto &v : di.live_in_vars)
     {
-        fprintf(fp, "%s, ", (str_of_id(*itr)).c_str());
+        fprintf(fp, "%s, ", (str_of_id(v)).c_str());
     }	     
 
     fprintf(fp, "\nnecessary output transmissions");
     fprintf(fp, "\nif ring is broken just after here:\n");
 
-    for (itr = di.live_out_vars.begin(); itr != di.live_out_vars.end(); itr++)
+    for (const auto &v : di.live_out_vars)
     {
-        fprintf(fp, "%s, ", (str_of_id(*itr)).c_str());
+        fprintf(fp, "%s, ", (str_of_id(v)).c_str());
     }	     
     fprintf(fp, "\n-----------");
     fprintf(fp, "\ntotal bits live_in: %d", di.total_bitwidth_in);
