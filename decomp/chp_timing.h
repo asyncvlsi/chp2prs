@@ -30,37 +30,38 @@
 
 
 struct G_TG {};
-using TNodeId = NodeIdT<G_TG>;
+using TimingNodeId = NodeIdT<G_TG>;
+using TimingNodeIdGenerator = NodeIdGeneratorT<G_TG>;
 
-template <> struct std::hash<TNodeId> {
-    size_t operator()(const TNodeId &obj) const {
+template <> struct std::hash<TimingNodeId> {
+    size_t operator()(const TimingNodeId &obj) const {
         return hash<int>()(obj.get_raw());
     }
 };
 
 class TimingNode {
     public:
-        TimingNode (int p) {
-            id = TNodeId::generate();
+        TimingNode (int p, TimingNodeId _id) {
+            id = _id;
             label = "<None>";
             pid = p;
         }
         
-        TimingNode (int p, std::string s) {
-            id = TNodeId::generate();
+        TimingNode (int p, std::string s, TimingNodeId _id) {
+            id = _id;
             label = s;
             pid = p;
         }
         
-        TNodeId id;
+        TimingNodeId id;
         std::string label;
         int pid;
 };
 
 class TimingEdge {
     public:
-        TNodeId from;
-        TNodeId to;
+        TimingNodeId from;
+        TimingNodeId to;
         double weight;
         bool ticked;
 };
@@ -70,26 +71,29 @@ class TimingGraph {
         TimingGraph() {
             nodes.clear();
             edges.clear();
+            idgen.reset();
         }
 
-        TNodeId add_node(int p) {
-            nodes.emplace_back(TimingNode(p));
+        TimingNodeId gen_id () { return idgen.generate(); }
+
+        TimingNodeId add_node(int p) {
+            nodes.emplace_back(TimingNode(p, gen_id()));
             return nodes.back().id;
         }
 
-        TNodeId add_node(int p, std::string s) {
-            nodes.push_back(TimingNode(p,s));
+        TimingNodeId add_node(int p, std::string s) {
+            nodes.push_back(TimingNode(p,s, gen_id()));
             return nodes.back().id;
         }
 
-        void add_edge(TNodeId u, TNodeId v, double w, bool tick) {
+        void add_edge(TimingNodeId u, TimingNodeId v, double w, bool tick) {
             edges.push_back({u,v,w,tick});
         }
 
         const std::vector<TimingNode>& get_nodes() const { return nodes; }
         const std::vector<TimingEdge>& get_edges() const { return edges; }
 
-        const TimingNode &find (const TNodeId id) const {
+        const TimingNode &find (const TimingNodeId id) const {
             for ( const auto &n : nodes ) {
                 if (n.id==id)
                     return n;
@@ -98,7 +102,7 @@ class TimingGraph {
             return nodes[0];
         }
 
-        TimingEdge find_edge(const TNodeId& from, const TNodeId& to) {
+        TimingEdge find_edge(const TimingNodeId& from, const TimingNodeId& to) {
             auto it = std::find_if(edges.begin(), edges.end(),
                     [&](const TimingEdge& e) 
                     { return e.from == from && e.to == to; });
@@ -109,6 +113,7 @@ class TimingGraph {
     private:
         std::vector<TimingNode> nodes;
         std::vector<TimingEdge> edges;
+        TimingNodeIdGenerator idgen;
 };
 
 // ---------- Internal Use Only ----------
@@ -131,12 +136,12 @@ struct RawResult {
 
 struct TimingResult {
     double ratio;  
-    std::vector<TNodeId> cycle; 
+    std::vector<TimingNodeId> cycle; 
     std::vector<TimingEdge> edges;
     int n_ticks;
 };
 
-typedef std::unordered_map<ChanId, std::pair<TNodeId, TNodeId>> chan_to_nodes;
+typedef std::unordered_map<ChanId, std::pair<TimingNodeId, TimingNodeId>> chan_to_nodes;
 
 class ChpTiming : public ChpCost {
     public:
@@ -155,11 +160,11 @@ class ChpTiming : public ChpCost {
 
         const GraphWithChanNames *g;
         const DFG *dfg;
-        std::unordered_map<TNodeId, std::vector<const DFG_Node *>> nmap;
+        std::unordered_map<TimingNodeId, std::vector<const DFG_Node *>> nmap;
 
         void construct_tg();
         void _construct_tg(Sequence, var_to_actvar&, chan_to_nodes&, chan_to_nodes&);
-        TNodeId _construct_subtg(Sequence, TNodeId, var_to_actvar&, 
+        TimingNodeId _construct_subtg(Sequence, TimingNodeId, var_to_actvar&, 
                             chan_to_nodes&, chan_to_nodes&, int);
 
         void export_dot(std::string);
@@ -174,8 +179,8 @@ class ChpTiming : public ChpCost {
 
         int pctr; // process counter - for prettier dot graph
 
-        std::unordered_map<TNodeId,int> id_to_idx;
-        std::unordered_map<int,TNodeId> idx_to_id;
+        std::unordered_map<TimingNodeId,int> id_to_idx;
+        std::unordered_map<int,TimingNodeId> idx_to_id;
 
 };
 

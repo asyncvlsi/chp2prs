@@ -37,10 +37,6 @@ public:
     NodeIdT() : id_(-1) {}
     explicit NodeIdT(int id) : id_(id) {}
 
-    static NodeIdT generate() { return NodeIdT(counter_++); }
-
-    static void reset() { counter_ = 0; }
-
     int get_raw() const { return id_; }
 
     bool operator==(const NodeIdT& other) const { return id_ == other.id_; }
@@ -49,14 +45,23 @@ public:
 
 private:
     int id_;
-    static int counter_;
 };
 
-template <class G>
-int NodeIdT<G>::counter_{0};
+template<class G>
+class NodeIdGeneratorT {
+public:
+    NodeIdGeneratorT() : counter_(0) {}
+    NodeIdT<G> generate() { return NodeIdT<G>(counter_++); }
+    void reset() { counter_ = 0; }
+
+private:
+    int counter_;
+};
+
 
 struct G_DFG {};
 using NodeId = NodeIdT<G_DFG>;
+using NodeIdGenerator = NodeIdGeneratorT<G_DFG>;
 
 static NodeId bot_id = NodeId(-1); 
 
@@ -141,6 +146,20 @@ static NodeType get_node_type (const NodeData &d) {
     }, d);
 }
 
+static NodeData clone_data (const NodeData &d) {
+    return std::visit(Overload{
+    [](std::monostate                  x) { return NodeData(std::monostate{}); },
+    [](Block::Variant_Select::PhiSplit x) { return NodeData(x); },
+    [](Block::Variant_Select::PhiMerge x) { return NodeData(x); },
+    [](Block::Variant_Par::PhiSplit    x) { return NodeData(x); },
+    [](Block::Variant_Par::PhiMerge    x) { return NodeData(x); },
+    [](const std::pair<int, IRGuard>  &x) { return NodeData(std::move(std::make_pair(int(x.first),IRGuard::deep_copy(x.second)))); },
+    [](Block::Variant_DoLoop::InPhi    x) { return NodeData(x); },
+    [](Block::Variant_DoLoop::OutPhi   x) { return NodeData(x); },
+    [](Block::Variant_DoLoop::LoopPhi  x) { return NodeData(x); }
+}, d);
+}
+
 /*
     Class that implements a single node in the 
     data-dependence graph.
@@ -168,20 +187,33 @@ class DFG_Node {
             b = nullptr;
             id = NodeId(idx.get_raw());
         }
-        DFG_Node (Block *_b) 
+        DFG_Node (Block *_b, NodeId _id) 
         {
             hassert (_b->type() == BlockType::Basic);
             t = NodeType::Basic;
             b = _b;
             data = std::monostate{};
-            id = NodeId::generate();
+            id = _id;
         }
-        DFG_Node (Block *_b, NodeData d) {
+        DFG_Node (Block *_b, NodeData d, NodeId _id) {
             b = _b;
             data = std::move(d);
             t = get_node_type(data);
-            id = NodeId::generate();
+            id = _id;
         } 
+        DFG_Node clone () const {
+            DFG_Node ret = DFG_Node (id);
+            ret.data = clone_data(data);
+            ret.b = b;
+            ret.t = t;
+            return std::move(ret);
+        }
+
+        DFG_Node (const DFG_Node&) = delete;
+        DFG_Node& operator=(const DFG_Node&) = delete;
+        DFG_Node(DFG_Node&&) noexcept = default;
+        DFG_Node& operator=(DFG_Node&&) noexcept = default;
+
         const Block::Variant_Select::PhiSplit &phi_inv() const {
             hassert (std::holds_alternative<Block::Variant_Select::PhiSplit>(data));
             return std::get<Block::Variant_Select::PhiSplit>(data);
@@ -300,16 +332,12 @@ class DFG {
         std::unordered_map<VarId, NodeId> vardefmap;
         bool sccs_built;
 
+        NodeIdGenerator idgen;
+
         DFG ()
-        {
-            nodes.clear();
-            adj.clear();
-            sccs.clear();
-            sccs_toposorted.clear();
-            vardefmap.clear();
-            NodeId::reset();
-            sccs_built = false;
-        }
+        : nodes(), adj(), sccs(), sccs_toposorted(), 
+          vardefmap(), sccs_built(false), idgen()
+        {}
 
         /*
             Clear the DFG.
@@ -320,9 +348,29 @@ class DFG {
             sccs.clear();
             sccs_toposorted.clear();
             vardefmap.clear();
-            NodeId::reset();
+            idgen.reset();
             sccs_built = false;
         }
+
+        NodeId gen_id () { return idgen.generate(); }
+
+        DFG clone () {
+            auto ret = DFG();
+            for ( const auto &nn : nodes ) {
+                ret.nodes.push_back(std::make_unique<DFG_Node> ( std::move((*nn).clone())) );
+            }
+            ret.adj = adj;
+            ret.sccs = sccs;
+            ret.sccs_toposorted = sccs_toposorted;
+            ret.vardefmap = vardefmap;
+            ret.sccs_built = sccs_built;
+            return std::move(ret);
+        }
+
+        DFG(const DFG&) = delete;
+        DFG& operator=(const DFG&) = delete;
+        DFG(DFG&&) noexcept = default;
+        DFG& operator=(DFG&&) noexcept = default;
 
         /*
             Add a given node to the DFG.

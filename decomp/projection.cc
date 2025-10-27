@@ -75,7 +75,8 @@ std::vector<act_chp_lang_t *> Projection::get_procs ()
 
 void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
 {
-    d_in.clear();
+    // Note to future self
+    d_in.clear(); // REMEMBER THIS RESETS THE NODEID COUNTER!!
     if (!g_in.graph.is_static_token_form) {
         ChpOptimize::parallelizeStatements(g_in.graph);
         ChpOptimize::putIntoNewStaticTokenForm(g_in.graph);
@@ -132,7 +133,7 @@ void Projection::project(Strategy ss)
 
 void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
 {
-    bool verbose = false;
+    int verbose = 1;
 
     // make copy of graph
     std::unordered_map<ChanId, ChanId> cc;
@@ -148,13 +149,13 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
         ChpTiming ct(g_copy, d_loc, s);
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
-        if (verbose) { fprintf(stdout, "\n// Latest   Cycle : %.2f", max_cycles_trace.back()); } 
+        if (verbose>0) { fprintf(stdout, "\n// Latest Cycle : %.2f", max_cycles_trace.back()); } 
         
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeSet best_hs = {}; 
         double itr_best_cycle = r1.ratio;
-        if (verbose) { 
+        if (verbose>1) { 
             int sz=0;
             fprintf(stdout, ", Hyperedge set : %zu", hhvec.size()); 
             for (const auto &hset : hhvec) {
@@ -249,7 +250,133 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
 
     // ChpTiming yct(g_copy, d_loc, s); yct.export_dot("tg_final.dot"); yct.print_result(stdout);
 
-    if (verbose) { fprintf(stdout, "\n\n// Cycle Trace : "); for (auto x:max_cycles_trace) { fprintf(stdout, "%.2f, ", x); } }
+    if (verbose>0) { 
+        fprintf(stdout, "\n\n// Cycle Trace : "); 
+        for (auto x:max_cycles_trace) { fprintf(stdout, "%.2f, ", x); }
+        fprintf(stdout, "\n"); 
+    }
+    _build_procs(g_copy, d_loc);
+}
+
+void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_in)
+{
+    bool verbose = false;
+
+    // make copy of graph
+    std::unordered_map<ChanId, ChanId> cc;
+    std::unordered_map<VarId, VarId> vv;
+    auto g_copy = deep_copy_graph(g,cc,vv);
+    DFG d_loc;
+    step2(g_copy, d_loc);
+
+    std::vector<double> max_cycles_trace = {0.0}; // dummy val
+    // ChpTiming xct(g_copy, d_loc, s); xct.export_dot("tg_orig.dot"); xct.print_result(stdout);
+
+    do {
+        ChpTiming ct(g_copy, d_loc, s);
+        auto r1 = ct.get_maxcycle();
+        max_cycles_trace.push_back(r1.ratio);
+        if (verbose) { fprintf(stdout, "\n// Latest   Cycle : %.2f", max_cycles_trace.back()); } 
+        
+        // auto hhvec = _get_candidates_dynamic(ct, 20);
+        auto hhvec = _get_candidates_segment(ct);
+        HyperEdgeSet best_hs = {}; 
+        double itr_best_cycle = r1.ratio;
+        if (verbose) { 
+            int sz=0;
+            fprintf(stdout, ", Hyperedge set : %zu", hhvec.size()); 
+            for (const auto &hset : hhvec) {
+                sz++;
+                fprintf(stdout, "\nSet: {\n");
+                for (const auto &h : hset) {
+                    fprintf(stdout, "%d : ", h.first.get_raw());
+                    for (const auto &out : h.second) { 
+                        fprintf(stdout, "%d, ", out.get_raw());
+                    }
+                    fprintf(stdout, "\n");
+                }
+                fprintf(stdout, "}\n");
+            } 
+            fprintf(stdout, "\n ---- end list, size: %d ---- \n", sz); 
+        } 
+        int n_wcc_orig = d_loc.get_wccs().size();
+
+        // parallelizable ------------------------------------------------------------
+        for ( const auto &hset : hhvec ) {
+            // auto d_loop = d_loc.clone();
+            std::unordered_map<ChanId, ChanId> cc_tmp;
+            std::unordered_map<VarId, VarId> vv_tmp;
+            auto g_loop = deep_copy_graph(g_copy, cc_tmp, vv_tmp);
+            DFG d_loop;
+            step2(g_loop, d_loop);
+
+            std::unordered_map<VarId, VarId> old_to_new = {};
+            CopyLocMap clm = {};
+            for ( const auto &h : hset ) {
+                const auto &node = d_loop.find(h.first);
+                auto vars = get_defs(node);
+                if (_breakable(node)) {
+                    for ( auto x : h.second ) {
+                        d_loop.delete_edge (h.first, x);
+                    }
+                    if (!old_to_new.count(vars[0])) {
+                        auto newvar = _insert_hyperedge_copy (g_loop, d_loop, h, vars[0], clm);
+                        old_to_new.insert({vars[0],newvar});
+                    }
+                }
+            }
+            
+            int n_wcc = d_loop.get_wccs().size();
+            if (n_wcc > n_wcc_orig) {
+                _build_procs(g_loop, d_loop);
+                auto [names, top_chp, nfc] = get_result();
+                _fill_in_else_explicit (top_chp, s);
+                auto g_tmp = chp_graph_from_act (top_chp, s, 1);
+                delete top_chp;
+                DFG d_tmp;
+                ChpOptimize::parallelizeStatements (g_tmp.graph);
+                step2(g_tmp, d_tmp);
+                ChpTiming ct_tmp(g_tmp, d_tmp, s);
+                auto r_tmp = ct_tmp.get_maxcycle();
+                if (itr_best_cycle - r_tmp.ratio > -0.1) {
+                    best_hs = hset;
+                    itr_best_cycle = r_tmp.ratio;
+                }
+            }
+        }
+        // parallelizable ------------------------------------------------------------
+
+        CopyLocMap clm = {};
+        for ( const auto &best_h : best_hs ) {
+            if (best_h.first!=bot_id) {
+                const auto &node = d_loc.find(best_h.first);
+                auto vars = get_defs(node);
+                if (_breakable(node)) {
+                    for ( auto x : best_h.second ) {
+                        d_loc.delete_edge (best_h.first, x);
+                    }
+                    auto newvar = _insert_hyperedge_copy (g_copy, d_loc, best_h, vars[0], clm);
+                }
+            }
+        }
+
+        _build_procs(g_copy, d_loc);
+        auto [names, top_chp, nfc] = get_result();
+        _fill_in_else_explicit (top_chp, s);
+        g_copy = chp_graph_from_act (top_chp, s, 1);
+        delete top_chp;
+        ChpOptimize::parallelizeStatements (g_copy.graph);
+        step2(g_copy, d_loc);
+    
+    } while ( abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01 );
+
+    // ChpTiming yct(g_copy, d_loc, s); yct.export_dot("tg_final.dot"); yct.print_result(stdout);
+
+    if (verbose) { 
+        fprintf(stdout, "\n\n// Cycle Trace : "); 
+        for (auto x:max_cycles_trace) { fprintf(stdout, "%.2f, ", x); }
+        fprintf(stdout, "\n"); 
+    }
     _build_procs(g_copy, d_loc);
 }
 
@@ -410,7 +537,7 @@ HyperEdgesVec Projection::_get_candidates_bisect(const ChpTiming &ct, double lb,
     Assert ((ub>=0 && ub <=1.0), "Huh");
     Assert ((lb<=ub), "Huh");
     seg_wt = 0.0;
-    std::vector<TNodeId> cand_tnodes;
+    std::vector<TimingNodeId> cand_tnodes;
     for (auto it = es.begin(); it != es.end(); it++) {
         if ((seg_wt > lb*max_seg_wt) && (seg_wt < ub*max_seg_wt)) {
             cand_tnodes.push_back((*it).from);
@@ -1136,19 +1263,19 @@ void Projection::_build_graph_nodes (const Sequence &seq, DFG &d_in)
     while (curr->type() != BlockType::EndSequence) {
     switch (curr->type()) {
     case BlockType::Basic: {
-        d_in.add_node(DFG_Node (curr));
+        d_in.add_node(DFG_Node (curr, d_in.gen_id()));
     }
     break;
       
     case BlockType::Par: {
         for ( auto phi_inv : curr->u_par().splits ) {
-            d_in.add_node(DFG_Node (curr, phi_inv));
+            d_in.add_node(DFG_Node (curr, phi_inv, d_in.gen_id()));
         }
         for (auto &branch : curr->u_par().branches) {
             _build_graph_nodes (branch, d_in);
         }
         for ( auto phi : curr->u_par().merges ) {
-            d_in.add_node(DFG_Node (curr, phi));
+            d_in.add_node(DFG_Node (curr, phi, d_in.gen_id()));
         }
     }
     break;
@@ -1156,12 +1283,12 @@ void Projection::_build_graph_nodes (const Sequence &seq, DFG &d_in)
     case BlockType::Select: {
         // phi-inverses
         for ( auto phi_inv : curr->u_select().splits ) {
-            d_in.add_node(DFG_Node (curr, phi_inv));
+            d_in.add_node(DFG_Node (curr, phi_inv, d_in.gen_id()));
         }
         // guard nodes
         int i=0;
         for ( auto &branch : curr->u_select().branches ) {
-            d_in.add_node(DFG_Node (curr, std::make_pair(i, IRGuard::deep_copy(branch.g))));
+            d_in.add_node(DFG_Node (curr, std::make_pair(i, IRGuard::deep_copy(branch.g)), d_in.gen_id()));
             i++;
         }
         // branches
@@ -1170,17 +1297,17 @@ void Projection::_build_graph_nodes (const Sequence &seq, DFG &d_in)
         }
         // phi's
         for ( auto phi : curr->u_select().merges ) {
-            d_in.add_node(DFG_Node (curr, phi));
+            d_in.add_node(DFG_Node (curr, phi, d_in.gen_id()));
         }
     }
     break;
       
     case BlockType::DoLoop: {
         for ( auto iphi : curr->u_doloop().in_phis ) {
-            d_in.add_node(DFG_Node (curr, iphi));
+            d_in.add_node(DFG_Node (curr, iphi, d_in.gen_id()));
         }
         for ( auto lphi : curr->u_doloop().loop_phis ) {
-            d_in.add_node(DFG_Node (curr, lphi));
+            d_in.add_node(DFG_Node (curr, lphi, d_in.gen_id()));
         }
 
         _build_graph_nodes(curr->u_doloop().branch, d_in);
@@ -1188,10 +1315,10 @@ void Projection::_build_graph_nodes (const Sequence &seq, DFG &d_in)
         /*
             // Assuming top-level loop guard is always `true` 
         */
-        d_in.add_node(DFG_Node (curr, std::make_pair(0,
-            IRGuard::makeExpression( ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard) ))) );
+        d_in.add_node(DFG_Node (curr, std::make_pair(0, IRGuard::makeExpression( 
+            ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard) )), d_in.gen_id()) );
         for ( auto ophi : curr->u_doloop().out_phis ) {
-            d_in.add_node(DFG_Node (curr, ophi));
+            d_in.add_node(DFG_Node (curr, ophi, d_in.gen_id()));
         }
     }
     break;

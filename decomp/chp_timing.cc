@@ -45,7 +45,7 @@ void ChpTiming::_construct_tg(Sequence seq, var_to_actvar &table,
     break;
       
     case BlockType::DoLoop: {
-        TNodeId tmp;
+        TimingNodeId tmp;
         _construct_subtg (seq, tmp, table, c2n_recv, c2n_send, 1);
         pctr++;
     }
@@ -120,13 +120,13 @@ static std::string chan_act_name (const GraphWithChanNames *xg, const ChanId &c)
     return std::string(tmp);
 } 
 
-TNodeId ChpTiming::_construct_subtg(Sequence seq, TNodeId previd, var_to_actvar &table, 
+TimingNodeId ChpTiming::_construct_subtg(Sequence seq, TimingNodeId previd, var_to_actvar &table, 
                         chan_to_nodes &c2n_recv, chan_to_nodes &c2n_send, int root)
 {
   auto varToId = [&] (const VarId &v) { return table.varMap (v); };
   auto chanToId = [&] (const ChanId &v) { return table.chanMap (v); };
 
-    TNodeId currid = previd;
+    TimingNodeId currid = previd;
     Block *curr = seq.startseq->child();
 
     while (curr->type() != BlockType::EndSequence) {
@@ -429,7 +429,7 @@ RawResult ChpTiming::run_max_ratio()
     int n_nodes = idx;
 
     std::vector<RawEdge> E;
-    TNodeId bot;
+    TimingNodeId bot;
     for (auto& e : tg.get_edges()) {
         Assert (e.from!=bot && e.to!=bot, "Malformed Timing Graph!");
         int u = id_to_idx.at(e.from);
@@ -460,7 +460,7 @@ void ChpTiming::run_maxcycle()
     auto r = run_max_ratio();
     Assert(!r.cycle.empty(), "Critical Cycle Failure! Unticked cycle may exist.");
 
-    std::vector<TNodeId> ret;
+    std::vector<TimingNodeId> ret;
     for ( auto id : r.cycle ) {
         ret.push_back(idx_to_id[id]);
     }

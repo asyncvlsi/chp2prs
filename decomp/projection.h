@@ -127,6 +127,7 @@ class Projection : protected ChoppingBlock {
             Copy insertion strategy: timing driven.
         */
         void _insert_copies_v7 (GraphWithChanNames &, DFG &);
+        void _insert_copies_v7_multithreaded (GraphWithChanNames &, DFG &);
         HyperEdgeSetVec _get_candidates_segment (const ChpTiming &);
         HyperEdgesVec _get_candidates_all (const ChpTiming &);
         HyperEdgesVec _get_candidates_bisect (const ChpTiming &, double, double);
