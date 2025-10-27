@@ -76,7 +76,7 @@ class ChpCost {
 
         void fill_in_else_explicit (act_chp_lang_t *);
 
-    private:
+    protected:
         // Expression handling for Expropt
         iHashtable *_inexprmap;
         iHashtable *_inwidthmap;
