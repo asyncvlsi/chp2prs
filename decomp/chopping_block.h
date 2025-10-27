@@ -39,9 +39,9 @@ class ChoppingBlock {
             g = &g_in;
             s = s_in;
             idpool = g->graph.id_pool();
-            DecompAnalysis *dca = new DecompAnalysis (*g, s);
-            dca->analyze();
-            vmap = dca->get_decomp_info_map();
+            DecompAnalysis dca = DecompAnalysis (*g, s);
+            dca.analyze();
+            vmap = dca.get_decomp_info_map();
         }
 
         /*

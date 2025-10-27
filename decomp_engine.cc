@@ -124,13 +124,13 @@ class Decomp : public ActSynthesize {
 
       auto t1 = high_resolution_clock::now();
       // necessary rewrites for ring synthesis --------------------------------
-      MultiChan *mc = new MultiChan (g, p->CurScope());
-      mc->process_multichans();
-      auto vs = mc->get_auxiliary_procs();
+      MultiChan mc = MultiChan (g, p->CurScope());
+      mc.process_multichans();
+      auto vs = mc.get_auxiliary_procs();
       
-      ChoppingBlock *cb = new ChoppingBlock (g, p->CurScope());
-      cb->excise_internal_loops();
-      auto vs1 = cb->get_chopped_seqs();
+      ChoppingBlock cb = ChoppingBlock (g, p->CurScope());
+      cb.excise_internal_loops();
+      auto vs1 = cb.get_chopped_seqs();
         
       for ( auto vv : {{g.graph.m_seq}, vs, vs1} ) {
         for (auto v : vv) {
@@ -152,9 +152,9 @@ class Decomp : public ActSynthesize {
         for ( auto ss : prj_steps ) {
           _fill_in_else_explicit (top_chp, p->CurScope());
           auto gnew = chp_graph_from_act (top_chp, p->CurScope(), 1);
-          Projection *pr2 = new Projection (gnew, p->CurScope());
-          pr2->project(ss);
-          auto [names2, top_chp2, nfc2] = pr2->get_result();
+          Projection pr2 = Projection (gnew, p->CurScope());
+          pr2.project(ss);
+          auto [names2, top_chp2, nfc2] = pr2.get_result();
           for ( auto x : names2 ) { newnames.insert(x); }
           for ( auto x : nfc2 ) { nfc.push_back(x); }
 
