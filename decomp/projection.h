@@ -95,6 +95,7 @@ class Projection : protected ChoppingBlock {
             Construct CHP process from DFG
         */
         std::vector<act_chp_lang_t *> _build_procs (const GraphWithChanNames &, DFG &d_in);
+        GraphWithChanNames _build_seqs (GraphWithChanNames &, DFG &d_in);
         /*
             Construct DFG from ChpGraph
         */
@@ -109,7 +110,7 @@ class Projection : protected ChoppingBlock {
             and flush the renaming downstream in the program. 
             Due to STF, it is sufficient to rename within the sequence.
         */
-        VarId _insert_hyperedge_copy (GraphWithChanNames &, const DFG &, HyperEdge, VarId, CopyLocMap &);
+        VarId _insert_hyperedge_copy (GraphWithChanNames &, const DFG &, HyperEdge, VarId, CopyLocMap &, bool);
         void _uninsert_hyperedge_copy (GraphWithChanNames &, const DFG &, HyperEdge, VarId, VarId, CopyLocMap &);
 
         bool _breakable (const DFG_Node &);
@@ -151,7 +152,7 @@ class Projection : protected ChoppingBlock {
         /*
             Construct a sub-process from a set of DFG nodes.
         */
-        bool _build_sub_proc_new (GraphWithChanNames &, const DFG &d_in, Sequence, std::unordered_set<NodeId>&);
+        bool _build_sub_proc_new (GraphWithChanNames &, const DFG &d_in, Sequence &, std::unordered_set<NodeId>&);
         
         /*
             Construct a sub-process from a set of DFG nodes, 

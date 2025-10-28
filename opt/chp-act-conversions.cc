@@ -566,10 +566,10 @@ act_chp_lang *chp_graph_to_act(const GraphWithChanNames &gr,
   return l;
 }
 
-static std::unordered_map<ChanId, ChanId> cc;
-static std::unordered_map<VarId, VarId> vv;
+// static std::unordered_map<ChanId, ChanId> cc;
+// static std::unordered_map<VarId, VarId> vv;
 
-ChanId get_chan_id (const ChanId &ci, ChpGraph &g_new, const ChpGraph &g_old)
+ChanId get_chan_id (const ChanId &ci, ChpGraph &g_new, const ChpGraph &g_old, std::unordered_map<ChanId, ChanId> &cc)
 {
   if (cc.count(ci))
     return cc[ci];
@@ -580,7 +580,7 @@ ChanId get_chan_id (const ChanId &ci, ChpGraph &g_new, const ChpGraph &g_old)
   return co;
 }
 
-VarId get_var_id (const VarId &vi, ChpGraph &g_new, const ChpGraph &g_old)
+VarId get_var_id (const VarId &vi, ChpGraph &g_new, const ChpGraph &g_old, std::unordered_map<VarId, VarId> &vv)
 {
   if (vv.count(vi))
     return vv[vi];
@@ -592,33 +592,34 @@ VarId get_var_id (const VarId &vi, ChpGraph &g_new, const ChpGraph &g_old)
 }
 
 template<typename ExprType> 
-ExprType deep_copy_expr (const ExprType &e, ChpGraph &g_new, const ChpGraph &g_old)
+ExprType deep_copy_expr (const ExprType &e, ChpGraph &g_new, const ChpGraph &g_old, std::unordered_map<VarId, VarId> &vv)
 {
   auto e1 = ExprType::deep_copy(e);
   auto used_vars = getIdsUsedByExpr(e1);
   std::unordered_map<VarId, VarId> new_vars_map = {}; 
   for ( auto var : used_vars ) {
-    new_vars_map.insert({var,get_var_id(var, g_new, g_old)});
+    new_vars_map.insert({var,get_var_id(var, g_new, g_old, vv)});
   }
   ExprType::remapVars(e1, new_vars_map);
   return e1;
 }
 
-Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_old)
+Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_old, 
+  std::unordered_map<ChanId, ChanId> &cc, std::unordered_map<VarId, VarId> &vv)
 {
   std::vector<Block *> blks = {};
   Block *curr = seq.startseq->child();
 
   auto remap_chan = [&](const ChanId &id) -> ChanId {
-    return get_chan_id(id, g_new, g_old);
+    return get_chan_id(id, g_new, g_old, cc);
   };
 
   auto remap_var = [&](const VarId &id) -> VarId {
-    return get_var_id(id, g_new, g_old);
+    return get_var_id(id, g_new, g_old, vv);
   };
 
   auto remap_var_opt = [&](const OptionalVarId &id) -> OptionalVarId {
-    return (id) ? get_var_id(*(id), g_new, g_old) : OptionalVarId();
+    return (id) ? get_var_id(*(id), g_new, g_old, vv) : OptionalVarId();
   };
 
   auto remap_vec = [&](const std::vector<VarId> &ids) -> std::vector<VarId> {
@@ -653,7 +654,7 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
           const auto &send = curr->u_basic().stmt;
           ChanId ci = remap_chan(send.u_send().chan);
           auto _b = g_new.newBasicBlock(Statement::makeSend(
-                    ci,deep_copy_expr<ChpExprSingleRootDag>(send.u_send().e, g_new, g_old)));
+                    ci,deep_copy_expr<ChpExprSingleRootDag>(send.u_send().e, g_new, g_old, vv)));
           blks.push_back(_b);
         }
         break;
@@ -664,7 +665,7 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
             new_assn_vars.push_back(remap_var(var));
           }
           auto _b = g_new.newBasicBlock(Statement::makeAssignment(
-                    new_assn_vars,deep_copy_expr<ChpExprDag>(assns.u_assign().e, g_new, g_old)));
+                    new_assn_vars,deep_copy_expr<ChpExprDag>(assns.u_assign().e, g_new, g_old, vv)));
           blks.push_back(_b);
         }
         break;
@@ -674,7 +675,7 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
     case BlockType::Par: {
         auto _b = g_new.newParBlock();
         for (const auto &branch : curr->u_par().branches) {
-          _b->u_par().branches.push_back(deep_copy_seq(branch, g_new, g_old));
+          _b->u_par().branches.push_back(deep_copy_seq(branch, g_new, g_old, cc, vv));
         }
         for (const auto &split : curr->u_par().splits) {
           Block::Variant_Par::PhiSplit newsplit;
@@ -694,9 +695,9 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
     case BlockType::Select: {
         auto _b = g_new.newSelectBlock();
         for (const auto &branch : curr->u_select().branches) {
-          _b->u_select().branches.push_back({deep_copy_seq(branch.seq, g_new, g_old),
+          _b->u_select().branches.push_back({deep_copy_seq(branch.seq, g_new, g_old, cc, vv),
                     (branch.g.type()==IRGuardType::Else) ? IRGuard::makeElse() :
-                    IRGuard::makeExpression(deep_copy_expr<ChpExprSingleRootDag>(branch.g.u_e().e, g_new, g_old))});
+                    IRGuard::makeExpression(deep_copy_expr<ChpExprSingleRootDag>(branch.g.u_e().e, g_new, g_old, vv))});
         }
         for (const auto &split : curr->u_select().splits) {
           Block::Variant_Select::PhiSplit newsplit;
@@ -715,8 +716,8 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
     break;
     case BlockType::DoLoop: {
       auto _b = g_new.newDoLoopBlock();
-      _b->u_doloop().branch = deep_copy_seq(curr->u_doloop().branch, g_new, g_old);
-      _b->u_doloop().guard = deep_copy_expr<ChpExprSingleRootDag>(curr->u_doloop().guard, g_new, g_old);
+      _b->u_doloop().branch = deep_copy_seq(curr->u_doloop().branch, g_new, g_old, cc, vv);
+      _b->u_doloop().guard = deep_copy_expr<ChpExprSingleRootDag>(curr->u_doloop().guard, g_new, g_old, vv);
       for (const auto &iphi : curr->u_doloop().in_phis) {
         Block::Variant_DoLoop::InPhi newiphi;
         newiphi.bodyin_id = remap_var(iphi.bodyin_id);
@@ -757,11 +758,11 @@ std::unordered_map<VarId, VarId> &vv_in
 )
 {
   GraphWithChanNames ret;
-  cc.clear(); // fix these static guys - need for multithreading
-  vv.clear();
-  ret.graph.m_seq = deep_copy_seq (g.graph.m_seq, ret.graph, g.graph);
+  std::unordered_map<ChanId, ChanId> cc{};
+  std::unordered_map<VarId, VarId> vv{};
+  ret.graph.m_seq = deep_copy_seq (g.graph.m_seq, ret.graph, g.graph, cc, vv);
   for ( const auto &x : g.name_from_chan ) {
-    ret.name_from_chan.insert({get_chan_id(x.first, ret.graph, g.graph),x.second});
+    ret.name_from_chan.insert({get_chan_id(x.first, ret.graph, g.graph, cc),x.second});
   }
   ret.graph.is_static_token_form = g.graph.is_static_token_form;
   cc_in = std::move(cc);

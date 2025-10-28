@@ -197,7 +197,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
                         d_loc.delete_edge (h.first, x);
                     }
                     if (!old_to_new.count(vars[0])) {
-                        auto newvar = _insert_hyperedge_copy (g_copy, d_loc, h, vars[0], clm);
+                        auto newvar = _insert_hyperedge_copy (g_copy, d_loc, h, vars[0], clm, false);
                         old_to_new.insert({vars[0],newvar});
                     }
                 }
@@ -244,7 +244,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
                     for ( auto x : best_h.second ) {
                         d_loc.delete_edge (best_h.first, x);
                     }
-                    auto newvar = _insert_hyperedge_copy (g_copy, d_loc, best_h, vars[0], clm);
+                    auto newvar = _insert_hyperedge_copy (g_copy, d_loc, best_h, vars[0], clm, false);
                 }
             }
         }
@@ -276,42 +276,38 @@ std::tuple<int, HyperEdgeSet, double>
     std::unordered_map<ChanId, ChanId> cc_tmp;
     std::unordered_map<VarId, VarId> vv_tmp;
     auto g_loop = deep_copy_graph(g_t, cc_tmp, vv_tmp);
-    // DFG d_t;
-    // step2(g_loop, d_t);
+    DFG d_t;
+    step2(g_loop, d_t);
 
-    // std::unordered_map<VarId, VarId> old_to_new = {};
-    // CopyLocMap clm = {};
-    // for ( const auto &h : hs_t ) {
-    //     const auto &node = d_t.find(h.first);
-    //     auto vars = get_defs(node);
-    //     if (_breakable(node)) {
-    //         for ( auto x : h.second ) {
-    //             d_t.delete_edge (h.first, x);
-    //         }
-    //         if (!old_to_new.count(vars[0])) {
-    //             auto newvar = _insert_hyperedge_copy (g_loop, d_t, h, vars[0], clm);
-    //             old_to_new.insert({vars[0],newvar});
-    //         }
-    //     }
-    // }
+    std::unordered_map<VarId, VarId> old_to_new = {};
+    CopyLocMap clm = {};
+    for ( const auto &h : hs_t ) {
+        const auto &node = d_t.find(h.first);
+        auto vars = get_defs(node);
+        if (_breakable(node)) {
+            for ( auto x : h.second ) {
+                d_t.delete_edge (h.first, x);
+            }
+            if (!old_to_new.count(vars[0])) {
+                auto newvar = _insert_hyperedge_copy (g_loop, d_t, h, vars[0], clm, true);
+                old_to_new.insert({vars[0],newvar});
+            }
+        }
+    }
     
-    // int n_wcc = d_t.get_wccs().size();
-    // if (n_wcc > n_wcc_t) {
-    //     // auto [names, top_chp, nfc] = get_result(_build_procs(g_loop, d_t));
-    //     // _fill_in_else_explicit (top_chp, s);
-    //     // auto g_tmp = chp_graph_from_act (top_chp, s, 1);
-    //     // delete top_chp;
-    //     // DFG d_tmp;
-    //     // ChpOptimize::parallelizeStatements (g_tmp.graph);
-    //     // step2(g_tmp, d_tmp);
-    //     // ChpTiming ct_tmp(g_tmp, d_tmp, s);
-    //     // auto r_tmp = ct_tmp.get_maxcycle();
-    //     // if (itr_best_t - r_tmp.ratio > -0.1) {
-    //     //     // best_hs = hs_t;
-    //     //     // itr_best_cycle = r_tmp.ratio;
-    //     //     return std::make_tuple(1,hs_t,r_tmp.ratio);
-    //     // }
-    // }
+    int n_wcc = d_t.get_wccs().size();
+    if (n_wcc > n_wcc_t) {
+        auto gnew = _build_seqs(g_loop, d_t);
+        ChpOptimize::putIntoNewStaticTokenForm(gnew.graph);
+        step2(gnew, d_t);
+        // ChpTiming ct_tmp(g_loop, d_t, s);
+        // auto r_tmp = ct_tmp.get_maxcycle();
+        // if (itr_best_t - r_tmp.ratio > -0.1) {
+        //     // best_hs = hs_t;
+        //     // itr_best_cycle = r_tmp.ratio;
+        //     return std::make_tuple(1,hs_t,r_tmp.ratio);
+        // }
+    }
     return std::make_tuple(0,hs_t,0.0);
 }
 
@@ -379,7 +375,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
                 [&, hset] { return _worker_thread(hset, std::cref(g_copy), std::cref(s), itr_best_cycle, n_wcc_orig); }));
             }
             
-        // Collect + pick best on the main thread
+        // collect + pick best on the main thread
         for (auto& f : futs) {
             auto [found_better, hs_ret, ratio] = f.get();
             if (found_better == 1) {
@@ -401,7 +397,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
                     for ( auto x : best_h.second ) {
                         d_loc.delete_edge (best_h.first, x);
                     }
-                    auto newvar = _insert_hyperedge_copy (g_copy, d_loc, best_h, vars[0], clm);
+                    auto newvar = _insert_hyperedge_copy (g_copy, d_loc, best_h, vars[0], clm, false);
                 }
             }
         }
@@ -722,7 +718,7 @@ void Projection::_insert_copies_v6 (GraphWithChanNames &g, DFG &d_in)
                     d_loc.delete_edge (h.first, x);
                 }
                 if (!old_to_new.count(vars[0])) {
-                    auto newvar = _insert_hyperedge_copy (g_copy, d_loc, h, vars[0], clm);
+                    auto newvar = _insert_hyperedge_copy (g_copy, d_loc, h, vars[0], clm, false);
                     old_to_new.insert({vars[0],newvar});
                 }
             }
@@ -769,14 +765,14 @@ void Projection::_insert_copies_v6 (GraphWithChanNames &g, DFG &d_in)
                 fprintf(stdout, "v%llu, ", var_in_old_g.m_id);
                 Assert(d_in.vardefmap.count(var_in_old_g), "Var not in vardefmap");
                 auto node_id = d_in.vardefmap[var_in_old_g];
-                _insert_hyperedge_copy (g, d_in, h, var_in_old_g, clm);
+                _insert_hyperedge_copy (g, d_in, h, var_in_old_g, clm, false);
             }
         }
     fprintf(stdout, "\n");
 }
 
 VarId Projection::_insert_hyperedge_copy (GraphWithChanNames &gg, const DFG &d_in, 
-    HyperEdge h, VarId v, CopyLocMap &clm)
+    HyperEdge h, VarId v, CopyLocMap &clm, bool temporary)
 {
     Assert (d_in.contains(h.first), "Node not found");
     for ( auto x : h.second ) {
@@ -787,9 +783,16 @@ VarId Projection::_insert_hyperedge_copy (GraphWithChanNames &gg, const DFG &d_i
     auto b_from = d_in.find(h.first).b;
 
     ChanId ci = gg.graph.id_pool().makeUniqueChan(gg.graph.id_pool().getBitwidth(v), false);
-    var_to_actvar vtoa(s, gg.graph.id_pool());
-    ActId *id = vtoa.chanMap(ci);
-    gg.name_from_chan.insert({ci, id});
+    if (temporary) {
+        std::string idname = "_tmp_" + std::to_string(ci.m_id);
+        ActId *id = new ActId (idname.c_str());
+        gg.name_from_chan.insert({ci,id});
+    }
+    else {
+        var_to_actvar vtoa(s, gg.graph.id_pool());
+        ActId *id = vtoa.chanMap(ci);
+        gg.name_from_chan.insert({ci, id});
+    }
     
     auto send = gg.graph.blockAllocator().newBlock(
         Block::makeBasicBlock(Statement::makeSend(ci, 
@@ -899,7 +902,59 @@ std::vector<act_chp_lang_t *> Projection::_build_procs (const GraphWithChanNames
     return ret;
 }
 
-bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, const DFG &d_in, Sequence seq, std::unordered_set<NodeId> &s)
+GraphWithChanNames Projection::_build_seqs (GraphWithChanNames &gx, DFG &d_in)
+{
+    std::vector<Sequence> ret = {};
+
+    int num_subgraphs = d_in.get_wccs().size();
+    DFG d_loc;
+    {
+        d_loc.clear();
+        _build_graph(gx.graph.m_seq, d_loc);
+        num_subgraphs = d_loc.get_wccs().size();
+    }
+    std::unordered_set<NodeId> marker_node_ids = {};
+
+    for (int i=0; i<num_subgraphs; i++)
+    {
+        hassert (gx.graph.is_static_token_form);
+        auto seq_save = gx.graph.m_seq;
+        auto tmp_sgs = d_loc.get_wccs();
+        auto itr = tmp_sgs.begin();
+        while ((marker_node_ids.count((*itr).second[0]))) 
+        { itr++; }
+        hassert (itr != tmp_sgs.end());
+        marker_node_ids.insert((*itr).second[0]);
+
+        if (_all_basic(d_loc, (*itr).second)) {
+            _build_basic_new (gx, d_loc, (*itr).second);
+        }
+        else {
+            std::unordered_set<NodeId> tmp ((*itr).second.begin(), (*itr).second.end());
+            _build_sub_proc_new (gx, d_loc, gx.graph.m_seq, tmp);
+        }
+
+        ChpOptimize::takeOutOfNewStaticTokenForm(gx.graph);
+        ret.push_back(gx.graph.m_seq);
+        gx.graph.m_seq = seq_save;
+        gx.graph.is_static_token_form = true;
+
+        hassert (num_subgraphs == tmp_sgs.size());
+    }
+    hassert (marker_node_ids.size() == num_subgraphs);
+
+    Block *top = gx.graph.blockAllocator().newBlock(Block::makeParBlock());
+    for ( auto seq : ret ) {
+        top->u_par().branches.push_back(seq);
+    }
+    gx.graph.m_seq = gx.graph.newSequence({top});
+    gx.graph.is_static_token_form = false;
+    std::unordered_map<ChanId, ChanId> cc;
+    std::unordered_map<VarId, VarId> vv;
+    return deep_copy_graph(gx, cc, vv);
+}
+
+bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, const DFG &d_in, Sequence &seq, std::unordered_set<NodeId> &s)
 {
     bool empty = true;
     Block *curr = seq.startseq->child();
@@ -1469,7 +1524,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, DFG &d_in, Sequence 
                 auto vars = get_defs(n);
                 hassert (vars.size()<=1);
                 if (vars.size()==1 && (_heuristic3(d_in, n, nwcc)!=bot_id)) {
-                    _insert_hyperedge_copy(gg, d_in, {n.id,d_in.adj.at(n.id)}, vars[0], clm);
+                    _insert_hyperedge_copy(gg, d_in, {n.id,d_in.adj.at(n.id)}, vars[0], clm, false);
                     inserted = true;
                     return;
                 }
@@ -1477,7 +1532,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, DFG &d_in, Sequence 
                 if (d_in.contains(n1)) {
                     auto vars = get_defs(n1);
                     hassert (vars.size()==1);
-                    _insert_hyperedge_copy(gg, d_in, {n1,d_in.adj.at(n1)}, vars[0], clm);
+                    _insert_hyperedge_copy(gg, d_in, {n1,d_in.adj.at(n1)}, vars[0], clm, false);
                     inserted = true;
                     return;
                 }
@@ -1501,7 +1556,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, DFG &d_in, Sequence 
             const auto &n = d_in.find(curr, split);
             auto vars = get_defs(n);
             if (root==0 && _heuristic3(d_in, n, nwcc)!=bot_id) {
-                _insert_hyperedge_copy (gg, d_in, {n.id,d_in.adj.at(n.id)}, split.pre_id, clm);
+                _insert_hyperedge_copy (gg, d_in, {n.id,d_in.adj.at(n.id)}, split.pre_id, clm, false);
                 inserted = true;
                 return;
             }
@@ -1513,7 +1568,7 @@ void Projection::_insert_copies_v3 (GraphWithChanNames &gg, DFG &d_in, Sequence 
             const auto &n = d_in.find(curr, merge);
             auto vars = get_defs(n);
             if (root==0 && _heuristic3(d_in, n, nwcc)!=bot_id) {
-                _insert_hyperedge_copy (gg, d_in, {n.id,d_in.adj.at(n.id)}, merge.post_id, clm);
+                _insert_hyperedge_copy (gg, d_in, {n.id,d_in.adj.at(n.id)}, merge.post_id, clm, false);
                 inserted = true;
                 return;
             }
