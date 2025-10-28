@@ -138,8 +138,8 @@ class Projection : protected ChoppingBlock {
         
         using ThreadResult = std::tuple<int, HyperEdgeSet, double>;
 
-        ThreadResult _worker_thread (HyperEdgeSet, const GraphWithChanNames &, const Scope *, 
-                            double, int);
+        ThreadResult _worker_thread (HyperEdgeSet, const GraphWithChanNames &, 
+                                    double, int, int);
 
         HyperEdgeSetVec _get_candidates_segment (const ChpTiming &);
         HyperEdgesVec _get_candidates_all (const ChpTiming &);

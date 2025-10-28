@@ -21,7 +21,8 @@
  */
 
 #include "chp_cost.h"
-
+// #include <mutex>
+// static std::mutex m;
 
 void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, Process *p)
 {
@@ -244,8 +245,10 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
 
-    e = expr_dup(e);
-    e = expr_dag(e);
+    if (!thread_mode) {
+      e = expr_dup(e);
+      e = expr_dag(e);
+    }
 
     _expr_collect_vars (e);
 
@@ -278,6 +281,7 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
     _inwidthmap = NULL;
     list_free (all_leaves);
 
+    // lk.unlock();
     return typ_delay_ps;
 }
 
@@ -376,32 +380,13 @@ void ChpCost::_expr_collect_vars (Expr *e)
             ib = ihash_add (_inexprmap, (long)e);
             ib->i = _gen_expr_id();
             b_width = ihash_add (_inwidthmap, (long) e);
-            b_width->i = TypeFactory::bitWidth(var->rootCanonical(_s)->getvx()->t);
+            b_width->i = bitwidth(var);
         }
     }
     break;
 
   case E_PROBE: {
-
-        // make dummy variable to stand in for probe
-        InstType *it = TypeFactory::Factory()->NewInt (_s, Type::NONE, 0, const_expr(1));
-        static char buf[1024];
-        it = it->Expand(NULL, _s);
-
-        ActId *chan = (ActId *)e->u.e.l;
-
-        auto tst = _s->Lookup((ActId *)e->u.e.l);
-        Assert (tst, "hmm new id");
-
-        ihash_bucket_t *ib;
-        ihash_bucket_t *b_width;
-        if (!ihash_lookup (_inexprmap, (long)e)) 
-        {
-            ib = ihash_add (_inexprmap, (long)e);
-            ib->i = _gen_expr_id();
-            b_width = ihash_add (_inwidthmap, (long)e);
-            b_width->i = 1;
-        }
+      Assert (false, "No probes in decomp lmao");
     }
     break;
     
@@ -424,9 +409,17 @@ int ChpCost::_gen_expr_id()
 
 int ChpCost::bitwidth (ActId *id)
 {
+  if (thread_mode) {
+    if (act_var_bw.count(id)) return act_var_bw.at(id);
+    if (act_chan_bw.count(id)) return act_chan_bw.at(id);
+    fprintf(stdout, "\ncould not find : %p\n",id);
+    Assert (false, "unprovided id in threaded mode!");
+    return -1;
+  }
   if (!id) {
     return -1;
   }
+  Assert (_s, "Shouldn't have happened");
   InstType *it = _s->FullLookup (id, NULL);
   if (!it) {
     return -1;

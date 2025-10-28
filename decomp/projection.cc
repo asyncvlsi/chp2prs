@@ -32,6 +32,8 @@
     - implement cost-based cut (done)
     - expose complex part cleanly for optimizer plug-in (done)
 */
+#include <mutex>
+static std::mutex m;
 
 void eliminate_unobservable(ChpGraph &g, Sequence seq);
 
@@ -145,7 +147,7 @@ void Projection::project(Strategy ss)
 
 void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
 {
-    int verbose = 0;
+    int verbose = 1;
 
     // make copy of graph
     std::unordered_map<ChanId, ChanId> cc;
@@ -271,7 +273,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
 std::tuple<int, HyperEdgeSet, double> 
     Projection::_worker_thread(
     HyperEdgeSet hs_t, const GraphWithChanNames &g_t, 
-    const Scope *s_t, double itr_best_t, int n_wcc_t)
+    double itr_best_t, int n_wcc_t, int thread_id)
 {
     std::unordered_map<ChanId, ChanId> cc_tmp;
     std::unordered_map<VarId, VarId> vv_tmp;
@@ -298,15 +300,31 @@ std::tuple<int, HyperEdgeSet, double>
     int n_wcc = d_t.get_wccs().size();
     if (n_wcc > n_wcc_t) {
         auto gnew = _build_seqs(g_loop, d_t);
-        ChpOptimize::putIntoNewStaticTokenForm(gnew.graph);
         step2(gnew, d_t);
-        // ChpTiming ct_tmp(g_loop, d_t, s);
-        // auto r_tmp = ct_tmp.get_maxcycle();
-        // if (itr_best_t - r_tmp.ratio > -0.1) {
-        //     // best_hs = hs_t;
-        //     // itr_best_cycle = r_tmp.ratio;
-        //     return std::make_tuple(1,hs_t,r_tmp.ratio);
-        // }
+        std::unordered_map<VarId, ActId *> varid_to_actid;
+        std::unordered_map<ActId *, int> actid_to_varbw;
+        for( auto v : gnew.graph.allUsedVarIds() ) {
+            ActId *aid = new ActId(("_tmpvar_"+std::to_string(v.m_id)).c_str());
+            // fprintf(stdout, "\n%d : inserting var%llu: %p", thread_id, v.m_id, aid);
+            varid_to_actid.insert({v,aid});
+            actid_to_varbw.insert({aid,gnew.graph.id_pool().getBitwidth(v)});
+        }
+        std::unordered_map<ChanId, ActId *> chanid_to_actid;
+        std::unordered_map<ActId *, int> actid_to_chanbw;
+        for( auto [cc,aid] : gnew.name_from_chan ) {
+            // fprintf(stdout, "\n%d : inserting chan%llu: %p", thread_id, cc.m_id, aid);
+            chanid_to_actid.insert({cc,aid});
+            actid_to_chanbw.insert({aid,gnew.graph.id_pool().getBitwidth(cc)});
+        }
+        // ChpTiming ct_tmp(gnew, d_t, varid_to_actid, actid_to_varbw, chanid_to_actid, actid_to_chanbw, thread_id);
+        // gotta do this better
+        std::unique_lock lk(m);
+        ChpTiming ct_tmp(gnew, d_t, s);
+        lk.unlock();
+        auto r_tmp = ct_tmp.get_maxcycle();
+        if (itr_best_t > r_tmp.ratio ) {
+            return std::make_tuple(1,hs_t,r_tmp.ratio);
+        }
     }
     return std::make_tuple(0,hs_t,0.0);
 }
@@ -323,14 +341,14 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
     step2(g_copy, d_loc);
 
     std::vector<double> max_cycles_trace = {0.0}; // dummy val
-    // ChpTiming xct(g_copy, d_loc, s); xct.export_dot("tg_orig.dot"); xct.print_result(stdout);
 
+    int thread_cnt=0;
+    int itr_count=0;
     do {
         ChpTiming ct(g_copy, d_loc, s);
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
         if (verbose>0) { fprintf(stdout, "\n// Latest   Cycle : %.2f", max_cycles_trace.back()); } 
-        
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeSet best_hs = {}; 
@@ -355,36 +373,39 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         int n_wcc_orig = d_loc.get_wccs().size();
 
         // parallelizable ------------------------------------------------------------
-        // for ( const auto &hset : hhvec ) {
-        //     auto [found_better, hs_ret, ratio] = _worker_thread(hset, g_copy, s, itr_best_cycle, n_wcc_orig);
-        //     if (found_better==1) {
+        for ( const auto &hset : hhvec ) {
+            auto [found_better, hs_ret, ratio] = _worker_thread(hset, g_copy, itr_best_cycle, n_wcc_orig, -1);
+            if (found_better==1) {
+                if (ratio < itr_best_cycle) {
+                    itr_best_cycle = ratio;
+                    best_hs = hs_ret;
+                }
+            }
+        }
+        // parallelizable ------------------------------------------------------------
+        
+        // parallel form  ------------------------------------------------------------
+        // std::vector<std::future<std::tuple<int, HyperEdgeSet, double>>> futs;
+        // futs.reserve(hhvec.size());
+        
+        // for (const auto& hset : hhvec) {
+        //     thread_cnt++;
+        //     futs.emplace_back(std::async(std::launch::async,
+        //         [this, &g_copy, hset, itr_best_cycle, n_wcc_orig, thread_cnt] 
+        //         { return _worker_thread(hset, std::cref(g_copy), itr_best_cycle, n_wcc_orig, thread_cnt); }));
+        // }
+            
+        // // collect + pick best on the main thread
+        // for (auto& f : futs) {
+        //     auto [found_better, hs_ret, ratio] = f.get();
+        //     if (found_better == 1) {
         //         if (ratio < itr_best_cycle) {
+        //             fprintf(stdout, "\n%.2f", ratio);
         //             itr_best_cycle = ratio;
         //             best_hs = hs_ret;
         //         }
         //     }
         // }
-        // parallelizable ------------------------------------------------------------
-        
-        // parallel form  ------------------------------------------------------------
-        std::vector<std::future<std::tuple<int, HyperEdgeSet, double>>> futs;
-        futs.reserve(hhvec.size());
-        
-        for (const auto& hset : hhvec) {
-            futs.emplace_back(std::async(std::launch::async,
-                [&, hset] { return _worker_thread(hset, std::cref(g_copy), std::cref(s), itr_best_cycle, n_wcc_orig); }));
-            }
-            
-        // collect + pick best on the main thread
-        for (auto& f : futs) {
-            auto [found_better, hs_ret, ratio] = f.get();
-            if (found_better == 1) {
-                if (ratio < itr_best_cycle) {
-                    itr_best_cycle = ratio;
-                    best_hs = std::move(hs_ret);
-                }
-            }
-        }
         // parallel form  ------------------------------------------------------------
 
 
@@ -408,10 +429,10 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         delete top_chp;
         ChpOptimize::parallelizeStatements (g_copy.graph);
         step2(g_copy, d_loc);
-    
-    } while ( abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01 );
-
-    // ChpTiming yct(g_copy, d_loc, s); yct.export_dot("tg_final.dot"); yct.print_result(stdout);
+        itr_count++;
+    } while ( (abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01) 
+    // && ((abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) <= 500 ) || itr_count<5) 
+    );
 
     if (verbose>0) { 
         fprintf(stdout, "\n\n// Cycle Trace : "); 
@@ -784,7 +805,7 @@ VarId Projection::_insert_hyperedge_copy (GraphWithChanNames &gg, const DFG &d_i
 
     ChanId ci = gg.graph.id_pool().makeUniqueChan(gg.graph.id_pool().getBitwidth(v), false);
     if (temporary) {
-        std::string idname = "_tmp_" + std::to_string(ci.m_id);
+        std::string idname = "_tmpchan_" + std::to_string(ci.m_id);
         ActId *id = new ActId (idname.c_str());
         gg.name_from_chan.insert({ci,id});
     }

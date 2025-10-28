@@ -123,8 +123,22 @@ static std::string chan_act_name (const GraphWithChanNames *xg, const ChanId &c)
 TimingNodeId ChpTiming::_construct_subtg(Sequence seq, TimingNodeId previd, var_to_actvar &table, 
                         chan_to_nodes &c2n_recv, chan_to_nodes &c2n_send, int root)
 {
-  auto varToId = [&] (const VarId &v) { return table.varMap (v); };
-  auto chanToId = [&] (const ChanId &v) { return table.chanMap (v); };
+    auto varToId = [&] (const VarId &v) { 
+        if (threaded_mode) {
+            return varid_to_actid[v];
+        }
+        else {
+            return table.varMap (v); 
+        }
+    };
+    auto chanToId = [&] (const ChanId &v) { 
+        if (threaded_mode) {
+            return chanid_to_actid[v];
+        }
+        else {
+            return table.chanMap (v); 
+        }
+    };
 
     TimingNodeId currid = previd;
     Block *curr = seq.startseq->child();
@@ -157,6 +171,8 @@ TimingNodeId ChpTiming::_construct_subtg(Sequence seq, TimingNodeId previd, var_
             Expr *e = ChpOptimize::template_func_new_expr_from_irexpr (
                         *curr->u_basic().stmt.u_send().e.m_dag.roots[0],
 						ActExprIntType::Int, varToId, chanToId);
+            // fprintf(stdout, "\n%d : send : ", thread_num); print_chp_block(std::cout, curr);
+            Assert(e, "what!");
             auto edel = expr_delay(e, g->graph.id_pool().getBitwidth(chan));
             tg.add_edge(currid, reqid, send_delay + edel, 0);
             currid = ackid;
@@ -168,6 +184,8 @@ TimingNodeId ChpTiming::_construct_subtg(Sequence seq, TimingNodeId previd, var_
             Expr *e = ChpOptimize::template_func_new_expr_from_irexpr ( 
                         *curr->u_basic().stmt.u_assign().e.roots[0], 
                         ActExprIntType::Int, varToId, chanToId);
+            // fprintf(stdout, "\n%d : assn", thread_num);
+            Assert(e, "what!");
             auto edel = expr_delay(e, g->graph.id_pool().getBitwidth(ids[0]));
             auto assnid = tg.add_node(pctr,"assn");
             nmap[assnid] = {&dfg->find(curr)};

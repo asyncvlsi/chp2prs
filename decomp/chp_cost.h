@@ -32,7 +32,34 @@ class ChpCost {
 
         ChpCost (Scope *s)
         : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
-        _s (s), procs({}), _expr_id(0),
+        _s (s), procs({}), _expr_id(0), thread_mode(false), 
+        send_delay (config_get_real("synth.ring.bundled.send_delay")),
+        recv_delay (config_get_real("synth.ring.bundled.recv_delay")),
+        assn_delay (config_get_real("synth.ring.bundled.assn_delay")),
+        capture_delay (config_get_real("synth.ring.bundled.capture_delay"))
+        {
+            Assert ((eeo), "Could not create mapper");
+
+            config_set_int("expropt.verbose", 0);
+            config_set_int("expropt.abc_use_constraints", 1);
+            config_set_int("expropt.vectorize_all_ports", 1);
+
+            int sel_sz = config_get_table_size("synth.ring.bundled.sel_delays");
+            int or_sz = config_get_table_size("synth.ring.bundled.or_delays");
+
+            Assert (sel_sz==or_sz, "Need same size for OR-delays and Sel-delays tables");
+            max_way = sel_sz;
+
+            double *tmp = config_get_table_real("synth.ring.bundled.sel_delays");
+            double *tmp2 = config_get_table_real("synth.ring.bundled.or_delays");
+            sel_delays = std::vector<double> (tmp,tmp+sel_sz);
+            or_delays = std::vector<double> (tmp2,tmp2+sel_sz);
+        }
+
+        ChpCost (std::unordered_map<ActId *, int> var_bw, std::unordered_map<ActId *, int> chan_bw)
+        : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
+        _s (nullptr), procs({}), _expr_id(0), thread_mode(true), 
+        act_var_bw (var_bw), act_chan_bw (chan_bw), 
         send_delay (config_get_real("synth.ring.bundled.send_delay")),
         recv_delay (config_get_real("synth.ring.bundled.recv_delay")),
         assn_delay (config_get_real("synth.ring.bundled.assn_delay")),
@@ -82,6 +109,9 @@ class ChpCost {
         iHashtable *_inwidthmap;
 
         Scope *_s;
+        bool thread_mode;
+        std::unordered_map<ActId *, int> act_var_bw;
+        std::unordered_map<ActId *, int> act_chan_bw;
 
         // mapper object
         std::unique_ptr<ExprCache> eeo;
