@@ -842,4 +842,10 @@ GraphWithChanNames deep_copy_graph (
         std::unordered_map<ChanId, ChanId> &cc_in,
         std::unordered_map<VarId, VarId> &vv_in);
 
+/*
+    Returns a deep copy of the graph's m_seq.
+    Does not modify original m_seq.
+*/
+Sequence dup_m_seq (GraphWithChanNames &g);
+
 } // namespace ChpOptimize

@@ -147,9 +147,8 @@ class ChpTiming : public ChpCost {
     public:
 
         ChpTiming (const GraphWithChanNames &g_in, const DFG &dfg_in, Scope *s_in)
-        : ChpCost (s_in), 
+        : ChpCost (s_in, g_in), 
         threaded_mode(false), thread_num(-1) {
-            g = &g_in;
             dfg = &dfg_in;
             tg = TimingGraph();
             id_to_idx = {};
@@ -160,14 +159,12 @@ class ChpTiming : public ChpCost {
         }
 
         ChpTiming (const GraphWithChanNames &g_in, const DFG &dfg_in,
-            std::unordered_map<VarId, ActId *> v2a, std::unordered_map<ActId *, int> a2vbw,
-            std::unordered_map<ChanId, ActId *> c2a, std::unordered_map<ActId *, int> a2cbw, int thread_id
+            std::unordered_map<VarId, std::unique_ptr<ActId>> &&v2a, 
+            int thread_id
         )
-        : ChpCost (a2vbw, a2cbw), 
-        varid_to_actid (v2a), chanid_to_actid (c2a),
+        : ChpCost (std::move(v2a), g_in), 
         threaded_mode(true), thread_num(thread_id)
         {
-            g = &g_in;
             dfg = &dfg_in;
             tg = TimingGraph();
             id_to_idx = {};
@@ -177,14 +174,11 @@ class ChpTiming : public ChpCost {
             run_maxcycle();
         }
 
-        const GraphWithChanNames *g;
         const DFG *dfg;
         std::unordered_map<TimingNodeId, std::vector<const DFG_Node *>> nmap;
         
         bool threaded_mode;
         int thread_num;
-        std::unordered_map<VarId, ActId *> varid_to_actid;
-        std::unordered_map<ChanId, ActId *> chanid_to_actid;
 
         void construct_tg();
         void _construct_tg(Sequence, var_to_actvar&, chan_to_nodes&, chan_to_nodes&);

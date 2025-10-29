@@ -125,7 +125,7 @@ TimingNodeId ChpTiming::_construct_subtg(Sequence seq, TimingNodeId previd, var_
 {
     auto varToId = [&] (const VarId &v) { 
         if (threaded_mode) {
-            return varid_to_actid[v];
+            return varid_to_actid[v].get();
         }
         else {
             return table.varMap (v); 
@@ -133,7 +133,8 @@ TimingNodeId ChpTiming::_construct_subtg(Sequence seq, TimingNodeId previd, var_
     };
     auto chanToId = [&] (const ChanId &v) { 
         if (threaded_mode) {
-            return chanid_to_actid[v];
+            Assert (false, "No probes in decomp!");
+            return new ActId(nullptr) ;
         }
         else {
             return table.chanMap (v); 

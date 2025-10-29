@@ -30,9 +30,12 @@
 class ChpCost {
     public:
 
-        ChpCost (Scope *s)
+        ChpCost (Scope *s, const GraphWithChanNames &g_in)
         : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
-        _s (s), procs({}), _expr_id(0), thread_mode(false), 
+        _s (s), procs({}), _expr_id(0), 
+        g (&g_in), varid_to_actid(), 
+        thread_mode(false), 
+
         send_delay (config_get_real("synth.ring.bundled.send_delay")),
         recv_delay (config_get_real("synth.ring.bundled.recv_delay")),
         assn_delay (config_get_real("synth.ring.bundled.assn_delay")),
@@ -56,10 +59,14 @@ class ChpCost {
             or_delays = std::vector<double> (tmp2,tmp2+sel_sz);
         }
 
-        ChpCost (std::unordered_map<ActId *, int> var_bw, std::unordered_map<ActId *, int> chan_bw)
+        ChpCost (std::unordered_map<VarId, std::unique_ptr<ActId>> &&v2a,
+        const GraphWithChanNames &g_in)
         : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
-        _s (nullptr), procs({}), _expr_id(0), thread_mode(true), 
-        act_var_bw (var_bw), act_chan_bw (chan_bw), 
+        _s (nullptr), procs({}), _expr_id(0), 
+        varid_to_actid (std::move(v2a)), 
+        g (&g_in), 
+        thread_mode(true), 
+
         send_delay (config_get_real("synth.ring.bundled.send_delay")),
         recv_delay (config_get_real("synth.ring.bundled.recv_delay")),
         assn_delay (config_get_real("synth.ring.bundled.assn_delay")),
@@ -110,8 +117,8 @@ class ChpCost {
 
         Scope *_s;
         bool thread_mode;
-        std::unordered_map<ActId *, int> act_var_bw;
-        std::unordered_map<ActId *, int> act_chan_bw;
+        const GraphWithChanNames *g;
+        std::unordered_map<VarId, std::unique_ptr<ActId>> varid_to_actid;
 
         // mapper object
         std::unique_ptr<ExprCache> eeo;

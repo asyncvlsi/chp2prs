@@ -35,7 +35,7 @@
 #include <mutex>
 static std::mutex m;
 
-void eliminate_unobservable(ChpGraph &g, Sequence seq);
+void eliminate_empty(ChpGraph &g, Sequence seq);
 
 std::tuple<
     std::unordered_set<ActId *>, 
@@ -56,7 +56,7 @@ std::tuple<
     {
         auto _g = ChpOptimize::chp_graph_from_act (v, s, 1);
         ChpOptimize::optimize_chp_basic (_g.graph, "brr", false);
-        eliminate_unobservable(_g.graph, _g.graph.m_seq);
+        eliminate_empty(_g.graph, _g.graph.m_seq);
         ChpOptimize::parallelizeStatements (_g.graph);
         std::vector<ActId *> tmp_names2;
         v = chp_graph_to_act (_g, tmp_names2, s);
@@ -283,7 +283,10 @@ std::tuple<int, HyperEdgeSet, double>
 
     std::unordered_map<VarId, VarId> old_to_new = {};
     CopyLocMap clm = {};
-    for ( const auto &h : hs_t ) {
+    /*
+        insert all necessary copies based on this cut choice
+    */ 
+    for ( const auto &h : hs_t ) { 
         const auto &node = d_t.find(h.first);
         auto vars = get_defs(node);
         if (_breakable(node)) {
@@ -298,31 +301,29 @@ std::tuple<int, HyperEdgeSet, double>
     }
     
     int n_wcc = d_t.get_wccs().size();
-    if (n_wcc > n_wcc_t) {
-        auto gnew = _build_seqs(g_loop, d_t);
-        step2(gnew, d_t);
-        std::unordered_map<VarId, ActId *> varid_to_actid;
-        std::unordered_map<ActId *, int> actid_to_varbw;
-        for( auto v : gnew.graph.allUsedVarIds() ) {
-            ActId *aid = new ActId(("_tmpvar_"+std::to_string(v.m_id)).c_str());
-            // fprintf(stdout, "\n%d : inserting var%llu: %p", thread_id, v.m_id, aid);
-            varid_to_actid.insert({v,aid});
-            actid_to_varbw.insert({aid,gnew.graph.id_pool().getBitwidth(v)});
+    /*
+        only bother constructing and checking if no. of WCCs has gone up, 
+        coz otherwise we know the critical cycle could not have gotten better
+    */ 
+    if (n_wcc > n_wcc_t) { 
+        step2(g_loop, d_t);
+        hassert (g_loop.graph.is_static_token_form);
+        _build_seqs(g_loop, d_t.get_wccs().size());
+        step2(g_loop, d_t);
+        std::unordered_map<VarId, std::unique_ptr<ActId>> varid_to_actid;
+        std::unordered_map<std::unique_ptr<ActId>, int> actid_to_varbw;
+        for( auto v : g_loop.graph.allUsedVarIds() ) {
+            auto aid = std::make_unique<ActId>(
+                ("_tmpvar_"+std::to_string(thread_id)+"_"+std::to_string(v.m_id)).c_str());
+            varid_to_actid.insert({v,std::move(aid)});
+            actid_to_varbw.insert((std::move(
+                std::make_pair(std::move(aid),g_loop.graph.id_pool().getBitwidth(v)))));
         }
-        std::unordered_map<ChanId, ActId *> chanid_to_actid;
-        std::unordered_map<ActId *, int> actid_to_chanbw;
-        for( auto [cc,aid] : gnew.name_from_chan ) {
-            // fprintf(stdout, "\n%d : inserting chan%llu: %p", thread_id, cc.m_id, aid);
-            chanid_to_actid.insert({cc,aid});
-            actid_to_chanbw.insert({aid,gnew.graph.id_pool().getBitwidth(cc)});
-        }
-        // ChpTiming ct_tmp(gnew, d_t, varid_to_actid, actid_to_varbw, chanid_to_actid, actid_to_chanbw, thread_id);
-        // gotta do this better
-        std::unique_lock lk(m);
-        ChpTiming ct_tmp(gnew, d_t, s);
-        lk.unlock();
+        // this is thread-safe now ^_^
+        ChpTiming ct_tmp(g_loop, d_t, std::move(varid_to_actid), thread_id);
+
         auto r_tmp = ct_tmp.get_maxcycle();
-        if (itr_best_t > r_tmp.ratio ) {
+        if (r_tmp.ratio < itr_best_t - 1) {
             return std::make_tuple(1,hs_t,r_tmp.ratio);
         }
     }
@@ -331,7 +332,7 @@ std::tuple<int, HyperEdgeSet, double>
 
 void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_in)
 {
-    int verbose = 1;
+    int verbose = 0;
 
     // make copy of graph
     std::unordered_map<ChanId, ChanId> cc;
@@ -372,44 +373,47 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         } 
         int n_wcc_orig = d_loc.get_wccs().size();
 
-        // parallelizable ------------------------------------------------------------
-        for ( const auto &hset : hhvec ) {
-            auto [found_better, hs_ret, ratio] = _worker_thread(hset, g_copy, itr_best_cycle, n_wcc_orig, -1);
-            if (found_better==1) {
+        // sequential form (parallelizable) -----------------------------------
+        // for ( const auto &hset : hhvec ) {
+        //     auto [found_better, hs_ret, ratio] = _worker_thread(hset, g_copy, 
+        //                              itr_best_cycle, n_wcc_orig, thread_cnt);
+        //     if (found_better==1) {
+        //         if (ratio < itr_best_cycle - 1) {
+        //             itr_best_cycle = ratio;
+        //             best_hs = hs_ret;
+        //         }
+        //     }
+        //     thread_cnt++;
+        // }
+        // sequential form (parallelizable) -----------------------------------
+        
+        // parallel form  -----------------------------------------------------
+        std::vector<std::future<std::tuple<int, HyperEdgeSet, double>>> futs;
+        futs.reserve(hhvec.size());
+        
+        for (const auto& hset : hhvec) {
+            thread_cnt++;
+            futs.emplace_back(std::async(std::launch::async,
+                [this, &g_copy, hset, itr_best_cycle, n_wcc_orig, thread_cnt] 
+                { return _worker_thread(hset, std::cref(g_copy), 
+                    itr_best_cycle, n_wcc_orig, thread_cnt); }));
+        }
+            
+        // collect + pick best on the main thread
+        for (auto& f : futs) {
+            auto [found_better, hs_ret, ratio] = f.get();
+            if (found_better == 1) {
                 if (ratio < itr_best_cycle) {
                     itr_best_cycle = ratio;
                     best_hs = hs_ret;
                 }
             }
         }
-        // parallelizable ------------------------------------------------------------
-        
-        // parallel form  ------------------------------------------------------------
-        // std::vector<std::future<std::tuple<int, HyperEdgeSet, double>>> futs;
-        // futs.reserve(hhvec.size());
-        
-        // for (const auto& hset : hhvec) {
-        //     thread_cnt++;
-        //     futs.emplace_back(std::async(std::launch::async,
-        //         [this, &g_copy, hset, itr_best_cycle, n_wcc_orig, thread_cnt] 
-        //         { return _worker_thread(hset, std::cref(g_copy), itr_best_cycle, n_wcc_orig, thread_cnt); }));
-        // }
-            
-        // // collect + pick best on the main thread
-        // for (auto& f : futs) {
-        //     auto [found_better, hs_ret, ratio] = f.get();
-        //     if (found_better == 1) {
-        //         if (ratio < itr_best_cycle) {
-        //             fprintf(stdout, "\n%.2f", ratio);
-        //             itr_best_cycle = ratio;
-        //             best_hs = hs_ret;
-        //         }
-        //     }
-        // }
-        // parallel form  ------------------------------------------------------------
+        // parallel form  -----------------------------------------------------
 
 
         CopyLocMap clm = {};
+        bool changed = false;
         for ( const auto &best_h : best_hs ) {
             if (best_h.first!=bot_id) {
                 const auto &node = d_loc.find(best_h.first);
@@ -419,20 +423,20 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
                         d_loc.delete_edge (best_h.first, x);
                     }
                     auto newvar = _insert_hyperedge_copy (g_copy, d_loc, best_h, vars[0], clm, false);
+                    changed = true;
                 }
             }
         }
-
-        auto [names, top_chp, nfc] = get_result(_build_procs(g_copy, d_loc));
-        _fill_in_else_explicit (top_chp, s);
-        g_copy = chp_graph_from_act (top_chp, s, 1);
-        delete top_chp;
-        ChpOptimize::parallelizeStatements (g_copy.graph);
-        step2(g_copy, d_loc);
+        if (changed) {
+            auto [names, top_chp, nfc] = get_result(_build_procs(g_copy, d_loc));
+            _fill_in_else_explicit (top_chp, s);
+            g_copy = chp_graph_from_act (top_chp, s, 1);
+            delete top_chp;
+            ChpOptimize::parallelizeStatements (g_copy.graph);
+            step2(g_copy, d_loc);
+        }
         itr_count++;
-    } while ( (abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01) 
-    // && ((abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) <= 500 ) || itr_count<5) 
-    );
+    } while ( (abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01) );
 
     if (verbose>0) { 
         fprintf(stdout, "\n\n// Cycle Trace : "); 
@@ -688,7 +692,7 @@ void Projection::_insert_copies_v6 (GraphWithChanNames &g, DFG &d_in)
     step2(g_copy, d_loc);
 
     // initialize cost-related stuff
-    ChpCost c(s);
+    ChpCost c(s, g_copy);
     double min_max_cost = std::numeric_limits<double>::max();
     HyperEdgeSet best_subset = {};
     std::vector<double> best_costs = {};
@@ -923,23 +927,24 @@ std::vector<act_chp_lang_t *> Projection::_build_procs (const GraphWithChanNames
     return ret;
 }
 
-GraphWithChanNames Projection::_build_seqs (GraphWithChanNames &gx, DFG &d_in)
+void Projection::_build_seqs (GraphWithChanNames &gx, int num_subgraphs)
 {
     std::vector<Sequence> ret = {};
 
-    int num_subgraphs = d_in.get_wccs().size();
-    DFG d_loc;
-    {
-        d_loc.clear();
-        _build_graph(gx.graph.m_seq, d_loc);
-        num_subgraphs = d_loc.get_wccs().size();
-    }
     std::unordered_set<NodeId> marker_node_ids = {};
+    DFG d_loc;
+
+    hassert (gx.graph.is_static_token_form);
+    Sequence seq_save = dup_m_seq (gx);
 
     for (int i=0; i<num_subgraphs; i++)
     {
         hassert (gx.graph.is_static_token_form);
-        auto seq_save = gx.graph.m_seq;
+        auto seq_copy = dup_m_seq (gx);
+        gx.graph.m_seq = seq_copy;
+
+        d_loc.clear();
+        _build_graph(gx.graph.m_seq, d_loc);
         auto tmp_sgs = d_loc.get_wccs();
         auto itr = tmp_sgs.begin();
         while ((marker_node_ids.count((*itr).second[0]))) 
@@ -947,20 +952,17 @@ GraphWithChanNames Projection::_build_seqs (GraphWithChanNames &gx, DFG &d_in)
         hassert (itr != tmp_sgs.end());
         marker_node_ids.insert((*itr).second[0]);
 
-        if (_all_basic(d_loc, (*itr).second)) {
-            _build_basic_new (gx, d_loc, (*itr).second);
-        }
-        else {
-            std::unordered_set<NodeId> tmp ((*itr).second.begin(), (*itr).second.end());
-            _build_sub_proc_new (gx, d_loc, gx.graph.m_seq, tmp);
-        }
+        std::unordered_set<NodeId> tmp ((*itr).second.begin(), (*itr).second.end());
+        _build_sub_proc_new (gx, d_loc, gx.graph.m_seq, tmp);
 
         ChpOptimize::takeOutOfNewStaticTokenForm(gx.graph);
+        // TODO: Need to fill_in_else_explicit here!!
         ret.push_back(gx.graph.m_seq);
-        gx.graph.m_seq = seq_save;
-        gx.graph.is_static_token_form = true;
 
         hassert (num_subgraphs == tmp_sgs.size());
+
+        gx.graph.m_seq = seq_save;
+        gx.graph.is_static_token_form = true;
     }
     hassert (marker_node_ids.size() == num_subgraphs);
 
@@ -970,9 +972,7 @@ GraphWithChanNames Projection::_build_seqs (GraphWithChanNames &gx, DFG &d_in)
     }
     gx.graph.m_seq = gx.graph.newSequence({top});
     gx.graph.is_static_token_form = false;
-    std::unordered_map<ChanId, ChanId> cc;
-    std::unordered_map<VarId, VarId> vv;
-    return deep_copy_graph(gx, cc, vv);
+    return;
 }
 
 bool Projection::_build_sub_proc_new (GraphWithChanNames &gg, const DFG &d_in, Sequence &seq, std::unordered_set<NodeId> &s)
@@ -1857,7 +1857,7 @@ void Projection::export_dot(std::string filename, const DFG &d_in)
     fclose(ff);
 }
 
-bool is_unobservable(ChpGraph &g, Sequence seq)
+bool is_empty(ChpGraph &g, Sequence seq)
 {
     bool ret = true;
     Block *curr = seq.startseq->child();
@@ -1865,35 +1865,26 @@ bool is_unobservable(ChpGraph &g, Sequence seq)
     while (curr->type() != BlockType::EndSequence) {
     switch (curr->type()) {
     case BlockType::Basic: {
-        switch (curr->u_basic().stmt.type()) {
-        case StatementType::Send:
-        case StatementType::Receive: {
-            return false;
-            }
-            break;
-        case StatementType::Assign: {
-            }
-            break;
-        }
+        return false;
     }
     break;
       
     case BlockType::Par: {
         for (auto &branch : curr->u_par().branches) {
-            ret &= is_unobservable (g, branch);
+            ret &= is_empty (g, branch);
         }
     }
     break;
       
     case BlockType::Select: {
         for (auto &branch : curr->u_select().branches) {
-            ret &= is_unobservable (g, branch.seq);
+            ret &= is_empty (g, branch.seq);
         }
     }
     break;
       
     case BlockType::DoLoop: {
-        ret &= is_unobservable(g, curr->u_doloop().branch);
+        ret &= is_empty(g, curr->u_doloop().branch);
     }
     break;
     
@@ -1907,14 +1898,14 @@ bool is_unobservable(ChpGraph &g, Sequence seq)
     return ret;
 }
 
-void eliminate_unobservable(ChpGraph &g, Sequence seq)
+void eliminate_empty(ChpGraph &g, Sequence seq)
 {
     Block *curr = seq.startseq->child();
     switch (curr->type()) {
     case BlockType::Par: {
         std::list<Sequence> new_branches = {};
         for (auto &branch : curr->u_par().branches) {
-            if(!is_unobservable (g, branch)) {
+            if(!is_empty (g, branch)) {
                 new_branches.push_back(branch);
             }
         }

@@ -95,7 +95,7 @@ class Projection : protected ChoppingBlock {
             Construct CHP process from DFG
         */
         std::vector<act_chp_lang_t *> _build_procs (const GraphWithChanNames &, DFG &d_in);
-        GraphWithChanNames _build_seqs (GraphWithChanNames &, DFG &d_in);
+        void _build_seqs (GraphWithChanNames &, int);
         /*
             Construct DFG from ChpGraph
         */

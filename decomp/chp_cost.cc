@@ -26,6 +26,7 @@
 
 void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, Process *p)
 {
+  Assert (!thread_mode, "limited functionality in multi-threaded mode!");
   char buf[10240];
   ActNamespace::Act()->msnprintfproc (buf, 10240, p);
 
@@ -48,6 +49,7 @@ void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, Process
 
 bool ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
 {
+  Assert (!thread_mode, "limited functionality in multi-threaded mode!");
   if (!c) return false;
   switch (c->type) {
   case ACT_CHP_SKIP:
@@ -142,12 +144,14 @@ void ChpCost::clear()
 
 double ChpCost::get_max_latency_cost ()
 {
+    Assert (!thread_mode, "limited functionality in multi-threaded mode!");
     auto costs = get_latency_costs();
     return *std::max_element(costs.begin(), costs.end());
 }
 
 std::vector<double> ChpCost::get_latency_costs ()
 {
+    Assert (!thread_mode, "limited functionality in multi-threaded mode!");
     std::vector<double> latency_costs = {};
     for ( auto c : procs ) {
         latency_costs.push_back(latency_cost(c));
@@ -161,6 +165,7 @@ std::vector<double> ChpCost::get_latency_costs ()
 */
 double ChpCost::latency_cost (act_chp_lang_t *c)
 {
+    Assert (!thread_mode, "limited functionality in multi-threaded mode!");
     double ret = 0;
     fill_in_else_explicit (c);
     return _latency_cost (c);
@@ -410,9 +415,11 @@ int ChpCost::_gen_expr_id()
 int ChpCost::bitwidth (ActId *id)
 {
   if (thread_mode) {
-    if (act_var_bw.count(id)) return act_var_bw.at(id);
-    if (act_chan_bw.count(id)) return act_chan_bw.at(id);
-    fprintf(stdout, "\ncould not find : %p\n",id);
+    // if (act_var_bw.count(id)) return act_var_bw.at(id);
+    for ( auto &[v, up] : varid_to_actid) {
+      if (id->isEqual(up.get())) return g->graph.id_pool().getBitwidth(v);
+    }
+    fprintf(stdout, "\ncould not find var : %p\n",id);
     Assert (false, "unprovided id in threaded mode!");
     return -1;
   }
