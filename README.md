@@ -43,6 +43,13 @@ This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act)
    * Run ./configure
    * Build this program using the standard ACT tool install instructions [here](https://github.com/asyncvlsi/act/blob/master/README_tool.md).
 
+### Quick-start guide for synth2
+
+Basic options to generate bundled-data circuits using the new Maelstrom synthesis technique:
+   * `synth2 -F ring -C bd2 -p <processname> -o <outfile> <infile>`
+   * This should produce `<outfile>` and `expr.act`.
+   * Simulate the process at the PRS-level with `actsim -ref=1 <outfile> ring_<processname>`
+   * Replace `bd2` with `bd` or `bdp` to try the other datapath style for bundled-data.
 
 ### Overview
 
@@ -51,7 +58,7 @@ This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act)
 A continuation of a project with Rajit Manohar's AVLSI group (see [the original](https://github.com/zebmehring/ADCO), which was developed by Zeb Mehring as part of his senior project at Yale). A program which takes in an `.act` file of the form:
 ```
 defproc foo() {
-  /* variable delcarations */
+  /* variable declarations */
   chp {
     ...
   }
@@ -66,7 +73,7 @@ defproc sdt_foo <: foo() {
 ```
 using the libraries provided. The translation is created by using the `refine { ... }` module, and so use the `-ref=1` command-line option to ACT tools to use the generated circuit.
 
-The conversion is accomplished using syntax-directed translation, which is jusfitied using direct process decomposition.
+The conversion is accomplished using syntax-directed translation, which is justified using direct process decomposition.
 
 ### Test Suite
 ```
