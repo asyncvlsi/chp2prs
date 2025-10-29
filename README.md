@@ -51,6 +51,8 @@ Basic options to generate bundled-data circuits using the new Maelstrom synthesi
    * Simulate the process at the PRS-level with `actsim -ref=1 <outfile> ring_<processname>`
    * Replace `bd2` with `bd` or `bdp` to try the other datapath styles for bundled-data.
 
+A more complete guide is [here](https://avlsi.csl.yale.edu/act/doku.php?id=tools:chp2prs).
+
 ### Overview
 
 **XXX: update this!**
