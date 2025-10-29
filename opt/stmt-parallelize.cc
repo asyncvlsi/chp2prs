@@ -130,6 +130,51 @@ void parallelize_statememts(ChpGraph &g, Sequence &seq,
     }
 }
 
+void fill_in_else_explicit (ChpGraph &g, Sequence seq)
+{
+    Block *curr = seq.startseq->child();
+    while (curr != seq.endseq) {
+        switch (curr->type()) {
+        case BlockType::Basic:
+            break;
+        case BlockType::Par: {
+            for ( auto branch : curr->u_par().branches ) {
+                fill_in_else_explicit(g, branch);
+            }
+            break;
+        }
+        case BlockType::Select: {
+            for ( auto &branch : curr->u_select().branches ) {
+                fill_in_else_explicit(g, branch.seq);
+            }
+            ChpExprSingleRootDag disj_gs = ChpExprSingleRootDag::makeConstant(BigInt(0),1);
+
+            for ( auto &branch : curr->u_select().branches ) {
+                if (branch.g.type()==IRGuardType::Expression) {
+                    disj_gs = ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::Or,
+                        std::move(std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(disj_gs))), 
+                        std::move(std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(branch.g.u_e().e))));
+                }
+                else {
+                    disj_gs = ChpExprSingleRootDag::makeUnaryOp(IRUnaryOpType::Not,
+                        std::move(std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(disj_gs))));
+                    branch.g = IRGuard::makeExpression(std::move(disj_gs));
+                }
+            }
+            break;
+        }
+        case BlockType::DoLoop: {
+            fill_in_else_explicit(g, curr->u_doloop().branch);
+            break;
+        }
+        case BlockType::StartSequence:
+        case BlockType::EndSequence:
+            break;
+        }
+        curr = curr->child();
+    }
+}
+
 } // namespace
 
 bool parallelizeStatements(ChpGraph &graph) {
@@ -139,6 +184,11 @@ bool parallelizeStatements(ChpGraph &graph) {
     graph.validateGraphInvariants();
 
     return changed;
+}
+
+bool fillInElseExplicit(ChpGraph &graph) {
+    fill_in_else_explicit(graph, graph.m_seq);
+    return true;
 }
 
 } // namespace ChpOptimize
