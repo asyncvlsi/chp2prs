@@ -49,7 +49,7 @@ Basic options to generate bundled-data circuits using the new Maelstrom synthesi
    * `synth2 -F ring -C bd2 -p <processname> -o <outfile> <infile>`
    * This should produce `<outfile>` and `expr.act`.
    * Simulate the process at the PRS-level with `actsim -ref=1 <outfile> ring_<processname>`
-   * Replace `bd2` with `bd` or `bdp` to try the other datapath style for bundled-data.
+   * Replace `bd2` with `bd` or `bdp` to try the other datapath styles for bundled-data.
 
 ### Overview
 
