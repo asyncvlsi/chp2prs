@@ -30,53 +30,36 @@
 class ChpCost {
     public:
 
-        ChpCost (Scope *s, const GraphWithChanNames &g_in)
+        ChpCost (Scope *s, 
+            const GraphWithChanNames &g_in)
         : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
-        _s (s), procs({}), _expr_id(0), 
-        g (&g_in), varid_to_actid(), canonical_expr(),
-        thread_mode(false), 
-
-        send_delay (config_get_real("synth.ring.bundled.send_delay")),
-        recv_delay (config_get_real("synth.ring.bundled.recv_delay")),
-        assn_delay (config_get_real("synth.ring.bundled.assn_delay")),
-        capture_delay (config_get_real("synth.ring.bundled.capture_delay"))
+            procs({}), _expr_id(0), g (&g_in), canonical_expr(),
+            _s (s), varid_to_actid(), thread_mode(false)
         {
             Assert ((eeo), "Could not create mapper");
-
-            config_set_int("expropt.verbose", 0);
-            config_set_int("expropt.abc_use_constraints", 1);
-            config_set_int("expropt.vectorize_all_ports", 1);
-
-            int sel_sz = config_get_table_size("synth.ring.bundled.sel_delays");
-            int or_sz = config_get_table_size("synth.ring.bundled.or_delays");
-
-            Assert (sel_sz==or_sz, "Need same size for OR-delays and Sel-delays tables");
-            max_way = sel_sz;
-
-            double *tmp = config_get_table_real("synth.ring.bundled.sel_delays");
-            double *tmp2 = config_get_table_real("synth.ring.bundled.or_delays");
-            sel_delays = std::vector<double> (tmp,tmp+sel_sz);
-            or_delays = std::vector<double> (tmp2,tmp2+sel_sz);
+            init_params();
         }
 
         ChpCost (std::unordered_map<VarId, ActId *> &&v2a,
-        const GraphWithChanNames &g_in)
+            const GraphWithChanNames &g_in)
         : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
-        _s (nullptr), procs({}), _expr_id(0), 
-        varid_to_actid (std::move(v2a)), canonical_expr(),
-        g (&g_in), 
-        thread_mode(true), 
-
-        send_delay (config_get_real("synth.ring.bundled.send_delay")),
-        recv_delay (config_get_real("synth.ring.bundled.recv_delay")),
-        assn_delay (config_get_real("synth.ring.bundled.assn_delay")),
-        capture_delay (config_get_real("synth.ring.bundled.capture_delay"))
+            procs({}), _expr_id(0), g (&g_in), canonical_expr(),
+            _s (nullptr), varid_to_actid (std::move(v2a)), thread_mode(true)
         {
             Assert ((eeo), "Could not create mapper");
+            init_params();
+        }
 
-            config_set_int("expropt.verbose", 0);
-            config_set_int("expropt.abc_use_constraints", 1);
-            config_set_int("expropt.vectorize_all_ports", 1);
+        void init_params () 
+        {
+            send_delay = (config_get_real("synth.ring.bundled.send_delay"));
+            recv_delay = (config_get_real("synth.ring.bundled.recv_delay"));
+            assn_delay = (config_get_real("synth.ring.bundled.assn_delay"));
+            capture_delay = (config_get_real("synth.ring.bundled.capture_delay"));
+
+            config_set_int("synth.expropt.verbose", 0);
+            config_set_int("synth.expropt.abc_use_constraints", 1);
+            config_set_int("synth.expropt.vectorize_all_ports", 1);
 
             int sel_sz = config_get_table_size("synth.ring.bundled.sel_delays");
             int or_sz = config_get_table_size("synth.ring.bundled.or_delays");

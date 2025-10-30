@@ -34,6 +34,12 @@
 enum class Strategy { None, Heuristic, BruteForce, Timing };
 
 /*
+    bool -> found better solution / not
+    HyperEdgeSet -> the hyperedges to be cut
+    double -> critical cycle value
+*/
+using ThreadResult = std::tuple<bool, HyperEdgeSet, double>;
+/*
     Class implementing projection based on the DFG.
     @param seqs Vector of Sequences of projected processes
     @param procs Vector of act_chp_lang's of projected processes
@@ -135,8 +141,6 @@ class Projection : protected ChoppingBlock {
         */
         void _insert_copies_v7 (GraphWithChanNames &, DFG &);
         void _insert_copies_v7_multithreaded (GraphWithChanNames &, DFG &);
-        
-        using ThreadResult = std::tuple<int, HyperEdgeSet, double>;
 
         ThreadResult _worker_thread (HyperEdgeSet, const GraphWithChanNames &, 
                                     double, int, int);

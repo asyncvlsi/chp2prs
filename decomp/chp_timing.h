@@ -146,9 +146,11 @@ typedef std::unordered_map<ChanId, std::pair<TimingNodeId, TimingNodeId>> chan_t
 class ChpTiming : public ChpCost {
     public:
 
-        ChpTiming (const GraphWithChanNames &g_in, const DFG &dfg_in, Scope *s_in)
+        ChpTiming (const GraphWithChanNames &g_in, const DFG &dfg_in, 
+            Scope *s_in)
         : ChpCost (s_in, g_in), 
-        threaded_mode(false), thread_num(-1) {
+            threaded_mode(false), thread_num(-1) 
+        {
             dfg = &dfg_in;
             tg = TimingGraph();
             id_to_idx = {};
@@ -159,11 +161,9 @@ class ChpTiming : public ChpCost {
         }
 
         ChpTiming (const GraphWithChanNames &g_in, const DFG &dfg_in,
-            std::unordered_map<VarId, ActId *> &&v2a, 
-            int thread_id
-        )
+            std::unordered_map<VarId, ActId *> &&v2a, int thread_id)
         : ChpCost (std::move(v2a), g_in), 
-        threaded_mode(true), thread_num(thread_id)
+            threaded_mode(true), thread_num(thread_id)
         {
             dfg = &dfg_in;
             tg = TimingGraph();

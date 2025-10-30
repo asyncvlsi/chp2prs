@@ -21,8 +21,6 @@
  */
 
 #include "chp_cost.h"
-// #include <mutex>
-// static std::mutex m;
 
 void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, Process *p)
 {

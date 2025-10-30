@@ -130,8 +130,8 @@ void Projection::project(Strategy ss)
     break;
     case Strategy::Timing: {
         // export_dot("out.dot",dfg1);
-        // _insert_copies_v7 (*g, dfg1);
-        _insert_copies_v7_multithreaded (*g, dfg1);
+        _insert_copies_v7 (*g, dfg1);
+        // _insert_copies_v7_multithreaded (*g, dfg1);
         skip = true;
     }
     break;
@@ -271,8 +271,7 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
     procs = _build_procs(g_copy, d_loc);
 }
 
-std::tuple<int, HyperEdgeSet, double> 
-    Projection::_worker_thread(
+ThreadResult Projection::_worker_thread(
     HyperEdgeSet hs_t, const GraphWithChanNames &g_t, 
     double itr_best_t, int n_wcc_t, int thread_id)
 {
@@ -322,10 +321,10 @@ std::tuple<int, HyperEdgeSet, double>
 
         auto r_tmp = ct_tmp.get_maxcycle();
         if (r_tmp.ratio < itr_best_t + 0.1) {
-            return std::make_tuple(1,hs_t,r_tmp.ratio);
+            return ThreadResult{true,hs_t,r_tmp.ratio};
         }
     }
-    return std::make_tuple(0,hs_t,0.0);
+    return ThreadResult{false, hs_t, 0.0};
 }
 
 void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_in)
@@ -378,7 +377,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         for ( const auto &hset : hhvec ) {
             auto [found_better, hs_ret, ratio] = _worker_thread(hset, g_copy, 
                                      itr_best_cycle, n_wcc_orig, thread_cnt);
-            if (found_better==1) {
+            if (found_better) {
                 if (ratio < itr_best_cycle + thresh) {
                     itr_best_cycle = ratio;
                     best_hs = hs_ret;
@@ -390,7 +389,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
     } else {
         // parallel form  -----------------------------------------------------
         // TODO : pick best concurrency level based on hardware
-        std::vector<std::future<std::tuple<int, HyperEdgeSet, double>>> futs;
+        std::vector<std::future<ThreadResult>> futs;
         futs.reserve(hhvec.size());
         
         for (const auto& hset : hhvec) {
@@ -404,7 +403,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         // collect + pick best on the main thread
         for (auto& f : futs) {
             auto [found_better, hs_ret, ratio] = f.get();
-            if (found_better == 1) {
+            if (found_better) {
                 if (ratio < itr_best_cycle + thresh) {
                     itr_best_cycle = ratio;
                     best_hs = hs_ret;
