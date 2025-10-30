@@ -125,7 +125,7 @@ TimingNodeId ChpTiming::_construct_subtg(Sequence seq, TimingNodeId previd, var_
 {
     auto varToId = [&] (const VarId &v) { 
         if (threaded_mode) {
-            return varid_to_actid[v].get();
+            return varid_to_actid[v];
         }
         else {
             return table.varMap (v); 

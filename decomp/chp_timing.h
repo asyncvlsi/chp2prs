@@ -159,7 +159,7 @@ class ChpTiming : public ChpCost {
         }
 
         ChpTiming (const GraphWithChanNames &g_in, const DFG &dfg_in,
-            std::unordered_map<VarId, std::unique_ptr<ActId>> &&v2a, 
+            std::unordered_map<VarId, ActId *> &&v2a, 
             int thread_id
         )
         : ChpCost (std::move(v2a), g_in), 

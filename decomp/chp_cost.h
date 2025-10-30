@@ -33,7 +33,7 @@ class ChpCost {
         ChpCost (Scope *s, const GraphWithChanNames &g_in)
         : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
         _s (s), procs({}), _expr_id(0), 
-        g (&g_in), varid_to_actid(), 
+        g (&g_in), varid_to_actid(), canonical_expr(),
         thread_mode(false), 
 
         send_delay (config_get_real("synth.ring.bundled.send_delay")),
@@ -59,11 +59,11 @@ class ChpCost {
             or_delays = std::vector<double> (tmp2,tmp2+sel_sz);
         }
 
-        ChpCost (std::unordered_map<VarId, std::unique_ptr<ActId>> &&v2a,
+        ChpCost (std::unordered_map<VarId, ActId *> &&v2a,
         const GraphWithChanNames &g_in)
         : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
         _s (nullptr), procs({}), _expr_id(0), 
-        varid_to_actid (std::move(v2a)), 
+        varid_to_actid (std::move(v2a)), canonical_expr(),
         g (&g_in), 
         thread_mode(true), 
 
@@ -103,7 +103,12 @@ class ChpCost {
         double _latency_cost (act_chp_lang_t *);
 
         double expr_delay (Expr *, int);
-        void _expr_collect_vars (Expr *);
+        
+        /*
+            also does a primitive dag-ing in multi-threaded mode
+        */ 
+        void _expr_collect_vars (Expr *&); 
+        
         int _gen_expr_id ();
         int bitwidth (ActId *);
         int selection_way (act_chp_lang_t *);
@@ -118,7 +123,8 @@ class ChpCost {
         Scope *_s;
         bool thread_mode;
         const GraphWithChanNames *g;
-        std::unordered_map<VarId, std::unique_ptr<ActId>> varid_to_actid;
+        std::unordered_map<VarId, ActId *> varid_to_actid;
+        std::unordered_map<ActId *, Expr *> canonical_expr;
 
         // mapper object
         std::unique_ptr<ExprCache> eeo;

@@ -311,17 +311,17 @@ std::tuple<int, HyperEdgeSet, double>
         hassert (g_loop.graph.is_static_token_form);
         _build_seqs(g_loop, d_t.get_wccs().size());
         step2(g_loop, d_t);
-        std::unordered_map<VarId, std::unique_ptr<ActId>> varid_to_actid;
+        // TODO: switching to raw ptr, but it should be okay
+        std::unordered_map<VarId, ActId *> varid_to_actid;
         for( auto v : g_loop.graph.allUsedVarIds() ) {
-            auto aid = std::make_unique<ActId>(
-                ("_tmpvar_"+std::to_string(thread_id)+"_"+std::to_string(v.m_id)).c_str());
-            varid_to_actid.insert({v,std::move(aid)});
+            auto aid = new ActId (("_tmpvar_"+std::to_string(thread_id)+"_"+std::to_string(v.m_id)).c_str());
+            varid_to_actid.insert({v,aid});
         }
         // this is thread-safe now ^_^
         ChpTiming ct_tmp(g_loop, d_t, std::move(varid_to_actid), thread_id);
 
         auto r_tmp = ct_tmp.get_maxcycle();
-        if (r_tmp.ratio < itr_best_t - 1) {
+        if (r_tmp.ratio < itr_best_t + 0.1) {
             return std::make_tuple(1,hs_t,r_tmp.ratio);
         }
     }
@@ -372,13 +372,14 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         int n_wcc_orig = d_loc.get_wccs().size();
 
         constexpr bool multithreaded = false;
+        constexpr double thresh = 0.1;
     if (!multithreaded) {
         // sequential form (parallelizable) -----------------------------------
         for ( const auto &hset : hhvec ) {
             auto [found_better, hs_ret, ratio] = _worker_thread(hset, g_copy, 
                                      itr_best_cycle, n_wcc_orig, thread_cnt);
             if (found_better==1) {
-                if (ratio < itr_best_cycle - 1) {
+                if (ratio < itr_best_cycle + thresh) {
                     itr_best_cycle = ratio;
                     best_hs = hs_ret;
                 }
@@ -404,7 +405,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         for (auto& f : futs) {
             auto [found_better, hs_ret, ratio] = f.get();
             if (found_better == 1) {
-                if (ratio < itr_best_cycle) {
+                if (ratio < itr_best_cycle + thresh) {
                     itr_best_cycle = ratio;
                     best_hs = hs_ret;
                 }

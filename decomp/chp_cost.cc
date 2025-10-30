@@ -255,6 +255,7 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
       e = expr_dag(e);
     }
 
+    // also does a primitive dag-ing in thread mode
     _expr_collect_vars (e);
 
     // collect input vars in list
@@ -294,7 +295,7 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
     Collect all the variables in a given expression and put them 
     in the exprmap and widthmap global variables.
 */
-void ChpCost::_expr_collect_vars (Expr *e)
+void ChpCost::_expr_collect_vars (Expr *&e)
 {
   Assert (e, "Hmm");
 
@@ -376,17 +377,32 @@ void ChpCost::_expr_collect_vars (Expr *e)
 
   case E_BITFIELD:
   case E_VAR: {
-        // fprintf(stdout, "\nle: %lu\n", long(e));
-        ActId *var = (ActId *)e->u.e.l;
-        ihash_bucket_t *ib;
-        ihash_bucket_t *b_width;
+      // fprintf(stdout, "\nle: %lu\n", long(e));
+      ActId *var = (ActId *)e->u.e.l;
+      ihash_bucket_t *ib;
+      ihash_bucket_t *b_width;
+      if (thread_mode) {
+        if (!canonical_expr.count(var)) {
+          canonical_expr.insert({var,e});
+        }
+        e = canonical_expr.at(var);
+        if (!ihash_lookup (_inexprmap, (long)(canonical_expr.at(var))))
+        {
+          ib = ihash_add (_inexprmap, (long)e);
+          ib->i = _gen_expr_id();
+          b_width = ihash_add (_inwidthmap, (long)e);
+          b_width->i = bitwidth(var);
+        }
+      }
+      else {
         if (!ihash_lookup (_inexprmap, (long)e)) 
         {
-            ib = ihash_add (_inexprmap, (long)e);
-            ib->i = _gen_expr_id();
-            b_width = ihash_add (_inwidthmap, (long) e);
-            b_width->i = bitwidth(var);
-        }
+              ib = ihash_add (_inexprmap, (long)e);
+              ib->i = _gen_expr_id();
+              b_width = ihash_add (_inwidthmap, (long) e);
+              b_width->i = bitwidth(var);
+          }
+      }
     }
     break;
 
@@ -417,7 +433,7 @@ int ChpCost::bitwidth (ActId *id)
   if (thread_mode) {
     // if (act_var_bw.count(id)) return act_var_bw.at(id);
     for ( auto &[v, up] : varid_to_actid) {
-      if (id->isEqual(up.get())) return g->graph.id_pool().getBitwidth(v);
+      if (id->isEqual(up)) return g->graph.id_pool().getBitwidth(v);
     }
     fprintf(stdout, "\ncould not find var : %p\n",id);
     Assert (false, "unprovided id in threaded mode!");
