@@ -438,6 +438,14 @@ class DFG {
             }
             return ret;
         }
+        std::unordered_set<Edge> get_in_edges1 (NodeId to) const {
+            Assert (contains(to), "invalid from node");
+            std::unordered_set<Edge> ret = {};
+            for ( const auto &[x,y] : adj ) {
+                if (y.count(to)) { ret.insert({x,to}); }
+            }
+            return ret;
+        }
 
         /*
             Check if there exists a directed edge
@@ -729,7 +737,7 @@ class DFG {
         /*
             Find the SCC ID of a given node_id
         */
-       CompId find_scc_id (NodeId n1) const
+        CompId find_scc_id (NodeId n1) const
         {
             Assert (n1.get_raw()!=-1, "Invalid node");
             Assert (contains(n1), "Node does not exist");

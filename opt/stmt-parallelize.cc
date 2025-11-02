@@ -59,6 +59,14 @@ void make_parallel(ChpGraph &g, Sequence &seq,
                    std::unordered_map<const Block *, UsesAndDefs> &udmap, 
                    bool &changed)
 {
+    auto intersect = [](const std::unordered_set<VarId> &a, 
+                        const std::unordered_set<VarId> &b) {
+        std::unordered_set<VarId> ret = {};
+        for ( const auto &x : a ) {
+            if (b.count(x)) ret.insert(x);
+        }
+        return ret;
+    };
     Block *curr1 = seq.startseq->child();
     while (curr1 != seq.endseq) 
     {
@@ -69,20 +77,9 @@ void make_parallel(ChpGraph &g, Sequence &seq,
             auto ud1 = udmap.at(curr1);
             Assert (udmap.count(curr2), "what2");
             auto ud2 = udmap.at(curr2);
-            std::unordered_set<VarId> ww = {};
-            std::unordered_set<VarId> wr = {};
-            std::unordered_set<VarId> rw = {};
-            std::set_intersection(ud1.var_writes.begin(), ud1.var_writes.end(),
-                                  ud2.var_writes.begin(), ud2.var_writes.end(),
-                                  std::inserter(ww, ww.begin()));
-
-            std::set_intersection(ud1.var_writes.begin(), ud1.var_writes.end(),
-                                  ud2.var_reads.begin() , ud2.var_reads.end(),
-                                  std::inserter(wr, wr.begin()));
-
-            std::set_intersection(ud2.var_writes.begin(), ud2.var_writes.end(),
-                                  ud1.var_reads.begin() , ud1.var_reads.end(),
-                                  std::inserter(rw, rw.begin()));
+            auto ww = intersect(ud1.var_writes, ud2.var_writes);
+            auto wr = intersect(ud1.var_writes, ud2.var_reads);
+            auto rw = intersect(ud1.var_reads , ud2.var_writes);
 
             if (ww.empty() && wr.empty() && rw.empty()) {
                 curr1 = make_parallel(g, curr1, curr2, udmap);
@@ -108,17 +105,20 @@ void parallelize_statememts(ChpGraph &g, Sequence &seq,
             break;
         case BlockType::Par: {
             for ( auto branch : curr->u_par().branches ) {
+                parallelize_statememts(g, branch, ud, changed);
                 make_parallel(g, branch, ud, changed);
             }
             break;
         }
         case BlockType::Select: {
             for ( auto &branch : curr->u_select().branches ) {
+                parallelize_statememts(g, branch.seq, ud, changed);
                 make_parallel(g, branch.seq, ud, changed);
             }
             break;
         }
         case BlockType::DoLoop: {
+            parallelize_statememts(g, curr->u_doloop().branch, ud, changed);
             make_parallel(g, curr->u_doloop().branch, ud, changed);
             break;
         }

@@ -45,8 +45,13 @@ void ChpTiming::_construct_tg(Sequence seq, var_to_actvar &table,
     break;
       
     case BlockType::DoLoop: {
-        TimingNodeId tmp;
-        _construct_subtg (seq, tmp, table, c2n_recv, c2n_send, 1);
+        auto start = tg.add_node(pctr,"Start");
+        auto end = tg.add_node(pctr,"End");
+        nmap[start] = {};
+        nmap[end] = {};
+        tg.add_edge(end, start, 1, true);
+        auto final = _construct_subtg(curr->u_doloop().branch, start, table, c2n_recv, c2n_send, 0);
+        tg.add_edge(final, end, 0, false);
         pctr++;
     }
     break;
@@ -255,13 +260,7 @@ TimingNodeId ChpTiming::_construct_subtg(Sequence seq, TimingNodeId previd, var_
     break;
       
     case BlockType::DoLoop: {
-        auto start = tg.add_node(pctr,"Start");
-        auto end = tg.add_node(pctr,"End");
-        nmap[start] = {};
-        nmap[end] = {};
-        tg.add_edge(end, start, 1, true);
-        auto final = _construct_subtg(curr->u_doloop().branch, start, table, c2n_recv, c2n_send, 0);
-        tg.add_edge(final, end, 0, false);
+        Assert(false, "Nested loop?");
     }
     break;
     
@@ -450,6 +449,9 @@ RawResult ChpTiming::run_max_ratio()
     std::vector<RawEdge> E;
     TimingNodeId bot;
     for (auto& e : tg.get_edges()) {
+        if (!(e.from!=bot && e.to!=bot)) {
+            print_chp(std::cout, g->graph);
+        }
         Assert (e.from!=bot && e.to!=bot, "Malformed Timing Graph!");
         int u = id_to_idx.at(e.from);
         int v = id_to_idx.at(e.to);

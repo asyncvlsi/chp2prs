@@ -32,8 +32,6 @@
     - implement cost-based cut (done)
     - expose complex part cleanly for optimizer plug-in (done)
 */
-#include <mutex>
-static std::mutex m;
 
 bool is_empty(ChpGraph &g, Sequence seq);
 void eliminate_empty(ChpGraph &g, Sequence seq);
@@ -130,8 +128,8 @@ void Projection::project(Strategy ss)
     break;
     case Strategy::Timing: {
         // export_dot("out.dot",dfg1);
-        _insert_copies_v7 (*g, dfg1);
-        // _insert_copies_v7_multithreaded (*g, dfg1);
+        // _insert_copies_v7 (*g, dfg1);
+        _insert_copies_v7_multithreaded (*g, dfg1);
         skip = true;
     }
     break;
@@ -289,7 +287,7 @@ ThreadResult Projection::_worker_thread(
     for ( const auto &h : hs_t ) { 
         const auto &node = d_t.find(h.first);
         auto vars = get_defs(node);
-        if (_breakable(node)) {
+        if (_breakable(h, d_t)) {
             for ( auto x : h.second ) {
                 d_t.delete_edge (h.first, x);
             }
@@ -329,7 +327,7 @@ ThreadResult Projection::_worker_thread(
 
 void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_in)
 {
-    constexpr int verbose = 0;
+    constexpr int verbose = 1;
 
     // make copy of graph
     std::unordered_map<ChanId, ChanId> cc;
@@ -419,7 +417,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
             if (best_h.first!=bot_id) {
                 const auto &node = d_loc.find(best_h.first);
                 auto vars = get_defs(node);
-                if (_breakable(node)) {
+                if (_breakable(best_h, d_loc)) {
                     for ( auto x : best_h.second ) {
                         d_loc.delete_edge (best_h.first, x);
                     }
@@ -501,10 +499,12 @@ HyperEdgeSetVec Projection::_get_candidates_segment(const ChpTiming &ct)
         itr.insert(scc_id);
 
         std::unordered_set<Edge> all_outs = {};
+        std::unordered_set<Edge> all_ins = {};
         for ( const auto &si : itr ) {
             auto sccnodes = ct.dfg->find_scc(si);
             for ( const auto &sn : sccnodes ) {
                 all_outs = union_<Edge> (all_outs, ct.dfg->get_out_edges1(sn));
+                all_ins  = union_<Edge> (all_ins,  ct.dfg->get_in_edges1(sn));
             }
         }
 
@@ -512,6 +512,14 @@ HyperEdgeSetVec Projection::_get_candidates_segment(const ChpTiming &ct)
         // only edges that cross over from our scc prefix to downstream
         for ( const auto &ee : all_outs ) {
             if (itr.count(ct.dfg->find_scc_id(ee.first)) && !itr.count(ct.dfg->find_scc_id(ee.second))) 
+                all_outs_filter.insert(ee);
+        }
+
+        // just reusing all_outs_filter
+        // std::unordered_set<Edge> all_ins_filter = {}; 
+        // only edges that cross over to our scc prefix from upstream
+        for ( const auto &ee : all_ins ) {
+            if (!itr.count(ct.dfg->find_scc_id(ee.first)) && itr.count(ct.dfg->find_scc_id(ee.second))) 
                 all_outs_filter.insert(ee);
         }
 
@@ -660,11 +668,27 @@ HyperEdgesVec Projection::_get_candidates_dynamic(const ChpTiming &ct, int max_s
 
 bool Projection::_breakable (const DFG_Node &n)
 {
-    std::unordered_set<NodeType> allowed = 
+    const std::unordered_set<NodeType> allowed = 
         {NodeType::Basic, NodeType::Guard, 
             NodeType::SelPhi, NodeType::PllPhi};
     auto vars = get_defs(n);
     return (vars.size()==1 && bool(allowed.count(n.t)));
+}
+
+bool Projection::_breakable (const HyperEdge &h, const DFG &d)
+{
+    const std::unordered_set<NodeType> banned_dests = 
+        {NodeType::LoopInPhi, NodeType::LoopOutPhi, 
+            NodeType::LoopLoopPhi};
+    const auto &src = d.find(h.first);
+    if (!_breakable(src)) return false;
+
+    for ( const auto &x : h.second ) {
+        const auto &dest = d.find(x); 
+        if (banned_dests.count(dest.t)) return false;
+    }
+    return true;
+
 }
 
 /*
@@ -1438,8 +1462,8 @@ void Projection::_build_graph_nodes (const Sequence &seq, DFG &d_in)
         /*
             // Assuming top-level loop guard is always `true` 
         */
-        d_in.add_node(DFG_Node (curr, std::make_pair(0, IRGuard::makeExpression( 
-            ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard) )), d_in.gen_id()) );
+        // d_in.add_node(DFG_Node (curr, std::make_pair(0, IRGuard::makeExpression( 
+        //     ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard) )), d_in.gen_id()) );
         for ( auto ophi : curr->u_doloop().out_phis ) {
             d_in.add_node(DFG_Node (curr, ophi, d_in.gen_id()));
         }

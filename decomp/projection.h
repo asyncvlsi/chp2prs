@@ -120,6 +120,7 @@ class Projection : protected ChoppingBlock {
         void _uninsert_hyperedge_copy (GraphWithChanNames &, const DFG &, HyperEdge, VarId, VarId, CopyLocMap &);
 
         bool _breakable (const DFG_Node &);
+        bool _breakable (const HyperEdge &, const DFG &);
         /*
             Replace use only in this block
         */
