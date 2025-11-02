@@ -1926,24 +1926,37 @@ bool is_empty(ChpGraph &g, Sequence seq)
 void eliminate_empty(ChpGraph &g, Sequence seq)
 {
     Block *curr = seq.startseq->child();
+    while (curr != seq.endseq) {
     switch (curr->type()) {
     case BlockType::Par: {
         std::list<Sequence> new_branches = {};
         for (auto &branch : curr->u_par().branches) {
+            eliminate_empty (g, branch);
             if(!is_empty (g, branch)) {
                 new_branches.push_back(branch);
             }
         }
+        if (new_branches.empty()) new_branches.push_back(g.blockAllocator().newSequence({}));
         curr->u_par().branches = new_branches;
     }
     break;
-    case BlockType::DoLoop: 
+    case BlockType::DoLoop: {
+        eliminate_empty(g, curr->u_doloop().branch);
+    }
+    break;
     case BlockType::Basic:
-    case BlockType::Select:
+    break;
+    case BlockType::Select: {
+        for (auto &branch : curr->u_select().branches) {
+            eliminate_empty(g, branch.seq);
+        }
+    }
     break;
     case BlockType::StartSequence:
     case BlockType::EndSequence:
         hassert(false);
         break;
+    }
+    curr = curr->child();
     }
 } 

@@ -106,7 +106,7 @@ void parallelize_statememts(ChpGraph &g, Sequence &seq,
         case BlockType::Par: {
             for ( auto branch : curr->u_par().branches ) {
                 parallelize_statememts(g, branch, ud, changed);
-                make_parallel(g, branch, ud, changed);
+                // make_parallel(g, branch, ud, changed);
             }
             break;
         }
