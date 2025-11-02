@@ -94,6 +94,88 @@ void make_parallel(ChpGraph &g, Sequence &seq,
     }
 }
 
+bool is_empty(Sequence seq) 
+{
+    bool ret = true;
+    Block *curr = seq.startseq->child();
+    while (curr->type() != BlockType::EndSequence) {
+    if (!ret) return false;
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        return false;
+    }
+    break;
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            ret &= is_empty (branch);
+        }
+    }
+    break;
+    case BlockType::Select: {
+        for (auto &branch : curr->u_select().branches) {
+            ret &= is_empty (branch.seq);
+        }
+    }
+    break;
+    case BlockType::DoLoop: {
+        ret &= is_empty(curr->u_doloop().branch);
+    }
+    break;
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+    break;
+    }
+    curr = curr->child();
+    }
+    return ret;
+}
+
+void eliminate_empty_code(ChpGraph &g, Sequence &seq) 
+{
+    Block *curr = seq.startseq->child();
+    while (curr != seq.endseq) {
+        switch (curr->type()) {
+        case BlockType::Basic:
+            break;
+        case BlockType::Par: {
+            std::list<Sequence> branches = {};
+            for ( auto branch : curr->u_par().branches ) {
+                eliminate_empty_code(g, branch);
+                if (!is_empty(branch)) branches.push_back(branch);
+            }
+            if (branches.empty()) 
+                curr->u_par().branches = {g.blockAllocator().newSequence({})};
+            else
+                curr->u_par().branches = branches;
+            break;
+        }
+        case BlockType::Select: {
+            bool all_empty = true;
+            for ( auto &branch : curr->u_select().branches ) {
+                eliminate_empty_code(g, branch.seq);
+                all_empty &= is_empty(branch.seq);
+            }
+            if (all_empty) {
+                curr->u_select().branches.clear();
+                auto tmp = curr->parent();
+                g.spliceOutEmptyControlBlock(curr, MarkDead::no);
+                curr = tmp;
+            }
+            break;
+        }
+        case BlockType::DoLoop: {
+            eliminate_empty_code(g, curr->u_doloop().branch);
+            break;
+        }
+        case BlockType::StartSequence:
+        case BlockType::EndSequence:
+            break;
+        }
+        curr = curr->child();
+    }
+}
+
 void parallelize_statememts(ChpGraph &g, Sequence &seq, 
                             std::unordered_map<const Block *, UsesAndDefs> &ud, 
                             bool &changed) 
@@ -188,6 +270,11 @@ bool parallelizeStatements(ChpGraph &graph) {
 
 bool fillInElseExplicit(ChpGraph &graph) {
     fill_in_else_explicit(graph, graph.m_seq);
+    return true;
+}
+
+bool eliminateEmptyCode(ChpGraph &graph) {
+    eliminate_empty_code(graph, graph.m_seq);
     return true;
 }
 

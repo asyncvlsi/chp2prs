@@ -33,9 +33,6 @@
     - expose complex part cleanly for optimizer plug-in (done)
 */
 
-bool is_empty(ChpGraph &g, Sequence seq);
-void eliminate_empty(ChpGraph &g, Sequence seq);
-
 std::tuple<
     std::unordered_set<ActId *>, 
     act_chp_lang_t *,
@@ -55,7 +52,7 @@ std::tuple<
     {
         auto _g = ChpOptimize::chp_graph_from_act (v, s, 1);
         ChpOptimize::optimize_chp_basic (_g.graph, "brr", false);
-        eliminate_empty(_g.graph, _g.graph.m_seq);
+        ChpOptimize::eliminateEmptyCode(_g.graph);
         ChpOptimize::parallelizeStatements (_g.graph);
         std::vector<ActId *> tmp_names2;
         v = chp_graph_to_act (_g, tmp_names2, s);
@@ -978,10 +975,8 @@ void Projection::_build_seqs (GraphWithChanNames &gx, int num_subgraphs)
         _build_sub_proc_new (gx, d_loc, gx.graph.m_seq, tmp);
 
         ChpOptimize::takeOutOfNewStaticTokenForm(gx.graph);
-        eliminate_empty(gx.graph, gx.graph.m_seq);
-        if (!is_empty(gx.graph, gx.graph.m_seq)) {
-            ret.push_back(gx.graph.m_seq);
-        }
+        ChpOptimize::eliminateEmptyCode(gx.graph);
+        ret.push_back(gx.graph.m_seq);
         
         hassert (num_subgraphs == tmp_sgs.size());
 
@@ -1881,82 +1876,3 @@ void Projection::export_dot(std::string filename, const DFG &d_in)
     fprintf(ff,"\n}");
     fclose(ff);
 }
-
-bool is_empty(ChpGraph &g, Sequence seq)
-{
-    bool ret = true;
-    Block *curr = seq.startseq->child();
-
-    while (curr->type() != BlockType::EndSequence) {
-    switch (curr->type()) {
-    case BlockType::Basic: {
-        return false;
-    }
-    break;
-      
-    case BlockType::Par: {
-        for (auto &branch : curr->u_par().branches) {
-            ret &= is_empty (g, branch);
-        }
-    }
-    break;
-      
-    case BlockType::Select: {
-        for (auto &branch : curr->u_select().branches) {
-            ret &= is_empty (g, branch.seq);
-        }
-    }
-    break;
-      
-    case BlockType::DoLoop: {
-        ret &= is_empty(g, curr->u_doloop().branch);
-    }
-    break;
-    
-    case BlockType::StartSequence:
-    case BlockType::EndSequence:
-        hassert(false);
-        break;
-    }
-    curr = curr->child();
-    }
-    return ret;
-}
-
-void eliminate_empty(ChpGraph &g, Sequence seq)
-{
-    Block *curr = seq.startseq->child();
-    while (curr != seq.endseq) {
-    switch (curr->type()) {
-    case BlockType::Par: {
-        std::list<Sequence> new_branches = {};
-        for (auto &branch : curr->u_par().branches) {
-            eliminate_empty (g, branch);
-            if(!is_empty (g, branch)) {
-                new_branches.push_back(branch);
-            }
-        }
-        if (new_branches.empty()) new_branches.push_back(g.blockAllocator().newSequence({}));
-        curr->u_par().branches = new_branches;
-    }
-    break;
-    case BlockType::DoLoop: {
-        eliminate_empty(g, curr->u_doloop().branch);
-    }
-    break;
-    case BlockType::Basic:
-    break;
-    case BlockType::Select: {
-        for (auto &branch : curr->u_select().branches) {
-            eliminate_empty(g, branch.seq);
-        }
-    }
-    break;
-    case BlockType::StartSequence:
-    case BlockType::EndSequence:
-        hassert(false);
-        break;
-    }
-    curr = curr->child();
-    }
-} 
