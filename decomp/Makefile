@@ -21,7 +21,7 @@
 TARGETLIBS=libactchpdecomp_$(EXT).so
 
 TARGETINCS=projection.h chopping_block.h analysis.h multichan.h \
-		   pretty_print.h chp_cost.h ddg.h chp_timing.h
+		   pretty_print.h chp_cost.h ddg.h chp_timing.h expr_pipe.h eqn_parser.h
 TARGETINCSUBDIR=act/chp
 
 CPPSTD=c++17
@@ -32,6 +32,8 @@ SHOBJS=analysis.os \
 	projection.os \
 	multichan.os \
 	chp_timing.os \
+	eqn_parser.os \
+	expr_pipe.os \
 	pretty_print.os 
 
 SRCS=$(SHOBJS:.os=.cc)

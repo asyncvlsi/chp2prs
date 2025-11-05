@@ -27,6 +27,7 @@
 #include <act/chp/pretty_print.h>
 #include <act/chp/multichan.h>
 #include <act/chp/chp_cost.h>
+#include <act/chp/expr_pipe.h>
 
 #include <act/chp/chp-opt.h>
 #include <act/chp/static-tokens.h>
@@ -121,7 +122,9 @@ class Decomp : public ActSynthesize {
       top_chp->type = ACT_CHP_COMMA;
       top_chp->u.semi_comma.cmd = list_new();
 
-
+      // ExprPipe ep {g, p->CurScope()};
+      // ep.run();
+      
       auto t1 = high_resolution_clock::now();
       // necessary rewrites for ring synthesis --------------------------------
       MultiChan mc = MultiChan (g, p->CurScope());
