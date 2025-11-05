@@ -122,7 +122,7 @@ class Decomp : public ActSynthesize {
       top_chp->type = ACT_CHP_COMMA;
       top_chp->u.semi_comma.cmd = list_new();
 
-      // ExprPipe ep {g, p->CurScope()};
+      // ExprPipe ep (g, p->CurScope());
       // ep.run();
       
       auto t1 = high_resolution_clock::now();

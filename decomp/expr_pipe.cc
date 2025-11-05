@@ -98,34 +98,159 @@ void ExprPipe::_run_seq(Sequence seq, var_to_actvar &table)
 
 void ExprPipe::_run_expr (Expr *e, int width)
 {
-    auto mapped_verilog = _expr_to_verilog (e, width);
-    _verilog_to_eqn (mapped_verilog);
-    cleanup_tmp_files();
-    EqnParser p("out.eqn", g->graph.id_pool());
-    p.parseFile();
-    var_to_actvar table(s, g->graph.id_pool());
-    auto varToId = [&] (const VarId &v) { return table.varMap(v); };
-    auto chanToId = [&] (const ChanId &v) { return table.chanMap(v); };
 
-    for ( auto &[x,y] : p.get_name_map() ) {
-        fprintf(stdout, "v%llu : %s\n", y.m_id, x.c_str());
-    }
+  // TODO: clear all internal tracking data structures!!
 
-    auto vblks = p.get_assigns(g->graph);
-    for ( auto b : vblks ) {
-        std::cout << std::endl;
-        print_chp_block(std::cout, b);
+  auto mapped_verilog = _expr_to_verilog (e, width);
+  _verilog_to_eqn (mapped_verilog);
+  cleanup_tmp_files();
+  EqnParser p("out.eqn", g->graph.id_pool());
+  p.parseFile();
+  var_to_actvar table(s, g->graph.id_pool());
+  auto varToId = [&] (const VarId &v) { return table.varMap(v); };
+  auto chanToId = [&] (const ChanId &v) { return table.chanMap(v); };
+
+  nm = p.get_name_map();
+  nmi = p.get_name_map_inv();
+
+  fprintf(stdout, "\n--- name map --- \n");
+  for ( auto &[x,y] : nmi ) {
+  fprintf(stdout, "v%llu : %s\n", x.m_id, y.c_str());
+  }
+  fprintf(stdout, "\n--- name map --- \n");
+
+  fprintf(stdout, "\n--- parsed exprs --- \n");
+  auto vblks = p.get_assigns(g->graph);
+  for ( auto b : vblks ) {
+  std::cout << std::endl;
+  print_chp_block(std::cout, b);
+  }
+  fprintf(stdout, "\n--- parsed exprs --- \n");
+
+  stmts = p.get_stmts();
+
+  auto is_primary_out = [&](VarId v) {
+    Assert(nmi.count(v), "var not found");
+    auto name = nmi.at(v);
+    return (name.size()>=3 && name.substr(0,3)=="out");
+  };
+
+  fprintf(stdout, "\n--- out order --- \n");
+  std::vector<VarId> vs{};
+  for ( auto v : p.get_outorder() ) {
+    fprintf(stdout, "\nv%llu", v.m_id);
+    if (is_primary_out(v)) {
+      vs.push_back(v);
     }
+  }
+  fprintf(stdout, "\n--- out order --- \n");
+  
+  _build_in_out_map();
+  fprintf(stdout, "\n--- in-out map --- \n");
+  for ( auto [vi,vo] : in_out_map ) {
+    fprintf(stdout, "\n%llu : %llu", vi.m_id, vo.m_id);
+  }
+  fprintf(stdout, "\n--- in-out map --- \n");
+
+  fprintf(stdout, "\n--- sub expr construction --- : %d", n_cuts);
+
+  for (int i=0; i<=n_cuts; i++) {
+    fprintf(stdout, "\n\n--- iter : %d ---\n", i);
+
+    // TODO : sort in correct order
+    // when reaching primary input, just quit
+    for ( auto v : vs ) { fprintf(stdout, "v%llu, ", v.m_id); }
+    _construct_int_expr(vs);
+    
+    auto b = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(
+              Statement::makeAssignment(
+              g->graph.id_pool().makeUniqueVar(vs.size()), 
+              ChpExprSingleRootDag::deep_copy(subexprs.back()) ) ) );
+    std::cout << std::endl;
+    print_chp_block(std::cout, b);
+      
+    if (i!=n_cuts)
+      vs = _get_next_outs(vs);
+  }
+
+  fprintf(stdout, "\n\n--- sub expr construction --- : %d\n", n_cuts);
 
 }
 
+std::vector<VarId> ExprPipe::_get_next_outs (std::vector<VarId> vs)
+{
+  std::unordered_set<VarId> used = {};
+  auto union_ = [](std::unordered_set<VarId> s1, std::unordered_set<VarId> s2) {
+    for ( auto x1 : s1 ) { s2.insert(x1); }
+    return s2;
+  };
+
+  for ( auto v : vs ) {
+    used = union_(used, getIdsUsedByExpr(&stmts.at(v)));
+  }
+  for ( auto vi : used ) {
+    fprintf(stdout, "\nused : v%llu", vi.m_id);
+  }
+
+  std::vector<VarId> ret = {};
+  for ( auto v : used ) {
+    if (!in_out_map.count(v)) {
+      fprintf(stdout, "\n\nvar not found : v%llu\n", v.m_id);
+      fatal_error("break");
+    }
+    ret.push_back(in_out_map.at(v));
+  }
+  return ret;
+}
+
+// assumes vs is sorted correctly
+void ExprPipe::_construct_int_expr (std::vector<VarId> vs)
+{
+  auto len = vs.size();
+  auto vconcat = g->graph.id_pool().makeUniqueVar(len);
+
+  ChpExprSingleRootDag conc_vars;
+  for ( auto v : vs )
+  {
+    if (v == *vs.begin())
+    {
+      // conc_vars = ChpExprSingleRootDag::makeVariableAccess(v, 1);
+      conc_vars = ChpExprSingleRootDag::of_expr(stmts.at(v));
+    }
+    else
+    {
+      auto v1 = ChpExprSingleRootDag::makeVariableAccess(v, 1);
+      conc_vars = ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::Concat,
+                  std::make_unique<ChpExprSingleRootDag>(std::move(conc_vars)),
+                  // std::make_unique<ChpExprSingleRootDag>(std::move(v1))
+                  std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::of_expr(stmts.at(v)))
+                );
+    }
+  }
+  subexprs.push_back(std::move(conc_vars));
+}
+
+
+void ExprPipe::_build_in_out_map ()
+{
+  for ( auto [vi,name] : nmi ) {
+    if (name.size() >= 4 && 
+      name.compare(name.size() - 4, 4, "_out") == 0) {
+      auto pfx = name.substr(0, name.size() - 4);
+      pfx += "_in";
+      Assert (nm.count(pfx), "no matching output for intermediate input");
+      auto vo = nm.at(pfx);
+      in_out_map.insert({vi,vo});
+    }
+  }
+}
 
 /*
     TODO replace this with ABC api call
 */
 void ExprPipe::_verilog_to_eqn (std::string mapped_verilog)
 {
-    int n_cuts = 2;
+    int n_cuts = 1;
 
     std::string cmd = "read_lib " + std::string(config_get_string("synth.liberty.typical"));
     cmd += "; read_verilog -m "+mapped_verilog+"; pipe -L "+std::to_string(n_cuts)+"; \

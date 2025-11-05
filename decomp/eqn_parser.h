@@ -86,8 +86,13 @@ public:
 
     std::vector<Block *> get_assigns (ChpGraph &g);
 
-    std::unordered_map<std::string, VarId> get_name_map () { return nm; }
-    std::unordered_map<VarId, std::string> get_name_map_inv () { return nmi; }
+    std::unordered_map<std::string, VarId> get_name_map ();
+    std::unordered_map<VarId, std::string> get_name_map_inv ();
+
+    std::unordered_set<VarId> get_inorder ();
+    std::unordered_set<VarId> get_outorder ();
+
+    std::unordered_map<VarId, ChpExpr> get_stmts ();
 
 private:
     EqnLexer lex; 

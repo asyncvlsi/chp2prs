@@ -131,6 +131,37 @@ std::string EqnParser::get_name (VarId v) {
     return nmi.at(v);
 }
 
+
+std::unordered_map<std::string, VarId> 
+EqnParser::get_name_map () { 
+    return nm; 
+}
+
+std::unordered_map<VarId, std::string> 
+EqnParser::get_name_map_inv () { 
+    return nmi; 
+}
+
+std::unordered_set<VarId> 
+EqnParser::get_inorder () { 
+    return ef.inorder; 
+}
+
+std::unordered_set<VarId> 
+EqnParser::get_outorder () { 
+    return ef.outorder; 
+}
+
+std::unordered_map<VarId, ChpExpr> 
+EqnParser::get_stmts () { 
+    std::unordered_map<VarId, ChpExpr> ret = {};
+    for ( const auto &[x,y] : ef.stmts ) {
+        ret.insert({x,ChpExpr::deep_copy(y)});
+    }
+    return ret;
+}
+
+
 std::vector<Block *> EqnParser::get_assigns (ChpGraph &g) {
     std::vector<Block *> ret = {};
     for (const auto &[lhs,rhs]: ef.stmts) {

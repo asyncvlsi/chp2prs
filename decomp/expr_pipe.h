@@ -42,35 +42,36 @@
     logic graph. We then read back in the left and right halves spit out
     in .eqn format and reconstruct the two sub-exprs f1 and f2.
 
-    This allows us to write z:=f(x) as (y:=f1(x); z:=f2(y)) 
+    This allows us to write z:=f(x) as (y:=f2(x); z:=f1(y)) 
     which then allows a copy-insertion on y, which effectively pipelines
     the computation of the expensive function f.
+    Note that the bitwidth of y may be anything and is an optimization metric
+    to be passed to ABC to minimize/constrain.
 */ 
-
-/*
-    Initialize syn+retiming commands
-    Take in an expr and synth it 
-*/
-
 class ExprPipe : public ExprCache {
     public:
 
         ExprPipe (GraphWithChanNames &g_in, Scope *s_in)
         : ExprCache ("abc", bd, false, ""),
-            s (s_in), g(&g_in), _m_expr_id(0)
-        {
-            if (!_abc_api) {
-                _abc_api = new AbcApi();
-            }
-        }
+            s (s_in), g(&g_in), _m_expr_id(0), 
+            nm(), nmi(), stmts(), subexprs(), in_out_map(),
+            n_cuts(1)
+        {}
+
+        ~ExprPipe () {}
 
         void run ();
         
-        protected:
+    protected:
 
         void _run_seq (Sequence, var_to_actvar &);
 
         void _run_expr (Expr *, int);
+
+        void _construct_int_expr (std::vector<VarId>);
+        void _build_in_out_map ();
+        std::vector<VarId> _get_next_outs (std::vector<VarId>);
+
         void _expr_collect_vars (Expr *); 
         int _gen_expr_id();
         int bitwidth(ActId *);
@@ -81,12 +82,21 @@ class ExprPipe : public ExprCache {
 
         void _parse_eqn ();
 
-        std::string v2eqn_cmd;
-
         Scope *s;
         GraphWithChanNames *g;
 
+        std::unordered_map<std::string, VarId> nm;
+        std::unordered_map<VarId, std::string> nmi;
+        std::unordered_map<VarId, ChpExpr> stmts;
+
+        // map from in-var of expr to out-var of prev expr
+        // essentially the INORDER-OUTORDER map
+        std::unordered_map<VarId, VarId> in_out_map;
+
+        std::vector<ChpExprSingleRootDag> subexprs;
+
         int _m_expr_id;
+        int n_cuts;
 
         // Expression handling for Expropt
         iHashtable *_inexprmap;
