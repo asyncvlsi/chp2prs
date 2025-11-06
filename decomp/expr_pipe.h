@@ -28,6 +28,7 @@
 #include <act/abc_api.h>
 #include <act/chp/ir-expr-act-conversion.h>
 #include <memory>
+#include <regex>
 
 /*
     Expression/Operator Pipelining:
@@ -54,7 +55,7 @@ class ExprPipe : public ExprCache {
         ExprPipe (GraphWithChanNames &g_in, Scope *s_in)
         : ExprCache ("abc", bd, false, ""),
             s (s_in), g(&g_in), _m_expr_id(0), 
-            nm(), nmi(), stmts(), subexprs(), in_out_map(),
+            nm(), nmi(), stmts(), rhss(), in_out_map(),
             n_cuts(1)
         {}
 
@@ -70,11 +71,18 @@ class ExprPipe : public ExprCache {
 
         void _construct_int_expr (std::vector<VarId>);
         void _build_in_out_map ();
-        std::vector<VarId> _get_next_outs (std::vector<VarId>);
+        void _apply_bitmap (ChpExpr &, std::unordered_map<VarId,int>, VarId);
+        void _apply_bitmap_primary_input (ChpExpr &, std::unordered_map<VarId,std::pair<VarId, int>>);
+        std::unordered_map<VarId,std::pair<VarId, int>> _build_primary_input_map ();
+
+        std::vector<VarId> _get_used (std::vector<VarId>, bool);
+        std::vector<VarId> _get_io_image (std::vector<VarId>, bool);
 
         void _expr_collect_vars (Expr *); 
         int _gen_expr_id();
         int bitwidth(ActId *);
+
+        void print_cexpr (ChpExpr &);
 
         std::string _expr_to_verilog (Expr *, int);
 
@@ -93,7 +101,7 @@ class ExprPipe : public ExprCache {
         // essentially the INORDER-OUTORDER map
         std::unordered_map<VarId, VarId> in_out_map;
 
-        std::vector<ChpExprSingleRootDag> subexprs;
+        std::vector<ChpExpr> rhss;
 
         int _m_expr_id;
         int n_cuts;

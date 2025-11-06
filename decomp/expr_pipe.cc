@@ -96,6 +96,16 @@ void ExprPipe::_run_seq(Sequence seq, var_to_actvar &table)
     }
 }
 
+void ExprPipe::print_cexpr (ChpExpr &e) {
+    auto tmp = g->graph.id_pool().makeUniqueVar(1);
+    auto b = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(
+      Statement::makeAssignment(tmp, 
+        ChpExprSingleRootDag::of_expr(ChpExpr::deep_copy(e)))));
+    std::cout << "-----------" << std::endl;
+    print_chp_block(std::cout, b);
+    std::cout << std::endl << "-----------" << std::endl;
+}
+
 void ExprPipe::_run_expr (Expr *e, int width)
 {
 
@@ -129,19 +139,12 @@ void ExprPipe::_run_expr (Expr *e, int width)
 
   stmts = p.get_stmts();
 
-  auto is_primary_out = [&](VarId v) {
-    Assert(nmi.count(v), "var not found");
-    auto name = nmi.at(v);
-    return (name.size()>=3 && name.substr(0,3)=="out");
-  };
-
   fprintf(stdout, "\n--- out order --- \n");
-  std::vector<VarId> vs{};
-  for ( auto v : p.get_outorder() ) {
-    fprintf(stdout, "\nv%llu", v.m_id);
-    if (is_primary_out(v)) {
-      vs.push_back(v);
-    }
+  std::vector<VarId> outs{};
+  for ( int i=0; i<width; i++ ) {
+    std::string out_i = "out["+std::to_string(i)+"]";
+    Assert (nm.count(out_i), "couldn't find output bool?!");
+    outs.push_back(nm.at(out_i));
   }
   fprintf(stdout, "\n--- out order --- \n");
   
@@ -152,84 +155,208 @@ void ExprPipe::_run_expr (Expr *e, int width)
   }
   fprintf(stdout, "\n--- in-out map --- \n");
 
-  fprintf(stdout, "\n--- sub expr construction --- : %d", n_cuts);
+  fprintf(stdout, "\n--- sub expr construction --- : %d\n", n_cuts);
+
+  
+  for ( auto v : outs ) { fprintf(stdout, "v%llu, ", v.m_id); }
 
   for (int i=0; i<=n_cuts; i++) {
-    fprintf(stdout, "\n\n--- iter : %d ---\n", i);
 
-    // TODO : sort in correct order
-    // when reaching primary input, just quit
-    for ( auto v : vs ) { fprintf(stdout, "v%llu, ", v.m_id); }
-    _construct_int_expr(vs);
+    fprintf(stdout, "\n\n--- start iter : %d ---\n", i);
+    // coz primary inputs are special - they don't have an image
+    bool last_iter = (i==n_cuts); 
     
-    auto b = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(
-              Statement::makeAssignment(
-              g->graph.id_pool().makeUniqueVar(vs.size()), 
-              ChpExprSingleRootDag::deep_copy(subexprs.back()) ) ) );
-    std::cout << std::endl;
-    print_chp_block(std::cout, b);
+    _construct_int_expr(outs);
+
+    if (last_iter) {
+      auto vvpos = _build_primary_input_map();
+      _apply_bitmap_primary_input(rhss.back(), vvpos);
+    }
+    else {
+      auto used = _get_used(outs, last_iter);
+
+      std::unordered_map<VarId,int> vpos;
+      std::unordered_map<int,VarId> vposi;
+      for ( int j=0; j<used.size(); j++) { 
+        vpos.insert({used.at(j),j}); 
+        vposi.insert({j,used.at(j)});
+      }
+    
+      auto vconcat = g->graph.id_pool().makeUniqueVar(used.size());
+      _apply_bitmap(rhss.back(), vpos, vconcat);
       
-    if (i!=n_cuts)
-      vs = _get_next_outs(vs);
+      std::vector<VarId> next_outs_ordered;
+      for ( int j=0; j<used.size(); j++) { 
+        next_outs_ordered.push_back(_get_io_image({vposi.at(j)},last_iter)[0]);
+      }
+
+      outs = next_outs_ordered;
+    }
+    print_cexpr(rhss.back());
+    for ( auto v : outs ) { fprintf(stdout, "v%llu, ", v.m_id); }
+    fprintf(stdout, "\n\n--- end iter : %d ---\n", i);
   }
 
   fprintf(stdout, "\n\n--- sub expr construction --- : %d\n", n_cuts);
 
 }
 
-std::vector<VarId> ExprPipe::_get_next_outs (std::vector<VarId> vs)
+void ExprPipe::_apply_bitmap (ChpExpr &e, std::unordered_map<VarId,int> vpos, VarId v)
+{
+  switch (e.type()) {
+  case IRExprTypeKind::BinaryOp: {
+    _apply_bitmap (*(e.u_e2().l), vpos, v);
+    _apply_bitmap (*(e.u_e2().r), vpos, v);
+  }
+  break;
+  case IRExprTypeKind::UnaryOp: {
+    _apply_bitmap (*(e.u_e1().l), vpos, v);
+  }
+  break;
+  case IRExprTypeKind::Var: {
+    auto v1 = e.u_var().id;
+    Assert (vpos.count(v1), "what");
+    e = ChpExpr::makeBitfield(std::make_unique<ChpExpr>(
+      ChpExpr::makeVariableAccess(v, vpos.size())),vpos.at(v1),vpos.at(v1));
+  }
+  break;
+  case IRExprTypeKind::Const: {
+  }
+  break;
+  default:
+  Assert (false, "unexpected type");
+  break;
+  }
+}
+
+std::unordered_map<VarId,std::pair<VarId, int>> ExprPipe::_build_primary_input_map ()
+{
+  auto get_bit = [](std::string name) {
+    std::smatch m;
+    if (std::regex_search(name, m, std::regex("\\[(\\d+)\\]"))) {
+      return std::stoi(m[1].str());
+    }
+    return -1;
+  };
+  auto name_prefix = [](const std::string& s) {
+    size_t pos = s.find('[');
+    return s.substr(0, pos == std::string::npos ? s.size() : pos);
+  };
+
+  auto get_width = [&](std::string pfx) {
+    int w=0;
+    for ( auto [vi,name] : nmi ) {
+      if (name_prefix(name)==pfx) {
+        w = std::max(w, get_bit(name));
+      }
+    }
+    return w+1;
+  };
+
+  std::unordered_map<std::string, VarId> vconcs;
+  auto get_varconc = [&](std::string pfx) {
+    if (!vconcs.count(pfx)) 
+      vconcs.insert({pfx,g->graph.id_pool().makeUniqueVar(get_width(pfx))});
+    return vconcs.at(pfx);
+  };
+
+  std::unordered_map<VarId,std::pair<VarId, int>> ret;
+  for ( auto [vi,name] : nmi ) {
+    if (name.size() >= 3 && name.compare(0, 3, "in_") == 0) {
+      auto bit = get_bit(name);
+      auto pfx = name_prefix(name);
+      ret.insert({vi, {get_varconc(pfx),bit}});
+    }
+  }
+  return ret;
+}
+
+/*
+  vpos : var-in-expr -> {input-int-var-bw-greater-than-one, bitpos}
+  essentially to replace the one-bit vars in the first expr with 
+  bits of int vars that are the primary inputs
+*/
+void ExprPipe::_apply_bitmap_primary_input (ChpExpr &e, std::unordered_map<VarId,std::pair<VarId, int>> vpos)
+{
+  switch (e.type()) {
+  case IRExprTypeKind::BinaryOp: {
+    _apply_bitmap_primary_input (*(e.u_e2().l), vpos);
+    _apply_bitmap_primary_input (*(e.u_e2().r), vpos);
+  }
+  break;
+  case IRExprTypeKind::UnaryOp: {
+    _apply_bitmap_primary_input (*(e.u_e1().l), vpos);
+  }
+  break;
+  case IRExprTypeKind::Var: {
+    auto v1 = e.u_var().id;
+    Assert (vpos.count(v1), "what");
+    e = ChpExpr::makeBitfield(std::make_unique<ChpExpr>(
+      ChpExpr::makeVariableAccess(vpos.at(v1).first, vpos.size())),vpos.at(v1).second,vpos.at(v1).second);
+  }
+  break;
+  case IRExprTypeKind::Const: {
+  }
+  break;
+  default:
+  Assert (false, "unexpected type");
+  break;
+  }
+}
+
+// get next level of output nodes
+std::vector<VarId> ExprPipe::_get_used (std::vector<VarId> vs, bool prim_in)
 {
   std::unordered_set<VarId> used = {};
   auto union_ = [](std::unordered_set<VarId> s1, std::unordered_set<VarId> s2) {
     for ( auto x1 : s1 ) { s2.insert(x1); }
     return s2;
   };
-
   for ( auto v : vs ) {
     used = union_(used, getIdsUsedByExpr(&stmts.at(v)));
   }
-  for ( auto vi : used ) {
-    fprintf(stdout, "\nused : v%llu", vi.m_id);
+  return std::vector(used.begin(), used.end());
+}
+
+std::vector<VarId> ExprPipe::_get_io_image (std::vector<VarId> used, bool prim_in) 
+{
+  if (prim_in) { // first level inputs - don't have an in-out map entry
+    return used;
   }
 
   std::vector<VarId> ret = {};
   for ( auto v : used ) {
-    if (!in_out_map.count(v)) {
-      fprintf(stdout, "\n\nvar not found : v%llu\n", v.m_id);
-      fatal_error("break");
-    }
+    Assert (in_out_map.count(v), "io-image var not found");
     ret.push_back(in_out_map.at(v));
   }
   return ret;
 }
 
-// assumes vs is sorted correctly
+/*
+  assumes input vs is sorted correctly - LSB first.
+  construct an expr that is essentially the concatenation
+  of the bool exprs for each bit of an int.
+*/
 void ExprPipe::_construct_int_expr (std::vector<VarId> vs)
 {
-  auto len = vs.size();
-  auto vconcat = g->graph.id_pool().makeUniqueVar(len);
+  std::unordered_map<VarId, int> bitmap;
 
-  ChpExprSingleRootDag conc_vars;
+  ChpExpr conc_vars;
   for ( auto v : vs )
   {
-    if (v == *vs.begin())
-    {
-      // conc_vars = ChpExprSingleRootDag::makeVariableAccess(v, 1);
-      conc_vars = ChpExprSingleRootDag::of_expr(stmts.at(v));
+    if (v == *vs.begin()) {
+      conc_vars = ChpExpr::deep_copy(stmts.at(v));
     }
-    else
-    {
-      auto v1 = ChpExprSingleRootDag::makeVariableAccess(v, 1);
-      conc_vars = ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::Concat,
-                  std::make_unique<ChpExprSingleRootDag>(std::move(conc_vars)),
-                  // std::make_unique<ChpExprSingleRootDag>(std::move(v1))
-                  std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::of_expr(stmts.at(v)))
+    else {
+      auto v1 = ChpExpr::makeVariableAccess(v, 1);
+      conc_vars = ChpExpr::makeBinaryOp(IRBinaryOpType::Concat,
+                  std::make_unique<ChpExpr>(ChpExpr::deep_copy(stmts.at(v))),
+                  std::make_unique<ChpExpr>(std::move(conc_vars))
                 );
     }
   }
-  subexprs.push_back(std::move(conc_vars));
+  rhss.push_back(std::move(conc_vars));
 }
-
 
 void ExprPipe::_build_in_out_map ()
 {
