@@ -27,18 +27,20 @@
 void ExprPipe::run()
 {
     var_to_actvar table(s, g->graph.id_pool());
+
+    std::cout << "\n---- initial ----\n";
+    print_chp(std::cout, g->graph);
+    std::cout << "\n---- initial ----\n";
+
     _run_seq(g->graph.m_seq, table);
+
+    std::cout << "\n---- final ----\n";
+    print_chp(std::cout, g->graph);
+    std::cout << "\n---- final ----\n";
 }
 
 void ExprPipe::_run_seq(Sequence seq, var_to_actvar &table)
 {
-    auto varToId = [&] (const VarId &v) { 
-        return table.varMap (v); 
-    };
-    auto chanToId = [&] (const ChanId &v) { 
-        return table.chanMap (v); 
-    };
-
     Block *curr = seq.startseq->child();
 
     while (curr->type() != BlockType::EndSequence) {
@@ -48,20 +50,13 @@ void ExprPipe::_run_seq(Sequence seq, var_to_actvar &table)
         case StatementType::Receive:
         break;
         case StatementType::Send: {
-            Expr *e = ChpOptimize::template_func_new_expr_from_irexpr (
-                        *curr->u_basic().stmt.u_send().e.m_dag.roots[0],
-						ActExprIntType::Int, varToId, chanToId);
-            _run_expr(e, g->graph.id_pool().getBitwidth(curr->u_basic().stmt.u_send().chan));
-            
+          _run_expr(curr, table, g->graph.id_pool().getBitwidth(curr->u_basic().stmt.u_send().chan));
         }
         break;
         case StatementType::Assign: {
-            auto ids = curr->u_basic().stmt.u_assign().ids;
-            Assert (ids.size()==1, "assignments unsplit");
-            Expr *e = ChpOptimize::template_func_new_expr_from_irexpr ( 
-                        *curr->u_basic().stmt.u_assign().e.roots[0], 
-                        ActExprIntType::Int, varToId, chanToId);
-            // _run_expr(e, g->graph.id_pool().getBitwidth(ids[0]));
+          auto ids = curr->u_basic().stmt.u_assign().ids;
+          Assert (ids.size()==1, "assignments unsplit");
+          // TODO split assignments and run
         }
         break;
         }
@@ -106,19 +101,61 @@ void ExprPipe::print_cexpr (ChpExpr &e) {
     std::cout << std::endl << "-----------" << std::endl;
 }
 
-void ExprPipe::_run_expr (Expr *e, int width)
+void ExprPipe::reset_state() 
 {
+  nm.clear();
+  nmi.clear();
+  stmts.clear();
+  in_out_map.clear();
+  rhss.clear();
+  lhss.clear();
+  _m_expr_id = 0;
+}
 
-  // TODO: clear all internal tracking data structures!!
+void ExprPipe::_run_expr (Block *b, var_to_actvar &table, int width)
+{
+  reset_state();
+  Assert (b->type()==BlockType::Basic, "what");
+  if (b->u_basic().stmt.type()==StatementType::Assign ||
+    b->u_basic().stmt.type()==StatementType::Receive) {
+    return;
+  }
+  _run_expr_helper (b->u_basic().stmt.u_send().e, table, width);
+  Assert ((rhss.size()-1==lhss.size()), "subexprs and output widths mismatch");
+  std::vector<Block *> vb;
+  // gotta process in reverse
+  std::reverse(rhss.begin(),rhss.end());
+  std::reverse(lhss.begin(),lhss.end());
+  
+  for (int i=0; i<lhss.size(); i++) {
+    auto bb = g->graph.blockAllocator().newBlock(
+      Block::makeBasicBlock(Statement::makeAssignment(lhss.at(i), 
+      ChpExprSingleRootDag::of_expr(rhss.at(i))))
+    );
+    vb.push_back(bb);
+    print_chp_block(std::cout, bb);
+  }
+  auto seq = g->graph.newSequence(vb);
+  g->graph.spliceInSequenceBefore(b, seq);
+  b->u_basic().stmt.u_send().e = ChpExprSingleRootDag::of_expr(rhss.back());
+}
 
-  auto mapped_verilog = _expr_to_verilog (e, width);
+void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, int width)
+{
+  n_cuts = 1;
+
+  auto varToId = [&] (const VarId &v) { return table.varMap (v); };
+  auto chanToId = [&] (const ChanId &v) { return table.chanMap (v); };
+
+  Expr *ae = ChpOptimize::template_func_new_expr_from_irexpr(*(e.m_dag.roots[0]), 
+              ActExprIntType::Int, varToId, chanToId);
+
+  std::unordered_map<ActId*, int> actid_to_in_idx;
+  auto mapped_verilog = _expr_to_verilog (ae, width, actid_to_in_idx);
   _verilog_to_eqn (mapped_verilog);
   cleanup_tmp_files();
   EqnParser p("out.eqn", g->graph.id_pool());
   p.parseFile();
-  var_to_actvar table(s, g->graph.id_pool());
-  auto varToId = [&] (const VarId &v) { return table.varMap(v); };
-  auto chanToId = [&] (const ChanId &v) { return table.chanMap(v); };
 
   nm = p.get_name_map();
   nmi = p.get_name_map_inv();
@@ -127,9 +164,9 @@ void ExprPipe::_run_expr (Expr *e, int width)
   for ( auto &[x,y] : nmi ) {
   fprintf(stdout, "v%llu : %s\n", x.m_id, y.c_str());
   }
-  fprintf(stdout, "\n--- name map --- \n");
+  fprintf(stdout, "--- name map --- \n");
 
-  fprintf(stdout, "\n--- parsed exprs --- \n");
+  fprintf(stdout, "\n--- parsed exprs ---");
   auto vblks = p.get_assigns(g->graph);
   for ( auto b : vblks ) {
   std::cout << std::endl;
@@ -139,17 +176,15 @@ void ExprPipe::_run_expr (Expr *e, int width)
 
   stmts = p.get_stmts();
 
-  fprintf(stdout, "\n--- out order --- \n");
   std::vector<VarId> outs{};
   for ( int i=0; i<width; i++ ) {
     std::string out_i = "out["+std::to_string(i)+"]";
     Assert (nm.count(out_i), "couldn't find output bool?!");
     outs.push_back(nm.at(out_i));
   }
-  fprintf(stdout, "\n--- out order --- \n");
   
   _build_in_out_map();
-  fprintf(stdout, "\n--- in-out map --- \n");
+  fprintf(stdout, "\n--- in-out map ---");
   for ( auto [vi,vo] : in_out_map ) {
     fprintf(stdout, "\n%llu : %llu", vi.m_id, vo.m_id);
   }
@@ -157,19 +192,17 @@ void ExprPipe::_run_expr (Expr *e, int width)
 
   fprintf(stdout, "\n--- sub expr construction --- : %d\n", n_cuts);
 
-  
-  for ( auto v : outs ) { fprintf(stdout, "v%llu, ", v.m_id); }
-
   for (int i=0; i<=n_cuts; i++) {
 
-    fprintf(stdout, "\n\n--- start iter : %d ---\n", i);
+    fprintf(stdout, "\n\n------ start iter : %d ------\n", i);
     // coz primary inputs are special - they don't have an image
     bool last_iter = (i==n_cuts); 
     
+    for ( auto v : outs ) { fprintf(stdout, "out: v%llu\n", v.m_id); }
     _construct_int_expr(outs);
 
     if (last_iter) {
-      auto vvpos = _build_primary_input_map();
+      auto vvpos = _build_primary_input_map(actid_to_in_idx, table);
       _apply_bitmap_primary_input(rhss.back(), vvpos);
     }
     else {
@@ -183,6 +216,7 @@ void ExprPipe::_run_expr (Expr *e, int width)
       }
     
       auto vconcat = g->graph.id_pool().makeUniqueVar(used.size());
+      lhss.push_back(vconcat);
       _apply_bitmap(rhss.back(), vpos, vconcat);
       
       std::vector<VarId> next_outs_ordered;
@@ -193,8 +227,7 @@ void ExprPipe::_run_expr (Expr *e, int width)
       outs = next_outs_ordered;
     }
     print_cexpr(rhss.back());
-    for ( auto v : outs ) { fprintf(stdout, "v%llu, ", v.m_id); }
-    fprintf(stdout, "\n\n--- end iter : %d ---\n", i);
+    fprintf(stdout, "\n------  end  iter : %d ------\n", i);
   }
 
   fprintf(stdout, "\n\n--- sub expr construction --- : %d\n", n_cuts);
@@ -229,7 +262,8 @@ void ExprPipe::_apply_bitmap (ChpExpr &e, std::unordered_map<VarId,int> vpos, Va
   }
 }
 
-std::unordered_map<VarId,std::pair<VarId, int>> ExprPipe::_build_primary_input_map ()
+std::unordered_map<VarId,std::pair<VarId, int>> 
+ExprPipe::_build_primary_input_map (std::unordered_map<ActId *, int> &m, var_to_actvar &table)
 {
   auto get_bit = [](std::string name) {
     std::smatch m;
@@ -243,6 +277,11 @@ std::unordered_map<VarId,std::pair<VarId, int>> ExprPipe::_build_primary_input_m
     return s.substr(0, pos == std::string::npos ? s.size() : pos);
   };
 
+  auto get_in_idx = [](const std::string& in_i) {
+    auto i = in_i.substr(3,in_i.size()-3);
+    return std::stoi(i);
+  };
+
   auto get_width = [&](std::string pfx) {
     int w=0;
     for ( auto [vi,name] : nmi ) {
@@ -253,11 +292,13 @@ std::unordered_map<VarId,std::pair<VarId, int>> ExprPipe::_build_primary_input_m
     return w+1;
   };
 
-  std::unordered_map<std::string, VarId> vconcs;
   auto get_varconc = [&](std::string pfx) {
-    if (!vconcs.count(pfx)) 
-      vconcs.insert({pfx,g->graph.id_pool().makeUniqueVar(get_width(pfx))});
-    return vconcs.at(pfx);
+    auto i = get_in_idx(pfx); 
+    ActId *id; OptionalVarId ret;
+    for ( const auto &[aid, idx] : m) { if (i==idx) id=aid; }
+    for ( const auto &[vid, aid] : table.name_from_var ) { if (id->isEqual(aid)) ret=vid; }
+    Assert ((ret), "not found");
+    return *ret;
   };
 
   std::unordered_map<VarId,std::pair<VarId, int>> ret;
@@ -358,6 +399,17 @@ void ExprPipe::_construct_int_expr (std::vector<VarId> vs)
   rhss.push_back(std::move(conc_vars));
 }
 
+/*
+  ABC Assumption:
+  ABC names the latch input-output bool pairs as one of these:
+  1. `xyz_in` , `xyz_out`
+  2. `xyz_li` , `xyz_lo`
+  Note that `xyz_in` and `xyz_li` are actually outputs from 
+  the perspective of the combinational logic as they are 
+  inputs of latches, and vice versa for `xyz_out` and `xyz_lo`.
+  Example:
+  =(in_0)=> (CL1) =(xyz_in)=> (LATCH) =(xyz_out)=> (CL2) =(out)=>
+*/
 void ExprPipe::_build_in_out_map ()
 {
   for ( auto [vi,name] : nmi ) {
@@ -369,16 +421,24 @@ void ExprPipe::_build_in_out_map ()
       auto vo = nm.at(pfx);
       in_out_map.insert({vi,vo});
     }
+    if (name.size() >= 3 && 
+      name.compare(name.size() - 3, 3, "_lo") == 0) {
+      auto pfx = name.substr(0, name.size() - 3);
+      pfx += "_li";
+      Assert (nm.count(pfx), "no matching output for intermediate input");
+      auto vo = nm.at(pfx);
+      in_out_map.insert({vi,vo});
+    }
   }
 }
 
 /*
-    TODO replace this with ABC api call
+  ABC Assumption:
+  `pipe -L n` places n stages of latches
+  TODO replace this with ABC api call
 */
 void ExprPipe::_verilog_to_eqn (std::string mapped_verilog)
 {
-    int n_cuts = 1;
-
     std::string cmd = "read_lib " + std::string(config_get_string("synth.liberty.typical"));
     cmd += "; read_verilog -m "+mapped_verilog+"; pipe -L "+std::to_string(n_cuts)+"; \
         balance; rewrite; refactor; balance; rewrite -z; balance; \
@@ -389,7 +449,7 @@ void ExprPipe::_verilog_to_eqn (std::string mapped_verilog)
     system(abc_run.c_str());
 }
 
-std::string ExprPipe::_expr_to_verilog (Expr *e, int width)
+std::string ExprPipe::_expr_to_verilog (Expr *e, int width, std::unordered_map<ActId *, int> &m)
 {
     std::string name = "test";
 
@@ -399,7 +459,7 @@ std::string ExprPipe::_expr_to_verilog (Expr *e, int width)
     e = expr_dag(e);
 
     // also does a primitive dag-ing in thread mode
-    _expr_collect_vars (e);
+    _expr_collect_vars (e, m);
 
     // collect input vars in list
     list_t *all_leaves = list_new();
@@ -429,19 +489,19 @@ std::string ExprPipe::_expr_to_verilog (Expr *e, int width)
     return ret;
 }
 
-void ExprPipe::_expr_collect_vars (Expr *e)
+void ExprPipe::_expr_collect_vars (Expr *e, std::unordered_map<ActId *, int> &m)
 {
   Assert (e, "Hmm");
 
 #define BINARY_OP					\
   do {							\
-    _expr_collect_vars (e->u.e.l);	\
-    _expr_collect_vars (e->u.e.r);	\
+    _expr_collect_vars (e->u.e.l, m);	\
+    _expr_collect_vars (e->u.e.r, m);	\
   } while (0)
 
 #define UNARY_OP					\
   do {							\
-    _expr_collect_vars (e->u.e.l);	\
+    _expr_collect_vars (e->u.e.l, m);	\
   } while (0)
   
   switch (e->type) {
@@ -475,9 +535,9 @@ void ExprPipe::_expr_collect_vars (Expr *e)
     break;
 
   case E_QUERY:
-    _expr_collect_vars (e->u.e.l);
-    _expr_collect_vars (e->u.e.r->u.e.l);
-    _expr_collect_vars (e->u.e.r->u.e.r);
+    _expr_collect_vars (e->u.e.l, m);
+    _expr_collect_vars (e->u.e.r->u.e.l, m);
+    _expr_collect_vars (e->u.e.r->u.e.r, m);
     break;
 
   case E_COLON:
@@ -490,7 +550,7 @@ void ExprPipe::_expr_collect_vars (Expr *e)
     {
       Expr *tmp = e;
       while (tmp) {
-	_expr_collect_vars (tmp->u.e.l);
+	_expr_collect_vars (tmp->u.e.l, m);
 	tmp = tmp->u.e.r;
       }
     }
@@ -518,6 +578,7 @@ void ExprPipe::_expr_collect_vars (Expr *e)
     {
         ib = ihash_add (_inexprmap, (long)e);
         ib->i = _gen_expr_id();
+        m.insert({var, ib->i});
         b_width = ihash_add (_inwidthmap, (long) e);
         b_width->i = bitwidth(var);
     }

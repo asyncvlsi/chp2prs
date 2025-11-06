@@ -55,7 +55,7 @@ class ExprPipe : public ExprCache {
         : ExprCache ("abc", bd, false, ""),
             s (s_in), g(&g_in), _m_expr_id(0), 
             nm(), nmi(), stmts(), rhss(), in_out_map(),
-            n_cuts(1)
+            n_cuts(0)
         {}
 
         ~ExprPipe () {}
@@ -66,28 +66,34 @@ class ExprPipe : public ExprCache {
 
         void _run_seq (Sequence, var_to_actvar &);
 
-        void _run_expr (Expr *, int);
+        void _run_expr (Block *, var_to_actvar &, int);
+        void _run_expr_helper (ChpExprSingleRootDag &, var_to_actvar &, int);
 
         void _construct_int_expr (std::vector<VarId>);
         void _build_in_out_map ();
+
         void _apply_bitmap (ChpExpr &, std::unordered_map<VarId,int>, VarId);
         void _apply_bitmap_primary_input (ChpExpr &, std::unordered_map<VarId,std::pair<VarId, int>>);
-        std::unordered_map<VarId,std::pair<VarId, int>> _build_primary_input_map ();
+
+        std::unordered_map<VarId,std::pair<VarId, int>> 
+            _build_primary_input_map (std::unordered_map<ActId *, int> &, var_to_actvar &);
 
         std::vector<VarId> _get_used (std::vector<VarId>, bool);
         std::vector<VarId> _get_io_image (std::vector<VarId>, bool);
 
-        void _expr_collect_vars (Expr *); 
+        void _expr_collect_vars (Expr *, std::unordered_map<ActId *, int> &); 
         int _gen_expr_id();
         int bitwidth(ActId *);
 
         void print_cexpr (ChpExpr &);
 
-        std::string _expr_to_verilog (Expr *, int);
+        std::string _expr_to_verilog (Expr *, int, std::unordered_map<ActId *, int> &);
 
         void _verilog_to_eqn (std::string);
 
         void _parse_eqn ();
+
+        void reset_state ();
 
         Scope *s;
         GraphWithChanNames *g;
@@ -101,6 +107,7 @@ class ExprPipe : public ExprCache {
         std::unordered_map<VarId, VarId> in_out_map;
 
         std::vector<ChpExpr> rhss;
+        std::vector<VarId> lhss;
 
         int _m_expr_id;
         int n_cuts;
