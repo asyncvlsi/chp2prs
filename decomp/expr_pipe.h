@@ -25,7 +25,6 @@
 
 #include <act/chp/chopping_block.h>
 #include <act/expr_cache.h>
-#include <act/abc_api.h>
 #include <act/chp/ir-expr-act-conversion.h>
 #include <memory>
 #include <regex>
