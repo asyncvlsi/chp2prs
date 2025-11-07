@@ -130,7 +130,9 @@ void ExprPipe::_run_expr (Block *b, var_to_actvar &table, int width)
       ChpExprSingleRootDag::of_expr(rhss.at(i))))
     );
     vb.push_back(bb);
+    fprintf(stdout, "\n\n--- new assignment ---\n");
     print_chp_block(std::cout, bb);
+    fprintf(stdout, "\n--- new assignment ---\n");
   }
   auto seq = g->graph.newSequence(vb);
   g->graph.spliceInSequenceBefore(b, seq);
