@@ -127,19 +127,13 @@ void EqnParser::parseFile() {
 }
 
 std::string EqnParser::get_name (VarId v) {
-    Assert (nmi.count(v), "var not found");
-    return nmi.at(v);
+    Assert (nm.count(v), "var not found");
+    return nm.at(v);
 }
 
-
-std::unordered_map<std::string, VarId> 
+Bimap<std::string, VarId> 
 EqnParser::get_name_map () { 
     return nm; 
-}
-
-std::unordered_map<VarId, std::string> 
-EqnParser::get_name_map_inv () { 
-    return nmi; 
 }
 
 std::unordered_set<VarId> 
@@ -215,8 +209,7 @@ std::string EqnParser::file_to_str(const std::string& path) {
 VarId EqnParser::get_var (std::string name) {
     if (!nm.count(name)) {
         auto vi = idpool->makeUniqueVar(1,false);
-        nm.insert({name,vi});
-        nmi.insert({vi,name});
+        nm.insert(name,vi);
     }
     return nm.at(name);
 }

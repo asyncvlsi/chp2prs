@@ -31,6 +31,45 @@
 
 using namespace ChpOptimize;
 
+template <class T, class U>
+class Bimap {
+    std::unordered_map<T,U> m;
+    std::unordered_map<U,T> mi;
+
+    public:
+        Bimap() : m(), mi() 
+        {}
+
+        void insert (T t, U u) {
+            Assert (!(m.count(t)), "overwrite m!");
+            Assert (!(mi.count(u)), "overwrite mi!");
+            m.insert({t,u});
+            mi.insert({u,t});
+        }
+
+        U at (T t) const {
+            Assert(m.count(t), "not found");
+            auto u = m.at(t);
+            Assert(mi.at(u)==t, "inconsistent");
+            return u;
+        }
+
+        T at (U u) const {
+            Assert(mi.count(u), "not found");
+            auto t = mi.at(u);
+            Assert(m.at(t)==u, "inconsistent");
+            return t;
+        }
+
+        void clear() { m.clear(); mi.clear(); }
+        size_t count (T t) const { return m.count(t); }
+        size_t count (U u) const { return mi.count(u); }
+        size_t size () const { return m.size(); }
+
+        auto begin () noexcept { return m.begin(); }
+        auto end () noexcept { return m.end(); }
+};
+
 enum class TokKind {
     End, Id, Const, Eq, Semi,
     LParen, RParen,
@@ -76,7 +115,7 @@ struct EqnFile {
 class EqnParser {
 public:
     explicit EqnParser(std::string path, ChpOptimize::IdPool &idp)
-    : lex(file_to_str(path)), idpool(&idp), ef(), nm(), nmi() { 
+    : lex(file_to_str(path)), idpool(&idp), ef(), nm() { 
         advance(); 
     }
 
@@ -86,9 +125,7 @@ public:
 
     std::vector<Block *> get_assigns (ChpGraph &g);
 
-    std::unordered_map<std::string, VarId> get_name_map ();
-    std::unordered_map<VarId, std::string> get_name_map_inv ();
-
+    Bimap<std::string, VarId> get_name_map ();
     std::unordered_set<VarId> get_inorder ();
     std::unordered_set<VarId> get_outorder ();
 
@@ -99,8 +136,7 @@ private:
     Token tok;
     EqnFile ef;
     ChpOptimize::IdPool *idpool;
-    std::unordered_map<std::string, VarId> nm;
-    std::unordered_map<VarId, std::string> nmi;
+    Bimap<std::string, VarId> nm;
 
     ChpExpr rec (ChpExpr &&);
 

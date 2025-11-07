@@ -28,13 +28,14 @@
 #include <act/chp/ir-expr-act-conversion.h>
 #include <memory>
 #include <regex>
+#include <act/chp/eqn_parser.h>
 
 /*
     Expression/Operator Pipelining:
     Essentially we want to break up an expression into N sub-expressions,
     that when composed in order produce the original expression.
     i.e. given f(x), find f1, f2, ..., fn such that
-    f1( f2( ... ( fn(x) ) ) ) = f(x)
+    f1( f2( ... ( fn(x) ) ... ) ) = f(x)
 
     Consider the simple case of n=2.
     We do this by taking the original expression f, synthesizing it via
@@ -47,6 +48,9 @@
     the computation of the expensive function f.
     Note that the bitwidth of y may be anything and is an optimization metric
     to be passed to ABC to minimize/constrain.
+
+    99% of the work here is really just tracking mappings between names 
+    of variables/signals across different levels of representation. 
 */ 
 class ExprPipe : public ExprCache {
     public:
@@ -54,7 +58,7 @@ class ExprPipe : public ExprCache {
         ExprPipe (GraphWithChanNames &g_in, Scope *s_in)
         : ExprCache ("abc", bd, false, ""),
             s (s_in), g(&g_in), _m_expr_id(0), 
-            nm(), nmi(), stmts(), rhss(), in_out_map(),
+            nm(), stmts(), rhss(), in_out_map(),
             n_cuts(0)
         {}
 
@@ -72,20 +76,20 @@ class ExprPipe : public ExprCache {
         void _construct_int_expr (std::vector<VarId>);
         void _build_in_out_map ();
 
-        void _apply_bitmap (ChpExpr &, std::unordered_map<VarId,int>, VarId);
+        void _apply_bitmap (ChpExpr &, const Bimap<VarId,int> &, VarId);
         void _apply_bitmap_primary_input (ChpExpr &, std::unordered_map<VarId,std::pair<VarId, int>>);
 
         std::unordered_map<VarId,std::pair<VarId, int>> 
             _build_primary_input_map (std::unordered_map<ActId *, int> &, var_to_actvar &);
 
-        std::vector<VarId> _get_used (std::vector<VarId>, bool);
-        std::vector<VarId> _get_io_image (std::vector<VarId>, bool);
+        std::vector<VarId> _get_used (std::vector<VarId>);
+        std::vector<VarId> _get_io_image (std::vector<VarId>);
 
         void _expr_collect_vars (Expr *, std::unordered_map<ActId *, int> &); 
         int _gen_expr_id();
         int bitwidth(ActId *);
 
-        void print_cexpr (ChpExpr &);
+        void print_cexpr (const ChpExpr &, VarId);
 
         std::string _expr_to_verilog (Expr *, int, std::unordered_map<ActId *, int> &);
 
@@ -98,8 +102,7 @@ class ExprPipe : public ExprCache {
         Scope *s;
         GraphWithChanNames *g;
 
-        std::unordered_map<std::string, VarId> nm;
-        std::unordered_map<VarId, std::string> nmi;
+        Bimap<std::string, VarId> nm;
         std::unordered_map<VarId, ChpExpr> stmts;
 
         // map from in-var of expr to out-var of prev expr

@@ -21,7 +21,6 @@
  */
 
 #include "expr_pipe.h"
-#include "eqn_parser.h"
 
 
 void ExprPipe::run()
@@ -91,11 +90,10 @@ void ExprPipe::_run_seq(Sequence seq, var_to_actvar &table)
     }
 }
 
-void ExprPipe::print_cexpr (ChpExpr &e) {
-    auto tmp = g->graph.id_pool().makeUniqueVar(1);
+void ExprPipe::print_cexpr (const ChpExpr &e, VarId v) {
     auto b = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(
-      Statement::makeAssignment(tmp, 
-        ChpExprSingleRootDag::of_expr(ChpExpr::deep_copy(e)))));
+            Statement::makeAssignment(v, 
+            ChpExprSingleRootDag::of_expr(ChpExpr::deep_copy(e)))));
     std::cout << "-----------" << std::endl;
     print_chp_block(std::cout, b);
     std::cout << std::endl << "-----------" << std::endl;
@@ -104,7 +102,6 @@ void ExprPipe::print_cexpr (ChpExpr &e) {
 void ExprPipe::reset_state() 
 {
   nm.clear();
-  nmi.clear();
   stmts.clear();
   in_out_map.clear();
   rhss.clear();
@@ -158,23 +155,16 @@ void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, 
   p.parseFile();
 
   nm = p.get_name_map();
-  nmi = p.get_name_map_inv();
 
+  fprintf(stdout, "\n--- name map --- ");
+  for ( auto &[x,y] : nm ) { fprintf(stdout, "\nv%llu : %s", y.m_id, x.c_str()); }
   fprintf(stdout, "\n--- name map --- \n");
-  for ( auto &[x,y] : nmi ) {
-  fprintf(stdout, "v%llu : %s\n", x.m_id, y.c_str());
-  }
-  fprintf(stdout, "--- name map --- \n");
-
-  fprintf(stdout, "\n--- parsed exprs ---");
-  auto vblks = p.get_assigns(g->graph);
-  for ( auto b : vblks ) {
-  std::cout << std::endl;
-  print_chp_block(std::cout, b);
-  }
-  fprintf(stdout, "\n--- parsed exprs --- \n");
 
   stmts = p.get_stmts();
+
+  fprintf(stdout, "\n--- parsed exprs ---");
+  for ( const auto &assn : stmts ) { print_cexpr(assn.second, assn.first); }
+  fprintf(stdout, "\n--- parsed exprs --- \n");
 
   std::vector<VarId> outs{};
   for ( int i=0; i<width; i++ ) {
@@ -184,13 +174,10 @@ void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, 
   }
   
   _build_in_out_map();
-  fprintf(stdout, "\n--- in-out map ---");
-  for ( auto [vi,vo] : in_out_map ) {
-    fprintf(stdout, "\n%llu : %llu", vi.m_id, vo.m_id);
-  }
-  fprintf(stdout, "\n--- in-out map --- \n");
 
-  fprintf(stdout, "\n--- sub expr construction --- : %d\n", n_cuts);
+  fprintf(stdout, "\n--- in-out map ---");
+  for ( auto [vi,vo] : in_out_map ) { fprintf(stdout, "\n%llu : %llu", vi.m_id, vo.m_id); }
+  fprintf(stdout, "\n--- in-out map --- \n");
 
   for (int i=0; i<=n_cuts; i++) {
 
@@ -206,13 +193,11 @@ void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, 
       _apply_bitmap_primary_input(rhss.back(), vvpos);
     }
     else {
-      auto used = _get_used(outs, last_iter);
+      auto used = _get_used(outs);
 
-      std::unordered_map<VarId,int> vpos;
-      std::unordered_map<int,VarId> vposi;
+      Bimap<VarId, int> vpos;
       for ( int j=0; j<used.size(); j++) { 
-        vpos.insert({used.at(j),j}); 
-        vposi.insert({j,used.at(j)});
+        vpos.insert(used.at(j),j);
       }
     
       auto vconcat = g->graph.id_pool().makeUniqueVar(used.size());
@@ -221,20 +206,17 @@ void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, 
       
       std::vector<VarId> next_outs_ordered;
       for ( int j=0; j<used.size(); j++) { 
-        next_outs_ordered.push_back(_get_io_image({vposi.at(j)},last_iter)[0]);
+        next_outs_ordered.push_back(_get_io_image({vpos.at(j)})[0]);
       }
-
       outs = next_outs_ordered;
     }
-    print_cexpr(rhss.back());
+    print_cexpr(rhss.back(), g->graph.id_pool().makeUniqueVar(1));
     fprintf(stdout, "\n------  end  iter : %d ------\n", i);
   }
 
-  fprintf(stdout, "\n\n--- sub expr construction --- : %d\n", n_cuts);
-
 }
 
-void ExprPipe::_apply_bitmap (ChpExpr &e, std::unordered_map<VarId,int> vpos, VarId v)
+void ExprPipe::_apply_bitmap (ChpExpr &e, const Bimap<VarId,int> &vpos, VarId v)
 {
   switch (e.type()) {
   case IRExprTypeKind::BinaryOp: {
@@ -284,7 +266,7 @@ ExprPipe::_build_primary_input_map (std::unordered_map<ActId *, int> &m, var_to_
 
   auto get_width = [&](std::string pfx) {
     int w=0;
-    for ( auto [vi,name] : nmi ) {
+    for ( auto [name, vi] : nm ) {
       if (name_prefix(name)==pfx) {
         w = std::max(w, get_bit(name));
       }
@@ -302,7 +284,7 @@ ExprPipe::_build_primary_input_map (std::unordered_map<ActId *, int> &m, var_to_
   };
 
   std::unordered_map<VarId,std::pair<VarId, int>> ret;
-  for ( auto [vi,name] : nmi ) {
+  for ( auto [name, vi] : nm ) {
     if (name.size() >= 3 && name.compare(0, 3, "in_") == 0) {
       auto bit = get_bit(name);
       auto pfx = name_prefix(name);
@@ -346,7 +328,7 @@ void ExprPipe::_apply_bitmap_primary_input (ChpExpr &e, std::unordered_map<VarId
 }
 
 // get next level of output nodes
-std::vector<VarId> ExprPipe::_get_used (std::vector<VarId> vs, bool prim_in)
+std::vector<VarId> ExprPipe::_get_used (std::vector<VarId> vs)
 {
   std::unordered_set<VarId> used = {};
   auto union_ = [](std::unordered_set<VarId> s1, std::unordered_set<VarId> s2) {
@@ -359,12 +341,8 @@ std::vector<VarId> ExprPipe::_get_used (std::vector<VarId> vs, bool prim_in)
   return std::vector(used.begin(), used.end());
 }
 
-std::vector<VarId> ExprPipe::_get_io_image (std::vector<VarId> used, bool prim_in) 
+std::vector<VarId> ExprPipe::_get_io_image (std::vector<VarId> used) 
 {
-  if (prim_in) { // first level inputs - don't have an in-out map entry
-    return used;
-  }
-
   std::vector<VarId> ret = {};
   for ( auto v : used ) {
     Assert (in_out_map.count(v), "io-image var not found");
@@ -412,7 +390,7 @@ void ExprPipe::_construct_int_expr (std::vector<VarId> vs)
 */
 void ExprPipe::_build_in_out_map ()
 {
-  for ( auto [vi,name] : nmi ) {
+  for ( auto [name,vi] : nm ) {
     if (name.size() >= 4 && 
       name.compare(name.size() - 4, 4, "_out") == 0) {
       auto pfx = name.substr(0, name.size() - 4);
