@@ -150,14 +150,13 @@ class Decomp : public ActSynthesize {
       std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
       if (project) {
         std::vector<Strategy> prj_steps = {};
-        // prj_steps = {Strategy::None, Strategy::BruteForce};
         prj_steps = {Strategy::Timing};
         for ( auto ss : prj_steps ) {
           _fill_in_else_explicit (top_chp, p->CurScope());
           auto gnew = chp_graph_from_act (top_chp, p->CurScope(), 1);
-          Projection pr2 = Projection (gnew, p->CurScope());
-          pr2.project(ss);
-          auto [names2, top_chp2, nfc2] = pr2.get_final_result();
+          Projection pr = Projection (gnew, p->CurScope());
+          pr.project(ss);
+          auto [names2, top_chp2, nfc2] = pr.get_final_result();
           for ( auto x : names2 ) { newnames.insert(x); }
           for ( auto x : nfc2 ) { nfc.push_back(x); }
 

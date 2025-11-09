@@ -60,9 +60,16 @@ class ExprPipe : public ExprCache {
             s (s_in), g(&g_in), _m_expr_id(0), 
             nm(), stmts(), rhss(), in_out_map(),
             n_cuts(0)
-        {}
+        {
+            config_set_int("synth.expropt.vectorize_all_ports", 1);
+        }
 
-        ~ExprPipe () {}
+        ~ExprPipe () {
+            if (_syn_dlib) {
+                dlclose (_syn_dlib);
+                _syn_dlib = NULL;
+            }
+        }
 
         void run ();
         
@@ -80,20 +87,20 @@ class ExprPipe : public ExprCache {
         void _apply_bitmap_primary_input (ChpExpr &, std::unordered_map<VarId,std::pair<VarId, int>>);
 
         std::unordered_map<VarId,std::pair<VarId, int>> 
-            _build_primary_input_map (std::unordered_map<ActId *, int> &, var_to_actvar &);
+            _build_primary_input_map (Bimap<ActId *, int> &, var_to_actvar &);
 
         std::vector<VarId> _get_used (std::vector<VarId>);
         std::vector<VarId> _get_io_image (std::vector<VarId>);
 
-        void _expr_collect_vars (Expr *, std::unordered_map<ActId *, int> &); 
+        void _expr_collect_vars (Expr *, Bimap<ActId *, int> &); 
         int _gen_expr_id();
         int bitwidth(ActId *);
 
         void print_cexpr (const ChpExpr &, VarId);
 
-        std::string _expr_to_verilog (Expr *, int, std::unordered_map<ActId *, int> &);
+        std::string _expr_to_verilog (Expr *, int, Bimap<ActId *, int> &);
 
-        void _verilog_to_eqn (std::string);
+        void _verilog_to_eqn (std::string, std::string);
 
         void _parse_eqn ();
 

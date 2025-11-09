@@ -27,7 +27,6 @@
 #include <sstream>
 
 #include <act/chp/chp-graph.h>
-// ---------- Tokens ----------
 
 using namespace ChpOptimize;
 
@@ -159,15 +158,10 @@ private:
 
     // Precedence: ! > * > ^ > +
     ChpExpr parseExpr();
-
     ChpExpr parseOr();
-
     ChpExpr parseXor();
-
     ChpExpr parseAnd();
-    
     ChpExpr parseUnary();
-
     ChpExpr parsePrimary();
 };
 
