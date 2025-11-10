@@ -180,6 +180,7 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
         return blockAllocator.newSequence({parallel});
     }
 
+    case ACT_CHP_SELECT_NONDET:
     case ACT_CHP_SELECT: {
         Block *select = blockAllocator.newBlock(Block::makeSelectBlock());
         for (act_chp_gc_t *gc = c->u.gc; gc; gc = gc->next) {
