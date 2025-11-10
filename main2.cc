@@ -108,6 +108,7 @@ int main(int argc, char **argv)
       }
       else if (!strcmp (optarg, "decomp")) {
 	decompose = true;
+  arb = false;
       }
       else {
 	fprintf (stderr, "Unknown synthesis output format: %s\n", optarg);
