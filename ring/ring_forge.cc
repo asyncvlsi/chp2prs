@@ -1529,8 +1529,12 @@ int RingForge::_generate_probe_access (ActId *chan)
     var_info *vi = _get_var_info(chan);
     int w = vi->width;
     int pid = _gen_var_access_id();
+    bool is_struct = (TypeFactory::isStructure(
+        TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL))));
+    if (is_struct) w = _bitWidth(chan);
     fprintf (_fp, "probe_access<%d> probe_%d(",w,pid);
     chan->Print(_fp);
+    if (is_struct) fprintf(_fp, ".%s", struct_chan_name);
     fprintf (_fp, ");\n");
     return pid;
 }
@@ -1540,8 +1544,12 @@ int RingForge::_generate_probe_access_neg (ActId *chan)
     var_info *vi = _get_var_info(chan);
     int w = vi->width;
     int pid = _gen_var_access_id();
+    bool is_struct = (TypeFactory::isStructure(
+        TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL))));
+    if (is_struct) w = _bitWidth(chan);
     fprintf (_fp, "probe_access_neg<%d> probe_%d(",w,pid);
     chan->Print(_fp);
+    if (is_struct) fprintf(_fp, ".%s", struct_chan_name);
     fprintf (_fp, ");\n");
     return pid;
 }
