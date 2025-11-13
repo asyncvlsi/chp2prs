@@ -278,9 +278,34 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
         }
 
         if (expr.root()->type() == IRExprTypeKind::Var || (mode==1)) {
-            Block *send = blockAllocator.newBlock(Block::makeBasicBlock(
-                Statement::makeSend(chan_id, std::move(expr))));
-            return blockAllocator.newSequence({send});
+          std::vector<Block *> vb{};
+          Block *send = blockAllocator.newBlock(Block::makeBasicBlock(
+              Statement::makeSend(chan_id, ChpExprSingleRootDag::deep_copy(expr))));
+          if (expr.root()->type() == IRExprTypeKind::Var) {
+            auto vc = expr.root()->u_var().id;
+            ActId *aid = id_pool.name_from_var_map().at(vc);
+            if (id_pool.ActIdIsPureStruct(aid)) {
+                auto fields = id_pool.getStructFields(aid);
+                ChpExprSingleRootDag ce;
+                hassert (fields.size()>0);
+                for ( auto v : fields ){
+                  if (v == *fields.begin()) {
+                    ce = ChpExprSingleRootDag::makeVariableAccess(v, id_pool.getBitwidth(v));
+                  }
+                  else {
+                    ce = ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::Concat,
+                      std::make_unique<ChpExprSingleRootDag>(std::move(ce)),
+                      std::make_unique<ChpExprSingleRootDag>(
+                        ChpExprSingleRootDag::makeVariableAccess(v, id_pool.getBitwidth(v))));
+                  }
+                }
+                Block *assign = blockAllocator.newBlock(Block::makeBasicBlock(
+                  Statement::makeAssignment(vc, std::move(ce))));
+                vb.push_back(assign);
+            }
+          }
+          vb.push_back(send);
+          return blockAllocator.newSequence(vb);
         }
         // otherwise, assign into a temporary of the right width, and send the
         // temporary.
@@ -309,9 +334,27 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
         int var_width = id_pool.getBitwidth(var_id);
 
         if (chan_width == var_width) {
-            Block *receive = blockAllocator.newBlock(
-                Block::makeBasicBlock(Statement::makeReceive(chan_id, var_id)));
-            return blockAllocator.newSequence({receive});
+          std::vector<Block *> vb{};
+          Block *receive = blockAllocator.newBlock(
+              Block::makeBasicBlock(Statement::makeReceive(chan_id, var_id)));
+          vb.push_back(receive);
+          if (id_pool.ActIdIsPureStruct(c->u.comm.var)) {
+            auto fields = id_pool.getStructFields(c->u.comm.var);
+            // consistent with int(struct) function in ACT. 
+            int pos = var_width;
+            for ( auto v : fields ) {
+              Block *bb = blockAllocator.newBlock(
+              Block::makeBasicBlock(Statement::makeAssignment(v, 
+                  ChpExprSingleRootDag::makeBitfield(
+                    std::make_unique<ChpExprSingleRootDag>(
+                      ChpExprSingleRootDag::makeVariableAccess(
+                        var_id, id_pool.getBitwidth(var_id))), 
+                    pos-1, pos-id_pool.getBitwidth(v)))));
+              vb.push_back(bb);
+              pos -= id_pool.getBitwidth(v);
+            }
+          }
+          return blockAllocator.newSequence(vb);
         }
         // otherwise, receive into a temporary of the right width, and then
         // assign to the right value

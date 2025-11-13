@@ -386,7 +386,8 @@ class NameParsingIdPool {
     [[nodiscard]] const IdPool &id_pool() const { return m_id_pool; }
     [[nodiscard]] IdPool &id_pool() { return m_id_pool; }
 
-
+    [[nodiscard]] bool ActIdIsPureStruct (ActId *id);
+    [[nodiscard]] std::vector<VarId> getStructFields (ActId *id);
     /* XXX: fix this. this doesn't work for dotted identifiers,
        e.g. structures */
     [[nodiscard]] const char *getName(const VarId &id);

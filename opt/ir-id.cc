@@ -49,11 +49,13 @@ OptionalChanId NameParsingIdPool::chanIdFromActId(ActId *id) {
     Int *varInt = dynamic_cast<Int *>(chanType->BaseType());
     bool is_bool = dynamic_cast<Bool *>(chanType->BaseType());
     bool is_enum = TypeFactory::isUserEnum (chanType);
+    bool is_pure_struct = TypeFactory::isPureStruct (chanType->BaseType());
 
     /* XXX: will fail for data types and structures */
-    hassert(varInt || is_bool || is_enum);
+    hassert(varInt || is_bool || is_enum || is_pure_struct);
     
-    int bitwidth = varInt ? TypeFactory::bitWidth(varInt) :
+    int bitwidth = is_pure_struct ? TypeFactory::totBitWidth(chanType->BaseType()) :
+      varInt ? TypeFactory::bitWidth(varInt) :
       (is_enum ? TypeFactory::bitWidth (chanType) : 1);
 
     /* XXX: this will fail if the channel is a pure synchronization
@@ -90,15 +92,17 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
     Int *varInt = dynamic_cast<Int *>(varType->BaseType());
     bool is_bool = TypeFactory::isBoolType(varType);
     bool is_enum = TypeFactory::isUserEnum (varType);
+    bool is_pure_struct = TypeFactory::isPureStruct (varType);
 
     /* XXX: will fail for data types and structures */
-    if (!(varInt || is_bool || is_enum)) {
+    if (!(varInt || is_bool || is_enum || is_pure_struct)) {
       // this is not available; perhaps it is a channel?
       return OptionalVarId::null_id();
     }
-    hassert(varInt || is_bool || is_enum);
+    hassert(varInt || is_bool || is_enum || is_pure_struct);
     
-    int bitwidth = varInt ? TypeFactory::bitWidth(varInt) :
+    int bitwidth = is_pure_struct ? TypeFactory::totBitWidth(varType->BaseType()) :
+      varInt ? TypeFactory::bitWidth(varInt) :
       (is_enum ? TypeFactory::bitWidth (varType) : 1);
     
     hassert(bitwidth > 0);
@@ -110,7 +114,32 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
     m_varid_to_actid[new_id] = id;
     m_actid_to_varid[canonicalId] = new_id;
 
+    if (is_pure_struct) { // just to create the vars;
+      auto _ = getStructFields(id);
+    }
+
     return new_id;
+}
+
+[[nodiscard]] bool NameParsingIdPool::ActIdIsPureStruct (ActId *id) {
+    auto vt = m_scope->FullLookup(id, nullptr);
+    return TypeFactory::isPureStruct (vt);
+}
+
+[[nodiscard]] std::vector<VarId> NameParsingIdPool::getStructFields (ActId *id) {
+    InstType *varType = m_scope->FullLookup(id, nullptr);  
+    auto d = dynamic_cast<Data *>(varType->BaseType());
+    int nb, ni; int *types;
+    d->getStructCount (&nb, &ni);
+    ActId **res = d->getStructFields (&types);
+    ActId *tail = id->Tail ();
+    std::vector<VarId> ret{};
+    for (int i=0; i<nb+ni; i++) {
+      tail->Append(res[i]);
+      ret.push_back(*varIdFromActId(tail));
+      tail->prune();
+    }
+    return ret;
 }
 
 const char *NameParsingIdPool::getName(const VarId &id) {
