@@ -34,6 +34,7 @@ struct var_to_actvar {
   const IdPool &id;
   std::unordered_map<ChanId, ActId *> name_from_chan;
   std::unordered_map<VarId, ActId *> name_from_var;
+  std::unordered_map<ActId *, ActId *> structname_from_name;
   Scope *sc;
   int sc_chan, sc_var;
 
@@ -49,6 +50,45 @@ struct var_to_actvar {
   
   bool isBool (const ChanId &ch) {
     return id.getIsBool (ch);
+  }
+
+  ActId *intOfStructVar (const VarId &v, const ChanId &ch) {
+    auto cid = chanMap(ch);
+    auto cit = sc->FullLookup(cid, nullptr);
+    static char buf[100], buf1[100];
+    const char *var_prefix = "_va";
+    const char *svar_prefix = "_sva";
+
+    if (name_from_var.count(v)) {
+      return name_from_var[v]->Clone();
+    }
+
+    auto it = TypeFactory::Factory()->NewInt(sc, Type::NONE, 0, const_expr (id.getBitwidth(v)));
+    it = it->Expand (NULL, sc);
+    do {
+      snprintf (buf, 100, "%s%d", var_prefix, sc_var++);
+    } while (sc->Lookup (buf));
+    sc->Add (buf, it);
+    name_from_var[v] = new ActId (buf);
+    newvars.push_back (name_from_var[v]);
+
+    it = TypeFactory::Factory()->NewUserDef(sc, TypeFactory::getChanDataType(cit));
+    it = it->Expand (NULL, sc);
+    snprintf (buf1, 100, "%s%d", svar_prefix, sc_var-1);
+    sc->Add (buf1, it);
+    auto sid = new ActId (buf1);
+    structname_from_name[name_from_var[v]] = sid;
+    newvars.push_back(sid);
+
+    return name_from_var[v];
+  }
+
+  ActId *structVar (ActId *ivar) {
+    for ( auto [x,y] : structname_from_name ) {
+      if (x->isEqual(ivar)) return y;
+    } 
+    hassert (false);
+    return nullptr;
   }
 
   ActId *chanMap (const ChanId &ch) {

@@ -569,10 +569,9 @@ void _trim_nested_same_int (Expr *&e, Scope *s)
   case E_BITFIELD:
   case E_VAR:
   case E_PROBE:
+  case E_FUNCTION:
     break;
     
-  case E_FUNCTION:
-    fatal_error ("function!");
   case E_SELF:
   default:
     fatal_error ("Unknown expression type %d\n", e->type);

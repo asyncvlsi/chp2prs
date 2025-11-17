@@ -64,7 +64,13 @@ OptionalChanId NameParsingIdPool::chanIdFromActId(ActId *id) {
     hassert(bitwidth > 0);
 
     // then create a variable to hold it
-    auto new_id = m_id_pool.makeUniqueChan(bitwidth, is_bool);
+    ChanId new_id;
+    if (is_pure_struct) {
+      new_id = m_id_pool.makeUniqueChan(bitwidth, is_bool, false, is_pure_struct);
+    } 
+    else {
+      new_id = m_id_pool.makeUniqueChan(bitwidth, is_bool);
+    }
 
     hassert(m_chanid_to_actid.find(new_id) == m_chanid_to_actid.end());
     m_chanid_to_actid[new_id] = id;
@@ -159,6 +165,9 @@ NameParsingIdPool::name_from_var_map() const {
   return m_varid_to_actid;
 }
 
+bool IdPool::getIsStruct(const ChanId &id) const {
+    return m_chanid_infos[id.m_id].is_struct;
+}
 /*
  * Straightforward accessor functions for the ID pool
  */
@@ -195,6 +204,15 @@ ChanId IdPool::makeUniqueChan(int bitwidth, bool is_bool) {
     m_next_chanid = m_next_chanid.next_id();
     hassert(bitwidth > 0);
     m_chanid_infos.push_back(ChanIdInfo{bitwidth, is_bool});
+    return new_id;
+}
+
+ChanId IdPool::makeUniqueChan(int bitwidth, bool is_bool, bool is_inp, bool is_struct) {
+    ChanId new_id = m_next_chanid;
+    hassert(new_id.m_id == m_chanid_infos.size());
+    m_next_chanid = m_next_chanid.next_id();
+    hassert(bitwidth > 0);
+    m_chanid_infos.push_back(ChanIdInfo{bitwidth, is_bool, is_inp, is_struct});
     return new_id;
 }
 

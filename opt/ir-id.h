@@ -308,6 +308,7 @@ class IdPool {
         int bitwidth;
         bool is_bool;
         bool is_inp;
+        bool is_struct = false;
     };
     ChanId m_next_chanid = ChanId::first_id();
     std::vector<ChanIdInfo> m_chanid_infos = {
@@ -321,9 +322,11 @@ class IdPool {
         const ChanId &id) const; // returns 0 if the channel carries no data
     [[nodiscard]] bool getIsBool(const VarId &id) const;
     [[nodiscard]] bool getIsBool(const ChanId &id) const;
+    [[nodiscard]] bool getIsStruct(const ChanId &id) const;
 
     [[nodiscard]] VarId makeUniqueVar(int bitwidth, bool is_bool = false);
     [[nodiscard]] ChanId makeUniqueChan(int bitwidth, bool is_bool = false);
+    [[nodiscard]] ChanId makeUniqueChan(int bitwidth, bool is_bool, bool is_inp, bool is_struct);
     void setChanDir (const ChanId &id, bool is_inp);
     bool isChanInput (const ChanId &id);
     [[nodiscard]] VarId cloneVar (const VarId &id) {

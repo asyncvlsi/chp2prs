@@ -480,6 +480,24 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	item->u.comm.e =
 	  template_func_new_expr_from_irexpr
 	  (*curr->u_basic().stmt.u_send().e.m_dag.roots[0], t, varToId, chanToId);
+  if (map.id.getIsStruct(curr->u_basic().stmt.u_send().chan)) {
+    Expr *e = item->u.comm.e;
+    NEW (item->u.comm.e, Expr);
+    item->u.comm.e->type = E_FUNCTION;
+    auto cid = map.chanMap(curr->u_basic().stmt.u_send().chan);
+    auto cit = map.sc->FullLookup(cid, nullptr);
+    auto it = TypeFactory::getChanDataType(cit);
+    auto dx = dynamic_cast<Data *>(it->BaseType());
+    hassert (dx);
+    dx->synthStructMacro();
+    auto um = dx->getMacro(dx->getUnexpanded()->getName());
+    hassert (um);
+    item->u.comm.e->u.fn.s = (char *)um->getFunction();
+    NEW (item->u.comm.e->u.fn.r, Expr);
+    item->u.comm.e->u.fn.r->type = E_LT;
+    item->u.comm.e->u.fn.r->u.e.r = NULL;
+    item->u.comm.e->u.fn.r->u.e.l = expr_dup(e);
+  }
 	list_append (ret->u.semi_comma.cmd, item);
 	item->u.comm.var = NULL;
 	break;
@@ -494,12 +512,35 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	item->u.comm.convert = 0;
 	item->u.comm.e = NULL;
 	if (curr->u_basic().stmt.u_receive().var) {
-	  item->u.comm.var = map.varMap (*curr->u_basic().stmt.u_receive().var);
+    if (map.id.getIsStruct(curr->u_basic().stmt.u_receive().chan)) {
+      item->u.comm.var = map.structVar(map.intOfStructVar(*curr->u_basic().stmt.u_receive().var,
+                                        curr->u_basic().stmt.u_receive().chan));
+    }
+    else {
+      item->u.comm.var = map.varMap (*curr->u_basic().stmt.u_receive().var);
+    }
 	}
 	else {
 	  item->u.comm.var = NULL;
 	}
 	list_append (ret->u.semi_comma.cmd, item);
+  if (map.id.getIsStruct(curr->u_basic().stmt.u_receive().chan)) {
+    auto ivar = map.intOfStructVar(*curr->u_basic().stmt.u_receive().var,
+                                        curr->u_basic().stmt.u_receive().chan);
+    NEW (item, act_chp_lang_t);
+	  item->label = NULL;
+	  item->space = NULL;
+	  item->type = ACT_CHP_ASSIGN;
+	  item->u.assign.id = ivar;
+	  NEW (item->u.assign.e, Expr);
+    item->u.assign.e->type = E_BUILTIN_INT;
+    NEW (item->u.assign.e->u.e.l, Expr);
+    item->u.assign.e->u.e.l->type = E_VAR;
+    item->u.assign.e->u.e.l->u.e.l = (Expr *)(map.structVar(ivar));
+    item->u.assign.e->u.e.l->u.e.r = nullptr;
+    item->u.assign.e->u.e.r = nullptr;
+	  list_append (ret->u.semi_comma.cmd, item);
+  }
 	break;
       }
       break;
