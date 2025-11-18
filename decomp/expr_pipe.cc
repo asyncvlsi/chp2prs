@@ -26,14 +26,19 @@ namespace fs = std::filesystem;
 
 void ExprPipe::run()
 {
+    // std::cout << "\n---- initial ----\n";
+    // print_chp(std::cout, g->graph);
+    // std::cout << "\n---- initial ----\n";
+    run_seq(g->graph.m_seq);
+    // std::cout << "\n---- final ----\n";
+    // print_chp(std::cout, g->graph);
+    // std::cout << "\n---- final ----\n";
+}
+
+void ExprPipe::run_seq(Sequence seq) 
+{
     var_to_actvar table(s, g->graph.id_pool());
-    // std::cout << "\n---- initial ----\n";
-    // print_chp(std::cout, g->graph);
-    // std::cout << "\n---- initial ----\n";
-    _run_seq(g->graph.m_seq, table);
-    // std::cout << "\n---- final ----\n";
-    // print_chp(std::cout, g->graph);
-    // std::cout << "\n---- final ----\n";
+    _run_seq(seq, table);
 }
 
 void ExprPipe::_run_seq(Sequence seq, var_to_actvar &table)
@@ -49,14 +54,19 @@ void ExprPipe::_run_seq(Sequence seq, var_to_actvar &table)
         case StatementType::Send: {
           auto used = getIdsUsedByExpr(curr->u_basic().stmt.u_send().e);
           if (!used.empty()) {
-            _run_expr(curr, table, g->graph.id_pool().getBitwidth(curr->u_basic().stmt.u_send().chan));
+            _run_expr(curr, table, 
+              g->graph.id_pool().getBitwidth(curr->u_basic().stmt.u_send().chan));
           }
         }
         break;
         case StatementType::Assign: {
           auto ids = curr->u_basic().stmt.u_assign().ids;
           Assert (ids.size()==1, "assignments unsplit");
-          // TODO split assignments and run
+          auto used = getIdsUsedByExpr(curr->u_basic().stmt.u_assign().e);
+          if (!used.empty()) {
+            _run_expr(curr, table, 
+              g->graph.id_pool().getBitwidth(curr->u_basic().stmt.u_assign().ids[0]));
+          }
         }
         break;
         }
@@ -110,11 +120,17 @@ void ExprPipe::_run_expr (Block *b, var_to_actvar &table, int width)
 {
   reset_state();
   Assert (b->type()==BlockType::Basic, "what");
-  if (b->u_basic().stmt.type()==StatementType::Assign ||
-    b->u_basic().stmt.type()==StatementType::Receive) {
-    return;
+  Assert (!(b->u_basic().stmt.type()==StatementType::Receive), "what");
+  bool send = (b->u_basic().stmt.type()==StatementType::Send);
+  if (send) {
+    _run_expr_helper (b->u_basic().stmt.u_send().e, table, width);
   }
-  _run_expr_helper (b->u_basic().stmt.u_send().e, table, width);
+  else {
+    auto expr = ChpExprDag::deep_copy(b->u_basic().stmt.u_assign().e);
+    auto e2 = ChpExpr::deep_copy(ChpExprDag::to_expr(*expr.roots[0]));
+    auto ce = ChpExprSingleRootDag::of_expr(e2);
+    _run_expr_helper (ce, table, width);
+  }
   Assert ((rhss.size()-1==lhss.size()), "subexprs and output widths mismatch");
   std::vector<Block *> vb;
   // gotta process in reverse
@@ -130,7 +146,13 @@ void ExprPipe::_run_expr (Block *b, var_to_actvar &table, int width)
   }
   auto seq = g->graph.newSequence(vb);
   g->graph.spliceInSequenceBefore(b, seq);
-  b->u_basic().stmt.u_send().e = ChpExprSingleRootDag::of_expr(rhss.back());
+  if (send) {
+    b->u_basic().stmt.u_send().e = ChpExprSingleRootDag::of_expr(rhss.back());
+  }
+  else {
+    b->u_basic().stmt.u_assign().e = 
+      std::move(ChpExprSingleRootDag::of_expr(rhss.back()).m_dag);
+  }
 }
 
 void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, int width)

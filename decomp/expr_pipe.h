@@ -72,6 +72,7 @@ class ExprPipe : public ExprCache {
         }
 
         void run ();
+        void run_seq (Sequence);
         
     protected:
 
