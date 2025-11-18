@@ -92,7 +92,7 @@ int main(int argc, char **argv)
   bool run_time = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "htOXde:E:o:p:F:C:m:")) != -1) {
+  while ((ch = getopt (argc, argv, "htOXde:E:o:p:F:C:m:P:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -197,10 +197,6 @@ int main(int argc, char **argv)
 
     case 'P':
       parallelism = std::atoi(Strdup (optarg));
-      if (!(parallelism>=0 && parallelism <=4)) {
-        fprintf (stderr, "Parallelism level: 0 (or) 1 (or) 2 (or) 3 (or) 4");
-        usage (argv[0]);
-      }
       break;
       
     default:

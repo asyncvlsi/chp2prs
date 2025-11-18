@@ -35,13 +35,18 @@ void ExprPipe::run()
     // std::cout << "\n---- final ----\n";
 }
 
-void ExprPipe::run_seq(Sequence seq) 
+void ExprPipe::run_seq(Sequence &seq) 
 {
     var_to_actvar table(s, g->graph.id_pool());
     _run_seq(seq, table);
 }
 
-void ExprPipe::_run_seq(Sequence seq, var_to_actvar &table)
+void ExprPipe::set_n_cuts(int n) 
+{
+  n_cuts = n;
+}
+
+void ExprPipe::_run_seq(Sequence &seq, var_to_actvar &table)
 {
     Block *curr = seq.startseq->child();
 
@@ -157,7 +162,6 @@ void ExprPipe::_run_expr (Block *b, var_to_actvar &table, int width)
 
 void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, int width)
 {
-  n_cuts = 1;
   std::string eqn_file = "out.eqn";
 
   auto varToId = [&] (const VarId &v) { return table.varMap (v); };
@@ -174,7 +178,7 @@ void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, 
   p.parseFile();
   fs::remove(eqn_file);
 
-  constexpr bool verbose = true;
+  constexpr bool verbose = false;
 
   nm = p.get_name_map();
   if (verbose) {

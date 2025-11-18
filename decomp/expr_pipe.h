@@ -72,11 +72,12 @@ class ExprPipe : public ExprCache {
         }
 
         void run ();
-        void run_seq (Sequence);
+        void run_seq (Sequence &);
+        void set_n_cuts (int);
         
     protected:
 
-        void _run_seq (Sequence, var_to_actvar &);
+        void _run_seq (Sequence &, var_to_actvar &);
 
         void _run_expr (Block *, var_to_actvar &, int);
         void _run_expr_helper (ChpExprSingleRootDag &, var_to_actvar &, int);

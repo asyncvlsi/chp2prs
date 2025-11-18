@@ -123,6 +123,7 @@ class Decomp : public ActSynthesize {
       top_chp->u.semi_comma.cmd = list_new();
 
       // ExprPipe ep (g, p->CurScope());
+      // ep.set_n_cuts(pll);
       // ep.run();
       
       auto t1 = high_resolution_clock::now();
@@ -179,8 +180,8 @@ class Decomp : public ActSynthesize {
         fprintf(stdout, "\n// Projection            : %-8lld microseconds", d2.count());
         fprintf(stdout, "\n");
       }
-      // ChpCost cc(p->CurScope());
-      // cc.dump_actsim_conf("decomp_sim.conf", top_chp, p);
+      ChpCost cc(p->CurScope(), g);
+      cc.dump_actsim_conf("decomp_sim.conf", top_chp, p);
 
       act_chp_lang_t *l = top_chp;
       p->getlang()->getchp()->c = l;
