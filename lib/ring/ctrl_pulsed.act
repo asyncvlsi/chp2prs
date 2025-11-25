@@ -28,6 +28,15 @@ namespace syn {
   export namespace ring_pulsed {
     
 
+// Variables and Channels ---------------------------------
+
+export template <pint M>
+deftype ring_int <: int<M> (bool d[M]) {} 
+
+export defchan ring_chan <: bd () {}
+
+// --------------------------------------------------------
+
 // Basic Elements -----------------------------------------
 
 defproc inverter (bool? in; bool! out)
@@ -76,42 +85,42 @@ defproc connect_chan_to_capture (bool v[VW]; bool c[CW])
 }
 
 export template<pint W>
-defproc connect_inchan_to_ctrl (bd<W> ch; a1of1 ctrl)
+defproc connect_inchan_to_ctrl (ring_chan<W> ch; a1of1 ctrl)
 {
   ch.r = ctrl.r;
   ch.a = ctrl.a;
 }
 
 export template<pint W>
-defproc connect_capture_din (bd<W> ch; bool d[W])
+defproc connect_capture_din (ring_chan<W> ch; bool d[W])
 {
-  ch.d = d;
+  [ W > 0 -> ch.d = d; ]
 }
 
 export template<pint W>
-defproc connect_outchan_to_ctrl (bd<W> ch; a1of1 ctrl; bool e[W])
+defproc connect_outchan_to_ctrl (ring_chan<W> ch; a1of1 ctrl; bool e[W])
 {
   ch.r = ctrl.r;
   ch.a = ctrl.a;
-  ch.d = e;
+  [ W > 0 -> ch.d = e; ]
 }
 
 export template<pint W>
 defproc connect_capture_dout (bool fin[W]; bool d[W])
 {
-  fin = d;
+  [ W > 0 -> fin = d; ]
 }
 
 export template<pint W>
 defproc connect_exprblk_dout (bool d[W]; bool e[W])
 {
-  e = d;
+  [ W > 0 -> e = d; ]
 }
 
 export template<pint W>
 defproc connect_exprblk_assign (bool d[W]; bool e[W]; a1of1 tx)
 {
-  e = d;
+  [ W > 0 -> e = d; ]
 }
 // --------------------------------------------------------
 
@@ -174,29 +183,29 @@ export template <pint CD, PW, W>
 defproc capture_dummy(a1of1 go; bool din[W]; bool dout[W]; a1of1 tx)
 {
   go.r = go.a;
-  din = dout;
+  [ W > 0 -> din = dout; ]
 }
 
 export template <pint W>
 defproc var_access(bool din[W]; bool dout[W])
 {
-  din = dout;
+  [ W > 0 -> din = dout; ]
 }
 
 export template<pint W>
-defproc chan_access(bd<W> C; bool dout[W])
+defproc chan_access(ring_chan<W> C; bool dout[W])
 {
-  C.d = dout;
+  [ W > 0 -> C.d = dout; ]
 }
 
 export template<pint W>
-defproc probe_access(bd<W> C; bool dout[1])
+defproc probe_access(ring_chan<W> C; bool dout[1])
 {
   C.r = dout[0];
 }
 
 export template<pint W>
-defproc probe_access_neg(bd<W> C; bool dout[1])
+defproc probe_access_neg(ring_chan<W> C; bool dout[1])
 {
   prs * {
     C.r => dout[0]-
@@ -281,9 +290,10 @@ export template <pint CD, PW, W, INIT_VAL>
 defproc capture_init_new(a1of1 go; a1of1 go2; bool? din[W]; bool! dout[W]; a1of1 tx)
 {
   capture_init<CD, PW, W, INIT_VAL> c1, c2;
-  din = c1.din;
-  dout = c2.dout;
-  c1.dout = c2.din;
+  [ W > 0 -> 
+    din = c1.din;
+    dout = c2.dout;
+    c1.dout = c2.din; ]
   tx = c1.tx;
   tx = c2.tx;
   go = c1.go;
@@ -295,7 +305,7 @@ defproc capture_init_new(a1of1 go; a1of1 go2; bool? din[W]; bool! dout[W]; a1of1
 }
 
 export template <pint CD, PW, W, INIT_VAL>
-defproc itb_wrapper (bd<W> R_out; bd<W> S_in)
+defproc itb_wrapper (ring_chan<W> R_out; ring_chan<W> S_in)
 {
   a1of1 m1, p1;
   capture_init<CD, PW, W, INIT_VAL> x_init;
@@ -1031,15 +1041,6 @@ export defproc capture_bool (bool i; bool dout[1])
   i = dout[0];
 }
 
-// Variables and Channels ---------------------------------
-
-export template <pint M>
-deftype ring_int <: int<M> (bool d[M]) {} 
-
-export defchan ring_chan <: bd () {}
-
-// --------------------------------------------------------
-
 // Custom Circuit Implementations for Small Programs
 
 
@@ -1060,7 +1061,7 @@ defproc fblock_impl (ring_chan<LW> L; ring_chan<RW> R; bool ei[LW]; bool eo[RW];
 
   capture<CD,PW,LW> latch_x_0;
   latch_x_0.go = block_1.data;
-  latch_x_0.din = L.d;
+  [ LW > 0 -> latch_x_0.din = L.d; ]
   latch_x_0.tx.a = L.a;
 
   prs * {
@@ -1070,8 +1071,8 @@ defproc fblock_impl (ring_chan<LW> L; ring_chan<RW> R; bool ei[LW]; bool eo[RW];
   connect_outchan_to_ctrl<RW> conn_z_3;
   conn_z_3.ch = R;
 
-  var_access<LW> va_blk_1(latch_x_0.dout,ei);
-  connect_exprblk_dout<RW> conn_out_2(eo,conn_z_3.e);
+  [ LW > 0 -> var_access<LW> va_blk_1(latch_x_0.dout,ei); ]
+  [ RW > 0 -> connect_exprblk_dout<RW> conn_out_2(eo,conn_z_3.e); ]
 
   d_in = block_1.p1;
   d_out = conn_z_3.ctrl;
@@ -1087,7 +1088,7 @@ defproc const_src_impl (ring_chan<RW> R)
 {
 
   { K >= 0 : "Only non-negative values in const-source" };
-  { K <= (1<<RW)-1 : "Const. value out of bounds" };
+  { RW=0 | (K <= (1<<RW)-1) : "Const. value out of bounds" };
 
   std::cells::NOR2X1 ctrl;
   ctrl.A = Reset;
@@ -1117,7 +1118,8 @@ defproc const_src_impl (ring_chan<RW> R)
 export template <pint LW, CD, PW; pbool LATCH>
 defproc snk_impl (ring_chan<LW> L)
 {
-  [ LATCH ->  capture<CD, PW, LW> capt;
+  [ LATCH & LW>0 ->  
+              capture<CD, PW, LW> capt;
               capt.go.r = L.r;
               capt.go.a = L.a;
               capt.din = L.d;

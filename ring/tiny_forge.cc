@@ -184,7 +184,7 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
         fprintf(_fp, "fb_impl.L = %s;\n", lchan_name);
         fprintf(_fp, "fb_impl.R = %s;\n", rchan_name);
 
-        if (stmt2->u.comm.e) {
+        if (stmt2->u.comm.e && rbw>0) {
             int expr_inst_id = _generate_expr_block(stmt2->u.comm.e,rbw,false);
             fprintf(_fp, "%s%d(fb_impl.ei);\n", 
                             expr_block_instance_prefix,
@@ -204,8 +204,14 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
         Assert (stmt1->type == ACT_CHP_SEND, "Const-source statement not a send?");
         int rbw = _bitWidth(stmt1->u.comm.chan);
         auto e = stmt1->u.comm.e;
-        Assert (e->type == E_INT, "Constants only as const-source send value");
-        long long ival = e->u.ival.v;
+        long long ival;
+        if (e) {
+            Assert (e->type == E_INT, "Constants only as const-source send value");
+            ival = e->u.ival.v;
+        }
+        else {
+            ival = 0;
+        }
         fprintf(_fp, "const_src_impl<%d,%lld> cs_impl;\n", 
                         rbw, ival);
         char rchan_name[1024];

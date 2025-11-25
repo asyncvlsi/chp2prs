@@ -125,6 +125,11 @@ class Decomp : public ActSynthesize {
       // ExprPipe ep (g, p->CurScope());
       // ep.set_n_cuts(pll);
       // ep.run();
+
+      if (!ChpOptimize::isProbeFree(g.graph)) {
+        warning ("Probes in CHP - not running projection");
+        project = false;
+      }
       
       auto t1 = high_resolution_clock::now();
       // necessary rewrites for ring synthesis --------------------------------

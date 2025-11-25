@@ -1,0 +1,32 @@
+defproc src (chan!(int<0>) C)
+{
+    chp {
+        *[ C!1 ]
+    }
+}
+
+defproc buf1 (chan?(int<0>) L; chan!(int<0>) R)
+{
+    int<0> y;
+    chp {
+        *[ 
+            L?y ; R!(y+1)
+        ]
+    }
+}
+
+defproc snk (chan?(int<0>) C)
+{
+    int<0> x;
+    chp {
+        *[ C?x ]
+    }
+}
+
+defproc testproc(chan!(int<0>) Y)
+{
+    src s1;
+    snk s2;
+    buf1 n1(s1.C, s2.C);
+    Y = s2.C;
+}

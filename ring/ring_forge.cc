@@ -769,6 +769,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
 
         vi = _get_var_info(var);
         bw = vi->width;
+        if (bw>0) {
         expr_inst_id = _generate_expr_block(e,bw,true);
         Assert ((c->space), "No latch info? (_generate_pipe_element)");
         if (init_latch == -1) {
@@ -791,6 +792,10 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         // connect delay_expr output to capture block
         fprintf(_fp,"delay_expr_%d.p1 = %s%s_%d.go;\n",expr_inst_id,capture_block_prefix,
                                             vi->name,latch_id);
+        }
+        else {
+        fprintf(_fp,"%s%d.zero.r = %s%d.zero.a;\n",ring_block_prefix,block_id,ring_block_prefix,block_id);
+        }
         break;
 
     case ACT_CHP_SEND:
@@ -804,7 +809,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_paa_send %s%d;\n",ring_block_prefix,block_id);
         bw = _bitWidth(chan);
-        if (e) {
+        if (e && bw>0) {
             if (TypeFactory::isStructure(TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL)))) {
                 Assert (e->type==E_VAR, "Structure send must be pure var, not a function");
                 is_struct = true;
@@ -828,7 +833,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         }
         else { // dataless action
             fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
-            fprintf(_fp,"%s%d.ch = %s;\n\n",conn_block_prefix,block_id,chan_name);
+            fprintf(_fp,"%s%d.ch = %s;\n",conn_block_prefix,block_id,chan_name);
+            fprintf(_fp,"%s%d.ctrl = %s%d.zero;\n\n",conn_block_prefix,block_id,ring_block_prefix,block_id);
         }
         break;
 
@@ -870,7 +876,7 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
             Assert (datapath_style==SSA, "wth");
             fprintf(_fp, "%s%s_%d.go = %s%d.data;\n",capture_block_prefix,
                             vi->name,latch_id,ring_block_prefix,block_id);
-            fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
+            if (bw>0) fprintf(_fp, "%s%s_%d.din = %s.d;\n",capture_block_prefix,
                                             vi->name,latch_id,chan_name);
             // fprintf(_fp, "connect_chan_to_capture<%d,%d> cctc_%d(%s%s_%d.din,%s.d);\n", vi->width, bw, block_id,
             //     capture_block_prefix, vi->name,latch_id,chan_name);
@@ -1558,7 +1564,7 @@ int RingForge::_generate_probe_access_neg (ActId *chan)
     Collect all the variables in a given expression and put them 
     in the exprmap and widthmap global variables.
 */
-void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
+void RingForge::_expr_collect_vars (Expr *&e, int collect_phase)
 {
   int id;
   Assert (e, "Hmm");
@@ -1644,6 +1650,10 @@ void RingForge::_expr_collect_vars (Expr *e, int collect_phase)
     if (collect_phase) {
         ActId *var = (ActId *)e->u.e.l;
         var_info *vi = _get_var_info(var);
+        if (vi->width == 0) {
+            e = const_expr(0);
+            break;
+        }
         ihash_bucket_t *ib;
         ihash_bucket_t *b_width;
         auto conn = var->Canonical(_p->CurScope());
