@@ -245,6 +245,9 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
 */
 double ChpCost::expr_delay (Expr *e, int out_bw)
 {
+    if (out_bw == 0) {
+      return 0.0;
+    }
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
 
@@ -379,6 +382,11 @@ void ChpCost::_expr_collect_vars (Expr *&e)
       ActId *var = (ActId *)e->u.e.l;
       ihash_bucket_t *ib;
       ihash_bucket_t *b_width;
+      int bw = bitwidth(var);
+      if (bw == 0) {
+        e = const_expr(0);
+        break;
+      }
       if (thread_mode) {
         if (!canonical_expr.count(var)) {
           canonical_expr.insert({var,e});
@@ -389,7 +397,7 @@ void ChpCost::_expr_collect_vars (Expr *&e)
           ib = ihash_add (_inexprmap, (long)e);
           ib->i = _gen_expr_id();
           b_width = ihash_add (_inwidthmap, (long)e);
-          b_width->i = bitwidth(var);
+          b_width->i = bw;
         }
       }
       else {
@@ -398,7 +406,7 @@ void ChpCost::_expr_collect_vars (Expr *&e)
               ib = ihash_add (_inexprmap, (long)e);
               ib->i = _gen_expr_id();
               b_width = ihash_add (_inwidthmap, (long) e);
-              b_width->i = bitwidth(var);
+              b_width->i = bw;
           }
       }
     }

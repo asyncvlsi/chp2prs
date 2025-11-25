@@ -343,15 +343,17 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
             // consistent with int(struct) function in ACT. 
             int pos = var_width;
             for ( auto v : fields ) {
-              Block *bb = blockAllocator.newBlock(
-              Block::makeBasicBlock(Statement::makeAssignment(v, 
+              if (id_pool.getBitwidth(v)>0) {
+                Block *bb = blockAllocator.newBlock(
+                Block::makeBasicBlock(Statement::makeAssignment(v, 
                   ChpExprSingleRootDag::makeBitfield(
                     std::make_unique<ChpExprSingleRootDag>(
                       ChpExprSingleRootDag::makeVariableAccess(
                         var_id, id_pool.getBitwidth(var_id))), 
                     pos-1, pos-id_pool.getBitwidth(v)))));
-              vb.push_back(bb);
-              pos -= id_pool.getBitwidth(v);
+                vb.push_back(bb);
+                pos -= id_pool.getBitwidth(v);
+              }
             }
           }
           return blockAllocator.newSequence(vb);

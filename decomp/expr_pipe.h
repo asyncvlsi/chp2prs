@@ -94,7 +94,7 @@ class ExprPipe : public ExprCache {
         std::vector<VarId> _get_used (std::vector<VarId>);
         std::vector<VarId> _get_io_image (std::vector<VarId>);
 
-        void _expr_collect_vars (Expr *, Bimap<ActId *, int> &); 
+        void _expr_collect_vars (Expr *&, Bimap<ActId *, int> &); 
         int _gen_expr_id();
         int bitwidth(ActId *);
 

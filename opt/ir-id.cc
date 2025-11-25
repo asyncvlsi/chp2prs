@@ -61,7 +61,7 @@ OptionalChanId NameParsingIdPool::chanIdFromActId(ActId *id) {
     /* XXX: this will fail if the channel is a pure synchronization
        channel 
     */
-    hassert(bitwidth > 0);
+    hassert(bitwidth >= 0);
 
     // then create a variable to hold it
     ChanId new_id;
@@ -111,7 +111,7 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
       varInt ? TypeFactory::bitWidth(varInt) :
       (is_enum ? TypeFactory::bitWidth (varType) : 1);
     
-    hassert(bitwidth > 0);
+    hassert(bitwidth >= 0);
 
     // then create a variable to hold it
     auto new_id = m_id_pool.makeUniqueVar(bitwidth, is_bool);
@@ -193,7 +193,7 @@ VarId IdPool::makeUniqueVar(int bitwidth, bool is_bool) {
     VarId new_id = m_next_varid;
     hassert(new_id.m_id == m_varid_infos.size());
     m_next_varid = m_next_varid.next_id();
-    hassert(bitwidth > 0);
+    hassert(bitwidth >= 0);
     m_varid_infos.push_back(VarIdInfo{bitwidth, is_bool});
     return new_id;
 }
@@ -202,7 +202,7 @@ ChanId IdPool::makeUniqueChan(int bitwidth, bool is_bool) {
     ChanId new_id = m_next_chanid;
     hassert(new_id.m_id == m_chanid_infos.size());
     m_next_chanid = m_next_chanid.next_id();
-    hassert(bitwidth > 0);
+    hassert(bitwidth >= 0);
     m_chanid_infos.push_back(ChanIdInfo{bitwidth, is_bool});
     return new_id;
 }
@@ -211,7 +211,7 @@ ChanId IdPool::makeUniqueChan(int bitwidth, bool is_bool, bool is_inp, bool is_s
     ChanId new_id = m_next_chanid;
     hassert(new_id.m_id == m_chanid_infos.size());
     m_next_chanid = m_next_chanid.next_id();
-    hassert(bitwidth > 0);
+    hassert(bitwidth >= 0);
     m_chanid_infos.push_back(ChanIdInfo{bitwidth, is_bool, is_inp, is_struct});
     return new_id;
 }

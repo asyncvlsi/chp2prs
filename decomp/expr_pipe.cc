@@ -58,19 +58,19 @@ void ExprPipe::_run_seq(Sequence &seq, var_to_actvar &table)
         break;
         case StatementType::Send: {
           auto used = getIdsUsedByExpr(curr->u_basic().stmt.u_send().e);
-          if (!used.empty()) {
-            _run_expr(curr, table, 
-              g->graph.id_pool().getBitwidth(curr->u_basic().stmt.u_send().chan));
+          auto width = g->graph.id_pool().getBitwidth(curr->u_basic().stmt.u_send().chan);
+          if (!used.empty() && width>0) {
+            _run_expr(curr, table, width);
           }
         }
         break;
         case StatementType::Assign: {
           auto ids = curr->u_basic().stmt.u_assign().ids;
           Assert (ids.size()==1, "assignments unsplit");
-          auto used = getIdsUsedByExpr(curr->u_basic().stmt.u_assign().e);
-          if (!used.empty()) {
-            _run_expr(curr, table, 
-              g->graph.id_pool().getBitwidth(curr->u_basic().stmt.u_assign().ids[0]));
+          auto used = getIdsUsedByExpr(curr->u_basic().stmt.u_assign().e);\
+          auto width = g->graph.id_pool().getBitwidth(curr->u_basic().stmt.u_assign().ids[0]);
+          if (!used.empty() && width>0) {
+            _run_expr(curr, table, width);
           }
         }
         break;
@@ -522,7 +522,7 @@ std::string ExprPipe::_expr_to_verilog (Expr *e, int width, Bimap<ActId *, int> 
     return ret;
 }
 
-void ExprPipe::_expr_collect_vars (Expr *e, Bimap<ActId *, int> &m)
+void ExprPipe::_expr_collect_vars (Expr *&e, Bimap<ActId *, int> &m)
 {
   Assert (e, "Hmm");
 
@@ -605,6 +605,11 @@ void ExprPipe::_expr_collect_vars (Expr *e, Bimap<ActId *, int> &m)
   case E_BITFIELD:
   case E_VAR: {
     ActId *var = (ActId *)e->u.e.l;
+    int bw = bitwidth(var);
+    if (bw==0) {
+      e = const_expr(0);
+      break;
+    }
     ihash_bucket_t *ib;
     ihash_bucket_t *b_width;
     if (!ihash_lookup (_inexprmap, (long)e)) 
@@ -613,7 +618,7 @@ void ExprPipe::_expr_collect_vars (Expr *e, Bimap<ActId *, int> &m)
         ib->i = _gen_expr_id();
         m.insert(var, ib->i);
         b_width = ihash_add (_inwidthmap, (long) e);
-        b_width->i = bitwidth(var);
+        b_width->i = bw;
     }
 
     }

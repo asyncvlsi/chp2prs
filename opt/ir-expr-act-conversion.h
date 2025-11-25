@@ -336,7 +336,7 @@ ActExprStruct *template_func_new_expr_from_irexpr(
     static_assert(
         std::is_same_v<std::invoke_result_t<ActIdFromChanIdFn, ChanIdType>,
                        ActId *>);
-    hassert(e.width > 0);
+    hassert(e.width >= 0);
     if (e.width > 1)
         hassert(expectedType == ActExprIntType::Int);
 
