@@ -526,7 +526,8 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  item->u.comm.var = NULL;
 	}
 	list_append (ret->u.semi_comma.cmd, item);
-  if (map.id.getIsStruct(curr->u_basic().stmt.u_receive().chan)) {
+  if (map.id.getIsStruct(curr->u_basic().stmt.u_receive().chan) &&
+      curr->u_basic().stmt.u_receive().var) {
     auto ivar = map.intOfStructVar(*curr->u_basic().stmt.u_receive().var,
                                         curr->u_basic().stmt.u_receive().chan);
     NEW (item, act_chp_lang_t);

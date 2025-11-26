@@ -318,7 +318,7 @@ void ChoppingBlock::_excise_internal_loops(Sequence seq, int root)
     return;
 }
 
-Block *ChoppingBlock::_excise_loop (Block *curr)
+void ChoppingBlock::_excise_loop (Block *curr)
 {
     Block *prev = curr->parent();
     Block *next = curr->child();
@@ -387,7 +387,6 @@ Block *ChoppingBlock::_excise_loop (Block *curr)
     Sequence _ = g->graph.blockAllocator().newSequence({curr});
 
     v_seqs.push_back(sm);
-    return NULL;
 }
 
 Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> recv, Block *send)
@@ -516,7 +515,93 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
     // Sequence func = _wrap_in_do_loop(g->graph.blockAllocator().newSequence({select_1,select_2}));
     _splice_in_block_between (func.startseq, func.startseq->child(), init_c);
 
+    _rename_all_vars(func);
     return func;
+}
+
+void ChoppingBlock::_rename_all_vars (Sequence &seq) 
+{
+    std::unordered_map<VarId, VarId> vm{};
+    _rename_all_vars_helper(seq, vm);
+}
+
+void ChoppingBlock::_rename_all_vars_helper (Sequence &seq, std::unordered_map<VarId, VarId> &vm) 
+{
+    auto rename = [&](VarId &v) {
+        if (!vm.count(v)) {
+            int bw = g->graph.id_pool().getBitwidth(v);
+            vm.insert({v,g->graph.id_pool().makeUniqueVar(bw, false)}); 
+        }
+        v = vm.at(v);
+    };
+    auto rename_vec = [&](std::vector<VarId> &vv) {
+        for ( auto &v : vv ) {
+            rename(v);
+        }
+    };
+    auto rename_opt = [&](OptionalVarId &ov) {
+        if (ov) {
+            VarId v = *ov;
+            rename(v);
+            ov = OptionalVarId(v);
+        }
+    };
+    auto rename_expr = [&](ChpExprDag &dag) {
+        ChpExprDag::mapNodes(dag, [&](ChpExprDag::Node &n) {
+            if (n.type() == IRExprTypeKind::Var)
+                rename(n.u_var().id);
+        });
+    };
+
+    Block *curr = seq.startseq->child();
+    while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        switch (curr->u_basic().stmt.type()) {
+        case StatementType::Send: {
+            rename_expr(curr->u_basic().stmt.u_send().e.m_dag);
+        }
+        break;
+        case StatementType::Assign: {
+            rename_expr(curr->u_basic().stmt.u_assign().e);
+            rename_vec(curr->u_basic().stmt.u_assign().ids);
+        }
+        break;
+        case StatementType::Receive: {
+            rename_opt(curr->u_basic().stmt.u_receive().var);
+        }
+        break;
+        }
+    }
+    break;
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            _rename_all_vars_helper(branch, vm);
+        }
+    }
+    break;
+    case BlockType::Select: {
+        for (auto &branch : curr->u_select().branches) {
+            if (branch.g.type()==IRGuardType::Expression)
+                rename_expr(branch.g.u_e().e.m_dag);
+        }
+        for (auto &branch : curr->u_select().branches) {
+            _rename_all_vars_helper(branch.seq, vm);
+        }
+    }
+    break;
+    case BlockType::DoLoop: {
+        rename_expr(curr->u_doloop().guard.m_dag);
+        _rename_all_vars_helper(curr->u_doloop().branch, vm);
+    }
+    break;
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+    }
 }
 
 std::vector<Block *> ChoppingBlock::_initialize_ics(Block *curr)
@@ -626,6 +711,8 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
         VarId vi = var;
         int width = g->graph.id_pool().getBitwidth(vi);
         // vi := v_concat{i+w..i}
+        hassert (width>=0);
+        if (width>0) {
         Block *assign = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(
                     Statement::makeAssignment(vi, 
                         ChpExprSingleRootDag::makeBitfield(
@@ -637,6 +724,7 @@ std::pair<int, Sequence> ChoppingBlock::_generate_recv_and_maybe_assigns (Block 
 
         parallel->u_par().branches.push_back(
                 g->graph.blockAllocator().newSequence({assign}));
+        }
         range_ctr -= (width);
     }
 

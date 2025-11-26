@@ -128,7 +128,7 @@ class ChoppingBlock {
             [G1'->S1'[]G2'->S2'..[]Gn'->Sn'
             []else->Lf!\{y1',y2',..,ym'\},c:=0] ]
         */
-        Block *_excise_loop (Block *curr);
+        void _excise_loop (Block *);
 
         /*
             construct this:
@@ -148,7 +148,10 @@ class ChoppingBlock {
         /*
             Wrap a sequence in an infinite loop
         */
-        Sequence _wrap_in_do_loop (Sequence seq);
+        Sequence _wrap_in_do_loop (Sequence);
+
+        void _rename_all_vars (Sequence&);
+        void _rename_all_vars_helper (Sequence&, std::unordered_map<VarId, VarId>&);
 
         void _print_seq (Sequence seq);
 };

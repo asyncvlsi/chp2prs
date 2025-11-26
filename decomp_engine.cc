@@ -141,14 +141,19 @@ class Decomp : public ActSynthesize {
       cb.excise_internal_loops();
       auto vs1 = cb.get_chopped_seqs();
         
+      auto btop = g.graph.newParBlock();
       for ( auto vv : {{g.graph.m_seq}, vs, vs1} ) {
         for (auto v : vv) {
-          g.graph.m_seq = v;
-          act_chp_lang_t *tmp = chp_graph_to_act (g, tmp_names, p->CurScope());
-          for ( auto x : tmp_names ) { newnames.insert(x); }
-          list_append(top_chp->u.semi_comma.cmd, tmp);
+          // g.graph.m_seq = v;
+          // act_chp_lang_t *tmp = chp_graph_to_act (g, tmp_names, p->CurScope());
+          // for ( auto x : tmp_names ) { newnames.insert(x); }
+          // list_append(top_chp->u.semi_comma.cmd, tmp);
+          btop->u_par().branches.push_back(v);
         }
       }
+      g.graph.m_seq = g.graph.newSequence({btop});
+      top_chp = chp_graph_to_act (g, tmp_names, p->CurScope());
+      for ( auto x : tmp_names ) { newnames.insert(x); }
       // ----------------------------------------------------------------------
       auto t2 = high_resolution_clock::now();
 
