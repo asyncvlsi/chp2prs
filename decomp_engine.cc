@@ -115,13 +115,6 @@ class Decomp : public ActSynthesize {
       std::unordered_set<ActId *> newnames;
       std::vector<ActId *> tmp_names;
 
-      act_chp_lang_t *top_chp;
-      top_chp = new act_chp_lang_t;
-      top_chp->label = NULL;
-      top_chp->space = NULL;
-      top_chp->type = ACT_CHP_COMMA;
-      top_chp->u.semi_comma.cmd = list_new();
-
       // ExprPipe ep (g, p->CurScope());
       // ep.set_n_cuts(pll);
       // ep.run();
@@ -144,15 +137,12 @@ class Decomp : public ActSynthesize {
       auto btop = g.graph.newParBlock();
       for ( auto vv : {{g.graph.m_seq}, vs, vs1} ) {
         for (auto v : vv) {
-          // g.graph.m_seq = v;
-          // act_chp_lang_t *tmp = chp_graph_to_act (g, tmp_names, p->CurScope());
-          // for ( auto x : tmp_names ) { newnames.insert(x); }
-          // list_append(top_chp->u.semi_comma.cmd, tmp);
           btop->u_par().branches.push_back(v);
         }
       }
       g.graph.m_seq = g.graph.newSequence({btop});
-      top_chp = chp_graph_to_act (g, tmp_names, p->CurScope());
+      ChpOptimize::fillInElseExplicit(g.graph);
+      act_chp_lang_t *top_chp = chp_graph_to_act (g, tmp_names, p->CurScope());
       for ( auto x : tmp_names ) { newnames.insert(x); }
       // ----------------------------------------------------------------------
       auto t2 = high_resolution_clock::now();
@@ -160,19 +150,12 @@ class Decomp : public ActSynthesize {
       // projection/decomposition for slack elastic programs ------------------
       std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
       if (project) {
-        std::vector<Strategy> prj_steps = {};
-        prj_steps = {Strategy::Timing};
-        for ( auto ss : prj_steps ) {
-          _fill_in_else_explicit (top_chp, p->CurScope());
-          auto gnew = chp_graph_from_act (top_chp, p->CurScope(), 1);
-          Projection pr = Projection (gnew, p->CurScope());
-          pr.project(ss);
-          auto [names2, top_chp2, nfc2] = pr.get_final_result();
-          for ( auto x : names2 ) { newnames.insert(x); }
-          for ( auto x : nfc2 ) { nfc.push_back(x); }
-
-          top_chp = top_chp2;
-        }
+        Projection pr = Projection (g, p->CurScope());
+        pr.project(Strategy::Timing);
+        auto [names2, top_chp2, nfc2] = pr.get_final_result();
+        for ( auto x : names2 ) { newnames.insert(x); }
+        for ( auto x : nfc2 ) { nfc.push_back(x); }
+        top_chp = top_chp2;
       }
       // ----------------------------------------------------------------------
 

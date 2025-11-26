@@ -619,7 +619,8 @@ std::vector<Block *> ChoppingBlock::_initialize_ics(Block *curr)
     for ( auto var : di.live_in_vars )
     {
         Block *init_v = g->graph.blockAllocator().newBlock(
-        Block::makeBasicBlock(Statement::makeAssignment(var,ChpExprSingleRootDag::makeConstant(BigInt(0),1))));
+        Block::makeBasicBlock(Statement::makeAssignment(var,
+            ChpExprSingleRootDag::makeConstant(BigInt(0),g->graph.id_pool().getBitwidth(var)))));
         v_inits.push_back(init_v);
     }
 
