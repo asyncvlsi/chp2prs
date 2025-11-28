@@ -491,7 +491,8 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
     auto it = TypeFactory::getChanDataType(cit);
     auto dx = dynamic_cast<Data *>(it->BaseType());
     hassert (dx);
-    dx->synthStructMacro();
+    if (!dx->getMacro(dx->getUnexpanded()->getName()))
+      dx->synthStructMacro();
     auto um = dx->getMacro(dx->getUnexpanded()->getName());
     hassert (um);
     item->u.comm.e->u.fn.s = (char *)um->getFunction();
@@ -536,12 +537,23 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  item->type = ACT_CHP_ASSIGN;
 	  item->u.assign.id = ivar;
 	  NEW (item->u.assign.e, Expr);
-    item->u.assign.e->type = E_BUILTIN_INT;
-    NEW (item->u.assign.e->u.e.l, Expr);
-    item->u.assign.e->u.e.l->type = E_VAR;
-    item->u.assign.e->u.e.l->u.e.l = (Expr *)(map.structVar(ivar));
-    item->u.assign.e->u.e.l->u.e.r = nullptr;
-    item->u.assign.e->u.e.r = nullptr;
+    
+    item->u.assign.e->type = E_USERMACRO;
+    auto svar = map.structVar(ivar);
+    auto it = map.sc->FullLookup(svar, nullptr);
+    auto dx = dynamic_cast<Data *>(it->BaseType());
+    hassert(dx);
+    auto um = dx->getMacro("int");
+    if (!um) {
+      um = dx->newMacro(string_cache("int"));
+	    um->mkBuiltin();
+	    um->setRetType(TypeFactory::Factory()->NewInt(
+          map.sc,Type::direction::NONE,0,const_expr(32)));
+	    um->getRetType()->MkCached();
+	  }
+    hassert(um);
+    item->u.assign.e->u.fn.s = (char *)um;
+    item->u.assign.e->u.fn.r = act_expr_var(svar);
 	  list_append (ret->u.semi_comma.cmd, item);
   }
 	break;

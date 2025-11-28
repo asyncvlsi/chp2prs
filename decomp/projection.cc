@@ -65,6 +65,14 @@ std::tuple<
         }
     }
 
+    if (list_isempty(top_chp->u.semi_comma.cmd)) {
+        auto b = g->graph.newDoLoopBlock();
+        b->u_doloop().guard = ChpExprSingleRootDag::makeConstant(ChpOptimize::BigInt{1},1);
+        b->u_doloop().branch = g->graph.newSequence({});
+        g->graph.m_seq = g->graph.newSequence({b});
+        std::vector<ActId *> tmp;
+        list_append(top_chp->u.semi_comma.cmd, ChpOptimize::chp_graph_to_act(*g, tmp, s));
+    }
     return {names, top_chp, nfc};
 }
 

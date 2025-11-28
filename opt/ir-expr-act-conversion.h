@@ -190,9 +190,11 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
     case E_BUILTIN_INT:
         if (o->u.e.r) {
             hassert(o->u.e.r->type == E_INT);
+            auto bw = detail::bigint_from_int_expr(o->u.e.r).first.getI32();
+            if (bw==0) 
+                return std::make_unique<IRExpr_t>(IRExpr_t::makeConstant(BigInt{0},0));
             return std::make_unique<IRExpr_t>(IRExpr_t::makeBitfield(
-                new_irexpr_from_expr(o->u.e.l),
-                detail::bigint_from_int_expr(o->u.e.r).first.getI32() - 1, 0));
+                new_irexpr_from_expr(o->u.e.l), bw - 1, 0));
         } else {
             // this is a conversion from a bool -> int, so the bitwidth is 1, so
             // it is a nop

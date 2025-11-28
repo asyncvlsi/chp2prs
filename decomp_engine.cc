@@ -174,7 +174,7 @@ class Decomp : public ActSynthesize {
         fprintf(stdout, "\n");
       }
 
-      if (project) {
+      if (project && false) {
         ChpCost cc(p->CurScope(), g);
         cc.dump_actsim_conf("decomp_sim.conf", top_chp, p);
       }

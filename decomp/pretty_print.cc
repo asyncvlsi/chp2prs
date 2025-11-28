@@ -570,6 +570,7 @@ void _trim_nested_same_int (Expr *&e, Scope *s)
   case E_VAR:
   case E_PROBE:
   case E_FUNCTION:
+  case E_USERMACRO:
     break;
     
   case E_SELF:

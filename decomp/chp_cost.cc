@@ -336,7 +336,16 @@ void ChpCost::_expr_collect_vars (Expr *&e)
   case E_UMINUS:
   case E_NOT:
   case E_COMPLEMENT:
-  case E_BUILTIN_INT:
+  case E_BUILTIN_INT: {
+    if ((e->u.e.r)) {
+      int val;
+      Assert (act_expr_getconst_int(e->u.e.r, &val), "huh");
+      if (val==0) {
+        e = const_expr(0);
+        break;
+      }
+    }
+  }
   case E_BUILTIN_BOOL:
     UNARY_OP;
     break;

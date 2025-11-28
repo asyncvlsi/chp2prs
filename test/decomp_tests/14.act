@@ -1,0 +1,14 @@
+
+deftype ss (
+    int<4> a;
+    int<6> b;
+    int<8> c;
+    int<0> d
+) {}
+
+defproc dc14  (chan?(ss) IN; chan!(ss) OUT) {
+    ss x;
+    chp{
+        *[ IN?x; OUT!x ]
+    }
+}
