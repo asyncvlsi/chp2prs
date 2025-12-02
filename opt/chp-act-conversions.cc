@@ -491,11 +491,20 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
     auto it = TypeFactory::getChanDataType(cit);
     auto dx = dynamic_cast<Data *>(it->BaseType());
     hassert (dx);
-    if (!dx->getMacro(dx->getUnexpanded()->getName()))
+    char nmu[4096];
+    char nm[4096];
+    dx->snprintActName(nm,4096);
+    dx->getUnexpanded()->snprintActName(nmu,4096);
+    if (!dx->getMacro(nm)) {
+      dx->getUnexpanded()->setName(nm);
       dx->synthStructMacro();
-    auto um = dx->getMacro(dx->getUnexpanded()->getName());
+      dx->getUnexpanded()->setName(nmu);
+    }
+    auto um = dx->getMacro(nm);
     hassert (um);
-    item->u.comm.e->u.fn.s = (char *)um->getFunction();
+    auto f = um->getFunction();
+    hassert (f);
+    item->u.comm.e->u.fn.s = (char *)f;
     NEW (item->u.comm.e->u.fn.r, Expr);
     item->u.comm.e->u.fn.r->type = E_LT;
     item->u.comm.e->u.fn.r->u.e.r = NULL;

@@ -57,6 +57,17 @@ class Decomp : public ActSynthesize {
     _expr = NULL;
   }
 
+  void processStruct (Data *d) { // some special stuff for templated pure structs
+    if (TypeFactory::isPureStruct(d)) {
+      bool is_template = (d->getNumParams()>0);
+      if (is_template) {
+        char buf[4096];
+        ActNamespace::Act()->msnprintfproc (buf, 10240, d);
+        pp_printf_raw (_pp, "\ndeftype %s <: %s () {}\n\n", buf, d->getName());
+      }
+    }
+  }
+
   bool overrideTypes() { return true; }
 
   bool skipOverride (ValueIdx *vx) {
