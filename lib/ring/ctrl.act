@@ -653,7 +653,7 @@ defproc c2 (bool A, B, ack, out)
     }
 }
 
-defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka) 
+export defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka) 
 {
   bool _u, _v;
   bool _Reset;
