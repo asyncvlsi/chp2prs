@@ -103,6 +103,10 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
        * tree with a binary concat operator (IRExpr v/s Expr
        * representation).
        */
+        // o->u.e.r can be null for concat!
+        if (!(o->u.e.r)) {
+            return new_irexpr_from_expr(o->u.e.l);
+        }
         hassert(o->u.e.r);
         hassert(o->u.e.r->type == E_CONCAT);
         if (o->u.e.r->u.e.r == nullptr) {
