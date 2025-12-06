@@ -31,6 +31,7 @@ The options are:
    * `-E abc|yosys|genus` : run expression optimization using the specified logic synthesis engine.
    * `-p <proc>` : the name of the ACT process to be translated (the top-level process). This is required.
    * `-o <file>` : where the result should be saved. Default is stdout.
+   * `-t` : print tool runtime breakdown (for `decomp`, also produce delay annotation file).
    * `<actfile>` : the input ACT file that contains the design.
 
 

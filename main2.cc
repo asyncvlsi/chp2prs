@@ -54,7 +54,7 @@ static void usage(char *name)
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   fprintf (stderr, " -E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
-  fprintf (stderr, " -t : print tool runtime breakdown\n");
+  fprintf (stderr, " -t : print tool runtime breakdown (for decomp, also produce delay annotation file)\n");
   fprintf (stderr, "\n");
   exit(1);
 }

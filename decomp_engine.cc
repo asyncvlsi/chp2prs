@@ -126,9 +126,11 @@ class Decomp : public ActSynthesize {
       std::unordered_set<ActId *> newnames;
       std::vector<ActId *> tmp_names;
 
-      // ExprPipe ep (g, p->CurScope());
-      // ep.set_n_cuts(pll);
-      // ep.run();
+      if (!project) {
+        // ExprPipe ep (g, p->CurScope());
+        // ep.set_n_cuts(pll);
+        // ep.run();
+      }
 
       if (!ChpOptimize::isProbeFree(g.graph)) {
         warning ("Probes in CHP - not running projection");
@@ -185,7 +187,7 @@ class Decomp : public ActSynthesize {
         fprintf(stdout, "\n");
       }
 
-      if (project && false) {
+      if (print_rt) {
         ChpCost cc(p->CurScope(), g);
         cc.dump_actsim_conf("decomp_sim.conf", top_chp, p);
       }
