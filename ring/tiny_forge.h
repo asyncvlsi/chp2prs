@@ -45,6 +45,7 @@ class TinyForge : public RingForge {
     TinyForge ( FILE *fp, 
             int bdpath,
             int delay_margin, int dp_style, 
+            BD_MODE bdpath_mode, 
             const char *circuit_library,
             const char *exprfile = "expr.act" );
 

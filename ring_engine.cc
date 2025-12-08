@@ -58,7 +58,11 @@ class RingSynth : public ActSynthesize {
 
     int dm = dp->getIntParam ("delay_margin");
     int dpath_style = dp->getIntParam ("datapath_style");
-    tf = new TinyForge (_pp->fp, bundled_data, dm, dpath_style, "", _ename);
+    BD_MODE bdpath_mode; 
+    if (bundled_data_pulsed) bdpath_mode = BD_MODE::Latch_4phase;
+    else if (bundled_data_2phase) bdpath_mode = BD_MODE::Latch_2phase;
+    else bdpath_mode = BD_MODE::DFF;
+    tf = new TinyForge (_pp->fp, bundled_data, dm, dpath_style, bdpath_mode, "", _ename);
     /* print imports */
     
     if (bundled_data) {
@@ -89,8 +93,10 @@ class RingSynth : public ActSynthesize {
 
     // Delay-line table -------------------------
     pp_printf_raw (_pp, "\n// Delay Line Parameters ----\n");
-    int dp_sz = config_get_table_size("synth.ring.bundled.delay_params");
-    int *dparams = config_get_table_int("synth.ring.bundled.delay_params");
+    std::string table_name = bd_mode_config_params.at(bdpath_mode);
+
+    int dp_sz = config_get_table_size(table_name.c_str());
+    int *dparams = config_get_table_int(table_name.c_str());
     for (int i=0;i<dp_sz;i++)
     {
       pp_printf_raw (_pp, "Delay_Params[%d]=%d;\n",i,dparams[i]);

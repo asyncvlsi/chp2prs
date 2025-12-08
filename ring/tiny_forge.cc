@@ -24,9 +24,10 @@
 
 TinyForge::TinyForge ( FILE *fp, int bdpath,
             int delay_margin, int dp_style, 
+            BD_MODE bdpath_mode, 
             const char *circuit_library,
             const char *exprfile )
-    : RingForge ( fp, bdpath, delay_margin, dp_style, circuit_library, exprfile )
+    : RingForge ( fp, bdpath, delay_margin, dp_style, bdpath_mode, circuit_library, exprfile )
 {
     term_inst_prefix = "term_inst_";
 }

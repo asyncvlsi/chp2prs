@@ -34,6 +34,7 @@ static std::unordered_map<act_connection *, Expr *> _invarsmap;
 RingForge::RingForge ( FILE *fp, 
             int bdpath,
             int delay_margin, int dp_style,
+            BD_MODE bdpath_mode, 
             const char *circuit_library,
             const char *exprfile )
     : RingEngine ( fp, circuit_library, exprfile )
@@ -64,9 +65,13 @@ RingForge::RingForge ( FILE *fp,
     capture_delay = config_get_real("synth.ring.bundled.capture_delay");
     pulse_width = config_get_real("synth.ring.bundled.pulse_width");
 
+    _bdpath_mode = bdpath_mode;
     // Delay line parameters check
-    int dp_sz = config_get_table_size("synth.ring.bundled.delay_params");
-    int dv_sz = config_get_table_size("synth.ring.bundled.delay_vals");
+    std::string delay_params_table = bd_mode_config_params.at(_bdpath_mode);
+    std::string delay_vals_table = bd_mode_config_vals.at(_bdpath_mode);
+
+    int dp_sz = config_get_table_size(delay_params_table.c_str());
+    int dv_sz = config_get_table_size(delay_vals_table.c_str());
     Assert (dp_sz==dv_sz, "Delay line table size mismatch");
     delay_table_sz = dp_sz;
 
@@ -369,8 +374,11 @@ int RingForge::_compute_delay_line_param(double delay)
 {
     if (delay==0) return 0;
     
-    int *dparams = config_get_table_int("synth.ring.bundled.delay_params");
-    double *dvals = config_get_table_real("synth.ring.bundled.delay_vals");
+    std::string delay_params_table = bd_mode_config_params.at(_bdpath_mode);
+    std::string delay_vals_table = bd_mode_config_vals.at(_bdpath_mode);
+
+    int *dparams = config_get_table_int(delay_params_table.c_str());
+    double *dvals = config_get_table_real(delay_vals_table.c_str());
 
     int itr = 0;
     while(itr<delay_table_sz && delay>dvals[itr])

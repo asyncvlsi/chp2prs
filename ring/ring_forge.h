@@ -30,6 +30,23 @@
 // Using cache will turn off multi-output expr block support 
 // (for now)
 #define USE_CACHE 1
+
+enum class BD_MODE { Latch_4phase, Latch_2phase, DFF };
+
+static const std::unordered_map<BD_MODE, std::string>
+bd_mode_config_params = {
+    {BD_MODE::Latch_4phase, "synth.ring.bundled.delay_params_L"},
+    {BD_MODE::Latch_2phase, "synth.ring.bundled.delay_params_L2P"},
+    {BD_MODE::DFF,          "synth.ring.bundled.delay_params_DFF"}
+};
+
+static const std::unordered_map<BD_MODE, std::string>
+bd_mode_config_vals = {
+    {BD_MODE::Latch_4phase, "synth.ring.bundled.delay_vals_L"},
+    {BD_MODE::Latch_2phase, "synth.ring.bundled.delay_vals_L2P"},
+    {BD_MODE::DFF,          "synth.ring.bundled.delay_vals_DFF"}
+};
+
 /*
  * Ring synthesizer class
  */
@@ -38,6 +55,7 @@ class RingForge : public RingEngine {
 
     RingForge ( FILE *fp, int bdpath,
                 int delay_margin, int dp_style,
+                BD_MODE bdpath_mode, 
                 const char *circuit_library,
                 const char *exprfile);
 
@@ -145,6 +163,8 @@ class RingForge : public RingEngine {
 
         // Name of int port chan in impl. of struct chan
         const char *struct_chan_name;
+
+        BD_MODE _bdpath_mode;
 
         // Capture delay of a latch (ps)
         double capture_delay;

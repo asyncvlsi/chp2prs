@@ -19,32 +19,10 @@
  *
  **************************************************************************
  */
-
+import std::delay_lines;
 
 namespace syn {
   
-    export namespace delay_lines {
-
-        // Define new types of delay lines here -------
-
-        export template <pint N>
-        defproc inverter_chain (bool? in; bool! out)
-        {
-            std::cells::INVX1 invs[2*N];
-            invs[0].A = in;
-            ( i : (2*N)-1 : invs[i].Y = invs[i+1].A; )
-            invs[(2*N)-1].Y = out;
-                
-            spec {
-                timing in+ : out+ < in-  
-                timing in- : out- < in+  
-            }
-        }
-
-        // Define new types of delay lines here -------
-
-    }
-
     export namespace ring {
 
         export template <pint N>
@@ -56,7 +34,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[0];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -69,7 +47,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[1];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -82,7 +60,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[2];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -95,7 +73,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[3];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -154,7 +132,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[0];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -167,7 +145,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[1];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -180,7 +158,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[2];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -193,7 +171,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[3];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -251,7 +229,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[0];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -264,7 +242,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[1];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -277,7 +255,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[2];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
@@ -290,7 +268,7 @@ namespace syn {
 
             // put your delay line here in terms of N_loc -------
             pint my_N = N_loc+Delay_Params[3];
-            syn::delay_lines::inverter_chain<my_N> ic(in, out);
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
 
