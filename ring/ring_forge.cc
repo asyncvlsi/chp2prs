@@ -1382,9 +1382,11 @@ void RingForge::_instantiate_expr_block (std::string expr_id, int block_id, list
                 int latch_id = vi->latest_for_read;
                 Assert ((latch_id>=0),"var. read before being written?");
 
+                int lbuf = config_get_int("synth.ring.bundled.buffer_latch_reads");
+                std::string s_lbuf = lbuf ? "true" : "false";
                 int va_id = _gen_var_access_id();
-                fprintf(_fp,"var_access<%d> %s%d(%s%s_%d.dout,%s%d.%s%d);\n",
-                            vi->width, var_access_prefix, va_id,
+                fprintf(_fp,"var_access<%d,%s> %s%d(%s%s_%d.dout,%s%d.%s%d);\n",
+                            vi->width, s_lbuf.c_str(), var_access_prefix, va_id,
                             capture_block_prefix, vi->name, latch_id,
                             expr_block_instance_prefix, block_id,
                             expr_block_input_prefix, ib->i);

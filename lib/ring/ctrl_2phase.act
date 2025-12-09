@@ -191,10 +191,14 @@ defproc capture_dummy(a1of1 go; bool din[W]; bool dout[W]; a1of1 tx)
 }
 
 
-export template <pint W>
+export template <pint W; pbool BUF=false>
 defproc var_access(bool din[W]; bool dout[W])
 {
-  [ W > 0 -> din = dout; ]
+  [ W > 0 -> 
+    [ BUF  -> std::cells::BUFX2 buf[W]; (i:W: buf[i](.A=din[i],.Y=dout[i]); )
+    []else -> din = dout; 
+    ]
+  ]
 }
 
 export template<pint W>
