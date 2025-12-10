@@ -448,6 +448,48 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
   }
 }
 
+void place_skip_in_empty_branches (act_chp_lang_t *&c)
+{
+  switch (c->type) {
+  case ACT_CHP_SKIP:
+  case ACT_CHP_SEND:
+  case ACT_CHP_RECV:
+  case ACT_CHP_ASSIGN:
+    break;
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI: {
+    for (listitem_t *li = list_first(c->u.semi_comma.cmd); li; li = list_next(li)) {   
+      act_chp_lang_t *stmt = (act_chp_lang_t *) list_value(li);
+      place_skip_in_empty_branches(stmt);
+    }
+  }
+  break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+  case ACT_CHP_SELECT_NONDET:
+  case ACT_CHP_SELECT: {
+    act_chp_gc_t *gc = c->u.gc;
+    while (gc) {
+      if (!(gc->s)) {
+        act_chp_lang_t *skip = new act_chp_lang_t;
+        skip->type = ACT_CHP_SKIP;
+        skip->label = NULL;
+        skip->space = NULL;
+        gc->s = skip;
+      }
+      place_skip_in_empty_branches (gc->s);
+      gc = gc->next;
+    }
+  }
+  break;
+  case ACT_CHP_FUNC:
+    break;
+  default:
+    fatal_error ("What?");
+    break;
+  }
+}
+
 static Act *a_mangle = NULL;
 
 static const int style_global = 0;

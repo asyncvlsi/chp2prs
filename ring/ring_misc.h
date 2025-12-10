@@ -56,6 +56,8 @@ void flatten_lists (act_chp_lang_t *&c, Scope *s);
 
 bool _var_appears_in_expr (Expr *e, ActId *id);
 
+void place_skip_in_empty_branches (act_chp_lang_t *&c);
+
 /*
     Revert the mangling settings back to 
     the main Act object's defaults.

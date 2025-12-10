@@ -219,6 +219,7 @@ class RingSynth : public ActSynthesize {
     {
       Assert (c, "hmm no chp lol - something went wrong");
       mangle_init();
+      place_skip_in_empty_branches (c);
       fill_in_else_explicit (c, p->CurScope());
       flatten_lists (c, p->CurScope());
 
