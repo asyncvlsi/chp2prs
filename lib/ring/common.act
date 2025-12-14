@@ -26,12 +26,12 @@ pint N_delay_line_types = 4;
 pint Delay_Params[N_delay_line_types+1];
 
 // DFF-datapath parameters
-pint RDFF_SEL_SPLIT_CD = 3;
-pint RDFF_SEL_SPLIT_PW = 4;
+pint RDFF_SEL_SPLIT_CD = 2;
+pint RDFF_SEL_SPLIT_PW = 2;
 
 // Latch-datapath parameters
-pint RL_SEL_SPLIT_CD = 5;
-pint RL_SEL_SPLIT_PW = 6;
+pint RL_SEL_SPLIT_CD = 2;
+pint RL_SEL_SPLIT_PW = 2;
 
 // 2-phase parameters
 pint R2P_MUX_DELAY_MULT = 1;

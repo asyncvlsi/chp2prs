@@ -956,9 +956,11 @@ defproc merge_mux_old_3(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 }
 
 export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
+defproc merge_mux_ohc_opt(bool? c[N]; bool din[N][W]; bool dout[W]; bool a)
 {
-  // { N>1 : "Size two or greater merge mux only"};
+  { N>0 : "Size one or greater merge mux only"};
+  [N=1 -> din[0][0..W-1] = dout[0..W-1];
+  []else ->
 
   std::cells::TBUF1 tb[N][W];
   std::cells::INVX1 invs[W];
@@ -974,6 +976,7 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
       dout[j] = invs[j].Y;
     )
   )
+  ]
 }
 
 // --------------------------------------------------------
