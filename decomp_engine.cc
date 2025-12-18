@@ -190,6 +190,8 @@ class Decomp : public ActSynthesize {
       if (print_rt) {
         ChpCost cc(p->CurScope(), g);
         cc.dump_actsim_conf("decomp_sim.conf", top_chp, p);
+        Projection prx(g, p->CurScope());
+        prx.export_ddg_and_tg(p->getName());
       }
 
       act_chp_lang_t *l = top_chp;

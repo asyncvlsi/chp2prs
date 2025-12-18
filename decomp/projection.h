@@ -88,11 +88,13 @@ class Projection : protected ChoppingBlock {
         void split_assignments (ChpGraph &);
 
         /*
-            Print DOT graph of the projected processes
+            Print DOT graph of DDG and Timing Graph of the process
         */
-        void export_dot(std::string, const DFG &);
+        void export_ddg_and_tg(std::string);
 
     private:
+
+        void _export_dot(std::string, const DFG &);
 
         std::vector<act_chp_lang_t *> procs;
 

@@ -1851,7 +1851,18 @@ void Projection::_split_assignments(Sequence seq)
     }
 }
 
-void Projection::export_dot(std::string filename, const DFG &d_in)
+void Projection::export_ddg_and_tg(std::string fn_pfx) {
+    DFG x_dfg;
+    split_assignments(g->graph);
+    step2(*g, x_dfg);
+    std::string fn_ddg = fn_pfx + "_ddg.dot";
+    std::string fn_tg  = fn_pfx + "_tg.dot";
+    _export_dot(fn_ddg, x_dfg);
+    ChpTiming ct(*g, x_dfg, s);
+    ct.export_dot(fn_tg);
+}
+
+void Projection::_export_dot(std::string filename, const DFG &d_in)
 {
     FILE *ff = fopen(filename.c_str(), "w");
 
