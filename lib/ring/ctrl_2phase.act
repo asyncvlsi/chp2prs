@@ -758,21 +758,27 @@ defproc nds_two_way (bool gs[2]; a1of1 m1; a1of1 co[2])
 {
   bool arb_out[2];
   killable_arbiter arb(.a=gs[0], .b=gs[1], .u=arb_out[0], .v=arb_out[1]);
-  std::cells::INVX1 inv_arb_en(.A=Reset, .Y=arb._ki);
   bool go;
   std::cells::LATCHLO latch_lo(.D=m1.r,.Q=go, .CLK=arb._ka, .R=Reset);
+  delay_line<2> del_go(go);
 
-  capture_init<R2P_SEL_SPLIT_CD, R2P_SEL_SPLIT_PW, 1, 0> capt1[2], capt2[2];
+  capture_init<R2P_SEL_SPLIT_CD, R2P_SEL_SPLIT_PW, 1, 0> capt1[2];
   std::cells::XOR2X1 xors[2];
 
-  ( i : 2: capt1[i].go.r = go; )
-  ( i : 2: xors[i].A = co[i].a; )
-  ( i : 2: xors[i].B = arb_out[i]; )
-  ( i : 2: xors[i].Y = capt1[i].din[0]; )
+  ( i : 2 : capt1[i].go.r = del_go.out; )
+  ( i : 2 : xors[i].A = co[i].a; )
+  ( i : 2 : xors[i].B = arb_out[i]; )
+  ( i : 2 : xors[i].Y = capt1[i].din[0]; )
+  std::cells::INVX1 inv_arb_ka (.A=arb._ka);
+  std::cells::LATCHLO capt2[2];
+  ( i : 2 : capt2[i].D = capt1[i].dout[0]; 
+            capt2[i].Q = co[i].r; 
+            capt2[i].CLK = inv_arb_ka.Y;
+            capt2[i].R = Reset; )
 
-  ( i : 2: capt2[i].dout[0] = co[i].r; )
-  ( i : 2: capt2[i].din[0] = capt1[i].dout[0]; )
-  ( i : 2: capt2[i].go.r = capt1[i].go.a; )
+  std::gates::ctree<2, false> cc;
+  ( i : 2 : cc.in[i] = capt1[i].go.a; )
+  std::cells::XOR2X1 xor_ctrl(.A=m1.r, .B=cc.out, .Y=arb._ki);
 
   std::gates::xortree<2, false> ort(, m1.a);
   ( i : 2: ort.in[i] = co[i].a; )
