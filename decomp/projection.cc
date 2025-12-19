@@ -355,7 +355,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         ChpTiming ct(g_copy, d_loc, s);
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
-        if (verbose>0) { fprintf(stdout, "\n// Latest   Cycle : %.2f", max_cycles_trace.back()); } 
+        if (verbose>0) { fprintf(stdout, "\n// Latest Cycle : %.2f", max_cycles_trace.back()); } 
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeSet best_hs = {}; 

@@ -51,10 +51,11 @@ static void usage(char *name)
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
   fprintf (stderr, " -X : Enable projection during decomposition (w.i.p.) \n");
+  fprintf (stderr, " -P <double> : Set cycle time target in picoseconds for projection (w.i.p.) \n");
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   fprintf (stderr, " -E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
-  fprintf (stderr, " -t : print tool runtime breakdown (for decomp, also produce delay annotation file)\n");
+  fprintf (stderr, " -t : print tool runtime breakdown (for decomp: also produce delay annotation file and dot graphs of DDG and TG)\n");
   fprintf (stderr, "\n");
   exit(1);
 }
@@ -76,7 +77,7 @@ int main(int argc, char **argv)
   char *syntesistool = NULL;
   int external_opt = 0;
   int delay_margin = 100;
-  int parallelism = 0;
+  double cycle_time_target = 1.0;
   bool dflow = false;
 
   auto start = high_resolution_clock::now();
@@ -196,7 +197,7 @@ int main(int argc, char **argv)
       break;
 
     case 'P':
-      parallelism = std::atoi(Strdup (optarg));
+      cycle_time_target = std::atof(Strdup (optarg));
       break;
       
     default:
@@ -278,7 +279,7 @@ int main(int argc, char **argv)
     else if (decompose) {
       c2p->setParam ("engine", (void *) gen_decomp_engine);
       c2p->setParam ("prefix", (void *)Strdup ("decomp"));
-      c2p->setParam ("parallelism", parallelism);
+      c2p->setParam ("cycle_time_target", cycle_time_target);
       c2p->setParam ("project", project);
       c2p->setParam ("run_time", run_time);
     }

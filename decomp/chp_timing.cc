@@ -195,7 +195,7 @@ TimingNodeId ChpTiming::_construct_subtg(Sequence seq, TimingNodeId previd, var_
             auto edel = expr_delay(e, g->graph.id_pool().getBitwidth(ids[0]));
             auto assnid = tg.add_node(pctr,"assn");
             nmap[assnid] = {&dfg->find(curr)};
-            tg.add_edge(currid, assnid, assn_delay + capture_delay + edel, 0);
+            tg.add_edge(currid, assnid, assn_delay + edel, 0);
             currid = assnid;
         }
         break;

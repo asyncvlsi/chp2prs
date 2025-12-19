@@ -69,7 +69,7 @@ do
            myecho ".[$bname]"
         fi
         ok=1
-        for opt in "-F decomp -X" "-F decomp -O -X"
+        for opt in "-F decomp -X -P 50000.0" "-F decomp -O -X -P 50000.0"
 	do
         if [ $ok -eq 1 ]
         then

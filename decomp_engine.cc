@@ -96,14 +96,15 @@ class Decomp : public ActSynthesize {
     // fprintf (_pp->fp, "/* start decomp */\n");
     fflush (_pp->fp);
 
-    int chpopt, pll, project;
+    int chpopt, project;
+    double cycle_time_target;
     ActDynamicPass *dp;
 
     dp = dynamic_cast <ActDynamicPass *> (ap);
     Assert (dp, "What?");
 
     chpopt = dp->getIntParam ("chp_optimize");
-    pll = dp->getIntParam ("parallelism");
+    cycle_time_target = dp->getRealParam("cycle_time_target");
     project = dp->getIntParam ("project");
 
     if (p->getlang() && p->getlang()->getchp()) {
@@ -164,7 +165,7 @@ class Decomp : public ActSynthesize {
       std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
       if (project) {
         Projection pr = Projection (g, p->CurScope());
-        pr.project(Strategy::Timing, 150.0);
+        pr.project(Strategy::Timing, cycle_time_target);
         auto [names2, top_chp2, nfc2] = pr.get_final_result();
         for ( auto x : names2 ) { newnames.insert(x); }
         for ( auto x : nfc2 ) { nfc.push_back(x); }

@@ -191,7 +191,7 @@ int ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, i
   if(e_del < delay_threshold) {
     return 0; // skipped this expr coz small already
   }
-  set_n_cuts(std::ceil(e_del/delay_threshold)+1);
+  set_n_cuts(std::ceil(e_del/delay_threshold));
 
   Bimap<ActId*, int> actid_to_in_idx;
   auto mapped_verilog = _expr_to_verilog (ae, width, actid_to_in_idx);
