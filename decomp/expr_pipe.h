@@ -29,6 +29,7 @@
 #include <memory>
 #include <regex>
 #include <act/chp/eqn_parser.h>
+#include <act/chp/chp_cost.h>
 
 /*
     Expression/Operator Pipelining:
@@ -59,7 +60,7 @@ class ExprPipe : public ExprCache {
         : ExprCache ("abc", bd, false, ""),
             s (s_in), g(&g_in), _m_expr_id(0), 
             nm(), stmts(), rhss(), in_out_map(),
-            n_cuts(0)
+            n_cuts(0), delay_threshold(1000000.0)
         {
             config_set_int("synth.expropt.vectorize_all_ports", 1);
         }
@@ -74,13 +75,14 @@ class ExprPipe : public ExprCache {
         void run ();
         void run_seq (Sequence &);
         void set_n_cuts (int);
+        void set_delay_threshold (double);
         
     protected:
 
         void _run_seq (Sequence &, var_to_actvar &);
 
         void _run_expr (Block *, var_to_actvar &, int);
-        void _run_expr_helper (ChpExprSingleRootDag &, var_to_actvar &, int);
+        int  _run_expr_helper (ChpExprSingleRootDag &, var_to_actvar &, int);
 
         void _construct_int_expr (std::vector<VarId>);
         void _build_in_out_map ();
@@ -123,6 +125,7 @@ class ExprPipe : public ExprCache {
 
         int _m_expr_id;
         int n_cuts;
+        double delay_threshold;
 
         // Expression handling for Expropt
         iHashtable *_inexprmap;

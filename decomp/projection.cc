@@ -104,10 +104,12 @@ void Projection::step2(GraphWithChanNames &g_in, DFG &d_in)
     d_in.build_sccs();
 }
 
-void Projection::project(Strategy ss)
+void Projection::project(Strategy ss, double ctt)
 {
     bool printt = false;
     DFG dfg1;
+    Assert (ctt>0, "what");
+    cycle_time_target = ctt;
 
     // split multi-assignments into single
     split_assignments(g->graph);
@@ -345,6 +347,10 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
     int thread_cnt=0;
     int itr_count=0;
     do {
+        ExprPipe ep(g_copy, s);
+        ep.set_delay_threshold(cycle_time_target);
+        ep.run();
+
         step2(g_copy, d_loc);
         ChpTiming ct(g_copy, d_loc, s);
         auto r1 = ct.get_maxcycle();
@@ -436,7 +442,10 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
             _build_seqs(g_copy, d_loc.get_wccs().size());
         }
         itr_count++;
-    } while ( (abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01) );
+    } while ( 
+        (abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01) 
+        && (*(max_cycles_trace.end()-1) > cycle_time_target)
+    );
 
     if (verbose>0) { 
         fprintf(stdout, "\n\n// Cycle Trace : "); 

@@ -150,7 +150,7 @@ void print_expr_block(std::ostream &o, const ChpExprDag &dag, int ilevel) {
     ChpExprDag::iterNodes(dag, [&](const ChpExprDag::Node &n) {
         int l = nl++;
         labels[&n] = l;
-        o << indent << "      n" << l << " := ";
+        o << indent << "      n" << l << "(" << n.width << ")" << " := ";
         switch (n.type()) {
         case IRExprTypeKind::Const:
             o << n.u_cons().v.to_hex_string() << "i" << n.u_cons().v_width;

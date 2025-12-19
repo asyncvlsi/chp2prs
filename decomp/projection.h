@@ -27,6 +27,7 @@
 #include <act/chp/ddg.h>
 #include <act/chp/chp_timing.h>
 #include <act/chp/pretty_print.h>
+#include <act/chp/expr_pipe.h>
 
 /*
     Projection Copy-Insertion Strategy
@@ -70,7 +71,7 @@ class Projection : protected ChoppingBlock {
         /*
             Compute the projected processes
         */
-        void project (Strategy);
+        void project (Strategy, double);
 
         /*
             Returns vector of act_chp_lang's of projected proceses 
@@ -97,6 +98,7 @@ class Projection : protected ChoppingBlock {
         void _export_dot(std::string, const DFG &);
 
         std::vector<act_chp_lang_t *> procs;
+        double cycle_time_target; // picoseconds
 
         void step2(GraphWithChanNames &, DFG &);
         /*

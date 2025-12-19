@@ -164,7 +164,7 @@ class Decomp : public ActSynthesize {
       std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
       if (project) {
         Projection pr = Projection (g, p->CurScope());
-        pr.project(Strategy::Timing);
+        pr.project(Strategy::Timing, 150.0);
         auto [names2, top_chp2, nfc2] = pr.get_final_result();
         for ( auto x : names2 ) { newnames.insert(x); }
         for ( auto x : nfc2 ) { nfc.push_back(x); }

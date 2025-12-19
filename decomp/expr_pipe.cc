@@ -33,6 +33,7 @@ void ExprPipe::run()
     // std::cout << "\n---- final ----\n";
     // print_chp(std::cout, g->graph);
     // std::cout << "\n---- final ----\n";
+    g->graph.validateGraphInvariants();
 }
 
 void ExprPipe::run_seq(Sequence &seq) 
@@ -43,7 +44,14 @@ void ExprPipe::run_seq(Sequence &seq)
 
 void ExprPipe::set_n_cuts(int n) 
 {
+  Assert (n>=0, "what");
   n_cuts = n;
+}
+
+void ExprPipe::set_delay_threshold(double x) 
+{
+  Assert (x>=0.0, "what");
+  delay_threshold = x;
 }
 
 void ExprPipe::_run_seq(Sequence &seq, var_to_actvar &table)
@@ -67,7 +75,7 @@ void ExprPipe::_run_seq(Sequence &seq, var_to_actvar &table)
         case StatementType::Assign: {
           auto ids = curr->u_basic().stmt.u_assign().ids;
           Assert (ids.size()==1, "assignments unsplit");
-          auto used = getIdsUsedByExpr(curr->u_basic().stmt.u_assign().e);\
+          auto used = getIdsUsedByExpr(curr->u_basic().stmt.u_assign().e);
           auto width = g->graph.id_pool().getBitwidth(curr->u_basic().stmt.u_assign().ids[0]);
           if (!used.empty() && width>0) {
             _run_expr(curr, table, width);
@@ -127,15 +135,20 @@ void ExprPipe::_run_expr (Block *b, var_to_actvar &table, int width)
   Assert (b->type()==BlockType::Basic, "what");
   Assert (!(b->u_basic().stmt.type()==StatementType::Receive), "what");
   bool send = (b->u_basic().stmt.type()==StatementType::Send);
+  int was_retimed;
   if (send) {
-    _run_expr_helper (b->u_basic().stmt.u_send().e, table, width);
+    was_retimed = _run_expr_helper (b->u_basic().stmt.u_send().e, table, width);
   }
   else {
     auto expr = ChpExprDag::deep_copy(b->u_basic().stmt.u_assign().e);
     auto e2 = ChpExpr::deep_copy(ChpExprDag::to_expr(*expr.roots[0]));
     auto ce = ChpExprSingleRootDag::of_expr(e2);
-    _run_expr_helper (ce, table, width);
+    was_retimed = _run_expr_helper (ce, table, width);
   }
+  if (!was_retimed) {
+    return;
+  }
+
   Assert ((rhss.size()-1==lhss.size()), "subexprs and output widths mismatch");
   std::vector<Block *> vb;
   // gotta process in reverse
@@ -156,11 +169,14 @@ void ExprPipe::_run_expr (Block *b, var_to_actvar &table, int width)
   }
   else {
     b->u_basic().stmt.u_assign().e = 
-      std::move(ChpExprSingleRootDag::of_expr(rhss.back()).m_dag);
+    std::move(ChpExprSingleRootDag::of_expr(rhss.back()).m_dag);
   }
 }
 
-void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, int width)
+/*
+  Return val: whether retiming was performed
+*/
+int ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, int width)
 {
   std::string eqn_file = "out.eqn";
 
@@ -169,6 +185,13 @@ void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, 
 
   Expr *ae = ChpOptimize::template_func_new_expr_from_irexpr(*(e.m_dag.roots[0]), 
               ActExprIntType::Int, varToId, chanToId);
+
+  ChpCost ct(s, *g);
+  auto e_del = ct.expr_delay(ae, width);
+  if(e_del < delay_threshold) {
+    return 0; // skipped this expr coz small already
+  }
+  set_n_cuts(std::ceil(e_del/delay_threshold)+1);
 
   Bimap<ActId*, int> actid_to_in_idx;
   auto mapped_verilog = _expr_to_verilog (ae, width, actid_to_in_idx);
@@ -208,6 +231,7 @@ void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, 
     fprintf(stdout, "\n--- in-out map --- \n");
   }
 
+  Assert (n_cuts>0, "what");
   for (int i=0; i<=n_cuts; i++) {
 
     if (verbose) {
@@ -247,7 +271,7 @@ void ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, 
   if (verbose) {
     fprintf(stdout, "\n\n------ done------\n");
   }
-
+  return 1;
 }
 
 void ExprPipe::_apply_bitmap (ChpExpr &e, const Bimap<VarId,int> &vpos, VarId v)
@@ -266,7 +290,8 @@ void ExprPipe::_apply_bitmap (ChpExpr &e, const Bimap<VarId,int> &vpos, VarId v)
     auto v1 = e.u_var().id;
     Assert (vpos.count(v1), "what");
     e = ChpExpr::makeBitfield(std::make_unique<ChpExpr>(
-      ChpExpr::makeVariableAccess(v, vpos.size())),vpos.at(v1),vpos.at(v1));
+      ChpExpr::makeVariableAccess(v, g->graph.id_pool())),
+      vpos.at(v1),vpos.at(v1));
   }
   break;
   case IRExprTypeKind::Const: {
@@ -351,7 +376,8 @@ void ExprPipe::_apply_bitmap_primary_input (ChpExpr &e, std::unordered_map<VarId
     auto v1 = e.u_var().id;
     Assert (vpos.count(v1), "what");
     e = ChpExpr::makeBitfield(std::make_unique<ChpExpr>(
-      ChpExpr::makeVariableAccess(vpos.at(v1).first, vpos.size())),vpos.at(v1).second,vpos.at(v1).second);
+      ChpExpr::makeVariableAccess(vpos.at(v1).first, g->graph.id_pool())),
+        vpos.at(v1).second,vpos.at(v1).second);
   }
   break;
   case IRExprTypeKind::Const: {

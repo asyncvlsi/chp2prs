@@ -754,6 +754,35 @@ defproc probe_access_neg(ring_chan<W> C; bool dout[1])
   // }
 }
 
+// defproc nds_two_way_old (bool gs[2]; a1of1 m1; a1of1 co[2])
+// {
+//   bool arb_out[2];
+//   killable_arbiter arb(.a=gs[0], .b=gs[1], .u=arb_out[0], .v=arb_out[1]);
+//   std::cells::INVX1 inv_arb_en(.A=Reset, .Y=arb._ki);
+//   bool go;
+//   std::cells::LATCHLO latch_lo(.D=m1.r,.Q=go, .CLK=arb._ka, .R=Reset);
+
+//   capture_init<R2P_SEL_SPLIT_CD, R2P_SEL_SPLIT_PW, 1, 0> capt1[2], capt2[2];
+//   std::cells::XOR2X1 xors[2];
+
+//   ( i : 2: capt1[i].go.r = go; )
+//   ( i : 2: xors[i].A = co[i].a; )
+//   ( i : 2: xors[i].B = arb_out[i]; )
+//   ( i : 2: xors[i].Y = capt1[i].din[0]; )
+
+//   ( i : 2: capt2[i].dout[0] = co[i].r; )
+//   ( i : 2: capt2[i].din[0] = capt1[i].dout[0]; )
+//   ( i : 2: capt2[i].go.r = capt1[i].go.a; )
+
+//   std::gates::xortree<2, false> ort(, m1.a);
+//   ( i : 2: ort.in[i] = co[i].a; )
+
+//   ( i : 2 :
+//   spec {
+//       timing gs[i] : xors[i].Y < m1.r
+//   } )
+// }
+
 defproc nds_two_way (bool gs[2]; a1of1 m1; a1of1 co[2])
 {
   bool arb_out[2];
