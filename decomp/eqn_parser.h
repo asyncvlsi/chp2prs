@@ -116,6 +116,13 @@ public:
     explicit EqnParser(std::string path, ChpOptimize::IdPool &idp)
     : lex(file_to_str(path)), idpool(&idp), ef(), nm() { 
         advance(); 
+        std::ifstream in(path);
+        size_t n_lines = std::count_if(std::istreambuf_iterator<char>{in}, {}, 
+                                        [](char c) { return c == '\n'; });
+        fprintf(stderr, "\n No. of lines in eqn file: %zu", n_lines);
+        ef.stmts.reserve(n_lines);
+        ef.inorder.reserve(n_lines);
+        ef.outorder.reserve(n_lines);
     }
 
     void parseFile();

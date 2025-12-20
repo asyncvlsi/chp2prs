@@ -179,6 +179,7 @@ void ExprPipe::_run_expr (Block *b, var_to_actvar &table, int width)
 int ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, int width)
 {
   std::string eqn_file = "out.eqn";
+  constexpr int verbose = 0;
 
   auto varToId = [&] (const VarId &v) { return table.varMap (v); };
   auto chanToId = [&] (const ChanId &v) { return table.chanMap (v); };
@@ -194,49 +195,63 @@ int ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, i
   set_n_cuts(std::ceil(e_del/delay_threshold));
 
   Bimap<ActId*, int> actid_to_in_idx;
+  if (verbose>0) { fprintf(stderr,"\n RT: synthesizing expr \n"); }
   auto mapped_verilog = _expr_to_verilog (ae, width, actid_to_in_idx);
+  if (verbose>0) { 
+    fprintf(stderr,"\n------ done ------\n"); 
+    fprintf(stderr,"\n RT: generating eqn file \n"); 
+  }
   _verilog_to_eqn (mapped_verilog, eqn_file);
   cleanup_tmp_files();
+  if (verbose>0) { 
+    fprintf(stderr,"\n------ done ------\n");
+    fprintf(stderr,"\n RT: parsing eqn file \n"); 
+  }
   EqnParser p(eqn_file, g->graph.id_pool());
   p.parseFile();
-  fs::remove(eqn_file);
-
-  constexpr bool verbose = false;
+  if (verbose==0) {
+    fs::remove(eqn_file);
+  }
+  if (verbose>0) { 
+    fprintf(stderr,"\n------ done ------\n");
+    fprintf(stderr,"\n RT: constructing CHP exprs \n"); 
+  }
 
   nm = p.get_name_map();
-  if (verbose) {
-    fprintf(stdout, "\n--- name map --- ");
-    for ( auto &[x,y] : nm ) { fprintf(stdout, "\nv%llu : %s", y.m_id, x.c_str()); }
-    fprintf(stdout, "\n--- name map --- \n");
+  if (verbose>1) {
+    fprintf(stderr, "\n--- name map --- ");
+    for ( auto &[x,y] : nm ) { fprintf(stderr, "\nv%llu : %s", y.m_id, x.c_str()); }
+    fprintf(stderr, "\n--- name map --- \n");
   }
 
   stmts = p.get_stmts();
-  if (false) {
-    fprintf(stdout, "\n--- parsed exprs ---");
+  if (verbose>2) {
+    fprintf(stderr, "\n--- parsed exprs ---");
     for ( const auto &assn : stmts ) { print_cexpr(assn.second, assn.first); }
-    fprintf(stdout, "\n--- parsed exprs --- \n");
+    fprintf(stderr, "\n--- parsed exprs --- \n");
   }
 
   std::vector<VarId> outs{};
   for ( int i=0; i<width; i++ ) {
     std::string out_i = "out["+std::to_string(i)+"]";
+    if (!nm.count(out_i)) { fprintf(stderr, "\nout_i : %s\n", out_i.c_str()); }
     Assert (nm.count(out_i), "couldn't find output bool?!");
     outs.push_back(nm.at(out_i));
   }
   
   _build_in_out_map();
-  if (verbose) {
-    fprintf(stdout, "\n--- in-out map ---");
-    for ( auto [vi,vo] : in_out_map ) { fprintf(stdout, "\n%llu : %llu", vi.m_id, vo.m_id); }
-    fprintf(stdout, "\n--- in-out map --- \n");
+  if (verbose>1) {
+    fprintf(stderr, "\n--- in-out map ---");
+    for ( auto [vi,vo] : in_out_map ) { fprintf(stderr, "\n%llu : %llu", vi.m_id, vo.m_id); }
+    fprintf(stderr, "\n--- in-out map --- \n");
   }
 
   Assert (n_cuts>0, "what");
   for (int i=0; i<=n_cuts; i++) {
 
-    if (verbose) {
-      fprintf(stdout, "\n\n------ iter : %d ------\n", i);
-      for ( auto v : outs ) { fprintf(stdout, "out: v%llu\n", v.m_id); }
+    if (verbose>1) {
+      fprintf(stderr, "\n\n------ iter : %d ------\n", i);
+      for ( auto v : outs ) { fprintf(stderr, "out: v%llu\n", v.m_id); }
     }
     // coz primary inputs are special - they don't have an image
     bool last_iter = (i==n_cuts); 
@@ -264,13 +279,8 @@ int ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, i
       }
       outs = next_outs_ordered;
     }
-    if (verbose) {
-      // print_cexpr(rhss.back(), g->graph.id_pool().makeUniqueVar(1));
-    }
   }
-  if (verbose) {
-    fprintf(stdout, "\n\n------ done------\n");
-  }
+  if (verbose>0) { fprintf(stderr, "\n------ done ------\n"); }
   return 1;
 }
 

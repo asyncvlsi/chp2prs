@@ -252,11 +252,11 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
     _inwidthmap = ihash_new (0);
 
     if (!thread_mode) {
-      e = expr_dup(e);
       e = expr_dag(e);
     }
 
     // also does a primitive dag-ing in thread mode
+    canonical_expr.clear();
     _expr_collect_vars (e);
 
     // collect input vars in list
@@ -387,7 +387,6 @@ void ChpCost::_expr_collect_vars (Expr *&e)
 
   case E_BITFIELD:
   case E_VAR: {
-      // fprintf(stdout, "\nle: %lu\n", long(e));
       ActId *var = (ActId *)e->u.e.l;
       ihash_bucket_t *ib;
       ihash_bucket_t *b_width;
@@ -398,25 +397,16 @@ void ChpCost::_expr_collect_vars (Expr *&e)
       }
       if (thread_mode) {
         if (!canonical_expr.count(var)) {
-          canonical_expr.insert({var,e});
+          canonical_expr.insert({var,e->u.e.l});
         }
-        e = canonical_expr.at(var);
-        if (!ihash_lookup (_inexprmap, (long)(canonical_expr.at(var))))
-        {
-          ib = ihash_add (_inexprmap, (long)e);
-          ib->i = _gen_expr_id();
-          b_width = ihash_add (_inwidthmap, (long)e);
-          b_width->i = bw;
-        }
+        e->u.e.l = canonical_expr.at(var);
       }
-      else {
-        if (!ihash_lookup (_inexprmap, (long)e)) 
-        {
-              ib = ihash_add (_inexprmap, (long)e);
-              ib->i = _gen_expr_id();
-              b_width = ihash_add (_inwidthmap, (long) e);
-              b_width->i = bw;
-          }
+      if (!ihash_lookup (_inexprmap, (long)e)) 
+      {
+        ib = ihash_add (_inexprmap, (long)e);
+        ib->i = _gen_expr_id();
+        b_width = ihash_add (_inwidthmap, (long) e);
+        b_width->i = bw;
       }
     }
     break;

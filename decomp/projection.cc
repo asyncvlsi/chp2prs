@@ -276,6 +276,16 @@ void Projection::_insert_copies_v7 (GraphWithChanNames &g, DFG &d_in)
     procs = _build_procs(g_copy, d_loc);
 }
 
+static void PrintHSet (const HyperEdgeSet &h) {
+    for (const auto &h : h) {
+        fprintf(stderr, "%d : ", h.first.get_raw());
+        for (const auto &out : h.second) { 
+            fprintf(stderr, "%d, ", out.get_raw());
+        }
+        fprintf(stderr, "\n");
+    }
+}
+
 ThreadResult Projection::_worker_thread(
     HyperEdgeSet hs_t, const GraphWithChanNames &g_t, 
     double itr_best_t, int n_wcc_t, int thread_id)
@@ -325,7 +335,7 @@ ThreadResult Projection::_worker_thread(
         ChpTiming ct_tmp(g_loop, d_t, std::move(varid_to_actid), thread_id);
 
         auto r_tmp = ct_tmp.get_maxcycle();
-        if (r_tmp.ratio < itr_best_t + 0.1) {
+        if (r_tmp.ratio < itr_best_t + 1.0) {
             return ThreadResult{true,hs_t,r_tmp.ratio};
         }
     }
@@ -334,7 +344,7 @@ ThreadResult Projection::_worker_thread(
 
 void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_in)
 {
-    constexpr int verbose = 1;
+    constexpr int verbose = 0;
 
     // make copy of graph
     std::unordered_map<ChanId, ChanId> cc;
@@ -346,16 +356,18 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
     
     int thread_cnt=0;
     int itr_count=0;
-    do {
-        ExprPipe ep(g_copy, s);
-        ep.set_delay_threshold(cycle_time_target);
-        ep.run();
 
+    // ExprPipe ep(g_copy, s);
+    // ep.set_delay_threshold(cycle_time_target);
+    // ep.run();
+    if (verbose>0) { fprintf(stderr, "\nCycle Time Target: %f\n", cycle_time_target); }
+
+    do {
         step2(g_copy, d_loc);
         ChpTiming ct(g_copy, d_loc, s);
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
-        if (verbose>0) { fprintf(stdout, "\n// Latest Cycle : %.2f", max_cycles_trace.back()); } 
+        if (verbose>0) { fprintf(stdout, "\n\n\n\n// Latest Cycle : %.2f", max_cycles_trace.back()); } 
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeSet best_hs = {}; 
@@ -366,13 +378,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
             for (const auto &hset : hhvec) {
                 sz++;
                 fprintf(stdout, "\nSet: {\n");
-                for (const auto &h : hset) {
-                    fprintf(stdout, "%d : ", h.first.get_raw());
-                    for (const auto &out : h.second) { 
-                        fprintf(stdout, "%d, ", out.get_raw());
-                    }
-                    fprintf(stdout, "\n");
-                }
+                PrintHSet (hset);
                 fprintf(stdout, "}\n");
             } 
             fprintf(stdout, "\n ---- end list, size: %d ---- \n", sz); 
@@ -380,7 +386,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         int n_wcc_orig = d_loc.get_wccs().size();
 
         constexpr bool multithreaded = false;
-        constexpr double thresh = 0.1;
+        constexpr double thresh = -1.0;
     if (!multithreaded) {
         // sequential form (parallelizable) -----------------------------------
         for ( const auto &hset : hhvec ) {
@@ -443,7 +449,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         }
         itr_count++;
     } while ( 
-        (abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 0.01) 
+        (abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 5.0) 
         && (*(max_cycles_trace.end()-1) > cycle_time_target)
     );
 
