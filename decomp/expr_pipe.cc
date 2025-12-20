@@ -192,7 +192,7 @@ int ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, i
   if(e_del < delay_threshold) {
     return 0; // skipped this expr coz small already
   }
-  set_n_cuts(std::ceil(e_del/delay_threshold));
+  set_n_cuts(std::ceil(e_del/delay_threshold)+1);
 
   Bimap<ActId*, int> actid_to_in_idx;
   if (verbose>0) { fprintf(stderr,"\n RT: synthesizing expr \n"); }

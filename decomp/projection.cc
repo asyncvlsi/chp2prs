@@ -357,9 +357,9 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
     int thread_cnt=0;
     int itr_count=0;
 
-    // ExprPipe ep(g_copy, s);
-    // ep.set_delay_threshold(cycle_time_target);
-    // ep.run();
+    ExprPipe ep(g_copy, s);
+    ep.set_delay_threshold(cycle_time_target);
+    ep.run();
     if (verbose>0) { fprintf(stderr, "\nCycle Time Target: %f\n", cycle_time_target); }
 
     do {
@@ -367,7 +367,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         ChpTiming ct(g_copy, d_loc, s);
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
-        if (verbose>0) { fprintf(stdout, "\n\n\n\n// Latest Cycle : %.2f", max_cycles_trace.back()); } 
+        if (verbose>0) { fprintf(stdout, "\n// Latest Cycle : %.2f", max_cycles_trace.back()); } 
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeSet best_hs = {}; 
@@ -449,7 +449,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         }
         itr_count++;
     } while ( 
-        (abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 5.0) 
+        (abs(*(max_cycles_trace.end()-1) - *(max_cycles_trace.end()-2)) >= 1.0) 
         && (*(max_cycles_trace.end()-1) > cycle_time_target)
     );
 

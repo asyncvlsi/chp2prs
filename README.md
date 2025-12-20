@@ -12,7 +12,6 @@ The options are:
 
    * `-h` : show this message
    * `-O` : run CHP optimizations. Requires the chp-opt package.
-   * `-P <int>` : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3  (default 0)
    * `-F dataflow|sdt|ring|decomp` : select synthesis output format.
       * `dataflow` : dataflow output generation.
       * `sdt` : syntax-directed translation for prs generation.
@@ -27,6 +26,7 @@ The options are:
       * `ditest` : delay insensitive - testing for signal forks with extra buffers - not synthesizable [only ring]
    * `-m <int>` : matched delay-line multiplier (in percentage) for ring synthesis. Default is 100 (1x).
    * `-X` : Enable projection during decomposition (w.i.p.) 
+   * `-P <double>` : Set cycle time target in picoseconds for projection (w.i.p.) (default=inf)
    * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. Default is `expr.act`
    * `-E abc|yosys|genus` : run expression optimization using the specified logic synthesis engine.
    * `-p <proc>` : the name of the ACT process to be translated (the top-level process). This is required.

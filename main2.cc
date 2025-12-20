@@ -51,7 +51,7 @@ static void usage(char *name)
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
   fprintf (stderr, " -m <int> : delay bloat percentage for ring synthesis (default 100) \n");
   fprintf (stderr, " -X : Enable projection during decomposition (w.i.p.) \n");
-  fprintf (stderr, " -P <double> : Set cycle time target in picoseconds for projection (w.i.p.) \n");
+  fprintf (stderr, " -P <double> : Set cycle time target in picoseconds for projection (w.i.p.) (default=inf)\n");
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   fprintf (stderr, " -E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
@@ -77,7 +77,7 @@ int main(int argc, char **argv)
   char *syntesistool = NULL;
   int external_opt = 0;
   int delay_margin = 100;
-  double cycle_time_target = 1.0;
+  double cycle_time_target = 1000000.0;
   bool dflow = false;
 
   auto start = high_resolution_clock::now();
