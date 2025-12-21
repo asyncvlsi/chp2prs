@@ -288,7 +288,12 @@ defproc capture_init_new(a1of1 go; a1of1 go2; bool? din[W]; bool! dout[W]; a1of1
 {
   capture_init<CD, PW, W, INIT_VAL> c1, c2;
   [ W > 0 -> 
-    din = c1.din;
+    // din = c1.din;
+    bool x[W];
+    ( i : W : prs { 
+      din[i] => x[i]- 
+      x[i] => c1.din[i]- 
+      } )
     dout = c2.dout;
     c1.dout = c2.din; ]
   tx = c1.tx;
@@ -296,9 +301,18 @@ defproc capture_init_new(a1of1 go; a1of1 go2; bool? din[W]; bool! dout[W]; a1of1
   go = c1.go;
   go2 = c2.go;
       
+
   spec {
     timing go.r+ : go.a+ < go2.r+
+    timing go2.r+ : go2.a+ < go.r-
+    timing go.r- : go.a- < go2.r-
+    timing go2.r- : go2.a- < go.r+
   }
+  // For the combinational loop problem..
+  ( i : W : spec {
+    timing din[i]- -> x[i]+
+    timing din[i]+ -> x[i]-
+  } )
 }
 
 export template <pint CD, PW, W, INIT_VAL>
@@ -378,6 +392,14 @@ export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
   sizing { 
       zero.r{-1} 
   }
+  spec {
+    timing _m1_r- -> zero.r+
+    timing zero.a- -> zero.r+
+    timing p1.a- -> zero.r+
+    timing _m1_r+ -> zero.r-
+    timing zero.a+ -> zero.r-
+    timing p1.a+ -> zero.r-
+  }
 }
 
 export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
@@ -402,6 +424,14 @@ export defproc elem_c_paa_c_t (a1of1 m1; a1of1 zero; a1of1 p1)
   }
   sizing { 
       zero.r{-1} 
+  }
+  spec {
+    timing _m1_r- -> zero.r+
+    timing zero.a- -> zero.r+
+    timing p1.a- -> zero.r+
+    timing _m1_r+ -> zero.r-
+    timing zero.a+ -> zero.r-
+    timing p1.a+ -> zero.r-
   }
 }
 
