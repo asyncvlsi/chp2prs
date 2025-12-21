@@ -23,6 +23,9 @@
 #include "projection.h"
 #include <thread>
 #include <future>
+#include <mutex>
+
+static std::mutex m;
 
 /*
     Projection TODO
@@ -331,11 +334,18 @@ ThreadResult Projection::_worker_thread(
             auto aid = new ActId (("_tmpvar_"+std::to_string(thread_id)+"_"+std::to_string(v.m_id)).c_str());
             varid_to_actid.insert({v,aid});
         }
-        // this is thread-safe now ^_^
+        /*
+            TODO: Fix. Need this mutex coz config_read within the expropt
+            constructor is not thread-safe.
+        */
+        std::unique_lock<std::mutex> lk(m);
         ChpTiming ct_tmp(g_loop, d_t, std::move(varid_to_actid), thread_id);
+        lk.unlock();
+        ct_tmp.run();
 
         auto r_tmp = ct_tmp.get_maxcycle();
-        if (r_tmp.ratio < itr_best_t + 1.0) {
+        
+        if (r_tmp.ratio < itr_best_t - 5.0) {
             return ThreadResult{true,hs_t,r_tmp.ratio};
         }
     }
@@ -360,14 +370,15 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
     ExprPipe ep(g_copy, s);
     ep.set_delay_threshold(cycle_time_target);
     ep.run();
-    if (verbose>0) { fprintf(stderr, "\nCycle Time Target: %f\n", cycle_time_target); }
+    if (verbose>0) { fprintf(stderr, "\n// Cycle Time Target : %.2fps\n", cycle_time_target); }
 
     do {
         step2(g_copy, d_loc);
         ChpTiming ct(g_copy, d_loc, s);
+        ct.run();
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
-        if (verbose>0) { fprintf(stdout, "\n// Latest Cycle : %.2f", max_cycles_trace.back()); } 
+        if (verbose>0) { fprintf(stdout, "\n// Latest Cycle : %.2fps", max_cycles_trace.back()); } 
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeSet best_hs = {}; 
@@ -1874,6 +1885,7 @@ void Projection::export_ddg_and_tg(std::string fn_pfx) {
     std::string fn_tg  = fn_pfx + "_tg.dot";
     _export_dot(fn_ddg, x_dfg);
     ChpTiming ct(*g, x_dfg, s);
+    ct.run();
     ct.export_dot(fn_tg);
 }
 

@@ -513,12 +513,22 @@ void ChpTiming::export_dot(std::string filename)
 {
     FILE *ff = fopen(filename.c_str(), "w");
 
+    auto ccv = get_maxcycle().cycle;
+    std::unordered_set<TimingNodeId> ccn(ccv.begin(), ccv.end());
+
     std::string edge_repr = "->";
     fprintf(ff,"\ndigraph{ ");
+    fprintf(ff,"label=\"CHP Timing Graph");
+    fprintf(ff,"\nRed Edges : Ticked");
+    fprintf(ff,"\nEdge Attribute : Delay in ps");
+    fprintf(ff,"\nTriple Border : Nodes on Critical Cycle\"");
+    fprintf(ff,"labelloc=top;");
+    fprintf(ff,"labeljust=center;");
     fprintf(ff,"\nnode [style=filled, colorscheme=set312];");
     for ( const auto &node : tg.get_nodes() ) {
-        fprintf(ff, "\n_%d [color=%d label=\"%d : %s\"];", 
+        fprintf(ff, "\n_%d [fillcolor=%d peripheries=%d label=\"%d : %s\"];", 
             node.id.get_raw(), (node.pid>0)?((node.pid%12)+1):(12),
+            (ccn.count(node.id)?3:1),
             node.id.get_raw(), node.label.c_str());
     }
     for ( auto e : tg.get_edges() ) {

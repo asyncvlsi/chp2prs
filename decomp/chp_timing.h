@@ -156,8 +156,6 @@ class ChpTiming : public ChpCost {
             id_to_idx = {};
             idx_to_id = {};
             pctr = 0;
-            construct_tg();
-            run_maxcycle();
         }
 
         ChpTiming (const GraphWithChanNames &g_in, const DFG &dfg_in,
@@ -170,6 +168,9 @@ class ChpTiming : public ChpCost {
             id_to_idx = {};
             idx_to_id = {};
             pctr = 0;
+        }
+
+        void run() {
             construct_tg();
             run_maxcycle();
         }
