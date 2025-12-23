@@ -35,6 +35,7 @@ RingForge::RingForge ( FILE *fp,
             int bdpath,
             int delay_margin, int dp_style,
             BD_MODE bdpath_mode, 
+            const char *externopt_toolname,
             const char *circuit_library,
             const char *exprfile )
     : RingEngine ( fp, circuit_library, exprfile )
@@ -91,7 +92,7 @@ RingForge::RingForge ( FILE *fp,
     _mux_block_id = 0;
     _branch_id = 0;
 
-    eeo = new ExprCache("abc",  ((bundled==1)?bd:qdi), false, _exprfile);
+    eeo = new ExprCache(externopt_toolname, ((bundled==1)?bd:qdi), false, _exprfile);
     Assert ((eeo), "Could not create mapper!");
 }
 
@@ -1133,9 +1134,9 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     }
     else 
     {
-        Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
+        Assert (ebi->getDelay().exists(), "Delay not extracted by expression synthesis!");
         double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
-        if (typ_delay_ps <= 0) { warning("non-positive delay from abc: %lfps", typ_delay_ps); }
+        if (typ_delay_ps <= 0) { warning("non-positive delay from expression synthesis: %lfps", typ_delay_ps); }
 
         delay_line_n = _compute_delay_line_param(typ_delay_ps); 
         if (delay_line_n <= 0) { delay_line_n = 1; }
@@ -1206,7 +1207,7 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
     
-    Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
+    Assert (ebi->getDelay().exists(), "Delay not extracted by expression synthesis!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
 
     int delay_line_n = _compute_delay_line_param(typ_delay_ps); 
@@ -1320,7 +1321,7 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
     runtime1 += ebi->getRuntime();
     runtime2 += ebi->getIORuntime();
     
-    Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
+    Assert (ebi->getDelay().exists(), "Delay not extracted by expression synthesis tool!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
     
     int delay_line_n = _compute_delay_line_param(typ_delay_ps); 

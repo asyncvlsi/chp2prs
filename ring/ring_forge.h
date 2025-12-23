@@ -56,6 +56,7 @@ class RingForge : public RingEngine {
     RingForge ( FILE *fp, int bdpath,
                 int delay_margin, int dp_style,
                 BD_MODE bdpath_mode, 
+                const char *externopt_toolname, 
                 const char *circuit_library,
                 const char *exprfile);
 

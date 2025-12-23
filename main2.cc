@@ -270,11 +270,13 @@ int main(int argc, char **argv)
   }
   else {
     if (use_ring) {
+      if (!syntesistool) syntesistool = Strdup("abc");
       c2p->setParam ("engine", (void *) gen_ring_engine);
       c2p->setParam ("prefix", (void *)Strdup ("ring"));
       c2p->setParam ("delay_margin", delay_margin);
       c2p->setParam ("datapath_style", non_ssa);
       c2p->setParam ("run_time", run_time);
+      c2p->setParam ("externopt_toolname", (void *)Strdup (syntesistool));
     }
     else if (decompose) {
       c2p->setParam ("engine", (void *) gen_decomp_engine);

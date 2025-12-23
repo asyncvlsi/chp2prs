@@ -58,11 +58,13 @@ class RingSynth : public ActSynthesize {
 
     int dm = dp->getIntParam ("delay_margin");
     int dpath_style = dp->getIntParam ("datapath_style");
+    const char *externopt_toolname = (char *)dp->getPtrParam("externopt_toolname");
     BD_MODE bdpath_mode; 
     if (bundled_data_pulsed) bdpath_mode = BD_MODE::Latch_4phase;
     else if (bundled_data_2phase) bdpath_mode = BD_MODE::Latch_2phase;
     else bdpath_mode = BD_MODE::DFF;
-    tf = new TinyForge (_pp->fp, bundled_data, dm, dpath_style, bdpath_mode, "", _ename);
+    tf = new TinyForge (_pp->fp, bundled_data, dm, dpath_style, bdpath_mode, 
+          externopt_toolname, "", _ename);
     /* print imports */
     
     if (bundled_data) {
