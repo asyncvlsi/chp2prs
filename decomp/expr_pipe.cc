@@ -22,6 +22,7 @@
 
 #include "expr_pipe.h"
 #include <filesystem>
+#include <cmath>
 namespace fs = std::filesystem;
 
 void ExprPipe::run()
