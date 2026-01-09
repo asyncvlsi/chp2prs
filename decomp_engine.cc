@@ -135,7 +135,7 @@ class Decomp : public ActSynthesize {
         // ep.run();
       }
 
-      if (!ChpOptimize::isProbeFree(g.graph)) {
+      if (!ChpOptimize::isProbeFree(g.graph) && project) {
         warning ("Probes in CHP - not running projection");
         project = false;
       }

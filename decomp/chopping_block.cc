@@ -443,24 +443,33 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
     std::vector<Block *> v_blks, tmp;
 
     predoloop = curr->u_doloop().branch.startseq->child();
-    while (predoloop->type() != BlockType::Select) {
-        v_blks.push_back(predoloop);
-        predoloop = predoloop->child();
-    }
-    hassert (predoloop->type() == BlockType::Select);
-    postdoloop = predoloop->child();
 
     SelectBranch *sbt = NULL;
 
-    for ( auto &branch : predoloop->u_select().branches )
-    {
-        if (!(branch.g.type() == IRGuardType::Else))
-        {   
-            select_2->u_select().branches.push_back({branch.seq,
-                                        IRGuard::deep_copy(branch.g)});
-        }
-        else {
-            sbt = &branch;
+    while (predoloop->type()!=BlockType::Select && predoloop->type()!=BlockType::EndSequence) {
+        v_blks.push_back(predoloop);
+        predoloop = predoloop->child();
+    }
+    // simple do-loop
+    if (predoloop->type() != BlockType::Select) {
+        for (auto b : v_blks) { _splice_out_block(b); }
+        select_2->u_select().branches.push_back({
+            g->graph.blockAllocator().newSequence(v_blks), 
+            IRGuard::makeExpression(ChpExprSingleRootDag::deep_copy(e))});
+    }
+    else {
+        postdoloop = predoloop->child();
+
+        for ( auto &branch : predoloop->u_select().branches )
+        {
+            if (!(branch.g.type() == IRGuardType::Else))
+            {   
+                select_2->u_select().branches.push_back({branch.seq,
+                                            IRGuard::deep_copy(branch.g)});
+            }
+            else {
+                sbt = &branch;
+            }
         }
     }
 
