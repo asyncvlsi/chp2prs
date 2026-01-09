@@ -65,7 +65,7 @@ class Decomp : public ActSynthesize {
       if (is_template) {
         char buf[4096];
         ActNamespace::Act()->msnprintfproc (buf, 4096, d);
-        pp_printf_raw (_pp, "\ndeftype %s <: %s () {}\n\n", buf, d->getName());
+        pp_printf_raw (_pp, "\ndeftype %s <: %s () {}\n\n", buf, d->getFullName());
       }
     }
   }
