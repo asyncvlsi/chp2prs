@@ -139,6 +139,7 @@ IRGuard new_irguard_from_expr(NameParsingIdPool &id_pool,
 
 Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
                        NameParsingIdPool &id_pool, int mode) {
+    if (!c) return blockAllocator.newSequence({});
     switch (c->type) {
     case ACT_CHP_SEMI: {
         Block *entry = nullptr, *exit_b = nullptr;
