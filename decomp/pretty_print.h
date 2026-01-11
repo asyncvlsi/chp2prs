@@ -20,7 +20,12 @@
  **************************************************************************
  */
 
+#ifndef __PRETTY_PRINT_H__
+#define __PRETTY_PRINT_H__
+
 #include <act/act.h>
+#include <act/chp/analysis.h>
+#include <act/chp/utils.h>
 
 // Prettier CHP printing method
 void chp_pretty_print (FILE *, act_chp_lang_t *);
@@ -40,3 +45,9 @@ void _fill_in_else_explicit (act_chp_lang_t *, Scope *);
 void _trim_nested_same_int (act_chp_lang_t *&, Scope *);
 
 void _trim_nested_same_int (Expr *&, Scope *);
+
+void _lift_probes (GraphWithChanNames &);
+
+void _lift_probes (GraphWithChanNames &, Sequence);
+
+#endif

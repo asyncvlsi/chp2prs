@@ -583,3 +583,83 @@ void _trim_nested_same_int (Expr *&e, Scope *s)
 #undef UNARY_OP
 
 }
+
+void _lift_probes (GraphWithChanNames &g) 
+{
+  _lift_probes (g, g.graph.m_seq);
+}
+
+void _lift_probes (GraphWithChanNames &g, Sequence seq) 
+{
+  Block *curr = seq.startseq->child();
+  Block *tmp;
+
+  while (curr->type() != BlockType::EndSequence) {
+  switch (curr->type()) {
+  case BlockType::Basic:
+  break;
+    
+  case BlockType::Par: {
+    for ( auto &branch : curr->u_par().branches )
+      _lift_probes (g, branch);
+  }
+  break;
+    
+  case BlockType::Select: {
+    bool process = false;
+    int n_br{};
+    for ( auto &branch : curr->u_select().branches ) {
+      if (branch.g.type()==IRGuardType::Expression &&
+       !isProbeFree(branch.g.u_e().e.m_dag)) {
+        process = true; 
+      }
+      n_br++;
+    }
+    if (process) {
+      Block *sel = g.graph.blockAllocator().newBlock(Block::makeSelectBlock());
+      int sv_bw = log_2_round_up(n_br);
+      VarId sv = g.graph.id_pool().makeUniqueVar(sv_bw);
+      unsigned long long br_ctr{};
+      for ( auto &branch : curr->u_select().branches ) {
+        Block *assn_sv = 
+          g.graph.blockAllocator().newBlock(Block::makeBasicBlock(
+          Statement::makeAssignment(sv, 
+          ChpExprSingleRootDag::makeConstant(BigInt{br_ctr}, sv_bw))));
+        sel->u_select().branches.emplace_back(
+          g.graph.blockAllocator().newSequence({assn_sv}),
+          IRGuard::deep_copy(branch.g));
+        branch.g = IRGuard::makeExpression(
+          ChpExprSingleRootDag::makeBinaryOp(
+            IRBinaryOpType::EQ, 
+            std::make_unique<ChpExprSingleRootDag>(
+              ChpExprSingleRootDag::makeVariableAccess(sv, sv_bw)),
+            std::make_unique<ChpExprSingleRootDag>(
+              ChpExprSingleRootDag::makeConstant(BigInt{br_ctr}, sv_bw))
+          ));
+        br_ctr++;
+      }
+      Block *currp = curr->parent();
+      Block::disconnect(currp, curr);
+      Block::connect(currp, sel);
+      Block::connect(sel, curr);
+    }
+    for ( auto &branch : curr->u_select().branches )
+      _lift_probes (g, branch.seq);
+  }
+  break;
+    
+  case BlockType::DoLoop: {
+    _lift_probes (g, curr->u_doloop().branch);
+    return;
+  }
+  break;
+  
+  case BlockType::StartSequence:
+  case BlockType::EndSequence:
+    hassert(false);
+    break;
+  }
+  curr = curr->child();
+  }   
+  return;
+}

@@ -21,6 +21,7 @@
  */
 
 #include "multichan.h"
+#include "pretty_print.h"
 
  std::vector<Sequence> MultiChan::get_auxiliary_procs()
 {
@@ -29,6 +30,14 @@
 
 void MultiChan::process_multichans()
 {
+    _build_multichan_info (g->graph.m_seq);
+    _delete_singles (mc_info_recv);
+    _delete_singles (mc_info_send);
+    if (!(mc_info_recv.empty() && mc_info_send.empty())) {
+        _lift_probes (*g);
+        mc_info_recv.clear();
+        mc_info_send.clear();
+    }
     _build_multichan_info (g->graph.m_seq);
     _delete_singles (mc_info_recv);
     _delete_singles (mc_info_send);
