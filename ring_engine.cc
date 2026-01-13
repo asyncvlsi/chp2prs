@@ -84,6 +84,7 @@ class RingSynth : public ActSynthesize {
       pp_printf_raw (_pp, "open syn::ring_di_dpath;\n");
     }
     else {
+      pp_printf_raw (_pp, "import \"syn/qdi/_all_.act\";\n");
       pp_printf_raw (_pp, "import syn::ring;\n");
       pp_printf_raw (_pp, "open syn::ring_di_dpath;\n");
     }

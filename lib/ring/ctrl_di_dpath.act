@@ -23,7 +23,8 @@
 // CMOS implementable versions of the pipeline elements
 // QDI Datapath
 
-import "syn/qdi/_all_.act";
+// do not include this here this gets included by synth2, as we dont know if we are using di or qdi
+//import "syn/qdi/_all_.act";
 
 namespace syn {
   
