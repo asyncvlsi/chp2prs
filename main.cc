@@ -40,7 +40,7 @@ static void usage(char *name)
   fprintf (stderr, " -e : <exprfile>: the file to save al the optimised logic expressions in\n");
   fprintf (stderr, " -o abc|yosys|genus : select external logic optimization engine for datapath generation\n");
   fprintf (stderr, " -cnf=<custom.conf> : load your custom config file\n");
-  fprintf (stderr, " -T <tech> : load your tech config file\n");
+  fprintf (stderr, " -T <tech> : load your tech config\n");
   exit(1);
 }
 
@@ -253,6 +253,7 @@ int main(int argc, char **argv)
   }
 
   if ( optind != argc - 3 ) {
+    fprintf (stderr, "3 positional arguments (<actfile> <process> <out>) required found %d", argc - optind);
     usage (argv[0]);
   }
       

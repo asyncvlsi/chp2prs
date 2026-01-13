@@ -57,7 +57,7 @@ static void usage(char *name)
   fprintf (stderr, " -E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
   fprintf (stderr, " -t : print tool runtime breakdown (for decomp: also produce delay annotation file and dot graphs of DDG and TG)\n");
   fprintf (stderr, " -cnf=<custom.conf> : load your custom config file\n");
-  fprintf (stderr, " -T <tech> : load your tech config file\n");
+  fprintf (stderr, " -T <tech> : load your tech config\n");
   fprintf (stderr, "\n");
   exit(1);
 }
@@ -203,20 +203,22 @@ int main(int argc, char **argv)
       break;
     
     case 'c':
-      //this is for not failing on --cnf=your.conf
+      //this is for not failing on -cnf=your.conf
       break;
     
     case 'T':
-      //this is for not failing on --T<tech>
+      //this is for not failing on -T<tech>
       break;
       
     default:
+      fprintf (stderr, "Unknown option: %s\n", ch);
       usage (argv[0]);
       break;
     }
   }
 
   if (optind != argc - 1) {
+    fprintf (stderr, "1 positional argument (<actfile>) required found %d", argc - optind);
     usage (argv[0]);
   }
 
