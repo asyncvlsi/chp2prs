@@ -26,6 +26,8 @@
 // do not include this here this gets included by synth2, as we dont know if we are using di or qdi
 //import "syn/qdi/_all_.act";
 
+import "syn/qdi/chan.act";
+
 namespace syn {
   
   export namespace ring_di_dpath {
@@ -381,7 +383,8 @@ defproc capture_dummy(a1of1 go; ring_int<W> din; ring_int<W> dout; a1of1 tx)
 }
 
 // FLAG: connects to expr block
-export template <pint W>
+//FIXME BUF not used @TODO
+export template <pint W; pbool BUF=false>
 defproc var_access(ring_int<W> din; sdtexprchan<1> dout[W])
 {
   ring_expr_chan<1> doutr[W];
