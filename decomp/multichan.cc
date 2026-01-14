@@ -50,7 +50,7 @@ void MultiChan::process_multichans()
         alias_number = 0;
         _update_with_aliases (g->graph.m_seq, cbp.first, mi);
         int tmp = alias_number;
-        // fprintf (fp, "\n\nalias_number : %d\n\n", alias_number);
+        if (printt) fprintf (fp, "\n\nalias_number : %d\n\n", alias_number);
 
         Assert(_contains_chan_access(g->graph.m_seq, cbp.first), "huh?");
 
@@ -83,8 +83,16 @@ void MultiChan::process_multichans()
         if (printt) _print_state_table (_st);
         if (printt) fprintf (fp, "\n ------------ */ \n");
 
-        auto aux = _build_aux_process_new (_st, cbp.first, mi);
-        v_aux.push_back(aux);
+        // multiple receive
+        if (mc_info_recv.count(cbp.first)) { 
+            auto aux = _build_aux_process_recv(_st, cbp.first, mi);
+            v_aux.push_back(aux);
+        }
+        // multiple send
+        else { 
+            auto aux = _build_aux_process_send(_st, cbp.first, mi);
+            v_aux.push_back(aux);
+        }
         _st.clear();
     }
     }
@@ -314,7 +322,7 @@ bool MultiChan::_seq_contains_block (Block *b, Sequence seq)
     return false;
 }
 
-int MultiChan::_build_state_table (Sequence seq, ChanId id, int curr_state, multichan_alias_struct &mi)
+State MultiChan::_build_state_table (Sequence seq, ChanId id, State curr_state, multichan_alias_struct &mi)
 {
     Block *curr = seq.startseq->child();
     bool alias_hit = false;
@@ -523,23 +531,20 @@ void MultiChan::_optimize_state_table_2 ()
 
 bool MultiChan::_is_relatively_unconditional()
 {
-    std::vector<bool> ret (alias_number-1, false);
-    for ( auto &sr : _st )
-    {
-        if (sr.curr > 0 && sr.c == Cond::True && sr.nexts[0] == sr.curr+1)
-        {
+    std::vector<bool> ret (alias_number, false);
+    for ( auto &sr : _st ) {
+        if (sr.curr > 0 && sr.c == Cond::True && sr.nexts[0] == sr.curr+1) {
             ret[sr.curr-1] = true;
         }
     }
     bool retval = true;
-    for ( auto x : ret )
-    {
+    for ( auto x : ret ) {
         retval &= x;
     }
     return retval;
 }
 
-void MultiChan::_replace_next_states (int old_st, int new_st)
+void MultiChan::_replace_next_states (State old_st, State new_st)
 {
     for ( auto &sr : _st )
     {
@@ -555,7 +560,7 @@ void MultiChan::_re_encode_states ()
 {
     int alias_n_loc = alias_number;
     //  use negative numbers temporarily to re-encode
-    int re_enc_st_tmp = -1;
+    State re_enc_st_tmp = -1;
     for ( auto &sr : _st )
     {
         if ( sr.curr > alias_n_loc ) 
@@ -575,7 +580,7 @@ void MultiChan::_re_encode_states ()
     }
 }
     
-void MultiChan::_re_encode_state (int old_st, int new_st)
+void MultiChan::_re_encode_state (State old_st, State new_st)
 {
     for ( auto &sr : _st )
     {
@@ -612,16 +617,13 @@ Block *MultiChan::_make_probed_assn (ChanId ci, VarId vi)
 
 // ^ implementing this is a nightmare, gonna do state transition table
 
-Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id, multichan_alias_struct &mi)
+Sequence MultiChan::_build_aux_process_send (StateTable st, ChanId id, multichan_alias_struct &mi)
 {
-    // auto alias_var_bw = log_2_round_up(st.size());
-    int stmax = 0;
+    State stmax = 0;
     for ( auto sr : st ) {
         if (sr.curr > stmax) stmax = sr.curr;
     }
     auto alias_var_bw = log_2_round_up(stmax+1);
-
-
     auto alias_var = g->graph.id_pool().makeUniqueVar(alias_var_bw);
 
     auto next_alias_var = g->graph.id_pool().makeUniqueVar(alias_var_bw);
@@ -629,28 +631,27 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id, multichan_
 
     // make init. cond. alias := initval assignment
     Block *init_alias = g->graph.blockAllocator().newBlock(
-        Block::makeBasicBlock(Statement::makeAssignment(alias_var,ChpExprSingleRootDag::makeConstant(BigInt(st[0].curr),alias_var_bw))));
+        Block::makeBasicBlock(Statement::makeAssignment(alias_var,
+            ChpExprSingleRootDag::makeConstant(BigInt(st[0].curr),alias_var_bw))));
     Assert (init_alias, "huh");
 
     // make init. cond. next := 0 assignment
     Block *init_next = g->graph.blockAllocator().newBlock(
-        Block::makeBasicBlock(Statement::makeAssignment(next_alias_var,ChpExprSingleRootDag::makeConstant(BigInt(0),alias_var_bw))));
+        Block::makeBasicBlock(Statement::makeAssignment(next_alias_var,
+            ChpExprSingleRootDag::makeConstant(BigInt(0),alias_var_bw))));
     Assert (init_next, "huh");
 
     // make init. cond. datavar := 0 assignment
     Block *init_data = g->graph.blockAllocator().newBlock(
-        Block::makeBasicBlock(Statement::makeAssignment(data_var,ChpExprSingleRootDag::makeConstant(BigInt(0),g->graph.id_pool().getBitwidth(id)))));
+        Block::makeBasicBlock(Statement::makeAssignment(data_var,
+            ChpExprSingleRootDag::makeConstant(BigInt(0),g->graph.id_pool().getBitwidth(id)))));
     Assert (init_data, "huh");
 
     Block *sm_sel = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
     Block *sm_sel_compl = g->graph.blockAllocator().newBlock(Block::makeSelectBlock()); // dataless completion
 
-    // Channel access type : receive or send
-    bool send_type = ((mi.find(id)->second).begin()->first->u_basic().stmt.type() == StatementType::Send);
-
     // iterate and build state machine ------------------------------
-    for ( auto sr : st )
-    {
+    for ( auto sr : st ) {
         bool valid_alias = false; 
         bool conditional = false;
         if (sr.curr > 0 && sr.curr <= alias_number) // if valid receiving alias
@@ -660,40 +661,25 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id, multichan_
 
         auto alias_access_i = ChpExprSingleRootDag::makeVariableAccess(alias_var, alias_var_bw);
         IRGuard alias_eq_i = IRGuard::makeExpression (
-                            ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::EQ,
-                            std::make_unique<ChpExprSingleRootDag>(std::move(alias_access_i)),
-                            std::make_unique<ChpExprSingleRootDag>(
-                                ChpExprSingleRootDag::makeConstant(BigInt(sr.curr),alias_var_bw)
-                            )));
+            ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::EQ,
+                std::make_unique<ChpExprSingleRootDag>(std::move(alias_access_i)),
+                std::make_unique<ChpExprSingleRootDag>(
+                    ChpExprSingleRootDag::makeConstant(BigInt(sr.curr),alias_var_bw))));
         auto aei_cpy = IRGuard::deep_copy (alias_eq_i);
 
-        Block *blk = NULL;
-        Block *access_alias = NULL;
-        Block *access_compl = NULL;
-        Block *recv_g = NULL;
-        Block *update_next_alias_var = NULL;
-        Sequence br1;
+        Block *blk = NULL, *access_alias = NULL, *access_compl = NULL, 
+            *recv_g = NULL, *update_next_alias_var = NULL;
 
-        if (valid_alias) // receiving
-        {
+        if (valid_alias) {// receiving
             blk = _find_alias_block (id, sr.curr, mi);
             auto alias_chan = (mi.find(id)->second).find(blk)->second.first;
             _replace_with_alias (blk, alias_chan);
-            if (send_type) {
-                access_compl = g->graph.blockAllocator().newBlock(
-                            Block::makeBasicBlock(Statement::makeReceive(alias_chan, {})));
-                access_alias = _make_probed_assn (alias_chan, data_var);
-                hassert (access_alias); hassert (access_compl);
-            }
-            else {
-                access_alias = g->graph.blockAllocator().newBlock(
-                            Block::makeBasicBlock(Statement::makeSend(alias_chan, 
-                                ChpExprSingleRootDag::makeVariableAccess(data_var, g->graph.id_pool().getBitwidth(alias_chan)) )));
-                hassert (access_alias);
-            }
+            access_compl = g->graph.blockAllocator().newBlock(
+                        Block::makeBasicBlock(Statement::makeReceive(alias_chan, {})));
+            access_alias = _make_probed_assn (alias_chan, data_var);
+            hassert (access_alias); hassert (access_compl);
         }
-        if (conditional) // conditional case
-        {
+        if (conditional) { // conditional case
             auto Gbw = log_2_round_up(sr.nexts.size());
             auto Gchan = g->graph.id_pool().makeUniqueChan(Gbw);
             var_to_actvar vtoa(s, g->graph.id_pool());
@@ -713,36 +699,24 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id, multichan_
             }
             update_next_alias_var = _build_next_assign (next_alias_var, alias_var_bw, sr.nexts, Gvar, Gbw);
         }
-        else
-        {
+        else {
             update_next_alias_var = g->graph.blockAllocator().newBlock(
-                                    Block::makeBasicBlock(Statement::makeAssignment(
-                                    next_alias_var,ChpExprSingleRootDag::makeConstant(BigInt(sr.nexts.front()),alias_var_bw))));
+                Block::makeBasicBlock(Statement::makeAssignment(
+                next_alias_var,ChpExprSingleRootDag::makeConstant(BigInt(sr.nexts.front()),alias_var_bw))));
         }
 
-        if ( conditional &&  valid_alias) {
-            br1 = g->graph.blockAllocator().newSequence({access_alias, recv_g, update_next_alias_var});
-        }
-        if (!conditional &&  valid_alias) {
-            br1 = g->graph.blockAllocator().newSequence({access_alias, update_next_alias_var});
-        }
-        if ( conditional && !valid_alias) {
-            br1 = g->graph.blockAllocator().newSequence({recv_g, update_next_alias_var});
-        }
-        if (!conditional && !valid_alias) {
-            br1 = g->graph.blockAllocator().newSequence({update_next_alias_var});
-        }
+        std::vector<Block *> vb1{};
+        if (valid_alias) vb1.push_back(access_alias);
+        Sequence br1 = g->graph.blockAllocator().newSequence(vb1);
         sm_sel->u_select().branches.emplace_back(br1, std::move(alias_eq_i));
-        if (send_type) {
-            Sequence br2;
-            if (valid_alias) {
-                br2 = g->graph.blockAllocator().newSequence({access_compl});
-            }
-            else {
-                br2 = g->graph.blockAllocator().newSequence({});
-            }
-            sm_sel_compl->u_select().branches.emplace_back(br2, std::move(aei_cpy));
-        }
+
+        std::vector<Block *> vb2{};
+        if (valid_alias) vb2.push_back(access_compl);
+        if (conditional) vb2.push_back(recv_g);
+        vb2.push_back({update_next_alias_var});
+        Sequence br2 = g->graph.blockAllocator().newSequence(vb2);
+
+        sm_sel_compl->u_select().branches.emplace_back(br2, std::move(aei_cpy));
     }
     // iterate and build state machine ------------------------------
 
@@ -750,42 +724,152 @@ Sequence MultiChan::_build_aux_process_new (StateTable st, ChanId id, multichan_
     auto chan_access_guard = _build_send_guard (alias_var, alias_var_bw, alias_number);
     auto cag_copy = IRGuard::deep_copy(chan_access_guard);
 
-    Block *chan_access;
-    Block *chan_complete;
-    if (send_type) {
-        chan_access = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
-                        id, ChpExprSingleRootDag::makeVariableAccess(data_var, g->graph.id_pool().getBitwidth(id)) )));
-    }
-    else {
-        // chan_access = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeReceive(id, data_var)));
-        chan_complete = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeReceive(id, {})));
-        chan_access = _make_probed_assn (id, data_var);
-    }
+    Block *chan_access = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeSend(
+            id, ChpExprSingleRootDag::makeVariableAccess(data_var, g->graph.id_pool().getBitwidth(id)) )));
 
     Block *cond_chan_access = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
-    cond_chan_access->u_select().branches.emplace_back(g->graph.blockAllocator().newSequence({chan_access}), std::move(chan_access_guard));
-    cond_chan_access->u_select().branches.emplace_back(g->graph.blockAllocator().newSequence({}), IRGuard::makeElse());
-    Block *cond_chan_complete;
-    if (!send_type) {
-        cond_chan_complete = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
-        cond_chan_complete->u_select().branches.emplace_back(g->graph.blockAllocator().newSequence({chan_complete}), std::move(cag_copy));
-        cond_chan_complete->u_select().branches.emplace_back(g->graph.blockAllocator().newSequence({}), IRGuard::makeElse());
-    }
+    cond_chan_access->u_select().branches.emplace_back(
+        g->graph.blockAllocator().newSequence({chan_access}), std::move(chan_access_guard));
+    cond_chan_access->u_select().branches.emplace_back(
+        g->graph.blockAllocator().newSequence({}), IRGuard::makeElse());
     // [ OR(alias==receiving_state) -> Orig!x [] else -> skip ] -----
 
     // alias := next_alias ------------------------------------------
     Block *alias_update = g->graph.blockAllocator().newBlock(
-                        Block::makeBasicBlock(Statement::makeAssignment(alias_var,
-                        ChpExprSingleRootDag::makeVariableAccess(next_alias_var, alias_var_bw))));
+            Block::makeBasicBlock(Statement::makeAssignment(alias_var,
+            ChpExprSingleRootDag::makeVariableAccess(next_alias_var, alias_var_bw))));
     // alias := next_alias ------------------------------------------
 
-    Sequence aux_core;
-    if (send_type) {
-        aux_core = g->graph.newSequence({sm_sel, cond_chan_access, sm_sel_compl, alias_update});
+    Sequence aux_core = g->graph.newSequence({sm_sel, cond_chan_access, sm_sel_compl, alias_update});
+    Sequence aux = g->graph.newSequence({init_alias, init_next, init_data, _wrap_in_do_loop (aux_core)});
+    return aux;
+}
+
+Sequence MultiChan::_build_aux_process_recv (StateTable st, ChanId id, multichan_alias_struct &mi)
+{
+    int stmax = 0;
+    for ( auto sr : st ) {
+        if (sr.curr > stmax) stmax = sr.curr;
     }
-    else {
-        aux_core = g->graph.newSequence({cond_chan_access, sm_sel, cond_chan_complete, alias_update});
+    auto alias_var_bw = log_2_round_up(stmax+1);
+    auto alias_var = g->graph.id_pool().makeUniqueVar(alias_var_bw);
+
+    auto next_alias_var = g->graph.id_pool().makeUniqueVar(alias_var_bw);
+    auto data_var = g->graph.id_pool().makeUniqueVar( g->graph.id_pool().getBitwidth(id) );
+
+    // make init. cond. alias := initval assignment
+    Block *init_alias = g->graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeAssignment(alias_var,
+            ChpExprSingleRootDag::makeConstant(BigInt(st[0].curr),alias_var_bw))));
+    Assert (init_alias, "huh");
+
+    // make init. cond. next := 0 assignment
+    Block *init_next = g->graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeAssignment(next_alias_var,
+            ChpExprSingleRootDag::makeConstant(BigInt(0),alias_var_bw))));
+    Assert (init_next, "huh");
+
+    // make init. cond. datavar := 0 assignment
+    Block *init_data = g->graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeAssignment(data_var,
+            ChpExprSingleRootDag::makeConstant(BigInt(0),g->graph.id_pool().getBitwidth(id)))));
+    Assert (init_data, "huh");
+
+    Block *sm_sel = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
+    Block *sm_sel_update = g->graph.blockAllocator().newBlock(Block::makeSelectBlock()); // dataless completion
+
+    // iterate and build state machine ------------------------------
+    for ( auto sr : st ) {
+        bool valid_alias = false; 
+        bool conditional = false;
+        if (sr.curr > 0 && sr.curr <= alias_number) // if valid receiving alias
+        { valid_alias = true; } 
+        if (sr.c == Cond::Guard)
+        { conditional = true; }
+
+        auto alias_access_i = ChpExprSingleRootDag::makeVariableAccess(alias_var, alias_var_bw);
+        IRGuard alias_eq_i = IRGuard::makeExpression (
+            ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::EQ,
+                std::make_unique<ChpExprSingleRootDag>(std::move(alias_access_i)),
+                std::make_unique<ChpExprSingleRootDag>(
+                    ChpExprSingleRootDag::makeConstant(BigInt(sr.curr),alias_var_bw))));
+        auto aei_cpy = IRGuard::deep_copy (alias_eq_i);
+
+        Block *blk = NULL, *access_alias = NULL, *recv_g = NULL, *update_next_alias_var = NULL;
+
+        if (valid_alias) { // receiving
+            blk = _find_alias_block (id, sr.curr, mi);
+            auto alias_chan = (mi.find(id)->second).find(blk)->second.first;
+            _replace_with_alias (blk, alias_chan);
+            access_alias = g->graph.blockAllocator().newBlock(
+                Block::makeBasicBlock(Statement::makeSend(alias_chan, 
+                    ChpExprSingleRootDag::makeVariableAccess(data_var, 
+                        g->graph.id_pool().getBitwidth(alias_chan)) )));
+            hassert (access_alias);
+        }
+        if (conditional) { // conditional case
+            auto Gbw = log_2_round_up(sr.nexts.size());
+            auto Gchan = g->graph.id_pool().makeUniqueChan(Gbw);
+            var_to_actvar vtoa(s, g->graph.id_pool());
+            ActId *id = vtoa.chanMap(Gchan);
+            g->name_from_chan.insert({Gchan, id});
+            auto Gvar  = g->graph.id_pool().makeUniqueVar (Gbw);
+            recv_g = g->graph.blockAllocator().newBlock(
+                        Block::makeBasicBlock(Statement::makeReceive(Gchan, Gvar)));
+            if (sr.sel->type() == BlockType::Select) {
+                _insert_guard_comm (sr.sel, Gchan, Gbw);
+            }
+            else if (sr.sel->type() == BlockType::DoLoop) {
+                _insert_guard_comm_loop (sr.sel, Gchan, Gbw);
+            }
+            else {
+                fatal_error ("conditional state update not select or doloop?");
+            }
+            update_next_alias_var = _build_next_assign (next_alias_var, alias_var_bw, sr.nexts, Gvar, Gbw);
+        }
+        else {
+            update_next_alias_var = g->graph.blockAllocator().newBlock(
+                Block::makeBasicBlock(Statement::makeAssignment(
+                next_alias_var,ChpExprSingleRootDag::makeConstant(BigInt(sr.nexts.front()),alias_var_bw))));
+        }
+
+        std::vector<Block *> vb1{};
+        std::vector<Block *> vb2{};
+        if (valid_alias) vb1.push_back(access_alias);
+        if (conditional) vb2.push_back(recv_g);
+        vb2.push_back(update_next_alias_var);
+        Sequence br1 = g->graph.blockAllocator().newSequence(vb1);
+        sm_sel->u_select().branches.emplace_back(br1, IRGuard::deep_copy(alias_eq_i));
+        Sequence br2 = g->graph.blockAllocator().newSequence(vb2);
+        sm_sel_update->u_select().branches.emplace_back(br2, std::move(alias_eq_i));
     }
+    // iterate and build state machine ------------------------------
+
+    // [ OR(alias==receiving_state) -> Orig!x [] else -> skip ] -----
+    auto chan_access_guard = _build_send_guard (alias_var, alias_var_bw, alias_number);
+    auto cag_copy = IRGuard::deep_copy(chan_access_guard);
+
+    Block *chan_complete = g->graph.blockAllocator().newBlock(Block::makeBasicBlock(Statement::makeReceive(id, {})));
+    Block *chan_access = _make_probed_assn (id, data_var);
+
+    Block *cond_chan_access = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
+    cond_chan_access->u_select().branches.emplace_back(
+        g->graph.blockAllocator().newSequence({chan_access}), std::move(chan_access_guard));
+    cond_chan_access->u_select().branches.emplace_back(
+        g->graph.blockAllocator().newSequence({}), IRGuard::makeElse());
+    Block *cond_chan_complete = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
+    cond_chan_complete->u_select().branches.emplace_back(
+        g->graph.blockAllocator().newSequence({chan_complete}), std::move(cag_copy));
+    cond_chan_complete->u_select().branches.emplace_back(
+        g->graph.blockAllocator().newSequence({}), IRGuard::makeElse());
+    // [ OR(alias==receiving_state) -> Orig!x [] else -> skip ] -----
+
+    // alias := next_alias ------------------------------------------
+    Block *alias_update = g->graph.blockAllocator().newBlock(
+        Block::makeBasicBlock(Statement::makeAssignment(alias_var,
+        ChpExprSingleRootDag::makeVariableAccess(next_alias_var, alias_var_bw))));
+
+    Sequence aux_core = g->graph.newSequence({cond_chan_access, sm_sel, cond_chan_complete, sm_sel_update, alias_update});
     Sequence aux = g->graph.newSequence({init_alias, init_next, init_data, _wrap_in_do_loop (aux_core)});
     return aux;
 }
@@ -812,7 +896,7 @@ IRGuard MultiChan::_build_send_guard (VarId v, int bw, int n)
 
 // ternary assignment for next_alias state update, based on value of g
 // next := (g=0)? a1 : (g=1)? a2 ...
-Block *MultiChan::_build_next_assign (VarId v, int v_bw, std::vector<int> nxts, VarId gv, int gv_bw)
+Block *MultiChan::_build_next_assign (VarId v, int v_bw, std::vector<State> nxts, VarId gv, int gv_bw)
 {
     auto tmp = ChpExprSingleRootDag::makeConstant(BigInt{0}, v_bw);
     for (int i = 0 ; i<nxts.size() ; i++)

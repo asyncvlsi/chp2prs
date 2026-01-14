@@ -1,0 +1,19 @@
+import "9decomp.act";
+
+defproc test ()
+{
+    chan(int<1>) X1;
+    chan(int) Y1, Z1;
+    decomp_mc9 m(X1, Y1, Z1);
+
+    int z0, z1, z2, z3;
+
+    chp {
+        (X1!0; X1!1) , 
+        (Y1!1; Y1!2; Y1!3) , 
+        (Z1?z0; Z1?z1) ;
+        [ z0=3 & z1=4 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
