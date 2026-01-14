@@ -259,6 +259,33 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
             expr = ChpExprSingleRootDag::makeResize(
                 std::make_unique<ChpExprSingleRootDag>(std::move(expr)), width);
         }
+        if (id_pool.ActIdIsPureStruct(c->u.assign.id)
+        && expr.root()->type() == IRExprTypeKind::ChanVar) {
+          std::vector<Block *> vb{};
+          Block *assign = blockAllocator.newBlock(Block::makeBasicBlock(
+              Statement::makeAssignment(var_id, std::move(expr))));
+          vb.push_back(assign);
+          if (id_pool.ActIdIsPureStruct(c->u.assign.id)) {
+            auto fields = id_pool.getStructFields(c->u.assign.id);
+            // consistent with int(struct) function in ACT. 
+            int var_width = id_pool.getBitwidth(var_id);
+            int pos = var_width;
+            for ( auto v : fields ) {
+              if (id_pool.getBitwidth(v)>0) {
+                Block *bb = blockAllocator.newBlock(
+                Block::makeBasicBlock(Statement::makeAssignment(v, 
+                  ChpExprSingleRootDag::makeBitfield(
+                    std::make_unique<ChpExprSingleRootDag>(
+                      ChpExprSingleRootDag::makeVariableAccess(
+                        var_id, id_pool.getBitwidth(var_id))), 
+                    pos-1, pos-id_pool.getBitwidth(v)))));
+                vb.push_back(bb);
+                pos -= id_pool.getBitwidth(v);
+              }
+            }
+          }
+          return blockAllocator.newSequence(vb);
+        }
         Block *assign = blockAllocator.newBlock(Block::makeBasicBlock(
             Statement::makeAssignment(var_id, std::move(expr))));
         return blockAllocator.newSequence({assign});
@@ -451,7 +478,6 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  item->label = NULL;
 	  item->space = NULL;
 	  item->type = ACT_CHP_ASSIGN;
-	  item->u.assign.id = map.varMap (id);
 	  if (map.isBool (id)) {
 	    t = ActExprIntType::Bool;
 	  }
@@ -461,7 +487,41 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  item->u.assign.e =
 	    template_func_new_expr_from_irexpr
 	    (*curr->u_basic().stmt.u_assign().e.roots[idx], t, varToId, chanToId);
-	  list_append (ret->u.semi_comma.cmd, item);
+    if ((curr->u_basic().stmt.u_assign().e.roots[idx]->type()==IRExprTypeKind::ChanVar)
+    && map.id.getIsStruct(curr->u_basic().stmt.u_assign().e.roots[idx]->u_chvar().id)) {
+      auto chid = curr->u_basic().stmt.u_assign().e.roots[idx]->u_chvar().id;
+      auto ivar = map.intOfStructVar(id,chid);
+      auto svar = map.structVar(ivar);
+      item->u.assign.id = svar;
+      act_chp_lang_t *item2;
+      NEW (item2, act_chp_lang_t);
+      item2->label = NULL;
+      item2->space = NULL;
+      item2->type = ACT_CHP_ASSIGN;
+      item2->u.assign.id = ivar;
+      NEW (item2->u.assign.e, Expr);
+      item2->u.assign.e->type = E_USERMACRO;
+      auto it = map.sc->FullLookup(svar, nullptr);
+      auto dx = dynamic_cast<Data *>(it->BaseType());
+      hassert(dx);
+      auto um = dx->getMacro("int");
+      if (!um) {
+        um = dx->newMacro(string_cache("int"));
+        um->mkBuiltin();
+        um->setRetType(TypeFactory::Factory()->NewInt(
+            map.sc,Type::direction::NONE,0,const_expr(32)));
+        um->getRetType()->MkCached();
+      }
+      hassert(um);
+      item2->u.assign.e->u.fn.s = (char *)um;
+      item2->u.assign.e->u.fn.r = act_expr_var(svar);
+      list_append (ret->u.semi_comma.cmd, item);
+      list_append (ret->u.semi_comma.cmd, item2);
+    }
+    else {
+      item->u.assign.id = map.varMap (id);
+      list_append (ret->u.semi_comma.cmd, item);
+    }
 	  idx++;
 	}
 	break;

@@ -40,7 +40,7 @@ static void usage(char *name)
   fprintf (stderr, " -e : <exprfile>: the file to save al the optimised logic expressions in\n");
   fprintf (stderr, " -o abc|yosys|genus : select external logic optimization engine for datapath generation\n");
   fprintf (stderr, " -cnf=<custom.conf> : load your custom config file\n");
-  fprintf (stderr, " -T <tech> : load your tech config\n");
+  fprintf (stderr, " -T<tech> : load your tech config\n");
   exit(1);
 }
 
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
   Act::Init(&argc, &argv);
 
   int ch;
-  while ((ch = getopt (argc, argv, "Obe:o:c:")) != -1) {
+  while ((ch = getopt (argc, argv, "Obe:o:")) != -1) {
     switch (ch) {
     case 'O':
       chpopt = true;
@@ -239,12 +239,6 @@ int main(int argc, char **argv)
     case 'o':
       external_opt = 1;
       syntesistool = Strdup (optarg);
-      break;
-    case 'c':
-      //this is for not failing on --cnf=your.conf
-      break;
-    case 'T':
-      //this is for not failing on --T<tech>
       break;
     default:
       usage (argv[0]);

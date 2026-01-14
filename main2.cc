@@ -57,7 +57,7 @@ static void usage(char *name)
   fprintf (stderr, " -E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
   fprintf (stderr, " -t : print tool runtime breakdown (for decomp: also produce delay annotation file and dot graphs of DDG and TG)\n");
   fprintf (stderr, " -cnf=<custom.conf> : load your custom config file\n");
-  fprintf (stderr, " -T <tech> : load your tech config\n");
+  fprintf (stderr, " -T<tech> : load your tech config\n");
   fprintf (stderr, "\n");
   exit(1);
 }
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
   bool run_time = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "htOXde:E:o:p:F:C:m:P:c:T:")) != -1) {
+  while ((ch = getopt (argc, argv, "htOXde:E:o:p:F:C:m:P:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -202,23 +202,15 @@ int main(int argc, char **argv)
       cycle_time_target = std::atof(Strdup (optarg));
       break;
     
-    case 'c':
-      //this is for not failing on -cnf=your.conf
-      break;
-    
-    case 'T':
-      //this is for not failing on -T<tech>
-      break;
-      
     default:
-      fprintf (stderr, "Unknown option: %s\n", ch);
+      fprintf (stderr, "Unknown option: %c\n", ch);
       usage (argv[0]);
       break;
     }
   }
 
   if (optind != argc - 1) {
-    fprintf (stderr, "1 positional argument (<actfile>) required found %d", argc - optind);
+    fprintf (stderr, "1 positional argument (<actfile>) required found %d\n", argc - optind);
     usage (argv[0]);
   }
 
