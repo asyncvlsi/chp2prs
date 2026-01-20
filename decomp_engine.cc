@@ -111,6 +111,12 @@ class Decomp : public ActSynthesize {
 
     if (p->getlang() && p->getlang()->getchp()) {
 
+      int print_rt = dp->getIntParam ("run_time");
+      if (print_rt) {
+        fprintf(stdout, "// %s : ",p->getName());
+        fflush(stdout);
+      }
+
       _fill_in_else_explicit (p->getlang()->getchp()->c, p->CurScope());
 
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
@@ -181,9 +187,7 @@ class Decomp : public ActSynthesize {
 
       auto d1 = duration_cast<microseconds>(t2 - t1);
       auto d2 = duration_cast<microseconds>(t3 - t2);
-      int print_rt = dp->getIntParam ("run_time");
       if (print_rt) {
-        fprintf(stdout, "// %s : ",p->getName());
         fprintf(stdout, "\n// ----------- Process Runtimes ----------- ");
         fprintf(stdout, "\n// Multichan + Loop Exc. : %-8lld microseconds", d1.count());
         fprintf(stdout, "\n// Projection            : %-8lld microseconds", d2.count());

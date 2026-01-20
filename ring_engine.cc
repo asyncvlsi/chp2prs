@@ -236,6 +236,7 @@ class RingSynth : public ActSynthesize {
       tf->set_bp(b);
 
       fprintf(stdout, "// %s : ",p->getName());
+      fflush(stdout);
       auto ss1 = high_resolution_clock::now();
       if (tf->check_if_pipeable(c))
       // if (false)
