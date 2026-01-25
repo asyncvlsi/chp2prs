@@ -370,7 +370,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
     ExprPipe ep(g_copy, s);
     ep.set_delay_threshold(cycle_time_target);
     ep.run();
-    if (verbose>0) { fprintf(stderr, "\n// Cycle Time Target : %.2fps\n", cycle_time_target); }
+    fprintf(stdout, "\n// Cycle Time Target : %.2fps\n", cycle_time_target);
 
     do {
         step2(g_copy, d_loc);
@@ -378,7 +378,7 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
         ct.run();
         auto r1 = ct.get_maxcycle();
         max_cycles_trace.push_back(r1.ratio);
-        if (verbose>0) { fprintf(stdout, "\n// Latest Cycle : %.2fps", max_cycles_trace.back()); } 
+        fprintf(stdout, "\n// Latest Cycle : %.2fps", max_cycles_trace.back());
         // auto hhvec = _get_candidates_dynamic(ct, 20);
         auto hhvec = _get_candidates_segment(ct);
         HyperEdgeSet best_hs = {}; 
@@ -467,8 +467,8 @@ void Projection::_insert_copies_v7_multithreaded (GraphWithChanNames &g, DFG &d_
     if (verbose>0) { 
         fprintf(stdout, "\n\n// Cycle Trace : "); 
         for (auto x:max_cycles_trace) { fprintf(stdout, "%.2f, ", x); }
-        fprintf(stdout, "\n"); 
     }
+    fprintf(stdout, "\n"); 
     step2 (g_copy, d_loc);
     procs = _build_procs(g_copy, d_loc);
 }

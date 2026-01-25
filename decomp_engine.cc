@@ -112,10 +112,8 @@ class Decomp : public ActSynthesize {
     if (p->getlang() && p->getlang()->getchp()) {
 
       int print_rt = dp->getIntParam ("run_time");
-      if (print_rt) {
-        fprintf(stdout, "// %s : ",p->getName());
-        fflush(stdout);
-      }
+      fprintf(stdout, "\n// %s : ",p->getName());
+      fflush(stdout);
 
       _fill_in_else_explicit (p->getlang()->getchp()->c, p->CurScope());
 
