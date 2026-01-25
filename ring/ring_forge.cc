@@ -108,7 +108,11 @@ long long RingForge::get_io_runtime()
 
 void RingForge::run_forge ()
 {
-    Assert (_structure_check(_c), "Program not of allowed form?");
+    Assert (_structure_check_q(_c), "Program not of allowed form. \
+        \nMust be Q1 or (Q1||Q2||..) \
+        \nwhere Qi is: \
+        \nsemi_list(xi := vi); *[ true -> Pi ] \
+        \nand Pi has no internal loops");
 
     if (_c->label && (strcmp(_c->label,"top_decomp")==0)) {
         if (_c->type == ACT_CHP_COMMA) {
@@ -129,42 +133,51 @@ void RingForge::run_forge ()
     }
 }
 
-bool RingForge::_structure_check (act_chp_lang_t *c)
+static void chp_err (act_chp_lang_t *c) {
+    fprintf(stderr, "\nchp : (");
+    chp_print(stderr, c);
+    fprintf(stderr, ")\nc->type: %d\n", c->type);
+}
+
+bool RingForge::_structure_check_q (act_chp_lang_t *c)
+{
+    if (c->type == ACT_CHP_LOOP || c->type == ACT_CHP_DOLOOP || c->type == ACT_CHP_SEMI) {
+        return _structure_check_p (c);
+    }
+    if (c->type == ACT_CHP_COMMA) {
+        bool all_ok = true;
+        for (listitem_t *li = list_first (c->u.semi_comma.cmd) ; li ; li = list_next(li)) {
+            all_ok &= _structure_check_p ((act_chp_lang_t *)(list_value(li)));
+        }
+        if (all_ok) return true;
+    }
+    chp_err(c);
+    return false;
+}
+
+bool RingForge::_structure_check_p (act_chp_lang_t *c)
 {
     if (c->type == ACT_CHP_LOOP || c->type == ACT_CHP_DOLOOP)
         return _internal_loop_check (c->u.gc->s);
     
-    if (c->type == ACT_CHP_SEMI)
-    {
-        for (listitem_t *li = list_first (c->u.semi_comma.cmd) ; li ; li = list_next(li))
-        {
+    if (c->type == ACT_CHP_SEMI) {
+        int n_loops = 0;
+        bool loop_ok = false;
+        for (listitem_t *li = list_first (c->u.semi_comma.cmd) ; li ; li = list_next(li)) {
             act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
             if (!(stmt->type==ACT_CHP_ASSIGN || stmt->type==ACT_CHP_LOOP 
                || stmt->type==ACT_CHP_DOLOOP || stmt->type==ACT_CHP_FUNC)) {
-                fprintf(stdout, "\n\nchp : (");
-                chp_print(stdout, stmt);
-                fprintf(stdout, ")\n");
-                fprintf(stdout, "\nstmt type: %d", stmt->type);
+                chp_err(stmt);
                 return false;
             }
             if ((stmt->type==ACT_CHP_LOOP || stmt->type==ACT_CHP_DOLOOP)) {
-                return (_internal_loop_check (stmt->u.gc->s) && !(stmt->u.gc->next));
+                n_loops++;
+                loop_ok = !(li->next) && _internal_loop_check (stmt->u.gc->s) && !(stmt->u.gc->next);
             }
         }
-        chp_print(stdout, c);
-        return false;
+        if (n_loops==1 && loop_ok) return true;
     }
-    if (c->type == ACT_CHP_COMMA)
-    {
-        bool ret = true;
-        for (listitem_t *li = list_first (c->u.semi_comma.cmd) ; li ; li = list_next(li))
-        {
-            act_chp_lang_t *stmt = (act_chp_lang_t *)(list_value(li));
-            ret &= _structure_check (stmt);
-        }
-        return ret;
-    }
-    chp_print(stdout, c);
+    chp_err(c);
     return false;
 }
 
