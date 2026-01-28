@@ -24,3 +24,14 @@ import "syn/bdopt/stdcells.act";
 import "syn/bdopt/chan.act";
 import "syn/syn.act";
 import "syn/bdopt/dpath.act";
+
+namespace syn {
+
+export defproc ram_builtin <: std::ram () 
+{
+  { 42=42 : "placeholder" };
+  // TODO: SDT bundled data memory compiler circuit needs to go here
+  // TODO: correct port overrides as well
+}
+
+}

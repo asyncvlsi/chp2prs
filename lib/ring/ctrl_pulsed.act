@@ -37,6 +37,17 @@ export defchan ring_chan <: bd () {}
 
 // --------------------------------------------------------
 
+export defproc ram_builtin <: std::ram () 
++{
+  ring_chan<std::ceil_log2(N)> addr;
+  ring_chan<2> rd;
+  ring_chan<W> dout;
+  ring_chan<W> din;
+}{
+  { 42=42 : "placeholder" };
+  // TODO: bundled data 4-phase memory compiler circuit needs to go here
+}
+
 // Basic Elements -----------------------------------------
 
 defproc inverter (bool? in; bool! out)
