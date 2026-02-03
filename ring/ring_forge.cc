@@ -92,6 +92,9 @@ RingForge::RingForge ( FILE *fp,
     _mux_block_id = 0;
     _branch_id = 0;
 
+    runtime1 = 0;
+    runtime2 = 0;
+
     eeo = new ExprCache(externopt_toolname, ((bundled==1)?bd:qdi), false, _exprfile);
     Assert ((eeo), "Could not create mapper!");
 }
