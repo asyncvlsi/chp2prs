@@ -177,7 +177,7 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
         return 0;
     break;
     case ACT_CHP_ASSIGN:
-        return ( assn_delay + capture_delay + expr_delay (c->u.assign.e, bitwidth(c->u.assign.id)) );
+        return ( assn_delay + expr_delay (c->u.assign.e, bitwidth(c->u.assign.id)) );
     break;
     case ACT_CHP_SEND:
         return ( send_delay + expr_delay (c->u.comm.e, bitwidth(c->u.comm.chan)) );
@@ -412,7 +412,26 @@ void ChpCost::_expr_collect_vars (Expr *&e)
     break;
 
   case E_PROBE: {
-      Assert (false, "No probes in decomp lmao");
+      Assert (!thread_mode, "shouldn't have happened");
+      // make dummy variable to stand in for probe
+      InstType *it = TypeFactory::Factory()->NewInt (_s, Type::NONE, 0, const_expr(1));
+      static char buf[1024];
+      it = it->Expand(NULL, _s);
+      ActId *chan = (ActId *)e->u.e.l;
+      char tname[1024];
+      chan->sPrint(tname, 1024);
+      snprintf(buf, 1024, "probe_of_%s", tname);
+      // Replace the probe in the original expression with dummy var
+      e->type = E_VAR;
+      e->u.e.l = (Expr *)(new ActId (buf));
+      ihash_bucket_t *ib;
+      ihash_bucket_t *b_width;
+      if (!ihash_lookup (_inexprmap, (long)e)) {
+          ib = ihash_add (_inexprmap, (long)e);
+          ib->i = _gen_expr_id();
+          b_width = ihash_add (_inwidthmap, (long)e);
+          b_width->i = 1;
+      }
     }
     break;
     
