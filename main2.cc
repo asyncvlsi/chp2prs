@@ -147,6 +147,7 @@ int main(int argc, char **argv)
 
     case 't':
       run_time = true;
+      unlink("decomp_sim.conf");
       break;
 
     case 'X':

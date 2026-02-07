@@ -248,6 +248,14 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
     if (out_bw == 0) {
       return 0.0;
     }
+    /*
+      This is needed coz act_chp <-> chp_graph conversion
+      can introduce int(struct) and struct(int)
+      Returning 0.0 is correct for this coz its just wires
+    */
+    if (!e || e->type==E_USERMACRO || e->type==E_FUNCTION) {
+      return 0.0;
+    }
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
 
