@@ -102,7 +102,10 @@ bool ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
   case ACT_CHP_SELECT_NONDET:
   case ACT_CHP_SELECT: {
     bool exists = false;
-    Assert (selection_way(c) < max_way, "Selection way beyond allowed range");
+    // Assert (selection_way(c) < max_way, "Selection way beyond allowed range");
+    if (selection_way(c) >= max_way) {
+      warning ("Selection way beyond allowed range");
+    }
     double max_del = 0;
     act_chp_gc_t *gc = c->u.gc;
     while (gc) {
@@ -216,7 +219,11 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
     case ACT_CHP_SELECT_NONDET:
     case ACT_CHP_SELECT: {
         int way = selection_way (c);
-        Assert (way<max_way, "Selection way beyond allowed range");
+        // Assert (way<max_way, "Selection way beyond allowed range");
+        if (way>=max_way) {
+          way=max_way-1;
+          warning ("Selection way beyond allowed range");
+        }
         double max_del = 0;
         act_chp_gc_t *gc = c->u.gc;
         while (gc) 
