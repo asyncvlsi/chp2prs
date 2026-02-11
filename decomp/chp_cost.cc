@@ -62,7 +62,7 @@ bool ChpCost::_gen_actsim_conf(act_chp_lang_t *c, std::vector<int> &ds, std::vec
   case ACT_CHP_ASSIGN: {
     auto ebi = expr_metrics(c->u.assign.e,bitwidth(c->u.assign.id));
     auto edel = (ebi && ebi->getDelay().exists()) ? (ebi->getDelay().typ_val)*1e12 : 0;
-    auto epow = (ebi && ebi->getDynamicPower().exists()) ? (ebi->getDynamicPower().typ_val)*1e12 : 0;
+    auto epow = (ebi && ebi->getDynamicPower().exists()) ? (ebi->getDynamicPower().typ_val)*1e9 : 0;
     ds.push_back( int(assn_delay + edel) );
     es.push_back( int(epow) );
     return true;
@@ -71,7 +71,7 @@ bool ChpCost::_gen_actsim_conf(act_chp_lang_t *c, std::vector<int> &ds, std::vec
   case ACT_CHP_SEND: {
     auto ebi = expr_metrics(c->u.comm.e,bitwidth(c->u.comm.chan));
     auto edel = (ebi && ebi->getDelay().exists()) ? (ebi->getDelay().typ_val)*1e12 : 0;
-    auto epow = (ebi && ebi->getDynamicPower().exists()) ? (ebi->getDynamicPower().typ_val)*1e12 : 0;
+    auto epow = (ebi && ebi->getDynamicPower().exists()) ? (ebi->getDynamicPower().typ_val)*1e9 : 0;
     ds.push_back( int(send_delay + edel) );
     es.push_back( int(epow) );
     return true;
@@ -128,16 +128,19 @@ bool ChpCost::_gen_actsim_conf(act_chp_lang_t *c, std::vector<int> &ds, std::vec
       warning ("Selection way (%d) beyond allowed max way (%d)", way, max_way);
     }
     double max_del = 0;
+    double tot_energy = 0;
     act_chp_gc_t *gc = c->u.gc;
     while (gc) {
       auto ebi = expr_metrics(gc->g, 1);
       auto edel = (ebi && ebi->getDelay().exists()) ? (ebi->getDelay().typ_val)*1e12 : 0;
+      auto epow = (ebi && ebi->getDynamicPower().exists()) ? (ebi->getDynamicPower().typ_val)*1e9 : 0;
       double br_del = edel + capture_delay;
       if (br_del > max_del) max_del = br_del;
+      tot_energy += epow;
       gc = gc->next;
     }
     ds.push_back(int(max_del));
-    es.push_back(int(0));
+    es.push_back(int(tot_energy));
     gc = c->u.gc;
     while (gc) {
       exists |= _gen_actsim_conf (gc->s, ds, es);
