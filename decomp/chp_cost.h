@@ -35,7 +35,7 @@ class ChpCost {
         : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
             procs({}), _expr_id(0), g (&g_in), canonical_expr(),
             _s (s), varid_to_actid(), thread_mode(false)
-        {
+            {
             Assert ((eeo), "Could not create mapper");
             init_params();
         }
@@ -43,17 +43,17 @@ class ChpCost {
         ChpCost (Scope *s, 
             const GraphWithChanNames &g_in,
             std::string eo_tool)
-        : eeo (std::make_unique<ExprCache> (eo_tool.c_str(), bd, false, "")),
+            : eeo (std::make_unique<ExprCache> (eo_tool.c_str(), bd, false, "")),
             procs({}), _expr_id(0), g (&g_in), canonical_expr(),
             _s (s), varid_to_actid(), thread_mode(false)
-        {
+            {
             Assert ((eeo), "Could not create mapper");
             init_params();
         }
 
         ChpCost (std::unordered_map<VarId, ActId *> &&v2a,
             const GraphWithChanNames &g_in)
-        : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
+            : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
             procs({}), _expr_id(0), g (&g_in), canonical_expr(),
             _s (nullptr), varid_to_actid (std::move(v2a)), thread_mode(true)
         {
@@ -85,7 +85,7 @@ class ChpCost {
         }
 
         void dump_actsim_conf(std::string, act_chp_lang_t *, Process *);
-        bool _dump_actsim_conf(FILE *cf, act_chp_lang_t *);
+        bool _gen_actsim_conf(act_chp_lang_t *, std::vector<int> &, std::vector<int> &);
 
         void clear();
         void add_procs (std::vector<act_chp_lang_t *>);
@@ -97,6 +97,7 @@ class ChpCost {
         double _latency_cost (act_chp_lang_t *);
 
         double expr_delay (Expr *, int);
+        ExprBlockInfo *expr_metrics (Expr *, int);
         
         /*
             also does a primitive dag-ing in multi-threaded mode

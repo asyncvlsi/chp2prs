@@ -36,8 +36,14 @@ void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, Process
   fprintf(ff, "      int debug_metrics 0 # set to 1 to see delay association in actsim\n");
   fprintf(ff, "      int detailed_delay_annotation 1\n");
   fprintf(ff, "      begin decomp_%s<>\n", buf);
+  std::vector<int> delays{};
+  std::vector<int> energies{};
+  _gen_actsim_conf (c, delays, energies);
+  Assert (delays.size()==energies.size(), "what");
   fprintf(ff, "      int_table delays ");
-  _dump_actsim_conf (ff, c);
+  for (auto x : delays) { fprintf(ff, "%d ", x); }
+  fprintf(ff, "\n      int_table energies ");
+  for (auto x : energies) { fprintf(ff, "%d ", x); }
   fprintf(ff, "\n      end");
   fprintf(ff, "\n   end");
   fprintf(ff, "\nend");
@@ -45,7 +51,7 @@ void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, Process
   fclose(ff);
 }
 
-bool ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
+bool ChpCost::_gen_actsim_conf(act_chp_lang_t *c, std::vector<int> &ds, std::vector<int> &es)
 {
   Assert (!thread_mode, "limited functionality in multi-threaded mode!");
   if (!c) return false;
@@ -53,27 +59,40 @@ bool ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
   case ACT_CHP_SKIP:
     return false;
   break;
-  case ACT_CHP_ASSIGN:
-      fprintf(cf, "%d ", int(assn_delay + capture_delay + expr_delay(c->u.assign.e,bitwidth(c->u.assign.id))) );
-      return true;
+  case ACT_CHP_ASSIGN: {
+    auto ebi = expr_metrics(c->u.assign.e,bitwidth(c->u.assign.id));
+    auto edel = (ebi && ebi->getDelay().exists()) ? (ebi->getDelay().typ_val)*1e12 : 0;
+    auto epow = (ebi && ebi->getDynamicPower().exists()) ? (ebi->getDynamicPower().typ_val)*1e12 : 0;
+    ds.push_back( int(assn_delay + edel) );
+    es.push_back( int(epow) );
+    return true;
+  }
   break;
-  case ACT_CHP_SEND:
-      fprintf(cf, "%d ", int(send_delay + expr_delay(c->u.comm.e,bitwidth(c->u.comm.chan))) );
-      return true;
+  case ACT_CHP_SEND: {
+    auto ebi = expr_metrics(c->u.comm.e,bitwidth(c->u.comm.chan));
+    auto edel = (ebi && ebi->getDelay().exists()) ? (ebi->getDelay().typ_val)*1e12 : 0;
+    auto epow = (ebi && ebi->getDynamicPower().exists()) ? (ebi->getDynamicPower().typ_val)*1e12 : 0;
+    ds.push_back( int(send_delay + edel) );
+    es.push_back( int(epow) );
+    return true;
+  }
   break;
-  case ACT_CHP_RECV:
-      fprintf(cf, "%d ", int(recv_delay + capture_delay) );
-      return true;
+  case ACT_CHP_RECV: {
+    ds.push_back( int(recv_delay + capture_delay) );
+    es.push_back( int(0) );
+    return true;
+  }
   break;
 
   case ACT_CHP_COMMA: {
     bool exists = false;
     for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
     {
-      exists |= _dump_actsim_conf (cf, (act_chp_lang_t *) list_value (li));
+      exists |= _gen_actsim_conf ((act_chp_lang_t *) list_value (li), ds, es);
     }
     if (list_length(c->u.semi_comma.cmd)>1 && exists) {
-      fprintf(cf, "%d ", int(list_length(c->u.semi_comma.cmd))); // dummy val for now
+      ds.push_back(int(list_length(c->u.semi_comma.cmd)));
+      es.push_back(0);
     }
     return exists;
   }
@@ -83,18 +102,19 @@ bool ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
     bool exists = false;
     for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
     {
-      exists |= _dump_actsim_conf (cf, (act_chp_lang_t *) list_value (li));
+      exists |= _gen_actsim_conf ((act_chp_lang_t *) list_value (li), ds, es);
     }
     return exists;
   }
   break;
 
   case ACT_CHP_DOLOOP: {
-    _dump_actsim_conf (cf, c->u.gc->s);
+    _gen_actsim_conf (c->u.gc->s, ds, es);
   } 
   case ACT_CHP_LOOP: {
-    fprintf(cf, "%d ", 1); // dummy val for now
-    bool exists = _dump_actsim_conf (cf, c->u.gc->s);
+    ds.push_back(1); // dummy val for now
+    es.push_back(0);
+    bool exists = _gen_actsim_conf (c->u.gc->s, ds, es);
     return exists;
   }
   break;
@@ -110,14 +130,17 @@ bool ChpCost::_dump_actsim_conf(FILE *cf, act_chp_lang_t *c)
     double max_del = 0;
     act_chp_gc_t *gc = c->u.gc;
     while (gc) {
-      double br_del = expr_delay (gc->g, 1) + capture_delay;
+      auto ebi = expr_metrics(gc->g, 1);
+      auto edel = (ebi && ebi->getDelay().exists()) ? (ebi->getDelay().typ_val)*1e12 : 0;
+      double br_del = edel + capture_delay;
       if (br_del > max_del) max_del = br_del;
       gc = gc->next;
     }
-    fprintf(cf, "%d ", int(max_del));
+    ds.push_back(int(max_del));
+    es.push_back(int(0));
     gc = c->u.gc;
     while (gc) {
-      exists |= _dump_actsim_conf (cf, gc->s);
+      exists |= _gen_actsim_conf (gc->s, ds, es);
       gc = gc->next;
     }
     return exists;
@@ -306,6 +329,55 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
 
     // lk.unlock();
     return typ_delay_ps;
+}
+
+ExprBlockInfo *ChpCost::expr_metrics (Expr *e, int out_bw)
+{
+  if (out_bw == 0) {
+    return nullptr;
+  }
+  /*
+    This is needed coz act_chp <-> chp_graph conversion
+    can introduce int(struct) and struct(int)
+    Returning 0.0 is correct for this coz its just wires
+  */
+  if (!e || e->type==E_USERMACRO || e->type==E_FUNCTION) {
+    return nullptr;
+  }
+  _inexprmap = ihash_new (0);
+  _inwidthmap = ihash_new (0);
+
+  if (!thread_mode) {
+    e = expr_dag(e);
+  }
+
+  // also does a primitive dag-ing in thread mode
+  canonical_expr.clear();
+  _expr_collect_vars (e);
+
+  // collect input vars in list
+  list_t *all_leaves = list_new();
+  {
+      ihash_iter_t iter;
+      ihash_bucket_t *ib;
+      ihash_iter_init (_inexprmap, &iter);
+      while ((ib = ihash_iter_next (_inexprmap, &iter))) {
+      Expr *e1 = (Expr *)ib->key;
+      list_append (all_leaves, e1);
+      }
+  }
+
+  config_set_int("synth.expropt.verbose", 0);
+  // run abc, then v2act to create the combinational-logic-for-math process
+  ExprBlockInfo *ebi = eeo->synth_expr(out_bw, e, all_leaves, _inexprmap, _inwidthmap);
+
+  // free all temporary data structures 
+  ihash_free (_inexprmap);
+  _inexprmap = NULL;
+  ihash_free (_inwidthmap);
+  _inwidthmap = NULL;
+  list_free (all_leaves);
+  return ebi;
 }
 
 /*
