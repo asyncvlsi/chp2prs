@@ -40,6 +40,17 @@ class ChpCost {
             init_params();
         }
 
+        ChpCost (Scope *s, 
+            const GraphWithChanNames &g_in,
+            std::string eo_tool)
+        : eeo (std::make_unique<ExprCache> (eo_tool.c_str(), bd, false, "")),
+            procs({}), _expr_id(0), g (&g_in), canonical_expr(),
+            _s (s), varid_to_actid(), thread_mode(false)
+        {
+            Assert ((eeo), "Could not create mapper");
+            init_params();
+        }
+
         ChpCost (std::unordered_map<VarId, ActId *> &&v2a,
             const GraphWithChanNames &g_in)
         : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),

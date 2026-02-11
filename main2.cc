@@ -284,11 +284,13 @@ int main(int argc, char **argv)
       c2p->setParam ("externopt_toolname", (void *)Strdup (syntesistool));
     }
     else if (decompose) {
+      if (!syntesistool) syntesistool = Strdup("abc");
       c2p->setParam ("engine", (void *) gen_decomp_engine);
       c2p->setParam ("prefix", (void *)Strdup ("decomp"));
       c2p->setParam ("cycle_time_target", cycle_time_target);
       c2p->setParam ("project", project);
       c2p->setParam ("run_time", run_time);
+      c2p->setParam ("externopt_toolname", (void *)Strdup (syntesistool));
     }
     else {
       c2p->setParam ("engine", (void *) gen_sdt_engine);

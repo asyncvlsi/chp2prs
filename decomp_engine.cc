@@ -110,6 +110,7 @@ class Decomp : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     cycle_time_target = dp->getRealParam("cycle_time_target");
     project = dp->getIntParam ("project");
+    const char *externopt_toolname = (char *)dp->getPtrParam("externopt_toolname");
 
     if (p->getlang() && p->getlang()->getchp()) {
 
@@ -195,7 +196,7 @@ class Decomp : public ActSynthesize {
       }
 
       if (print_rt) {
-        ChpCost cc(p->CurScope(), g);
+        ChpCost cc(p->CurScope(), g, std::string(externopt_toolname));
         cc.dump_actsim_conf("decomp_sim.conf", top_chp, p);
         if (ChpOptimize::isProbeFree(g.graph)) {
           Projection prx(g, p->CurScope());
