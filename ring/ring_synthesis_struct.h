@@ -36,6 +36,7 @@ struct var_info {
   unsigned int fischan:1;	// channel or int?
   unsigned int fisinport:2;	// 1 if input, 0 if output, 2 if both
   unsigned int fisbool:1;	// bool variable or bool chan
+  unsigned int fisextbool:1;	// external read-only config bool variable - in port list
 
   int width;			// bitwidth
 

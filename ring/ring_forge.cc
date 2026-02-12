@@ -473,6 +473,9 @@ unsigned long eval_ic (Expr *q)
     switch (q->type) {
     case E_INT:
         return act_expr_getconst_long(q); break;
+    case E_FALSE:
+    case E_TRUE:
+        return (unsigned long)eval_bool_expr(q); break;
     case E_BUILTIN_INT:
         warning ("Assuming your bitwidths are ok in expressions of the form int(x,v)");
         return eval_ic (q->u.e.l); break;
@@ -566,9 +569,9 @@ int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long ini
     bool is_latch = (l->type == LatchType::Latch);
     static char buf[1024];
     Assert (v->iwrite < v->nwrite, "Something went wrong in latch info tracking!");
-    if (v->fisbool) {
+    if (v->fisextbool) {
         get_true_name(buf, v->id, _p->CurScope(), false);
-        fprintf(_fp, "capture_bool %s%s_%d(%s);\n", capture_block_prefix, v->name, latch_id, buf);
+        fprintf(_fp, "capture_bool_ext %s%s_%d(%s);\n", capture_block_prefix, v->name, latch_id, buf);
     }
     else if (init_val == -1)
     {

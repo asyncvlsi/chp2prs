@@ -38,6 +38,8 @@ namespace syn {
 export template<pint W> 
 deftype ring_int <: int<W> (bool t[W]; bool f[W]) {}
 
+export deftype ring_bool <: bool (bool d[1]) {} 
+
 export template<pint W>
 defchan ring_chan <: chan(int<W>) (ring_int<W> d; bool a; bool r) {}
 
@@ -1061,7 +1063,7 @@ defproc merge_mux_ohc_opt(bool? c[N]; sdtexprchan<1> din[N][W]; ring_int<W> dout
 }
 
 
-export defproc capture_bool (bool i; ring_int<1> dout)
+export defproc capture_bool_ext (bool i; ring_int<1> dout)
 {
   inverter inv(i);
 

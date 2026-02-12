@@ -923,12 +923,14 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         v->iwrite = 0;
         v->fischan = TypeFactory::isChanType (conn->getvx()->t);
         v->fisbool = TypeFactory::isBoolType (conn->getvx()->t);
+        v->fisextbool = 0;
         v->latest_for_read = 0;
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
-        if (v->fisbool) {
+        if (v->fisbool && bv->ischpport) {
+          v->fisextbool = 1;
           if (warn_once_bools) {
-            fprintf(stdout, "\nWARNING: Bools in process, they must be read-only. Hope you know what you're doing.");
+            fprintf(stdout, "\nWARNING: Bool ports in process, they must be read-only. Hope you know what you're doing.\n");
             warn_once_bools = false;
           }
         }
@@ -1037,6 +1039,7 @@ var_info *RingEngine::_deepcopy_var_info (var_info *v, int only_read_id)
     v_copy->fischan = v->fischan;
     v_copy->fisinport = v->fisinport;
     v_copy->fisbool = v->fisbool;
+    v_copy->fisextbool = v->fisextbool;
     v_copy->width = v->width;
     v_copy->block_in = v->block_in;
     v_copy->block_out = v->block_out;

@@ -38,6 +38,8 @@ namespace syn {
 export template <pint M>
 deftype ring_int <: int<M> (bool d[M]) {} 
 
+export deftype ring_bool <: bool (bool d[1]) {} 
+
 export defchan ring_chan <: bd () {}
 
 // --------------------------------------------------------
@@ -1060,7 +1062,7 @@ defproc capture_init_non_ssa(a1of1 go[N]; bool? din[N][W]; bool! dout[W]; a1of1 
 }
 */
 
-export defproc capture_bool (bool i; bool dout[1])
+export defproc capture_bool_ext (bool i; bool dout[1])
 {
   i = dout[0];
 }
