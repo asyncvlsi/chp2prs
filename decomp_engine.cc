@@ -63,8 +63,10 @@ class Decomp : public ActSynthesize {
 
   void processStruct (Data *d) { // some special stuff for templated pure structs
     if (TypeFactory::isPureStruct(d)) {
-      bool is_template = (d->getNumParams()>0);
-      if (is_template) {
+      int n_params = d->getRemainingParams();
+      std::string dfn = d->getFullName();
+      bool emit_decl = (dfn.size()>=2 && dfn.substr(dfn.size()-2,2)!="<>");
+      if (emit_decl) {
         char buf[4096];
         ActNamespace::Act()->msnprintfproc (buf, 4096, d);
         pp_printf_raw (_pp, "\ndeftype %s <: %s () {}\n\n", buf, d->getFullName());
