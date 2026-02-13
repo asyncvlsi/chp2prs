@@ -111,8 +111,10 @@ class Decomp : public ActSynthesize {
     cycle_time_target = dp->getRealParam("cycle_time_target");
     project = dp->getIntParam ("project");
     const char *externopt_toolname = (char *)dp->getPtrParam("externopt_toolname");
+    const char *fname = p->getFullName();
+    bool is_mem = !(strncmp(fname, "std::ram", 8));
 
-    if (p->getlang() && p->getlang()->getchp()) {
+    if (p->getlang() && p->getlang()->getchp() && !is_mem) {
 
       int print_rt = dp->getIntParam ("run_time");
       fprintf(stdout, "\n// %s : ",p->getName());
