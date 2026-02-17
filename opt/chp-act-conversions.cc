@@ -439,7 +439,7 @@ GraphWithChanNames chp_graph_from_act(act_chp_lang *lang, Scope *s, int mode) {
 namespace {
 
 
-act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
+act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map, const IdPool &id_pool)
 {
   act_chp_lang_t *ret;
 
@@ -486,7 +486,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  }
 	  item->u.assign.e =
 	    template_func_new_expr_from_irexpr
-	    (*curr->u_basic().stmt.u_assign().e.roots[idx], t, varToId, chanToId);
+	    (*curr->u_basic().stmt.u_assign().e.roots[idx], t, varToId, chanToId, id_pool);
     if ((curr->u_basic().stmt.u_assign().e.roots[idx]->type()==IRExprTypeKind::ChanVar)
     && map.id.getIsStruct(curr->u_basic().stmt.u_assign().e.roots[idx]->u_chvar().id)) {
       auto chid = curr->u_basic().stmt.u_assign().e.roots[idx]->u_chvar().id;
@@ -542,7 +542,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	item->u.comm.convert = 0;
 	item->u.comm.e =
 	  template_func_new_expr_from_irexpr
-	  (*curr->u_basic().stmt.u_send().e.m_dag.roots[0], t, varToId, chanToId);
+	  (*curr->u_basic().stmt.u_send().e.m_dag.roots[0], t, varToId, chanToId, id_pool);
   if (map.id.getIsStruct(curr->u_basic().stmt.u_send().chan)) {
     Expr *e = item->u.comm.e;
     NEW (item->u.comm.e, Expr);
@@ -638,7 +638,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
       item->u.semi_comma.cmd = list_new ();
       list_append (ret->u.semi_comma.cmd, item);
       for (auto &x : curr->u_par().branches) {
-	list_append (item->u.semi_comma.cmd, seq_to_act (x, map));
+	list_append (item->u.semi_comma.cmd, seq_to_act (x, map, id_pool));
       }
       break;
 	  
@@ -670,14 +670,14 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  gc->g =
 	    template_func_new_expr_from_irexpr (*branch.g.u_e().e.m_dag.roots[0],
 						ActExprIntType::Bool,
-						varToId, chanToId);
+						varToId, chanToId, id_pool);
 	  break;
 
 	case IRGuardType::Else:
 	  gc->g = NULL;
 	  break;
 	}
-	gc->s = seq_to_act (branch.seq, map);
+	gc->s = seq_to_act (branch.seq, map, id_pool);
       }
       break;
       
@@ -697,8 +697,8 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
       item->u.gc->g = 
 	template_func_new_expr_from_irexpr (*curr->u_doloop().guard.m_dag.roots[0],
 					    ActExprIntType::Bool,
-					    varToId, chanToId);
-      item->u.gc->s = seq_to_act (curr->u_doloop().branch, map);
+					    varToId, chanToId, id_pool);
+      item->u.gc->s = seq_to_act (curr->u_doloop().branch, map, id_pool);
       list_append (ret->u.semi_comma.cmd, item);
       break;
 
@@ -729,7 +729,7 @@ act_chp_lang *chp_graph_to_act(const GraphWithChanNames &gr,
   }
 #endif  
 
-  act_chp_lang *l = seq_to_act (gr.graph.m_seq, table);
+  act_chp_lang *l = seq_to_act (gr.graph.m_seq, table, gr.graph.id_pool());
 
   newnames = std::move (table.newvars);
   

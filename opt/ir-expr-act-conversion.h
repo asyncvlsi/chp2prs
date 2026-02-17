@@ -83,7 +83,7 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
     // short-cut for the recursive call
     auto new_irexpr_from_expr = [&](const ActExprStruct *xo)
       -> std::unique_ptr<IRExpr<Tag, VarIdType, ChanIdType, manageMemory>> {
-      return template_func_new_irexpr_from_expr<Tag, VarIdType, ChanIdType, manageMemory>(										  xo, varid_from_actid, chanid_from_actid);
+      return template_func_new_irexpr_from_expr<Tag, VarIdType, ChanIdType, manageMemory>(xo, varid_from_actid, chanid_from_actid);
     };
 
    using IRExpr_t = IRExpr<Tag, VarIdType, ChanIdType, manageMemory>;
@@ -335,7 +335,8 @@ template <typename Tag, typename VarIdType,
 ActExprStruct *template_func_new_expr_from_irexpr(
     const IRExpr<Tag, VarIdType, ChanIdType, manageMemory> &e, ActExprIntType expectedType,
     const ActIdFromVarIdFn &actid_from_varid,
-    const ActIdFromChanIdFn &actid_from_chanid) {
+    const ActIdFromChanIdFn &actid_from_chanid,
+    const IdPool &id_pool) {
     static_assert(
         std::is_same_v<std::invoke_result_t<ActIdFromVarIdFn, VarIdType>,
                        ActId *>);
@@ -352,7 +353,7 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         [&](const IRExpr_t &xo,
             ActExprIntType expectedType) -> ActExprStruct * {
 	  return template_func_new_expr_from_irexpr<Tag, VarIdType, ChanIdType, manageMemory>(
-											      xo, expectedType, actid_from_varid, actid_from_chanid);
+											      xo, expectedType, actid_from_varid, actid_from_chanid, id_pool);
     };
 
     //    ActExprStruct *r;
@@ -524,8 +525,12 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         // TODO normalize this into a VarId{} here
         ActId *id = actid_from_varid(e.u_var().id);
         result->u.e.l = (Expr *)(id); // this is really an (ActId*)
-        return typedFromInt(result,
-                            expectedType); // we only support "int" variables
+        if (id_pool.getIsBool(e.u_var().id)) 
+            return typedFromBool(result, 
+                                expectedType);
+        else
+            return typedFromInt(result,
+                                expectedType); 
     }
     case IRExprTypeKind::ChanVar: {
         Expr *result = newExprStruct();
@@ -533,8 +538,12 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         // TODO normalize this into a VarId{} here
         ActId *id = actid_from_chanid(e.u_chvar().id);
         result->u.e.l = (Expr *)(id); // this is really an (ActId*)
-        return typedFromInt(result,
-                            expectedType); // we only support "int" variables
+        if (id_pool.getIsBool(e.u_chvar().id))
+            return typedFromBool(result,
+                                expectedType);
+        else 
+            return typedFromInt(result,
+                                expectedType); 
     }
     case IRExprTypeKind::ChanProbe: {
         Expr *result = newExprStruct();
