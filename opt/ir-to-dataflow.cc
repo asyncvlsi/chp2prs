@@ -2318,7 +2318,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 
 namespace {
 
-void toAct (list_t *l, Dataflow &d, var_to_actvar &map, const IdPool &id_pool)
+void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
 {
   act_dataflow_element *e;
   ActExprIntType t;
@@ -2450,7 +2450,7 @@ act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
 
   for (auto &x : d) {
     if (x.dead) continue;
-    toAct (ret->dflow, x, table, gr.graph.id_pool());
+    toAct (ret->dflow, x, table);
   }
   ret->order = NULL;
 
