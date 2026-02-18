@@ -46,7 +46,8 @@ class DFSynth : public ActSynthesize {
     : ActSynthesize (prefix, infile, outfile, exprfile) { }
   
   void emitTopImports(ActPass *ap) { 
-    pp_printf_raw (_pp, "import syn;\n\n");
+    pp_printf_raw (_pp, "import syn;\n");
+    pp_printf_raw (_pp, "open syn::decomp;\n\n");
   }
 
   void emitFinal () { }
