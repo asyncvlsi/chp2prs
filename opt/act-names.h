@@ -60,7 +60,8 @@ struct var_to_actvar {
     const char *svar_prefix = "_sva";
 
     if (name_from_var.count(v)) {
-      return name_from_var[v]->Clone();
+      if (structname_from_name.count(name_from_var[v]))
+        return name_from_var[v]->Clone();
     }
 
     auto it = TypeFactory::Factory()->NewInt(sc, Type::NONE, 0, const_expr (id.getBitwidth(v)));

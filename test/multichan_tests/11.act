@@ -1,0 +1,12 @@
+deftype ss (
+    int<8> a;
+    int<8> b
+) {}
+
+defproc mc11 (chan?(ss) A; chan!(ss) B)
+{
+    ss x;
+    chp {
+        *[ A?x ; B!x ; B!x ]
+    }
+}
