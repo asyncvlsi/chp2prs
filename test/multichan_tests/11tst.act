@@ -9,6 +9,7 @@ defproc test ()
 
     chp {
         (X!ss(1)) , (Y?y1 ; Y?y2) ;
+        [ y1.b=1 & y1.a=0 & y2.b=1 & y2.a=0 -> log ("SUCCESS") 
         [] else -> log ("FAILURE") 
         ]
     }
