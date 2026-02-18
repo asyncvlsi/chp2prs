@@ -2342,7 +2342,7 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map, const IdPool &id_pool)
 	t = ActExprIntType::Int;
       }
       e->u.func.lhs =
-	template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId, varToId, id_pool);
+	template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId, varToId, map);
 
       if (d.keep) {
 	e->u.func.nbufs = const_expr (1);

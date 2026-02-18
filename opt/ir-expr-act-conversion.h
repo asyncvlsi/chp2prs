@@ -24,6 +24,7 @@
  */
 
 #include "ir-expr.h"
+#include "act-names.h"
 #include <act/act.h>
 #include <common/int.h>
 
@@ -336,7 +337,7 @@ ActExprStruct *template_func_new_expr_from_irexpr(
     const IRExpr<Tag, VarIdType, ChanIdType, manageMemory> &e, ActExprIntType expectedType,
     const ActIdFromVarIdFn &actid_from_varid,
     const ActIdFromChanIdFn &actid_from_chanid,
-    const IdPool &id_pool) {
+    const var_to_actvar &map) {
     static_assert(
         std::is_same_v<std::invoke_result_t<ActIdFromVarIdFn, VarIdType>,
                        ActId *>);
@@ -353,7 +354,7 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         [&](const IRExpr_t &xo,
             ActExprIntType expectedType) -> ActExprStruct * {
 	  return template_func_new_expr_from_irexpr<Tag, VarIdType, ChanIdType, manageMemory>(
-											      xo, expectedType, actid_from_varid, actid_from_chanid, id_pool);
+											      xo, expectedType, actid_from_varid, actid_from_chanid, map);
     };
 
     //    ActExprStruct *r;
@@ -525,7 +526,7 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         // TODO normalize this into a VarId{} here
         ActId *id = actid_from_varid(e.u_var().id);
         result->u.e.l = (Expr *)(id); // this is really an (ActId*)
-        if (id_pool.getIsBool(e.u_var().id)) 
+        if (map.isBool(e.u_var().id)) 
             return typedFromBool(result, 
                                 expectedType);
         else
@@ -538,7 +539,7 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         // TODO normalize this into a VarId{} here
         ActId *id = actid_from_chanid(e.u_chvar().id);
         result->u.e.l = (Expr *)(id); // this is really an (ActId*)
-        if (id_pool.getIsBool(e.u_chvar().id))
+        if (map.isBool(e.u_chvar().id))
             return typedFromBool(result,
                                 expectedType);
         else 

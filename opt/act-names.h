@@ -44,11 +44,11 @@ struct var_to_actvar {
     : sc{s}, sc_var{0}, id{id_}, sc_chan{0} 
   {}
 
-  bool isBool (const VarId &v) {
+  bool isBool (const VarId &v) const {
     return id.getIsBool (v);
   }
   
-  bool isBool (const ChanId &ch) {
+  bool isBool (const ChanId &ch) const {
     return id.getIsBool (ch);
   }
 

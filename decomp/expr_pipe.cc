@@ -186,7 +186,7 @@ int ExprPipe::_run_expr_helper (ChpExprSingleRootDag &e, var_to_actvar &table, i
   auto chanToId = [&] (const ChanId &v) { return table.chanMap (v); };
 
   Expr *ae = ChpOptimize::template_func_new_expr_from_irexpr(*(e.m_dag.roots[0]), 
-              ActExprIntType::Int, varToId, chanToId);
+              ActExprIntType::Int, varToId, chanToId, table);
 
   ChpCost ct(s, *g);
   auto e_del = ct.expr_delay(ae, width);
