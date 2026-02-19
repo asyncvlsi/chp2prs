@@ -43,9 +43,9 @@ static void usage(char *name)
   fprintf (stderr, "        * decomp : decomposition - CHP-to-CHP\n");
   fprintf (stderr, " -C : qdi|bd|bd2|bdp|di|ditest: Circuit / Datapath family\n");
   fprintf (stderr, "        * qdi : quasi delay insensitive (default) [w.i.p. for ring] \n");
-  fprintf (stderr, "        * bd : bundled data (D flip-flops) \n");
-  fprintf (stderr, "        * bd2 : bundled data 2 phase handshake [only ring]\n");
-  fprintf (stderr, "        * bdp : bundled data (pulsed latches) [only ring]\n");
+  fprintf (stderr, "        * bd : bundled data (4-phase, D flip-flops) \n");
+  fprintf (stderr, "        * bd2 : bundled data (2-phase, pulsed latches) [only ring]\n");
+  fprintf (stderr, "        * bdp : bundled data (4-phase, pulsed latches) [only ring]\n");
   fprintf (stderr, "        * di : delay insensitive [only ring]\n");
   fprintf (stderr, "        * ditest : delay insensitive - testing for signal forks with extra buffers - not synthesizable [only ring]\n");
   fprintf (stderr, " -d : dataflow synthesis [deprecated, use '-F dataflow']\n");
