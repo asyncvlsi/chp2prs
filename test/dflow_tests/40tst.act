@@ -1,0 +1,17 @@
+import "40.act";
+import "40_df_chp.act";
+
+defproc test()
+{
+  chan(int) C, Y, O;
+  
+  df_testproc d(C,Y,O);
+
+  int a;
+
+  chp {
+    C!0;Y!5;
+    O?a;
+    [ a = 5 -> log ("SUCCESS") [] else -> log ("FAILURE") ]
+  }
+}

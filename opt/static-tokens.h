@@ -32,7 +32,20 @@ namespace ChpOptimize {
 void putIntoStaticTokenForm(ChpGraph &graph);
 void takeOutOfStaticTokenForm(ChpGraph &graph);
 
-void putIntoNewStaticTokenForm(ChpGraph &graph);
+/* 
+ * The fix_singletons flag is used to fix singleton selections. When the flag
+ * is turned on, [ G -> S ] is replaced with S prior to static token form
+ * conversion.
+ *
+ * This is used by the dataflow synthesis pass, because dataflow generation
+ * assumes deadlock-freedom and no probes, which means that a singleton
+ * selection must have its guard evaluate to true.
+ *
+ * For other uses of static token form (e.g. standard compiler optimizations),
+ * this flag is set to false.
+ */
+void putIntoNewStaticTokenForm(ChpGraph &graph, bool fix_singletons = false);
+
 void takeOutOfNewStaticTokenForm(ChpGraph &graph);
 
 

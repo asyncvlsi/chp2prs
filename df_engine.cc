@@ -142,7 +142,7 @@ class DFSynth : public ActSynthesize {
       }
 
       if (isProbeFree (g.graph)) {
-	putIntoNewStaticTokenForm (g.graph);
+	putIntoNewStaticTokenForm (g.graph, true);
 	uninlineBitfieldExprsHack (g.graph);
 	auto d = chp_to_dataflow(g);
 	std::vector<ActId *> res;

@@ -1355,10 +1355,77 @@ void mergePhis (Sequence seq)
   }
 }
 
+static
+void fixSingletonSels (const Sequence &seq) 
+{
+  Block *curr = seq.startseq->child();
+  while (curr->type() != BlockType::EndSequence) {
+    bool normal_update = true;
+    switch (curr->type()) {
+    case BlockType::Basic:
+      break;
 
+    case BlockType::Par:
+      for (auto &branch : curr->u_par().branches) {
+	fixSingletonSels (branch);
+      }
+      break;
 
-void putIntoNewStaticTokenForm(ChpGraph &g) {
+    case BlockType::Select: {
+      int count = 0;
+      for (auto &branch : curr->u_select().branches) {
+	count++;
+	fixSingletonSels (branch.seq);
+      }
+      if (count == 1) {
+	warning ("Found a selection with only one option; deadlock-free requirements\n  mean the guard will be eliminated!");
+
+	auto &branch_body = curr->u_select().branches.front().seq;
+	auto before = curr->parent();
+	auto after = curr->child();
+	if (branch_body.startseq->child() == branch_body.endseq) {
+	  /* empty */
+	  Block::connect (before, after);
+	  curr->dead = true;
+	}
+	else {
+	  auto start = branch_body.startseq->child();
+	  auto end = branch_body.endseq->parent();
+	  Block::disconnect (branch_body.startseq, start);
+	  Block::disconnect (end, branch_body.endseq);
+	  Block::disconnect (before, curr);
+	  Block::disconnect (curr, after);
+	  Block::connect (before, start);
+	  Block::connect (end, after);
+	  curr = after;
+	  normal_update = false;
+	}
+      }
+    }
+      break;
+
+    case BlockType::DoLoop:
+      fixSingletonSels (curr->u_doloop().branch);
+      break;
+
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+      hassert(false);
+      break;
+    }
+    if (normal_update) {
+      curr = curr->child();
+    }
+  }
+  return;
+}
+
+void putIntoNewStaticTokenForm(ChpGraph &g, bool fix_singletons) {
     hassert(!g.is_static_token_form);
+
+    if (fix_singletons) {
+      fixSingletonSels (g.m_seq);
+    }
 
     auto [livein, liveout] = getLiveVars (g);
 

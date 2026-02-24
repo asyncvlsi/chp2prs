@@ -1,0 +1,7 @@
+defproc testproc(chan?(int) C, I; chan!(int) O)
+{  
+  int c, x;
+  chp {
+    *[ C?c; I?x; [c=0 -> O!x ] ]
+  }
+}
