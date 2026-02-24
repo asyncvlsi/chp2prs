@@ -16,7 +16,7 @@ defproc test()
     X!8;
     Y?a1;
     log ("got ", a1);
-    X!int(-10,32);
+    X!(-int(10,32));
     Y?a2;
     [ a0 = 6 & a1 = 14 & a2 = 4 -> log ("SUCCESS") [] else -> log ("FAILURE") ]
   }

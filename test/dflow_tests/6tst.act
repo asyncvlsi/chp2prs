@@ -13,7 +13,7 @@ defproc test()
     W!1;
     X!6;
     X!8;
-    X!int(-12,32);
+    X!(-int(12,32));
     Y?a;
     [ a = 3 -> log ("SUCCESS") [] else -> log ("FAILURE") ]
   }

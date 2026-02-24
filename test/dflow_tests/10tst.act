@@ -12,7 +12,7 @@ defproc test()
   chp {
     X!6;
     X!8;
-    X!int(-10,32);
+    X!(-int(10,32));
     Y?a;
     [ a = 4 -> log ("SUCCESS") [] else -> log ("FAILURE") ]
   }
