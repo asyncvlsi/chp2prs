@@ -114,7 +114,8 @@ class Decomp : public ActSynthesize {
     project = dp->getIntParam ("project");
     const char *externopt_toolname = (char *)dp->getPtrParam("externopt_toolname");
     const char *fname = p->getFullName();
-    bool is_mem = !(strncmp(fname, "std::ram", 8));
+    const char *memname = config_get_string("act.decomp.mem");
+    bool is_mem = !(strncmp(fname, memname, strlen(memname)));
 
     if (p->getlang() && p->getlang()->getchp() && !is_mem) {
 
