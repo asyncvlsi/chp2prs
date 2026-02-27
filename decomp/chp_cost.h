@@ -104,6 +104,7 @@ class ChpCost {
         */ 
         void _expr_collect_vars (Expr *&); 
         
+        void _reset_expr_id ();
         int _gen_expr_id ();
         int bitwidth (ActId *);
         int selection_way (act_chp_lang_t *);

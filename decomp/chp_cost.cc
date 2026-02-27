@@ -292,6 +292,7 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
     }
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
+    _reset_expr_id();
 
     if (!thread_mode) {
       e = expr_dag(e);
@@ -540,7 +541,12 @@ void ChpCost::_expr_collect_vars (Expr *&e)
 
 int ChpCost::_gen_expr_id()
 {
-    return _expr_id++;
+  return _expr_id++;
+}
+
+void ChpCost::_reset_expr_id()
+{
+  _expr_id = 0;
 }
 
 int ChpCost::bitwidth (ActId *id)
