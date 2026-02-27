@@ -117,7 +117,6 @@ class SDTSynth : public ActSynthesize {
 
     int chpopt, externopt, bundled;
     BasicSDT *sdt;
-    int use_yosys;
     ActDynamicPass *dp;
 
     dp = dynamic_cast <ActDynamicPass *> (ap);
@@ -126,7 +125,6 @@ class SDTSynth : public ActSynthesize {
     chpopt = dp->getIntParam ("chp_optimize");
     externopt = dp->getIntParam ("externopt");
     bundled = dp->getIntParam ("bundled_dpath");
-    use_yosys = dp->getIntParam ("use_yosys");
 
     // convert this to chpgraph format
     // run optimizations
@@ -165,8 +163,7 @@ class SDTSynth : public ActSynthesize {
 
     if (externopt) {
       sdt = new ExternOptSDT (bundled, chpopt, _pp->fp, _ename,
-                              use_yosys == 1 ? "yosys" :
-			      (use_yosys == 0 ? "genus" : "abc" ));
+                              (char *) dp->getPtrParam ("externopt_toolname"));
       _pending = sdt;
     }
     else {

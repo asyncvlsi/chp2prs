@@ -331,7 +331,7 @@ int main(int argc, char **argv)
     else {
        fatal_error ("Unknown synthesis option %s", syntesistool);
     }
-    c2p->setParam ("use_yosys", param);
+    c2p->setParam ("externopt_toolname", syntesistool);
   }
   auto mid2 = high_resolution_clock::now();
   c2p->run (p);
