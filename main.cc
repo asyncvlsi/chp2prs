@@ -322,7 +322,7 @@ int main(int argc, char **argv)
   c2p->setParam ("externopt", external_opt);
   c2p->setParam ("bundled_dpath", bundled);
   if (external_opt) {
-    c2p->setParam ("synthesis_engine", syntesistool);
+    c2p->setParam ("externopt_toolname", syntesistool);
   }
   c2p->setParam ("expr_file", exprfile);
   c2p->setParam ("output_fp", fpout);

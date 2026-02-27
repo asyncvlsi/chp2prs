@@ -56,8 +56,8 @@ void *chp2prs_proc (ActPass *ap, Process *p, int mode)
   chpopt = dp->getIntParam ("chp_optimize");
   externopt = dp->getIntParam ("externopt");
   bundled = dp->getIntParam ("bundled_dpath");
-  if (dp->hasParam ("synthesis_engine")) {
-    mapper = (char *) dp->getPtrParam ("synthesis_engine");
+  if (dp->hasParam ("externopt_toolname")) {
+    mapper = (char *) dp->getPtrParam ("externopt_toolname");
   }
   else {
     mapper = NULL;
