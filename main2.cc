@@ -26,6 +26,7 @@
 #include <act/iter.h>
 #include <act/passes.h>
 #include "engines.h"
+#include "synth.h"
 #include <chrono>
 using namespace std::chrono;
 

@@ -20,7 +20,7 @@
  *
  **************************************************************************
  */
-#include "synth.h"
+class ActSynthesize;
 
 /**
  * SDT engine generator
@@ -45,3 +45,4 @@ ActSynthesize *gen_decomp_engine (const char *prefix,  char *infile,
  */
 ActSynthesize *gen_df_engine (const char *prefix,  char *infile,
 			      char *outfile, char *exprfile);
+

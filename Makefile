@@ -18,22 +18,25 @@
 #  Boston, MA  02110-1301, USA.
 #
 #-------------------------------------------------------------------------
-BINARY=chp2prs_dev.$(EXT) 
+BINARY=chp2prs.$(EXT) 
 
 TARGETS=$(BINARY) synth2.$(EXT)
 TARGETLIBS=libactchp2prspass_$(EXT).so
+TARGETINCS=synth.h engines.h
+TARGETINCSUBDIR=act/synth
 
 CPPSTD=c++17
 
 OBJS1=main.o
 
-OBJS2=main2.o sdt_engine.o df_engine.o ring_engine.o decomp_engine.o
+OBJS2=main2.o
 
 OBJS=$(OBJS1) $(OBJS2)
 
 TARGETCONF=synth.conf
 
-SHOBJS=chp2prs_pass.os synth.os synth_pass.os
+SHOBJS=chp2prs_pass.os synth.os synth_pass.os \
+    sdt_engine.os df_engine.os ring_engine.os decomp_engine.os
 
 SRCS=$(OBJS:.o=.cc) $(SHOBJS:.os=.cc)
 
@@ -52,7 +55,7 @@ synth2.$(EXT): $(LIB) $(OBJS2) $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS2) -o synth2.$(EXT) $(SHLIBACTPASS) $(SYNTHLIB) -lactchp2prspass $(EXPRLIB)
 
 $(TARGETLIBS): $(SHOBJS)
-	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB) -lactchpsdt
+	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SYNTHLIB) $(EXPRLIB) $(SHLIBACTPASS)
 
 testreps:
 	@if [ -d test -a -x test/repeat_unit.sh ]; \

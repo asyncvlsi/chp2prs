@@ -19,6 +19,7 @@
  *
  **************************************************************************
  */
+#include "synth.h"
 #include "engines.h"
 #include "opt/chp-opt.h"
 #include "opt/static-tokens.h"
