@@ -77,7 +77,7 @@ static ActSynthesize *_init (ActPass *ap)
   char *ofile = (char *)dp->getPtrParam ("out");
   char *efile = (char *)dp->getPtrParam ("expr");
 
-  if (!ifile || !pref) {
+  if (!pref) {
     return NULL;
   }
 
