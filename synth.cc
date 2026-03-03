@@ -142,15 +142,47 @@ bool ActSynthesize::prepSynthesis (ActPass *ap, bool run_arb)
 
 
   /*-- Apply standard decompositions --*/
-  
-  ActCHPFuncInline *ip = new ActCHPFuncInline (ActNamespace::Act());
-  ip->run (p);
 
-  ActCHPMemory *mem = new ActCHPMemory (ActNamespace::Act());
-  mem->run (p);
+  ActPass *gp;
+  ActCHPFuncInline *ip;
+  ActCHPMemory *mem;
+  ActCHPArbiter *arbp;
 
-  ActCHPArbiter *arbp = new ActCHPArbiter (ActNamespace::Act());
-  if (run_arb) arbp->run (p);
+  gp = ActNamespace::Act()->pass_find ("finline");
+  if (gp) {
+    ip = dynamic_cast<ActCHPFuncInline *> (gp);
+  }
+  else {
+    ip = new ActCHPFuncInline (ActNamespace::Act());
+  }
+  Assert (ip, "error in inline pass");
+  if (!ip->completed()) {
+    ip->run (p);
+  }
+
+  gp = ActNamespace::Act()->pass_find ("chpmem");
+  if (gp) {
+    mem = dynamic_cast<ActCHPMemory *> (gp);
+  }
+  else {
+    mem = new ActCHPMemory (ActNamespace::Act());
+  }
+  Assert (mem, "error in mem pass");
+  if (!mem->completed()) {
+    mem->run (p);
+  }
+
+  gp = ActNamespace::Act()->pass_find ("chparb");
+  if (gp) {
+    arbp = dynamic_cast<ActCHPArbiter *> (gp);
+  }
+  else {
+    arbp = new ActCHPArbiter (ActNamespace::Act());
+  }
+  Assert (arbp, "error in arbiter pass");
+  if (!arbp->completed()) {
+    arbp->run (p);
+  }
 
   /*-- Emit any additional imports needed --*/
   emitTopImports (ap);
