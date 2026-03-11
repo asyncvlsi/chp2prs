@@ -52,6 +52,73 @@ struct var_to_actvar {
     return id.getIsBool (ch);
   }
 
+  bool isStruct (const ChanId &ch) const {
+    return id.getIsStruct (ch);
+  }
+
+  bool ActIdIsPureStructChan (ActId *chanid) const {
+    auto cit = sc->FullLookup(chanid, nullptr);
+    if (!TypeFactory::isChanType(cit)) {
+      return false;
+    }
+    auto it = TypeFactory::getChanDataType(cit);
+    return TypeFactory::isPureStruct (it);
+  }
+
+  // create struct(e) from e
+  Expr *wrap_in_struct (Expr *e, ChanId chan) {
+    Expr *e1;
+    NEW (e1, Expr);
+    e1->type = E_FUNCTION;
+    auto cid = chanMap(chan);
+    auto cit = sc->FullLookup(cid, nullptr);
+    auto it = TypeFactory::getChanDataType(cit);
+    auto dx = dynamic_cast<Data *>(it->BaseType());
+    hassert (dx);
+    char nmu[4096];
+    char nm[4096];
+    dx->snprintActName(nm,4096);
+    dx->getUnexpanded()->snprintActName(nmu,4096);
+    if (!dx->getMacro(nm)) {
+      dx->getUnexpanded()->setName(nm);
+      dx->synthStructMacro();
+      dx->getUnexpanded()->setName(nmu);
+    }
+    auto um = dx->getMacro(nm);
+    hassert (um);
+    auto f = um->getFunction();
+    hassert (f);
+    e1->u.fn.s = (char *)f;
+    NEW (e1->u.fn.r, Expr);
+    e1->u.fn.r->type = E_LT;
+    e1->u.fn.r->u.e.r = NULL;
+    e1->u.fn.r->u.e.l = expr_dup(e);
+    return e1;
+  }
+
+  // create int(x) from x
+  Expr *wrap_in_int (ActId *chan_id) const {
+    auto cit = sc->FullLookup(chan_id, nullptr);
+    auto it = TypeFactory::getChanDataType(cit);
+    auto dx = dynamic_cast<Data *>(it->BaseType());
+    hassert(dx);
+    auto um = dx->getMacro("int");
+    if (!um) {
+      um = dx->newMacro(string_cache("int"));
+	    um->mkBuiltin();
+	    um->setRetType(TypeFactory::Factory()->NewInt(
+          sc,Type::direction::NONE,0,const_expr(32)));
+	    um->getRetType()->MkCached();
+	  }
+    hassert(um);
+    Expr *e;
+    NEW (e, Expr);
+    e->type = E_USERMACRO;
+    e->u.fn.s = (char *)um;
+    e->u.fn.r = act_expr_var(chan_id);
+    return e;
+  }
+
   ActId *intOfStructVar (const VarId &v, const ChanId &ch) {
     auto cid = chanMap(ch);
     auto cit = sc->FullLookup(cid, nullptr);

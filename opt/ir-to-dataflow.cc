@@ -2342,7 +2342,10 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
 	t = ActExprIntType::Int;
       }
       e->u.func.lhs =
-	template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId, varToId, map);
+      template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId, varToId, map);
+      if (map.isStruct(d.u_func().ids[i])) {
+        e->u.func.lhs = map.wrap_in_struct(e->u.func.lhs, d.u_func().ids[i]);
+      }
 
       if (d.keep) {
 	e->u.func.nbufs = const_expr (1);
@@ -2361,6 +2364,9 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
     e->u.func.lhs->type = E_VAR;
     e->u.func.lhs->u.e.l = (Expr *) map.chanMap (d.u_init().lhs);
     e->u.func.lhs->u.e.r = NULL;
+    if (map.isStruct(d.u_init().rhs)) {
+      e->u.func.lhs = map.wrap_in_struct(e->u.func.lhs, d.u_init().rhs);
+    }
     if (map.isBool (d.u_init().lhs)) {
       e->u.func.init = const_expr_bool (d.u_init().v.getVal (0));
     }

@@ -27,6 +27,8 @@
 #include "act-names.h"
 #include <act/act.h>
 #include <common/int.h>
+#include <iostream>
+using namespace std;
 
 
 namespace ChpOptimize {
@@ -526,6 +528,9 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         // TODO normalize this into a VarId{} here
         ActId *id = actid_from_varid(e.u_var().id);
         result->u.e.l = (Expr *)(id); // this is really an (ActId*)
+        if (map.ActIdIsPureStructChan(id)) { // should only trigger in DExpr mode
+            return map.wrap_in_int(id);
+        }
         if (map.isBool(e.u_var().id)) 
             return typedFromBool(result, 
                                 expectedType);
@@ -568,23 +573,36 @@ ActExprStruct *template_func_new_expr_from_irexpr(
             return typedFromInt(result, expectedType);
         } else {
             Expr *result = newExprStruct();
-            result->type = E_BITFIELD;
-            // can only decode an ir tree if bitfields are only appled
-            // to variable expressions. Run the final pass first!
-            hassert(e.u_bitfield().e->type() == IRExprTypeKind::Var);
-            ActId *id = actid_from_varid(e.u_bitfield().e->u_var().id);
-            result->u.e.l = (Expr *)id;
-            NEW(result->u.e.r, ActExprStruct);
-            result->u.e.r->type = E_BITFIELD;
-            NEW(result->u.e.r->u.e.l, ActExprStruct);
-            result->u.e.r->u.e.l->type = E_INT;
-            result->u.e.r->u.e.l->u.ival.v = e.u_bitfield().lo();
-            result->u.e.r->u.e.l->u.ival.v_extra = nullptr;
-            NEW(result->u.e.r->u.e.r, ActExprStruct);
-            result->u.e.r->u.e.r->type = E_INT;
-            result->u.e.r->u.e.r->u.ival.v = e.u_bitfield().hi();
-            result->u.e.r->u.e.r->u.ival.v_extra = nullptr;
-            return typedFromInt(result, expectedType);
+            bool old_way = false;
+            if (old_way) {
+                result->type = E_BITFIELD;
+                // can only decode an ir tree if bitfields are only appled
+                // to variable expressions. Run the final pass first!
+                hassert(e.u_bitfield().e->type() == IRExprTypeKind::Var);
+                ActId *id = actid_from_varid(e.u_bitfield().e->u_var().id);
+                result->u.e.l = (Expr *)id;
+                NEW(result->u.e.r, ActExprStruct);
+                result->u.e.r->type = E_BITFIELD;
+                NEW(result->u.e.r->u.e.l, ActExprStruct);
+                result->u.e.r->u.e.l->type = E_INT;
+                result->u.e.r->u.e.l->u.ival.v = e.u_bitfield().lo();
+                result->u.e.r->u.e.l->u.ival.v_extra = nullptr;
+                NEW(result->u.e.r->u.e.r, ActExprStruct);
+                result->u.e.r->u.e.r->type = E_INT;
+                result->u.e.r->u.e.r->u.ival.v = e.u_bitfield().hi();
+                result->u.e.r->u.e.r->u.ival.v_extra = nullptr;
+                return typedFromInt(result, expectedType);
+            }
+            else { // int(e>>lo,ct)
+                result->type = E_BUILTIN_INT;
+                NEW (result->u.e.l, ActExprStruct);
+                result->u.e.l->type = E_LSR;
+                hassert(e.u_bitfield().e->type() == IRExprTypeKind::Var);
+                result->u.e.l->u.e.l = new_expr_from_irexpr(*e.u_bitfield().e, ActExprIntType::Int);
+                result->u.e.l->u.e.r = const_expr(e.u_bitfield().lo());
+                result->u.e.r = const_expr(e.u_bitfield().ct());
+                return typedFromInt(result, expectedType);
+            }
         }
         hassert(false);
     }

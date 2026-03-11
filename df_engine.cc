@@ -57,6 +57,15 @@ class DFSynth : public ActSynthesize {
   bool overrideTypes() { return false; }
   void processStruct(Data *d) {
     pp_printf_raw (_pp, "/* process %s */\n", d->getName());
+		if (TypeFactory::isPureStruct(d)) {
+      std::string dfn = d->getFullName();
+      bool emit_decl = (dfn.size()>=2 && dfn.substr(dfn.size()-2,2)!="<>");
+      if (emit_decl) {
+        char buf[4096];
+        ActNamespace::Act()->msnprintfproc (buf, 4096, d);
+        pp_printf_raw (_pp, "\ndeftype %s <: %s () {}\n\n", buf, d->getFullName());
+      }
+    }
   }
 
   void runSynth (ActPass *ap, Process *p) {
