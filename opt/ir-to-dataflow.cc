@@ -2430,6 +2430,54 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
   }
 }
 
+void fix_struct (std::vector<Dataflow> &ds,
+  Dataflow &d, 
+  GraphWithChanNames &gr,
+  Scope *s)
+{
+  var_to_actvar map(s, gr.graph.id_pool());
+  switch (d.u.type()) {
+  case DataflowKind::Func:{
+  }
+  break;
+  case DataflowKind::Init: {
+  }
+  break;
+  case DataflowKind::Split: {
+    if (map.isStruct(d.u_split().in_id)) {
+      int bw = gr.graph.id_pool().getBitwidth(d.u_split().in_id);
+      auto newchan = gr.graph.id_pool().makeUniqueChan(bw, false);
+      ds.push_back(Dataflow::mkBuf(d.u_split().in_id, newchan, bw));
+      d.u_split().in_id = newchan;
+    }
+  }
+  break;
+  case DataflowKind::MergeMix: {
+    if (map.isStruct(d.u_mergemix().out_id)) {
+      int bw = gr.graph.id_pool().getBitwidth(d.u_mergemix().out_id);
+      auto newchan = gr.graph.id_pool().makeUniqueChan(bw, false);
+      ds.push_back(Dataflow::mkBuf(newchan, d.u_mergemix().out_id, bw));
+      d.u_mergemix().out_id = newchan;
+    }
+  }
+  break;
+  case DataflowKind::Arbiter:
+  hassert(false);
+  break;
+  case DataflowKind::Sink:
+  break;
+  }
+}
+
+void fix_structs (std::vector<Dataflow> &d,
+  GraphWithChanNames &gr,
+  Scope *s) 
+{
+  for (auto &x : d) {
+    fix_struct (d, x, gr, s);
+  }
+}
+
 }
 
 act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
@@ -2453,6 +2501,8 @@ act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
 
   ret->dflow = list_new ();
   ret->isexpanded = 1;
+
+  fix_structs (d, gr, s);
 
   for (auto &x : d) {
     if (x.dead) continue;

@@ -181,7 +181,7 @@ bool ActSynthesize::prepSynthesis (ActPass *ap, bool run_arb)
     arbp = new ActCHPArbiter (ActNamespace::Act());
   }
   Assert (arbp, "error in arbiter pass");
-  if (!arbp->completed()) {
+  if (!arbp->completed() && run_arb) {
     arbp->run (p);
   }
 
