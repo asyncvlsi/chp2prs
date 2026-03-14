@@ -391,7 +391,6 @@ void ChoppingBlock::_excise_loop (Block *curr)
 
 Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> recv, Block *send)
 {
-
     hassert (curr->type() == BlockType::DoLoop);
 
     VarId c = g->graph.id_pool().makeUniqueVar(1, false);
@@ -429,99 +428,32 @@ Sequence ChoppingBlock::_construct_sm_loop (Block *curr, std::vector<Block *> re
     Block *select_2 = g->graph.blockAllocator().newBlock(Block::makeSelectBlock());
 
     recv.push_back(c_1);
-    Sequence line_1 = g->graph.blockAllocator().newSequence(recv);
-    Sequence line_2 = g->graph.blockAllocator().newSequence({});
+    Sequence recv_seq = g->graph.blockAllocator().newSequence(recv);
+    Sequence skip_seq = g->graph.blockAllocator().newSequence({});
 
-    select_1->u_select().branches.push_back({line_1,std::move(c_eqs_0)});
-    select_1->u_select().branches.push_back({line_2,std::move(c_eqs_1)});
+    select_1->u_select().branches.push_back({recv_seq,std::move(c_eqs_0)});
+    select_1->u_select().branches.push_back({skip_seq,std::move(c_eqs_1)});
 
     ChpExprSingleRootDag e;
     e = ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard);
-
-    Block *predoloop;
-    Block *postdoloop;
-    std::vector<Block *> v_blks, tmp;
-
-    predoloop = curr->u_doloop().branch.startseq->child();
-
-    SelectBranch *sbt = NULL;
-
-    while (predoloop->type()!=BlockType::Select && predoloop->type()!=BlockType::EndSequence) {
-        v_blks.push_back(predoloop);
-        predoloop = predoloop->child();
-    }
-    // simple do-loop
-    if (predoloop->type() != BlockType::Select) {
-        for (auto b : v_blks) { _splice_out_block(b); }
-        select_2->u_select().branches.push_back({
-            g->graph.blockAllocator().newSequence(v_blks), 
-            IRGuard::makeExpression(ChpExprSingleRootDag::deep_copy(e))});
-    }
-    else {
-        postdoloop = predoloop->child();
-
-        for ( auto &branch : predoloop->u_select().branches )
-        {
-            if (!(branch.g.type() == IRGuardType::Else))
-            {   
-                select_2->u_select().branches.push_back({branch.seq,
-                                            IRGuard::deep_copy(branch.g)});
-            }
-            else {
-                sbt = &branch;
-            }
-        }
-    }
-
-    std::vector<Block *> v_blks_1 = {};
-    if (sbt) {
-        for ( auto bb = (*sbt).seq.startseq->child(); bb!=(*sbt).seq.endseq; bb=bb->child() ) {
-            v_blks_1.push_back(bb);
-        }
-        for (auto bb : v_blks_1) {
-            _splice_out_block(bb);
-        }
-    }
-
-    Sequence line_3;
-    if (send) {
-        v_blks_1.push_back(c_0);
-        v_blks_1.push_back(send);
-    }
-    else {
-        v_blks_1.push_back(c_0);
-    }
-    line_3 = g->graph.blockAllocator().newSequence(v_blks_1);
-
-    select_2->u_select().branches.push_back({line_3, IRGuard::makeElse()});
     
-    for (auto b : v_blks)
-    {
-        _splice_out_block(b);
+    select_2->u_select().branches.push_back({g->graph.blockAllocator().newSequence({}), IRGuard::makeExpression(std::move(e))});
+    select_2->u_select().branches.push_back({g->graph.blockAllocator().newSequence({send, c_0}), IRGuard::makeElse()});
+
+    std::vector<Block *> v_blks = {select_1};
+
+    auto blk = curr->u_doloop().branch.startseq->child();
+    while (blk->type() != BlockType::EndSequence) {
+        v_blks.push_back(blk);
+        blk = _splice_out_block(blk);
     }
-    v_blks.insert(v_blks.begin(), select_1);
     v_blks.push_back(select_2);
 
-    while (postdoloop->type() != BlockType::EndSequence) {
-        tmp.push_back(postdoloop);
-        v_blks.push_back(postdoloop);
-        postdoloop = postdoloop->child();
-    }
-    
-    for (auto b : tmp)
-    {
-        _splice_out_block(b);
-    }
-
-    // select_1, pre, select_2, post
     Sequence func = _wrap_in_do_loop(g->graph.blockAllocator().newSequence(v_blks));
-
     auto v_inits = _initialize_ics (curr);
-    for ( auto b : v_inits )
-    {
+    for ( auto b : v_inits ) {
         _splice_in_block_between (func.startseq, func.startseq->child(), b);
     }
-    // Sequence func = _wrap_in_do_loop(g->graph.blockAllocator().newSequence({select_1,select_2}));
     _splice_in_block_between (func.startseq, func.startseq->child(), init_c);
 
     _rename_all_vars(func);
