@@ -366,12 +366,14 @@ class Block {
         std::list<SelectBranch> branches;
         std::vector<PhiSplit> splits;
         std::vector<PhiMerge> merges;
+        bool is_nondet;
 
         Variant_Select(std::list<SelectBranch> branches, Block *child,
                        Block *parent)
             : child{child}
             , parent{parent}
-            , branches{std::move(branches)} {}
+            , branches{std::move(branches)}
+            , is_nondet(false) {}
 
         Variant_Select()
             : Variant_Select({}, nullptr, nullptr) {}

@@ -184,6 +184,7 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
     case ACT_CHP_SELECT_NONDET:
     case ACT_CHP_SELECT: {
         Block *select = blockAllocator.newBlock(Block::makeSelectBlock());
+        select->u_select().is_nondet = (c->type==ACT_CHP_SELECT_NONDET);
         for (act_chp_gc_t *gc = c->u.gc; gc; gc = gc->next) {
             Sequence subseq = parse_into_ir(gc->s, blockAllocator, id_pool, mode);
             select->u_select().branches.emplace_back(
@@ -648,7 +649,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
       NEW (item, act_chp_lang_t);
       item->label = NULL;
       item->space = NULL;
-      item->type = ACT_CHP_SELECT;
+      item->type = (curr->u_select().is_nondet) ? ACT_CHP_SELECT_NONDET : ACT_CHP_SELECT;
       item->u.gc = NULL;
       gc = NULL;
       list_append (ret->u.semi_comma.cmd, item);

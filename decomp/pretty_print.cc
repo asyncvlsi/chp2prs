@@ -160,14 +160,14 @@ static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec = 0, int in
       }
     }
     fprintf (fp, "\n");
+    if (indent>0) {
+        fprintf (fp, "%s",ib);
+    }
     if (c->type == ACT_CHP_SELECT_NONDET) {
       fprintf (fp, "|");
     }
     if (c->type == ACT_CHP_DOLOOP) {
       fprintf (fp, "]\n");
-    }
-    else if (indent>0) {
-        fprintf (fp, "%s]",ib);
     }
     else {
         fprintf (fp, "]");
@@ -617,6 +617,8 @@ void _lift_probes (GraphWithChanNames &g, Sequence seq)
     }
     if (process) {
       Block *sel = g.graph.blockAllocator().newBlock(Block::makeSelectBlock());
+      sel->u_select().is_nondet = curr->u_select().is_nondet;
+      curr->u_select().is_nondet = false;
       int sv_bw = log_2_round_up(n_br);
       VarId sv = g.graph.id_pool().makeUniqueVar(sv_bw);
       unsigned long long br_ctr{};
