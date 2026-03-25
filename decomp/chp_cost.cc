@@ -575,7 +575,8 @@ int ChpCost::selection_way (act_chp_lang_t *c)
 {
   act_chp_gc_t *gc_itr;
   int counter = 0;
-  Assert (((c->type == ACT_CHP_SELECT)), "Called selection_way on a non-selection");
+  Assert (((c->type == ACT_CHP_SELECT) || (c->type == ACT_CHP_SELECT_NONDET)), 
+    "Called selection_way on a non-selection");
 
   for (gc_itr = c->u.gc; gc_itr; gc_itr = gc_itr->next)
   { counter++; }
