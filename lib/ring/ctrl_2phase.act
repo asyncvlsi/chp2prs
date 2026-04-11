@@ -953,6 +953,46 @@ defproc nds_split_stable (bool? gs[N]; a1of1? m1; a1of1 co[N])
   ]
 }
 
+export template<pint N>
+defproc probed_ds_split(bool? gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+  [ N=1  -> 
+  
+  co[0].a = m1.a;
+  std::cells::LATCHLO latch_lo(.D=m1.r,.Q=co[0].r, .CLK=gs[0], .R=Reset);
+  
+  []else ->
+
+  bool _r0, r0;
+  // evaluation trigger
+  prs * {
+    ~m1.r -> _r0+
+    m1.r & (|i : N : gs[i] ) -> _r0- 
+    _r0 => r0-
+  }
+
+  capture_init<R2P_SEL_SPLIT_CD, R2P_SEL_SPLIT_PW, 1, 0> capt1[N], capt2[N];
+  std::cells::XOR2X1 xors[N];
+
+  ( i : N: capt1[i].go.r = r0; )
+  ( i : N: xors[i].A = co[i].a; )
+  ( i : N: xors[i].B = gs[i]; )
+  ( i : N: xors[i].Y = capt1[i].din[0]; )
+  // ( i : N: capt1[i].dout[0] = co[i].r; )
+
+  ( i : N: capt2[i].dout[0] = co[i].r; )
+  ( i : N: capt2[i].din[0] = capt1[i].dout[0]; )
+  ( i : N: capt2[i].go.r = capt1[i].go.a; )
+
+  std::gates::xortree<N, false> ort(, m1.a);
+  ( i : N: ort.in[i] = co[i].a; )
+
+  ( i : N :
+  spec {
+      timing gs[i] : xors[i].Y < m1.r
+  } )
+  ]
+}
 // ------------------------------------
 
 // N-way loop construct ---------------

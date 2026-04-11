@@ -1065,6 +1065,16 @@ int RingForge::_generate_nds_split_stable(int n)
 }
 
 /*
+    Generate a probed-but-deterministic selection split block for branches
+*/
+int RingForge::_generate_probed_ds_split(int n)
+{
+    int block_id = _gen_block_id();
+    fprintf(_fp,"probed_ds_split<%d> %s%d;\n", n, ring_block_prefix, block_id);
+    return block_id;
+}
+
+/*
     Generate a selection merge block for branches
 */
 int RingForge::_generate_selection_merge(int n)
@@ -2425,9 +2435,13 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         if (!(_guards_have_probes(gc)) && c->type==ACT_CHP_SELECT) {
             sel_split_block_id = _generate_selection_split(gc_len);
         }
-        else if (!(_guards_have_negated_probes(gc))){
+        else if (!(_guards_have_negated_probes(gc)) && c->type==ACT_CHP_SELECT_NONDET){
             have_probes = true;
             sel_split_block_id = _generate_nds_split_stable(gc_len);
+        }
+        else if (!(_guards_have_negated_probes(gc)) && c->type==ACT_CHP_SELECT){
+            have_probes = true;
+            sel_split_block_id = _generate_probed_ds_split(gc_len);
         }
         else {
             have_probes = true;

@@ -98,6 +98,7 @@ class RingForge : public RingEngine {
         int _generate_selection_split(int);
         int _generate_nds_split(int);
         int _generate_nds_split_stable(int);
+        int _generate_probed_ds_split(int);
         int _generate_selection_merge(int);
         int _generate_pipe_element_lcd(int, ActId *, int, int, int);
         int _generate_pipe_element_lcd(int);
