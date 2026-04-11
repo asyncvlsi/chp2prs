@@ -180,6 +180,9 @@ class Decomp : public ActSynthesize {
       if (project) {
         Projection pr = Projection (g, p->CurScope());
         pr.project(Strategy::Timing, cycle_time_target);
+        if (print_rt && ChpOptimize::isProbeFree(g.graph)) {
+          pr.export_ddg_and_tg(p->getName());
+        }
         auto [names2, top_chp2, nfc2] = pr.get_final_result();
         for ( auto x : names2 ) { newnames.insert(x); }
         for ( auto x : nfc2 ) { nfc.push_back(x); }
@@ -203,13 +206,6 @@ class Decomp : public ActSynthesize {
       if (print_rt) {
         ChpCost cc(p->CurScope(), g, std::string(externopt_toolname));
         cc.dump_actsim_conf("decomp_sim.conf", top_chp, p);
-        if (ChpOptimize::isProbeFree(g.graph)) {
-          Projection prx(g, p->CurScope());
-          prx.export_ddg_and_tg(p->getName());
-        }
-        else {
-          warning("Probes in CHP - not exporting DDG/TG");
-        }
       }
 
       act_chp_lang_t *l = top_chp;

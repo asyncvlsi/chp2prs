@@ -568,7 +568,7 @@ int ChpCost::bitwidth (ActId *id)
   if (!it) {
     return -1;
   }
-  return TypeFactory::bitWidth (it);
+  return TypeFactory::totBitWidth (it);
 }
 
 int ChpCost::selection_way (act_chp_lang_t *c)
