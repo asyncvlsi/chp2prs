@@ -1139,7 +1139,6 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     int delay_line_n;
 
     if (verbose) fprintf(_fp, "// output bitwidth: %d bits\n",out_expr_width);
-    fprintf(_fp,"\n");
     
     if (e->type == E_INT)
     {
@@ -1159,7 +1158,7 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     if (e->type == E_INT) 
     {
         config_set_int("expropt.abc_use_constraints", 1);
-        delay_line_n = 1;
+        delay_line_n = 0;
     }
     else 
     {
@@ -1168,10 +1167,9 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
         if (typ_delay_ps <= 0) { warning("non-positive delay from expression synthesis: %lfps", typ_delay_ps); }
 
         delay_line_n = _compute_delay_line_param(typ_delay_ps); 
-        if (delay_line_n <= 0) { delay_line_n = 1; }
+        Assert(delay_line_n>=0, "negative delay line param?");
 
-        if (verbose) fprintf(_fp, "\n// typical delay: %gps",typ_delay_ps);
-        fprintf(_fp,"\n");
+        if (verbose) fprintf(_fp, "\n// typical delay: %gps\n",typ_delay_ps);
     }
 
     _instantiate_expr_block (ebi->getID(), xid, all_leaves, connect_inputs);
@@ -1240,9 +1238,9 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
 
     int delay_line_n = _compute_delay_line_param(typ_delay_ps); 
-    if (delay_line_n <= 0) { delay_line_n = 1; }
+    Assert(delay_line_n>=0, "negative delay line param?");
 
-    if (verbose) fprintf(_fp, "\n// typical delay: %lfps",typ_delay_ps);
+    if (verbose) fprintf(_fp, "\n// typical delay: %lfps\n",typ_delay_ps);
     fprintf(_fp,"\n");
     _instantiate_expr_block (ebi->getID(), xid, all_leaves, connect_inputs);
 
@@ -1354,10 +1352,9 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
     
     int delay_line_n = _compute_delay_line_param(typ_delay_ps); 
-    if (delay_line_n <= 0) { delay_line_n = 1; }
+    Assert(delay_line_n>=0, "negative delay line param?");
     
-    if (verbose) fprintf(_fp, "\n// typical delay: %lfps",typ_delay_ps);
-    fprintf(_fp,"\n");
+    if (verbose) fprintf(_fp, "\n// typical delay: %lfps\n",typ_delay_ps);
     _instantiate_expr_block (ebi->getID(), xid, all_leaves, connect_inputs);
     
     ebi->~ExprBlockInfo();
@@ -2509,7 +2506,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         Assert (max_delay_n_sel>=0, "negative delay?");
 
         if (!have_probes) {
-            Assert (max_delay_n_sel>0, "non-positive delay for non-probed guard evaluators?");
+            Assert (max_delay_n_sel>=0, "negative delay for non-probed guard evaluators?");
             if (verbose) fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators");
             fprintf(_fp,"\n");
             fprintf(_fp,"delay_line_chan<%d> delay_select_%d;\n",max_delay_n_sel,sel_split_block_id);
@@ -2640,11 +2637,9 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
         auto vi = _get_var_info(li->toid());
 
         if (verbose) fprintf (_fp, "\n// variable: %s", vi->name);
-        fprintf(_fp,"\n");
         if (l->merge_mux_latch_number.at(ctr) == -1) 
         {
-            if (verbose) fprintf (_fp, "// mux not needed");
-            fprintf(_fp,"\n");
+            if (verbose) fprintf (_fp, "\n// mux not needed");
             ctr++;
             continue;
         }
@@ -2655,16 +2650,12 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
         int or_size = (l->merge_mux_inputs.at(ctr).size()) - mux_size + 1;
 
         // see if OR-gate is needed
-        if (or_size == 1)
-        {
+        if (or_size == 1) {
             Assert ((pre_sel_latch==-1), "check that there were no duplicates");
-            if (verbose) fprintf(_fp, "// assigned in all branches"); 
-            fprintf(_fp,"\n");
+            if (verbose) fprintf(_fp, "\n// assigned in all branches\n"); 
         }
-        else
-        { 
-            if (verbose) fprintf(_fp, "// not assigned in all branches");
-            fprintf(_fp,"\n"); 
+        else { 
+            if (verbose) fprintf(_fp, "\n// not assigned in all branches\n");
         }
         // find the variable with the biggest mux+or combo (lookup TODO)
         if (max_mux_size < mux_size) max_mux_size = mux_size;
@@ -2672,7 +2663,7 @@ std::pair<int,int> RingForge::_compute_merge_mux_info (latch_info_t *l, int spli
 
         // generate the mux (looks like latch to downstream) and connect latch outputs correctly
         int mux_id = l->merge_mux_latch_number.at(ctr);
-        fprintf (_fp, "merge_mux_ohc_opt<%d,%d> %s%s_%d;\n", mux_size, vi->width, 
+        fprintf (_fp, "\nmerge_mux_ohc_opt<%d,%d> %s%s_%d;\n", mux_size, vi->width, 
                                                 capture_block_prefix, vi->name, mux_id);
         n_muxes++;
         mux_vars.push_back(li->toid());
