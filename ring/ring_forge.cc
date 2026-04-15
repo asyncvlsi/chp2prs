@@ -117,21 +117,18 @@ void RingForge::run_forge ()
         \nsemi_list(xi := vi); *[ true -> Pi ] \
         \nand Pi has no internal loops");
 
-    if (_c->label && (strcmp(_c->label,"top_decomp")==0)) {
-        if (_c->type == ACT_CHP_COMMA) {
-            for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li))
-            {
-                _run_forge_helper ((act_chp_lang_t *)(list_value(li)));
-            }
+    if (_c->type == ACT_CHP_COMMA) {
+        if (!(_c->label) || (_c->label && strcmp(_c->label,"top_decomp")!=0)) {
+            warning ("Detected top-level parallel loops within same process: *[P1] || *[P2]. \
+                \nThis is not recommended in user input CHP.");
         }
-        else {
-            _run_forge_helper (_c);
+    }
+    if (_c->type == ACT_CHP_COMMA) {
+        for (listitem_t *li = list_first (_c->u.semi_comma.cmd) ; li ; li = list_next(li)) {
+            _run_forge_helper ((act_chp_lang_t *)(list_value(li)));
         }
     }
     else {
-        if (_c->type == ACT_CHP_COMMA) {
-            fatal_error ("Detected *[P1] || *[P2]. Top-level parallel loops within same process not allowed in user input.\n");
-        }
         _run_forge_helper (_c);
     }
 }
