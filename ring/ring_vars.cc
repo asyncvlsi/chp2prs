@@ -460,4 +460,5 @@ void RingVarAnalysis::print_var_info ()
 void RingVarAnalysis::generate_var_info ()
 {
     _generate_live_var_info (c, 1);
+    _generate_live_var_info (c, 1);
 }

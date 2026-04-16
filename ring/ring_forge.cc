@@ -315,12 +315,9 @@ bool RingForge::_fill_in_ics (act_chp_lang_t *&c)
 
 void RingForge::_run_forge_helper (act_chp_lang_t *c)
 {
-
     auto ss1 = high_resolution_clock::now();
     bool printt = false;
     RingVarAnalysis *lva = new RingVarAnalysis (_fp, _p, c);
-    // yes, run twice :)
-    lva->generate_var_info();
     lva->generate_var_info();
 
     if (printt) fprintf (_fp, "\n/* \n");
@@ -335,7 +332,6 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
     }
 
     RingVarAnalysis *lva2 = new RingVarAnalysis (_fp, _p, c);
-    lva2->generate_var_info();
     lva2->generate_var_info();
 
     construct_var_infos (c);
