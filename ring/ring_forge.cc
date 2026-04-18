@@ -348,7 +348,7 @@ void RingForge::_run_forge_helper (act_chp_lang_t *c)
     if (printt) fprintf (_fp, "// --------------------------------\n\n");
 
     _construct_merge_latch_info (c, 1);
-    
+
     if (printt) fprintf (_fp, "// Read/Write Info post-mux gen ---\n");
     if (printt) print_var_infos (_fp);
     if (printt) fprintf (_fp, "// --------------------------------\n\n");
@@ -2439,7 +2439,6 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         }
 
         sel_merge_block_id = _generate_selection_merge(gc_len);
-        save_var_infos();
 
         gp_connect_ids = list_new();
 
@@ -2486,6 +2485,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             _pop_and_restore_read_ids();
             i++; lj = list_next(lj);
         }
+        list_free(gp_connect_ids);
 
         // muxing variables live-out of merge so downstream can access correctly
         muxed_vars = {};

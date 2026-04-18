@@ -222,6 +222,7 @@ class RingSynth : public ActSynthesize {
     {
       Assert (c, "hmm no chp lol - something went wrong");
       mangle_init();
+      rewrite_terminating_program (c);
       place_skip_in_empty_branches (c);
       fill_in_else_explicit (c, p->CurScope());
       flatten_lists (c, p->CurScope());
@@ -239,7 +240,6 @@ class RingSynth : public ActSynthesize {
       fflush(stdout);
       auto ss1 = high_resolution_clock::now();
       if (tf->check_if_pipeable(c))
-      // if (false)
         tf->run_tiny_forge();
       else
         tf->run_forge();

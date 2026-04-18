@@ -59,6 +59,12 @@ bool _var_appears_in_expr (Expr *e, ActId *id);
 void place_skip_in_empty_branches (act_chp_lang_t *&c);
 
 /*
+  If P does not have a top-level loop, rewrite:
+  P ---> *[ P ; [false->skip] ]
+*/
+void rewrite_terminating_program (act_chp_lang_t *&c);
+
+/*
     Revert the mangling settings back to 
     the main Act object's defaults.
 */
@@ -83,27 +89,5 @@ void get_true_name (char *buf, ActId *id, Scope *s, bool mangle = true);
 void mangle_it (char *, InstType *);
 
 void mangle_data (char *, Data *);
-/*
-// Assert but error print location is parent
-template <typename T>
-void kassert_t (const T &x, const char *xs, const char *msg,
-const char *file, int line,
-const std::source_location cl = std::source_location::current())
-{
-  if (!(x)) {
-    fprintf(stderr, "Assertion failed : %s\n", xs);
-    fprintf(stderr, "Message : %s\n", msg);
-    fprintf(stderr, "File: %s, Line: %u\n\n", file, line);
-    fprintf(stderr, "Caller: %s\n", cl.function_name());
-    fprintf(stderr, "Caller File: %s, Caller Line: %u \n", 
-    cl.file_name(), cl.line());
-    exit(4);
-  }
-}
-
-#define kassert(x, msg, cl) kassert_t(x, #x, msg, __FILE__, __LINE__, cl)
-
-#define call_with_loc(fn, arg) fn(arg, std::source_location::current())
-*/
 
 #endif

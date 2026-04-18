@@ -1,0 +1,32 @@
+defproc src (chan!(int<4>) C)
+{
+    chp {
+         C!5 
+    }
+}
+
+defproc probed_ds (chan?(int<4>) I1; chan!(int<4>) OUT) {
+    int<4> x; 
+    chp{
+        *[ 
+            I1?x;
+            OUT!(x+1)
+        ]
+    }
+}
+
+defproc snk (chan?(int<4>) C)
+{
+    int<4> x;
+    chp {
+        C?x 
+    }
+}
+
+defproc testproc(chan!(int<4>) Y)
+{
+    src s1;
+    snk sn;
+    probed_ds m1(s1.C, sn.C);
+    Y = sn.C;
+}

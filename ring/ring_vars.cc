@@ -379,8 +379,8 @@ void RingVarAnalysis::_print_live_var_info (act_chp_lang_t *c_t, int root)
     case ACT_CHP_SEMI:    
         for (li = list_first (c_t->u.semi_comma.cmd); li; li = list_next (li)) {
             stmt = (act_chp_lang_t *)(list_value(li));
-            if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) 
-                _print_live_var_info (stmt, root);
+            // if (stmt->type == ACT_CHP_LOOP || stmt->type == ACT_CHP_DOLOOP) 
+            _print_live_var_info (stmt, root);
         }
         break;
 

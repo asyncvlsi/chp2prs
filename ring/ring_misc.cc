@@ -490,6 +490,78 @@ void place_skip_in_empty_branches (act_chp_lang_t *&c)
   }
 }
 
+bool has_main_loop (act_chp_lang_t *c)
+{
+  bool ret = false;
+  switch (c->type) {
+  case ACT_CHP_SKIP:
+  case ACT_CHP_SEND:
+  case ACT_CHP_RECV:
+  case ACT_CHP_ASSIGN:
+    break;
+  case ACT_CHP_COMMA:
+  case ACT_CHP_SEMI: {
+    for (listitem_t *li = list_first(c->u.semi_comma.cmd); li; li = list_next(li)) {   
+      act_chp_lang_t *stmt = (act_chp_lang_t *) list_value(li);
+      ret |= has_main_loop(stmt);
+    }
+  }
+  break;
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+    ret = true;
+    break;
+  case ACT_CHP_SELECT_NONDET:
+  case ACT_CHP_SELECT:
+  case ACT_CHP_FUNC:
+    break;
+  default:
+    fatal_error ("What?");
+    break;
+  }
+  return ret;
+}
+
+void rewrite_terminating_program (act_chp_lang_t *&c)
+{
+  if (has_main_loop(c)) 
+    return;
+
+  Expr *t = const_expr_bool(1);
+  Expr *f = const_expr_bool(0);
+
+  act_chp_lang_t *skip = new act_chp_lang_t;
+  skip->type = ACT_CHP_SKIP;
+  skip->label = NULL;
+  skip->space = NULL;
+
+  act_chp_lang_t *false_wait = new act_chp_lang_t;
+  false_wait->type = ACT_CHP_SELECT;
+  false_wait->label = NULL;
+  false_wait->space = NULL;
+  false_wait->u.gc = new act_chp_gc_t;
+  false_wait->u.gc->g = f;
+  false_wait->u.gc->s = skip;
+  false_wait->u.gc->next = NULL;
+
+  act_chp_lang_t *semi = new act_chp_lang_t;
+  semi->type = ACT_CHP_SEMI;
+  semi->label = NULL;
+  semi->space = NULL;
+  semi->u.semi_comma.cmd = list_new();
+  list_append(semi->u.semi_comma.cmd, c);
+  list_append(semi->u.semi_comma.cmd, false_wait);
+
+  c = new act_chp_lang_t;
+  c->type = ACT_CHP_LOOP;
+  c->label = NULL;
+  c->space = NULL;
+  c->u.gc = new act_chp_gc_t;
+  c->u.gc->g = t;
+  c->u.gc->s = semi;
+  c->u.gc->next = NULL;
+}
+
 static Act *a_mangle = NULL;
 
 static const int style_global = 0;
