@@ -2216,6 +2216,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
     act_chp_lang_t *stmt;
     act_chp_lang_t *main_loop = NULL;
     bool have_probes = false;
+    bool need_delay = false;
     var_info *vi;
     ActId *id;
 
@@ -2423,17 +2424,21 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         fprintf (_fp, "\n");
 
         if (!(_guards_have_probes(gc)) && c->type==ACT_CHP_SELECT) {
+            need_delay = true;
             sel_split_block_id = _generate_selection_split(gc_len);
         }
         else if (!(_guards_have_negated_probes(gc)) && c->type==ACT_CHP_SELECT_NONDET){
+            need_delay = false;
             have_probes = true;
             sel_split_block_id = _generate_nds_split_stable(gc_len);
         }
         else if (!(_guards_have_negated_probes(gc)) && c->type==ACT_CHP_SELECT){
+            need_delay = true;
             have_probes = true;
             sel_split_block_id = _generate_probed_ds_split(gc_len);
         }
         else {
+            need_delay = false;
             have_probes = true;
             sel_split_block_id = _generate_nds_split(gc_len);
         }
@@ -2498,7 +2503,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
         // generate delay line for max guard evaluator delay (split)
         Assert (max_delay_n_sel>=0, "negative delay?");
 
-        if (!have_probes) {
+        if (need_delay) {
             Assert (max_delay_n_sel>=0, "negative delay for non-probed guard evaluators?");
             if (verbose) fprintf(_fp,"\n// Delaying pre-split-block sync. by max. delay of all guard evaluators");
             fprintf(_fp,"\n");
