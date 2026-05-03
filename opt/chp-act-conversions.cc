@@ -328,6 +328,8 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
                         ChpExprSingleRootDag::makeVariableAccess(v, id_pool.getBitwidth(v))));
                   }
                 }
+                vc = id_pool.id_pool().makeUniqueVar(id_pool.getBitwidth(vc));
+                send->u_basic().stmt.u_send().e.root()->u_var().id = vc;
                 Block *assign = blockAllocator.newBlock(Block::makeBasicBlock(
                   Statement::makeAssignment(vc, std::move(ce))));
                 vb.push_back(assign);
