@@ -58,7 +58,7 @@ RingForge::RingForge ( FILE *fp,
     sync_chan_name_prefix = "sync_";
     init_cond_chan_prefix = "C_init_";
 
-    struct_chan_name = config_get_string("synth.ring.struct_chan_name");
+    struct_chan_name = config_get_string("synth.struct_chan_name");
 
     // Bundled datapath parameters
     // invx1_delay_ps = config_get_int("synth.ring.bundled.invx1_delay_ps");

@@ -747,6 +747,7 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
   if (_isdynamic_var) return;
   
   int struct_flag = -1;
+  const char *scn = config_get_string("synth.struct_chan_name");
 
   if (!v->fisbool && v->width == -1) {
     struct_flag = _real_width (P, v->id, true);
@@ -769,7 +770,7 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
     fprintf (output_stream, "_muxi(");
     v->id->Print (output_stream);
     if (struct_flag > 0) {
-      fprintf (output_stream, ".x");
+      fprintf (output_stream, ".%s", scn);
     }
     fprintf (output_stream, ");\n");
   }
@@ -789,7 +790,7 @@ void BasicSDT::_emit_channel_mux (varmap_info *v)
     fprintf (output_stream, "_muxo(");
     v->id->Print (output_stream);
     if (struct_flag > 0) {
-      fprintf (output_stream, ".x");
+      fprintf (output_stream, ".%s", scn);
     }
     fprintf (output_stream, ");\n");
   }

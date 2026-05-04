@@ -147,7 +147,7 @@ class RingSynth : public ActSynthesize {
     d->snprintActName(name, 10240);
     ns = ns + name;
     ActNamespace::Act()->msnprintf(mname, 10240, ns.c_str());
-    const char *scn = config_get_string("synth.ring.struct_chan_name");;
+    const char *scn = config_get_string("synth.struct_chan_name");
     fprintf(_pp->fp, "defchan chan_%s <: chan(%s) (ring_chan<%d> %s) {}\n\n", 
                       mname, ns.c_str(), w, scn);
   }
