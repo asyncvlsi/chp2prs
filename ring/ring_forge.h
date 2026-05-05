@@ -41,6 +41,13 @@ bd_mode_config_params = {
 };
 
 static const std::unordered_map<BD_MODE, std::string>
+bd_mode_config_offsets = {
+    {BD_MODE::Latch_4phase, "synth.ring.bundled.delay_offsets_L"},
+    {BD_MODE::Latch_2phase, "synth.ring.bundled.delay_offsets_L2P"},
+    {BD_MODE::DFF,          "synth.ring.bundled.delay_offsets_DFF"}
+};
+
+static const std::unordered_map<BD_MODE, std::string>
 bd_mode_config_vals = {
     {BD_MODE::Latch_4phase, "synth.ring.bundled.delay_vals_L"},
     {BD_MODE::Latch_2phase, "synth.ring.bundled.delay_vals_L2P"},

@@ -22,8 +22,9 @@
 
 pint N_delay_line_types = 4;
 
-// Delay_Params will be populated during synthesis, from synth.conf
+// Delay_Params and Delay_Offsets will be populated during synthesis, from synth.conf
 pint Delay_Params[N_delay_line_types+1];
+pint Delay_Offsets[N_delay_line_types+1];
 
 // DFF-datapath parameters
 pint RDFF_SEL_SPLIT_CD = 2;

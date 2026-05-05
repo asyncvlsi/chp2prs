@@ -96,13 +96,18 @@ class RingSynth : public ActSynthesize {
 
     // Delay-line table -------------------------
     pp_printf_raw (_pp, "\n// Delay Line Parameters ----\n");
-    std::string table_name = bd_mode_config_params.at(bdpath_mode);
+    std::string params_table = bd_mode_config_params.at(bdpath_mode);
+    std::string offsets_table  = bd_mode_config_offsets.at(bdpath_mode);
 
-    int dp_sz = config_get_table_size(table_name.c_str());
-    int *dparams = config_get_table_int(table_name.c_str());
-    for (int i=0;i<dp_sz;i++)
-    {
+    int dp_sz = config_get_table_size(params_table.c_str());
+    int *dparams = config_get_table_int(params_table.c_str());
+    for (int i=0;i<dp_sz;i++) {
       pp_printf_raw (_pp, "Delay_Params[%d]=%d;\n",i,dparams[i]);
+    }
+    dp_sz = config_get_table_size(offsets_table.c_str());
+    dparams = config_get_table_int(offsets_table.c_str());
+    for (int i=0;i<dp_sz;i++) {
+      pp_printf_raw (_pp, "Delay_Offsets[%d]=%d;\n",i,dparams[i]);
     }
     pp_printf_raw (_pp, "// Delay Line Parameters ----\n");
     // ------------------------------------------

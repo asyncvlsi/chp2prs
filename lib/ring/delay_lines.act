@@ -33,7 +33,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[0];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[0];
+            pint my_N = N_loc+Delay_Offsets[0];
             std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -46,7 +46,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[1];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[1];
+            pint my_N = N_loc+Delay_Offsets[1];
             std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -59,7 +59,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[2];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[2];
+            pint my_N = N_loc+Delay_Offsets[2];
             std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -72,7 +72,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[3];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[3];
+            pint my_N = N_loc+Delay_Offsets[3];
             std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -134,7 +134,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[0];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[0];
+            pint my_N = N_loc+Delay_Offsets[0];
             std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -147,7 +147,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[1];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[1];
+            pint my_N = N_loc+Delay_Offsets[1];
             std::delay_lines::chain_recursive_fast0_slow1<my_N,1,2> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -160,7 +160,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[2];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[2];
+            pint my_N = N_loc+Delay_Offsets[2];
             std::delay_lines::chain_reuse_1_delay_buffer<my_N,3> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -173,7 +173,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[3];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[3];
+            pint my_N = N_loc+Delay_Offsets[3];
             std::delay_lines::chain_reuse_1_weak_delay_buffer<my_N,3> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -234,7 +234,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[0];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[0];
+            pint my_N = N_loc+Delay_Offsets[0];
             std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -247,7 +247,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[1];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[1];
+            pint my_N = N_loc+Delay_Offsets[1];
             std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -260,7 +260,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[2];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[2];
+            pint my_N = N_loc+Delay_Offsets[2];
             std::delay_lines::chain_weak_delay_buffer<my_N,3> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
@@ -273,7 +273,7 @@ namespace syn {
             pint N_loc = N - Delay_Params[3];
 
             // put your delay line here in terms of N_loc -------
-            pint my_N = N_loc+Delay_Params[3];
+            pint my_N = N_loc+Delay_Offsets[3];
             std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
             // put your delay line here in terms of N_loc -------
         }
