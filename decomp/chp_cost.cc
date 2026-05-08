@@ -33,8 +33,6 @@ void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, Process
   Assert (ff, "Could not open output file to write actsim configuration");
   fprintf(ff, "begin sim\n");
   fprintf(ff, "   begin chp\n");
-  fprintf(ff, "      int debug_metrics 0 # set to 1 to see delay association in actsim\n");
-  fprintf(ff, "      int detailed_delay_annotation 1\n");
   fprintf(ff, "      begin decomp_%s<>\n", buf);
   std::vector<int> delays{};
   std::vector<int> energies{};

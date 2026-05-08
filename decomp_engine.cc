@@ -59,6 +59,19 @@ class Decomp : public ActSynthesize {
     fprintf (_expr, "namespace syn {\n\nexport namespace expr {\n\n");
     fclose (_expr);
     _expr = NULL;
+    // Header for decomp_sim.conf
+    int print_rt = dp->getIntParam ("run_time");
+    if (print_rt) {
+      FILE *ff = fopen("decomp_sim.conf", "w");
+      Assert (ff, "Could not open output file to write actsim configuration");
+      fprintf(ff, "begin sim\n");
+      fprintf(ff, "   begin chp\n");
+      fprintf(ff, "      int debug_metrics 0 # set to 1 to see delay association in actsim\n");
+      fprintf(ff, "      int detailed_delay_annotation 1\n");
+      fprintf(ff, "   end\n");
+      fprintf(ff, "end\n\n");
+      fclose(ff);
+    }
   }
 
   void processStruct (Data *d) { // some special stuff for templated pure structs
