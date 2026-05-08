@@ -122,6 +122,7 @@ static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec = 0, int in
       fprintf (fp, "|");
     }
     {
+      int n_br=0;
       act_chp_gc_t *gc = c->u.gc;
 
       if (c->type == ACT_CHP_DOLOOP) {
@@ -137,6 +138,7 @@ static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec = 0, int in
       }
       else {
 	while (gc) {
+    n_br++;
 	  if (!gc->g) {
 	    if (c->type == ACT_CHP_LOOP) {
 	      fprintf (fp, "true");
@@ -158,8 +160,8 @@ static void _chp_pretty_print (FILE *fp, act_chp_lang_t *c, int prec = 0, int in
 	  gc = gc->next;
 	}
       }
+      if (n_br>1) fprintf (fp, "\n");
     }
-    fprintf (fp, "\n");
     if (indent>0) {
         fprintf (fp, "%s",ib);
     }
