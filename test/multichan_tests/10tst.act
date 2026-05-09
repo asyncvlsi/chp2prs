@@ -1,0 +1,18 @@
+import "10decomp.act";
+
+defproc test ()
+{
+    chan(int) X1, X2;
+    chan(int) Z1;
+    decomp_mc10 m(X1, X2, Z1);
+
+    int z0, z1;
+
+    chp {
+        (X1!2; X1!4; X2!1; X1!3) , 
+        (Z1?z0; Z1?z1) ;
+        [ z0=6 & z1=4 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}

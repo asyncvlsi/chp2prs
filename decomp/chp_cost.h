@@ -23,33 +23,54 @@
 #ifndef __CHP_COST_H__
 #define __CHP_COST_H__
 
-
-#include "chopping_block.h"
-#include <act/expropt.h>
-// #include <act/expr_cache.h>
+#include <act/chp/chopping_block.h>
+#include <act/expr_cache.h>
+#include <memory>
 
 class ChpCost {
     public:
 
-        ChpCost (Scope *s)
-        {
-            _s = s;
-            procs = {};
-            _expr_id = 0;
-            eeo = new ExternalExprOpt("abc", bd, false, 
-                                    "/dev/null", "eblk_", "in_");
-            // eeo = new ExprCache(false, "abc", bd, false, 
-                                    // "/dev/null");
+        ChpCost (Scope *s, 
+            const GraphWithChanNames &g_in)
+        : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
+            procs({}), _expr_id(0), g (&g_in), canonical_expr(),
+            _s (s), varid_to_actid(), thread_mode(false)
+            {
             Assert ((eeo), "Could not create mapper");
+            init_params();
+        }
 
-            config_set_int("expropt.verbose", 0);
-            config_set_int("expropt.abc_use_constraints", 1);
-            config_set_int("expropt.vectorize_all_ports", 1);
-            
-            send_delay = config_get_real("synth.ring.bundled.send_delay");
-            recv_delay = config_get_real("synth.ring.bundled.recv_delay");
-            assn_delay = config_get_real("synth.ring.bundled.assn_delay");
-            capture_delay = config_get_real("synth.ring.bundled.capture_delay");
+        ChpCost (Scope *s, 
+            const GraphWithChanNames &g_in,
+            std::string eo_tool)
+            : eeo (std::make_unique<ExprCache> (eo_tool.c_str(), bd, false, "")),
+            procs({}), _expr_id(0), g (&g_in), canonical_expr(),
+            _s (s), varid_to_actid(), thread_mode(false)
+            {
+            Assert ((eeo), "Could not create mapper");
+            init_params();
+        }
+
+        ChpCost (std::unordered_map<VarId, ActId *> &&v2a,
+            const GraphWithChanNames &g_in)
+            : eeo (std::make_unique<ExprCache> ("abc", bd, false, "")),
+            procs({}), _expr_id(0), g (&g_in), canonical_expr(),
+            _s (nullptr), varid_to_actid (std::move(v2a)), thread_mode(true)
+        {
+            Assert ((eeo), "Could not create mapper");
+            init_params();
+        }
+
+        void init_params () 
+        {
+            send_delay = (config_get_real("synth.ring.bundled.send_delay"));
+            recv_delay = (config_get_real("synth.ring.bundled.recv_delay"));
+            assn_delay = (config_get_real("synth.ring.bundled.assn_delay"));
+            capture_delay = (config_get_real("synth.ring.bundled.capture_delay"));
+
+            config_set_int("synth.expropt.verbose", 0);
+            config_set_int("synth.expropt.abc_use_constraints", 1);
+            config_set_int("synth.expropt.vectorize_all_ports", 1);
 
             int sel_sz = config_get_table_size("synth.ring.bundled.sel_delays");
             int or_sz = config_get_table_size("synth.ring.bundled.or_delays");
@@ -63,11 +84,8 @@ class ChpCost {
             or_delays = std::vector<double> (tmp2,tmp2+sel_sz);
         }
 
-        ~ChpCost ()
-        {
-            eeo->~ExternalExprOpt();
-            // eeo->~ExprCache();
-        }
+        void dump_actsim_conf(std::string, act_chp_lang_t *, Process *);
+        bool _gen_actsim_conf(act_chp_lang_t *, std::vector<int> &, std::vector<int> &);
 
         void clear();
         void add_procs (std::vector<act_chp_lang_t *>);
@@ -79,22 +97,33 @@ class ChpCost {
         double _latency_cost (act_chp_lang_t *);
 
         double expr_delay (Expr *, int);
-        void _expr_collect_vars (Expr *);
+        ExprBlockInfo *expr_metrics (Expr *, int);
+        
+        /*
+            also does a primitive dag-ing in multi-threaded mode
+        */ 
+        void _expr_collect_vars (Expr *&); 
+        
+        void _reset_expr_id ();
         int _gen_expr_id ();
         int bitwidth (ActId *);
         int selection_way (act_chp_lang_t *);
 
         void fill_in_else_explicit (act_chp_lang_t *);
 
+    protected:
         // Expression handling for Expropt
         iHashtable *_inexprmap;
         iHashtable *_inwidthmap;
 
         Scope *_s;
+        bool thread_mode;
+        const GraphWithChanNames *g;
+        std::unordered_map<VarId, ActId *> varid_to_actid;
+        std::unordered_map<ActId *, Expr *> canonical_expr;
 
         // mapper object
-        ExternalExprOpt *eeo;
-        // ExprCache *eeo;
+        std::unique_ptr<ExprCache> eeo;
 
         int _expr_id;
         

@@ -36,8 +36,13 @@ std::unique_ptr<ChpExpr> new_chpexpr_from_expr(NameParsingIdPool &id_pool,
     return template_func_new_irexpr_from_expr<ChpTag, VarId, ChanId, ManageMemory::yes>(
         o, [&](ActId *act_id) -> std::pair<VarId, int> {
             OptionalVarId id = id_pool.varIdFromActId(act_id);
-            hassert(id);
-            return {*id, id_pool.getBitwidth(*id)};
+	    if (id) {
+	      return {*id, id_pool.getBitwidth(*id)};
+	    }
+	    else {
+	      // special -2 bitwidth indicates that no variable was found!
+	      return {VarId(1), -2};
+	    }
         },
 	[&](ActId *act_id) -> std::pair<ChanId, int> {
 	  OptionalChanId id = id_pool.chanIdFromActId(act_id);
@@ -63,9 +68,6 @@ IRGuard new_irguard_from_expr(NameParsingIdPool &id_pool,
                               const ActExprStruct *o) {
     if (!o)
         return IRGuard::makeElse();
-    if (o->type == E_PROBE) {
-        hassert(false); // TODO figure out how to extract var id
-    }
     return IRGuard::makeExpression(
         ChpExprSingleRootDag ::of_expr(new_chpexpr_from_expr(id_pool, o)));
 }
@@ -137,6 +139,7 @@ IRGuard new_irguard_from_expr(NameParsingIdPool &id_pool,
 
 Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
                        NameParsingIdPool &id_pool, int mode) {
+    if (!c) return blockAllocator.newSequence({});
     switch (c->type) {
     case ACT_CHP_SEMI: {
         Block *entry = nullptr, *exit_b = nullptr;
@@ -178,8 +181,10 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
         return blockAllocator.newSequence({parallel});
     }
 
+    case ACT_CHP_SELECT_NONDET:
     case ACT_CHP_SELECT: {
         Block *select = blockAllocator.newBlock(Block::makeSelectBlock());
+        select->u_select().is_nondet = (c->type==ACT_CHP_SELECT_NONDET);
         for (act_chp_gc_t *gc = c->u.gc; gc; gc = gc->next) {
             Sequence subseq = parse_into_ir(gc->s, blockAllocator, id_pool, mode);
             select->u_select().branches.emplace_back(
@@ -255,6 +260,33 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
             expr = ChpExprSingleRootDag::makeResize(
                 std::make_unique<ChpExprSingleRootDag>(std::move(expr)), width);
         }
+        if (id_pool.ActIdIsPureStruct(c->u.assign.id)
+        && expr.root()->type() == IRExprTypeKind::ChanVar) {
+          std::vector<Block *> vb{};
+          Block *assign = blockAllocator.newBlock(Block::makeBasicBlock(
+              Statement::makeAssignment(var_id, std::move(expr))));
+          vb.push_back(assign);
+          if (id_pool.ActIdIsPureStruct(c->u.assign.id)) {
+            auto fields = id_pool.getStructFields(c->u.assign.id);
+            // consistent with int(struct) function in ACT. 
+            int var_width = id_pool.getBitwidth(var_id);
+            int pos = var_width;
+            for ( auto v : fields ) {
+              if (id_pool.getBitwidth(v)>0) {
+                Block *bb = blockAllocator.newBlock(
+                Block::makeBasicBlock(Statement::makeAssignment(v, 
+                  ChpExprSingleRootDag::makeBitfield(
+                    std::make_unique<ChpExprSingleRootDag>(
+                      ChpExprSingleRootDag::makeVariableAccess(
+                        var_id, id_pool.getBitwidth(var_id))), 
+                    pos-1, pos-id_pool.getBitwidth(v)))));
+                vb.push_back(bb);
+                pos -= id_pool.getBitwidth(v);
+              }
+            }
+          }
+          return blockAllocator.newSequence(vb);
+        }
         Block *assign = blockAllocator.newBlock(Block::makeBasicBlock(
             Statement::makeAssignment(var_id, std::move(expr))));
         return blockAllocator.newSequence({assign});
@@ -275,9 +307,36 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
         }
 
         if (expr.root()->type() == IRExprTypeKind::Var || (mode==1)) {
-            Block *send = blockAllocator.newBlock(Block::makeBasicBlock(
-                Statement::makeSend(chan_id, std::move(expr))));
-            return blockAllocator.newSequence({send});
+          std::vector<Block *> vb{};
+          Block *send = blockAllocator.newBlock(Block::makeBasicBlock(
+              Statement::makeSend(chan_id, ChpExprSingleRootDag::deep_copy(expr))));
+          if (expr.root()->type() == IRExprTypeKind::Var) {
+            auto vc = expr.root()->u_var().id;
+            ActId *aid = id_pool.name_from_var_map().at(vc);
+            if (id_pool.ActIdIsPureStruct(aid)) {
+                auto fields = id_pool.getStructFields(aid);
+                ChpExprSingleRootDag ce;
+                hassert (fields.size()>0);
+                for ( auto v : fields ){
+                  if (v == *fields.begin()) {
+                    ce = ChpExprSingleRootDag::makeVariableAccess(v, id_pool.getBitwidth(v));
+                  }
+                  else {
+                    ce = ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::Concat,
+                      std::make_unique<ChpExprSingleRootDag>(std::move(ce)),
+                      std::make_unique<ChpExprSingleRootDag>(
+                        ChpExprSingleRootDag::makeVariableAccess(v, id_pool.getBitwidth(v))));
+                  }
+                }
+                vc = id_pool.id_pool().makeUniqueVar(id_pool.getBitwidth(vc));
+                send->u_basic().stmt.u_send().e.root()->u_var().id = vc;
+                Block *assign = blockAllocator.newBlock(Block::makeBasicBlock(
+                  Statement::makeAssignment(vc, std::move(ce))));
+                vb.push_back(assign);
+            }
+          }
+          vb.push_back(send);
+          return blockAllocator.newSequence(vb);
         }
         // otherwise, assign into a temporary of the right width, and send the
         // temporary.
@@ -306,9 +365,29 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
         int var_width = id_pool.getBitwidth(var_id);
 
         if (chan_width == var_width) {
-            Block *receive = blockAllocator.newBlock(
-                Block::makeBasicBlock(Statement::makeReceive(chan_id, var_id)));
-            return blockAllocator.newSequence({receive});
+          std::vector<Block *> vb{};
+          Block *receive = blockAllocator.newBlock(
+              Block::makeBasicBlock(Statement::makeReceive(chan_id, var_id)));
+          vb.push_back(receive);
+          if (id_pool.ActIdIsPureStruct(c->u.comm.var)) {
+            auto fields = id_pool.getStructFields(c->u.comm.var);
+            // consistent with int(struct) function in ACT. 
+            int pos = var_width;
+            for ( auto v : fields ) {
+              if (id_pool.getBitwidth(v)>0) {
+                Block *bb = blockAllocator.newBlock(
+                Block::makeBasicBlock(Statement::makeAssignment(v, 
+                  ChpExprSingleRootDag::makeBitfield(
+                    std::make_unique<ChpExprSingleRootDag>(
+                      ChpExprSingleRootDag::makeVariableAccess(
+                        var_id, id_pool.getBitwidth(var_id))), 
+                    pos-1, pos-id_pool.getBitwidth(v)))));
+                vb.push_back(bb);
+                pos -= id_pool.getBitwidth(v);
+              }
+            }
+          }
+          return blockAllocator.newSequence(vb);
         }
         // otherwise, receive into a temporary of the right width, and then
         // assign to the right value
@@ -402,7 +481,6 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  item->label = NULL;
 	  item->space = NULL;
 	  item->type = ACT_CHP_ASSIGN;
-	  item->u.assign.id = map.varMap (id);
 	  if (map.isBool (id)) {
 	    t = ActExprIntType::Bool;
 	  }
@@ -411,8 +489,42 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  }
 	  item->u.assign.e =
 	    template_func_new_expr_from_irexpr
-	    (*curr->u_basic().stmt.u_assign().e.roots[idx], t, varToId, chanToId);
-	  list_append (ret->u.semi_comma.cmd, item);
+	    (*curr->u_basic().stmt.u_assign().e.roots[idx], t, varToId, chanToId, map);
+    if ((curr->u_basic().stmt.u_assign().e.roots[idx]->type()==IRExprTypeKind::ChanVar)
+    && map.id.getIsStruct(curr->u_basic().stmt.u_assign().e.roots[idx]->u_chvar().id)) {
+      auto chid = curr->u_basic().stmt.u_assign().e.roots[idx]->u_chvar().id;
+      auto ivar = map.intOfStructVar(id,chid);
+      auto svar = map.structVar(ivar);
+      item->u.assign.id = svar;
+      act_chp_lang_t *item2;
+      NEW (item2, act_chp_lang_t);
+      item2->label = NULL;
+      item2->space = NULL;
+      item2->type = ACT_CHP_ASSIGN;
+      item2->u.assign.id = ivar;
+      NEW (item2->u.assign.e, Expr);
+      item2->u.assign.e->type = E_USERMACRO;
+      auto it = map.sc->FullLookup(svar, nullptr);
+      auto dx = dynamic_cast<Data *>(it->BaseType());
+      hassert(dx);
+      auto um = dx->getMacro("int");
+      if (!um) {
+        um = dx->newMacro(string_cache("int"));
+        um->mkBuiltin();
+        um->setRetType(TypeFactory::Factory()->NewInt(
+            map.sc,Type::direction::NONE,0,const_expr(32)));
+        um->getRetType()->MkCached();
+      }
+      hassert(um);
+      item2->u.assign.e->u.fn.s = (char *)um;
+      item2->u.assign.e->u.fn.r = act_expr_var(svar);
+      list_append (ret->u.semi_comma.cmd, item);
+      list_append (ret->u.semi_comma.cmd, item2);
+    }
+    else {
+      item->u.assign.id = map.varMap (id);
+      list_append (ret->u.semi_comma.cmd, item);
+    }
 	  idx++;
 	}
 	break;
@@ -433,7 +545,35 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	item->u.comm.convert = 0;
 	item->u.comm.e =
 	  template_func_new_expr_from_irexpr
-	  (*curr->u_basic().stmt.u_send().e.m_dag.roots[0], t, varToId, chanToId);
+	  (*curr->u_basic().stmt.u_send().e.m_dag.roots[0], t, varToId, chanToId, map);
+  if (map.id.getIsStruct(curr->u_basic().stmt.u_send().chan)) {
+    Expr *e = item->u.comm.e;
+    NEW (item->u.comm.e, Expr);
+    item->u.comm.e->type = E_FUNCTION;
+    auto cid = map.chanMap(curr->u_basic().stmt.u_send().chan);
+    auto cit = map.sc->FullLookup(cid, nullptr);
+    auto it = TypeFactory::getChanDataType(cit);
+    auto dx = dynamic_cast<Data *>(it->BaseType());
+    hassert (dx);
+    char nmu[4096];
+    char nm[4096];
+    dx->snprintActName(nm,4096);
+    dx->getUnexpanded()->snprintActName(nmu,4096);
+    if (!dx->getMacro(nm)) {
+      dx->getUnexpanded()->setName(nm);
+      dx->synthStructMacro();
+      dx->getUnexpanded()->setName(nmu);
+    }
+    auto um = dx->getMacro(nm);
+    hassert (um);
+    auto f = um->getFunction();
+    hassert (f);
+    item->u.comm.e->u.fn.s = (char *)f;
+    NEW (item->u.comm.e->u.fn.r, Expr);
+    item->u.comm.e->u.fn.r->type = E_LT;
+    item->u.comm.e->u.fn.r->u.e.r = NULL;
+    item->u.comm.e->u.fn.r->u.e.l = expr_dup(e);
+  }
 	list_append (ret->u.semi_comma.cmd, item);
 	item->u.comm.var = NULL;
 	break;
@@ -448,12 +588,47 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	item->u.comm.convert = 0;
 	item->u.comm.e = NULL;
 	if (curr->u_basic().stmt.u_receive().var) {
-	  item->u.comm.var = map.varMap (*curr->u_basic().stmt.u_receive().var);
+    if (map.id.getIsStruct(curr->u_basic().stmt.u_receive().chan)) {
+      item->u.comm.var = map.structVar(map.intOfStructVar(*curr->u_basic().stmt.u_receive().var,
+                                        curr->u_basic().stmt.u_receive().chan));
+    }
+    else {
+      item->u.comm.var = map.varMap (*curr->u_basic().stmt.u_receive().var);
+    }
 	}
 	else {
 	  item->u.comm.var = NULL;
 	}
 	list_append (ret->u.semi_comma.cmd, item);
+  if (map.id.getIsStruct(curr->u_basic().stmt.u_receive().chan) &&
+      curr->u_basic().stmt.u_receive().var) {
+    auto ivar = map.intOfStructVar(*curr->u_basic().stmt.u_receive().var,
+                                        curr->u_basic().stmt.u_receive().chan);
+    NEW (item, act_chp_lang_t);
+	  item->label = NULL;
+	  item->space = NULL;
+	  item->type = ACT_CHP_ASSIGN;
+	  item->u.assign.id = ivar;
+	  NEW (item->u.assign.e, Expr);
+    
+    item->u.assign.e->type = E_USERMACRO;
+    auto svar = map.structVar(ivar);
+    auto it = map.sc->FullLookup(svar, nullptr);
+    auto dx = dynamic_cast<Data *>(it->BaseType());
+    hassert(dx);
+    auto um = dx->getMacro("int");
+    if (!um) {
+      um = dx->newMacro(string_cache("int"));
+	    um->mkBuiltin();
+	    um->setRetType(TypeFactory::Factory()->NewInt(
+          map.sc,Type::direction::NONE,0,const_expr(32)));
+	    um->getRetType()->MkCached();
+	  }
+    hassert(um);
+    item->u.assign.e->u.fn.s = (char *)um;
+    item->u.assign.e->u.fn.r = act_expr_var(svar);
+	  list_append (ret->u.semi_comma.cmd, item);
+  }
 	break;
       }
       break;
@@ -476,7 +651,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
       NEW (item, act_chp_lang_t);
       item->label = NULL;
       item->space = NULL;
-      item->type = ACT_CHP_SELECT;
+      item->type = (curr->u_select().is_nondet) ? ACT_CHP_SELECT_NONDET : ACT_CHP_SELECT;
       item->u.gc = NULL;
       gc = NULL;
       list_append (ret->u.semi_comma.cmd, item);
@@ -498,7 +673,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
 	  gc->g =
 	    template_func_new_expr_from_irexpr (*branch.g.u_e().e.m_dag.roots[0],
 						ActExprIntType::Bool,
-						varToId, chanToId);
+						varToId, chanToId, map);
 	  break;
 
 	case IRGuardType::Else:
@@ -525,7 +700,7 @@ act_chp_lang_t *seq_to_act (const Sequence &seq, var_to_actvar &map)
       item->u.gc->g = 
 	template_func_new_expr_from_irexpr (*curr->u_doloop().guard.m_dag.roots[0],
 					    ActExprIntType::Bool,
-					    varToId, chanToId);
+					    varToId, chanToId, map);
       item->u.gc->s = seq_to_act (curr->u_doloop().branch, map);
       list_append (ret->u.semi_comma.cmd, item);
       break;
@@ -564,12 +739,12 @@ act_chp_lang *chp_graph_to_act(const GraphWithChanNames &gr,
   return l;
 }
 
-static std::unordered_map<ChanId, ChanId> cc;
-static std::unordered_map<VarId, VarId> vv;
+// static std::unordered_map<ChanId, ChanId> cc;
+// static std::unordered_map<VarId, VarId> vv;
 
-ChanId get_chan_id (const ChanId &ci, ChpGraph &g_new, const ChpGraph &g_old)
+ChanId get_chan_id (const ChanId &ci, ChpGraph &g_new, const ChpGraph &g_old, std::unordered_map<ChanId, ChanId> &cc)
 {
-  if (cc.contains(ci))
+  if (cc.count(ci))
     return cc[ci];
   ChanId co = g_new.id_pool().makeUniqueChan(
                       g_old.id_pool().getBitwidth(ci), 
@@ -578,9 +753,9 @@ ChanId get_chan_id (const ChanId &ci, ChpGraph &g_new, const ChpGraph &g_old)
   return co;
 }
 
-VarId get_var_id (const VarId &vi, ChpGraph &g_new, const ChpGraph &g_old)
+VarId get_var_id (const VarId &vi, ChpGraph &g_new, const ChpGraph &g_old, std::unordered_map<VarId, VarId> &vv)
 {
-  if (vv.contains(vi))
+  if (vv.count(vi))
     return vv[vi];
   VarId vo = g_new.id_pool().makeUniqueVar(
                       g_old.id_pool().getBitwidth(vi), 
@@ -590,33 +765,34 @@ VarId get_var_id (const VarId &vi, ChpGraph &g_new, const ChpGraph &g_old)
 }
 
 template<typename ExprType> 
-ExprType deep_copy_expr (const ExprType &e, ChpGraph &g_new, const ChpGraph &g_old)
+ExprType deep_copy_expr (const ExprType &e, ChpGraph &g_new, const ChpGraph &g_old, std::unordered_map<VarId, VarId> &vv)
 {
   auto e1 = ExprType::deep_copy(e);
   auto used_vars = getIdsUsedByExpr(e1);
   std::unordered_map<VarId, VarId> new_vars_map = {}; 
   for ( auto var : used_vars ) {
-    new_vars_map.insert({var,get_var_id(var, g_new, g_old)});
+    new_vars_map.insert({var,get_var_id(var, g_new, g_old, vv)});
   }
   ExprType::remapVars(e1, new_vars_map);
   return e1;
 }
 
-Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_old)
+Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_old, 
+  std::unordered_map<ChanId, ChanId> &cc, std::unordered_map<VarId, VarId> &vv)
 {
   std::vector<Block *> blks = {};
   Block *curr = seq.startseq->child();
 
   auto remap_chan = [&](const ChanId &id) -> ChanId {
-    return get_chan_id(id, g_new, g_old);
+    return get_chan_id(id, g_new, g_old, cc);
   };
 
   auto remap_var = [&](const VarId &id) -> VarId {
-    return get_var_id(id, g_new, g_old);
+    return get_var_id(id, g_new, g_old, vv);
   };
 
   auto remap_var_opt = [&](const OptionalVarId &id) -> OptionalVarId {
-    return (id) ? get_var_id(*(id), g_new, g_old) : OptionalVarId();
+    return (id) ? get_var_id(*(id), g_new, g_old, vv) : OptionalVarId();
   };
 
   auto remap_vec = [&](const std::vector<VarId> &ids) -> std::vector<VarId> {
@@ -651,7 +827,7 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
           const auto &send = curr->u_basic().stmt;
           ChanId ci = remap_chan(send.u_send().chan);
           auto _b = g_new.newBasicBlock(Statement::makeSend(
-                    ci,deep_copy_expr<ChpExprSingleRootDag>(send.u_send().e, g_new, g_old)));
+                    ci,deep_copy_expr<ChpExprSingleRootDag>(send.u_send().e, g_new, g_old, vv)));
           blks.push_back(_b);
         }
         break;
@@ -662,7 +838,7 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
             new_assn_vars.push_back(remap_var(var));
           }
           auto _b = g_new.newBasicBlock(Statement::makeAssignment(
-                    new_assn_vars,deep_copy_expr<ChpExprDag>(assns.u_assign().e, g_new, g_old)));
+                    new_assn_vars,deep_copy_expr<ChpExprDag>(assns.u_assign().e, g_new, g_old, vv)));
           blks.push_back(_b);
         }
         break;
@@ -672,7 +848,7 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
     case BlockType::Par: {
         auto _b = g_new.newParBlock();
         for (const auto &branch : curr->u_par().branches) {
-          _b->u_par().branches.push_back(deep_copy_seq(branch, g_new, g_old));
+          _b->u_par().branches.push_back(deep_copy_seq(branch, g_new, g_old, cc, vv));
         }
         for (const auto &split : curr->u_par().splits) {
           Block::Variant_Par::PhiSplit newsplit;
@@ -692,9 +868,9 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
     case BlockType::Select: {
         auto _b = g_new.newSelectBlock();
         for (const auto &branch : curr->u_select().branches) {
-          _b->u_select().branches.push_back({deep_copy_seq(branch.seq, g_new, g_old),
+          _b->u_select().branches.push_back({deep_copy_seq(branch.seq, g_new, g_old, cc, vv),
                     (branch.g.type()==IRGuardType::Else) ? IRGuard::makeElse() :
-                    IRGuard::makeExpression(deep_copy_expr<ChpExprSingleRootDag>(branch.g.u_e().e, g_new, g_old))});
+                    IRGuard::makeExpression(deep_copy_expr<ChpExprSingleRootDag>(branch.g.u_e().e, g_new, g_old, vv))});
         }
         for (const auto &split : curr->u_select().splits) {
           Block::Variant_Select::PhiSplit newsplit;
@@ -713,8 +889,8 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
     break;
     case BlockType::DoLoop: {
       auto _b = g_new.newDoLoopBlock();
-      _b->u_doloop().branch = deep_copy_seq(curr->u_doloop().branch, g_new, g_old);
-      _b->u_doloop().guard = deep_copy_expr<ChpExprSingleRootDag>(curr->u_doloop().guard, g_new, g_old);
+      _b->u_doloop().branch = deep_copy_seq(curr->u_doloop().branch, g_new, g_old, cc, vv);
+      _b->u_doloop().guard = deep_copy_expr<ChpExprSingleRootDag>(curr->u_doloop().guard, g_new, g_old, vv);
       for (const auto &iphi : curr->u_doloop().in_phis) {
         Block::Variant_DoLoop::InPhi newiphi;
         newiphi.bodyin_id = remap_var(iphi.bodyin_id);
@@ -748,6 +924,87 @@ Sequence deep_copy_seq (const Sequence &seq, ChpGraph &g_new, const ChpGraph &g_
   return g_new.newSequence(blks);
 }
 
+Sequence dup_seq (ChpGraph &g, const Sequence &seq) {
+
+  std::vector<Block *> blks = {};
+  Block *curr = seq.startseq->child();
+
+  while (curr->type() != BlockType::EndSequence) {
+    switch (curr->type()) {
+    case BlockType::Basic: {
+      switch (curr->u_basic().stmt.type()) {
+      case StatementType::Receive: {
+        const auto &recv = curr->u_basic().stmt;
+        ChanId ci = recv.u_receive().chan;
+        OptionalVarId vi = recv.u_receive().var;
+        auto _b = g.newBasicBlock(Statement::makeReceive(ci,vi));
+        blks.push_back(_b);
+      }
+      break;
+      case StatementType::Send: {
+        const auto &send = curr->u_basic().stmt;
+        ChanId ci = send.u_send().chan;
+        auto _b = g.newBasicBlock(Statement::makeSend(
+                  ci,ChpExprSingleRootDag::deep_copy(send.u_send().e)));
+        blks.push_back(_b);
+      }
+      break;
+      case StatementType::Assign: {
+        const auto &assns = curr->u_basic().stmt;
+        std::vector<VarId> new_assn_vars = {};
+        for (const auto &var : assns.u_assign().ids ) {
+          new_assn_vars.push_back(var);
+        }
+        auto _b = g.newBasicBlock(Statement::makeAssignment(
+                  new_assn_vars,ChpExprDag::deep_copy(assns.u_assign().e)));
+        blks.push_back(_b);
+      }
+      break;
+      }
+    }
+    break;
+    case BlockType::Par: {
+        auto _b = g.newParBlock();
+        for (const auto &branch : curr->u_par().branches) {
+          _b->u_par().branches.push_back(dup_seq(g, branch));
+        }
+        _b->u_par().splits = curr->u_par().splits;
+        _b->u_par().merges = curr->u_par().merges;
+        blks.push_back(_b);
+    }
+    break;
+    case BlockType::Select: {
+        auto _b = g.newSelectBlock();
+        for (const auto &branch : curr->u_select().branches) {
+          _b->u_select().branches.push_back({dup_seq(g, branch.seq),
+                    (branch.g.type()==IRGuardType::Else) ? IRGuard::makeElse() :
+                    IRGuard::makeExpression(ChpExprSingleRootDag::deep_copy(branch.g.u_e().e))});
+        }
+        _b->u_select().splits = curr->u_select().splits;
+        _b->u_select().merges = curr->u_select().merges;
+        blks.push_back(_b);
+    }
+    break;
+    case BlockType::DoLoop: {
+      auto _b = g.newDoLoopBlock();
+      _b->u_doloop().branch = dup_seq(g, curr->u_doloop().branch);
+      _b->u_doloop().guard = ChpExprSingleRootDag::deep_copy(curr->u_doloop().guard);
+      _b->u_doloop().in_phis = curr->u_doloop().in_phis;
+      _b->u_doloop().out_phis = curr->u_doloop().out_phis;
+      _b->u_doloop().loop_phis = curr->u_doloop().loop_phis;
+      blks.push_back(_b);
+    }
+    break;
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+        break;
+    }
+    curr = curr->child();
+  }
+  return g.newSequence(blks);
+}
+
 GraphWithChanNames deep_copy_graph (
       const GraphWithChanNames &g, 
 std::unordered_map<ChanId, ChanId> &cc_in,
@@ -755,16 +1012,20 @@ std::unordered_map<VarId, VarId> &vv_in
 )
 {
   GraphWithChanNames ret;
-  cc.clear();
-  vv.clear();
-  ret.graph.m_seq = deep_copy_seq (g.graph.m_seq, ret.graph, g.graph);
+  std::unordered_map<ChanId, ChanId> cc{};
+  std::unordered_map<VarId, VarId> vv{};
+  ret.graph.m_seq = deep_copy_seq (g.graph.m_seq, ret.graph, g.graph, cc, vv);
   for ( const auto &x : g.name_from_chan ) {
-    ret.name_from_chan.insert({get_chan_id(x.first, ret.graph, g.graph),x.second});
+    ret.name_from_chan.insert({get_chan_id(x.first, ret.graph, g.graph, cc),x.second});
   }
   ret.graph.is_static_token_form = g.graph.is_static_token_form;
   cc_in = std::move(cc);
   vv_in = std::move(vv);
   return ret;
+}
+
+Sequence dup_m_seq (GraphWithChanNames &g) {
+  return dup_seq (g.graph, g.graph.m_seq);
 }
 
 } // namespace ChpOptimize

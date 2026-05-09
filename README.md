@@ -38,34 +38,26 @@ The options are:
 
    * `-h` : show this message
    * `-O` : run CHP optimizations. Requires the chp-opt package.
-   * `-P <int>` : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3  (default 0)
    * `-F dataflow|sdt|ring|decomp` : select synthesis output format.
       * `dataflow` : dataflow output generation.
       * `sdt` : syntax-directed translation for prs generation.
       * `ring` : ring-based synthesis for prs generation.
       * `decomp` : decompose chp into more concurrent chp; not a prs generation step. 
-   * `-R` : synthesize with ring approach. [deprecated, use `-F ring`]
-   * `-G` : Non-SSA style datapath [only ring]
    * `-C qdi|bd|bd2|bdp|di|ditest`: Circuit / Datapath family
-      * `qdi` : quasi delay insensitive (default)
+      * `qdi` : quasi delay insensitive (default) [w.i.p. for ring]
       * `bd` : bundled data
-      * `bd2` : bundled data 2 phase handshake [only ring?]
+      * `bd2` : bundled data 2 phase handshake [only ring]
       * `bdp` : bundled data pulsed [only ring]
       * `di` : delay insensitive [only ring]
       * `ditest` : delay insensitive - testing for signal forks with extra buffers - not synthesizable [only ring]
-   * `-b` : bundled-data datapath for SDT (default QDI) [deprecated use -C]
    * `-m <int>` : matched delay-line multiplier (in percentage) for ring synthesis. Default is 100 (1x).
    * `-X` : Enable projection during decomposition (w.i.p.) 
-   * `-P <int>` : Parallelism level for decomposition: 0 (or) 1 (or) 2 (or) 3 (or) 4 (default 0)
-         * 0 : Only necessary decomposition
-         * 1 : Break at receives
-         * 2 : Break at selections
-         * 3 : Break at minimum live variable points
-         * 4 : Break at assignments, receives and parallel branches
+   * `-P <double>` : Set cycle time target in picoseconds for projection (w.i.p.) (default=inf)
    * `-e <exprfile>`: process definitions for each expression evaluation are saved in `<exprfile>`. Default is `expr.act`
    * `-E abc|yosys|genus` : run expression optimization using the specified logic synthesis engine.
    * `-p <proc>` : the name of the ACT process to be translated (the top-level process). This is required.
    * `-o <file>` : where the result should be saved. Default is stdout.
+   * `-t` : print tool runtime breakdown (for `decomp`, also produce delay annotation file).
    * `<actfile>` : the input ACT file that contains the design.
 
 
@@ -77,6 +69,15 @@ This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act)
    * Install the ACT standard [library](https://github.com/asyncvlsi/stdlib)
    * Build this program using the standard ACT tool install instructions [here](https://github.com/asyncvlsi/act/blob/master/README_tool.md).
 
+### Quick-start guide for synth2
+
+Basic options to generate bundled-data circuits using the new Maelstrom synthesis technique:
+   * `synth2 -F ring -C bd2 -p <processname> -o <outfile> <infile>`
+   * This should produce `<outfile>` and `expr.act`.
+   * Simulate the process at the PRS-level with `actsim -ref=1 <outfile> ring_<processname>`
+   * Replace `bd2` with `bd` or `bdp` to try the other datapath styles for bundled-data.
+
+A more complete guide is [here](https://avlsi.csl.yale.edu/act/doku.php?id=tools:chp2prs).
 
 ### Overview
 
@@ -85,7 +86,7 @@ This program is for use with [the ACT toolkit](https://github.com/asyncvlsi/act)
 A continuation of a project with Rajit Manohar's AVLSI group (see [the original](https://github.com/zebmehring/ADCO), which was developed by Zeb Mehring as part of his senior project at Yale). A program which takes in an `.act` file of the form:
 ```
 defproc foo() {
-  /* variable delcarations */
+  /* variable declarations */
   chp {
     ...
   }
@@ -100,7 +101,7 @@ defproc sdt_foo <: foo() {
 ```
 using the libraries provided. The translation is created by using the `refine { ... }` module, and so use the `-ref=1` command-line option to ACT tools to use the generated circuit.
 
-The conversion is accomplished using syntax-directed translation, which is jusfitied using direct process decomposition.
+The conversion is accomplished using syntax-directed translation, which is justified using direct process decomposition.
 
 ### Test Suite
 ```
@@ -132,5 +133,6 @@ in summer/fall 2020.
 Papers that correspond to some of the methods used by the tools
 for generating asynchronous circuits:
 
+   * Karthi Srinivasan and Rajit Manohar. Improved Logic Synthesis for Asynchronous Circuits. International Symposium on Asynchronous Circuits and Systems (ASYNC), June 2026.
    * Karthi Srinivasan and Rajit Manohar. Maelstrom: A Logic Synthesis Technique for Asynchronous Circuits. IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), May 2025. doi:10.1109/TCAD.2025.3572364
    * Xiayuan Wen, Rui Li, and Rajit Manohar. Translating General Slack Elastic Programs into Dataflow Circuits. IEEE International Symposium on Asynchronous Circuits and Systems (ASYNC), May 2025. doi:10.1109/ASYNC65240.2025.00020

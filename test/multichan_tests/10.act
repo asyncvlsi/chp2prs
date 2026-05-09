@@ -1,0 +1,14 @@
+defproc mc10 (chan?(int) L1, L2; chan!(int) R) 
+{
+	int x, y;
+  chp {
+    x:=0;y:=0;
+    *[ 
+      [ #L1 -> L1?x
+      []#L2 -> L2?x
+      ];
+      L1?y;
+      R!(x+y)
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+import "13decomp.act";
+
+defproc test ()
+{
+    chan(ss) X, Y;
+    decomp_dc13 d(X,Y);
+
+    ss x, y;
+
+    chp {
+        x:=ss(2); X!x; Y?y;
+        [ y.c = 1 & y.a=0 & y.b=0 & y.d=0 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+

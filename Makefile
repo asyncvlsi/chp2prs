@@ -25,7 +25,7 @@ TARGETLIBS=libactchp2prspass_$(EXT).so
 TARGETINCS=synth.h engines.h
 TARGETINCSUBDIR=act/synth
 
-CPPSTD=c++20
+CPPSTD=c++17
 
 OBJS1=main.o
 

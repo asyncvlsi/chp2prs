@@ -1,0 +1,69 @@
+
+deftype kstr (
+    int<8> x;
+    int<8> y;
+    int<8> z
+){}
+
+defproc srci (chan!(int<2>) C)
+{
+    int<2> c;
+    chp {
+        c:=2;
+        *[ C!c; c:=c-1 ]
+    }
+}
+
+defproc src (chan!(kstr) C)
+{
+    kstr k;
+    chp {
+        *[ k := kstr(0); 
+            k.x:=1; k.y:=2; k.z:=3; 
+            C!k ]
+    }
+}
+
+defproc snk (chan?(kstr) C)
+{
+    kstr x;
+    chp {
+        *[ C?x ]
+    }
+} 
+
+defproc p (chan?(int<2>) C; 
+            chan?(kstr)  L; 
+            chan!(kstr)  R)
+{
+    kstr k;
+    int<2> c;
+    int<1> d;
+    chp {
+        d:=1; c:=0; 
+        k.x:=0; k.y:=0; k.z:=0;
+        *[ 
+            [  d=0 -> C?c;
+                    [ c=2 -> k.x:=k.x+k.y+k.z
+                    []c=1 -> k.z:=k.x+k.z
+                    []c=0 -> k.x:=k.x*2;
+                             k.y:=k.y*2;
+                             k.z:=k.z*2; 
+                             d:=1;
+                             R!k
+                    []else-> skip
+                    ]
+            []else -> L?k; d:=0
+            ]
+        ]
+    }
+}
+
+defproc testproc(chan!(kstr) Y)
+{
+    p b;
+    srci sri(b.C);
+    snk  sn(b.R);
+    src  sr(b.L);
+	Y = b.R;
+}

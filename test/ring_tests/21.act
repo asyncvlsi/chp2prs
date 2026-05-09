@@ -1,0 +1,38 @@
+
+defproc buf (chan?(int<8>) L1; chan!(int<4>) R1)
+{
+    int<8> x;
+    int<4> y, z;
+    chp {
+        *[
+            L1?x; 
+            y:=x{7..4},z:=x{3..0};
+            R1!(y+z)
+        ]
+    }
+}
+
+template<pint V>
+defproc src (chan!(int<8>) r)
+{
+	chp{
+		*[r!V]
+	}
+}
+
+defproc snk (chan?(int<4>) l)
+{
+	int<4> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<8>) X1; chan!(int<4>) Y1)
+{
+  buf b(X1,Y1);
+  
+  src<34> i1(X1);
+  
+  snk o1(Y1);
+}

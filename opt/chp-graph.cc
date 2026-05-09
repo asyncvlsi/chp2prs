@@ -38,7 +38,7 @@ void validateExprDag(const ChpExprDag &dag, const IdPool &id_pool) {
     std::unordered_map<const Node *, int> postorder;
     int idx = 0;
     ChpExprDag::iterNodes(dag, [&](const Node &n) {
-        hassert(!postorder.contains(&n));
+        hassert(!postorder.count(&n));
         postorder[&n] = idx++;
     });
 

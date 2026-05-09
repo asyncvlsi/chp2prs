@@ -69,8 +69,10 @@ do
         if [ $ok -eq 1 ]
         then
 	$ACTTOOL $opt -p testproc $i > runs/${orig}_df.act  2>runs/$i.t.stderr
-        if test -s runs/$i.t.stderr 
+        if test -s runs/$i.t.stderr
         then
+            if ! cmp $i.stderr runs/$i.t.stderr >/dev/null 2>&1
+            then
                 echo 
                 myecho "** FAILED SYNTHESIS, $opt TEST $i: stderr"
                 fail=`expr $fail + 1`
@@ -78,6 +80,7 @@ do
                 if [ ! x$ACT_TEST_VERBOSE = x ]; then
                         cat runs/$i.t.stderr
                 fi
+            fi
         fi
 	if [ $ok -eq 1 ]
 	then

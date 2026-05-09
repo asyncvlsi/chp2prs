@@ -1,0 +1,32 @@
+
+pint W = 1;
+
+defproc buf (chan?(int<W>) l; chan!(int<W>) r)
+{
+	int<W> x,y;
+	chp{
+		*[l?x;y:=x+1;r!y]
+	}
+}
+
+defproc src (chan!(int<W>) r)
+{
+	chp{
+		*[r!0]
+	}
+}
+
+defproc snk (chan?(int<W>) l)
+{
+	int<W> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<W>) X;chan!(int<W>) Y)
+{
+  buf b(X,Y);
+  src i(X);
+  snk o(Y);
+}

@@ -1,0 +1,37 @@
+defproc src (chan!(int<2>) C)
+{
+    int<2> x;
+    chp {
+        *[ C!1 ]
+    }
+}
+
+defproc nds1 (chan?(int<2>) L; chan!(int<4>) R)
+{
+    int<2> y;
+    int<4> s;
+    chp {
+        *[ 
+            [ #L -> y := L ];
+            s:=y+3;
+            R!s;
+            L?
+        ]
+    }
+}
+
+defproc snk (chan?(int<4>) C)
+{
+    int<4> x;
+    chp {
+        *[ C?x ]
+    }
+}
+
+defproc testproc(chan!(int<4>) Y)
+{
+    src s1;
+    snk s2;
+    nds1 n1(s1.C, s2.C);
+    Y = s2.C;
+}

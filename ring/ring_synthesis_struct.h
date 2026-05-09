@@ -17,7 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
 #ifndef SYNTHESIS_STRUCT_H
@@ -36,6 +36,7 @@ struct var_info {
   unsigned int fischan:1;	// channel or int?
   unsigned int fisinport:2;	// 1 if input, 0 if output, 2 if both
   unsigned int fisbool:1;	// bool variable or bool chan
+  unsigned int fisextbool:1;	// external read-only config bool variable - in port list
 
   int width;			// bitwidth
 
@@ -61,21 +62,24 @@ struct var_info {
   and live_var info.
 */
 
-enum class LatchType { Latch, Mux, ICs };
+enum class LatchType { Latch, Alias, Mux, ICs };
 
 typedef struct latch_info {
   // type of the struct
   LatchType type;
   
   // ID for normal latches
-  int latch_number; 
+  // Length 1 if int
+  // No. of member fields if struct
+  // int latch_number; 
+  std::vector<int> latch_numbers; 
 
   /*
     Live vars at this point (in for actions, out for selections)
     Length: (No. of live vars out of merge)
     Not really used for actions
   */
-  list_t *live_vars;
+  std::vector<act_connection *> live_vars;
 
   /*
     Used at merge-points.

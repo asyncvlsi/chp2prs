@@ -24,8 +24,8 @@
 #define __DECOMP_ANALYSIS_H__
 
 #include <act/act.h>
-#include "../opt/chp-opt.h"
-#include "../opt/act-names.h"
+#include <act/chp/chp-opt.h>
+#include <act/chp/act-names.h>
 
 // ChpOptimize::ChpGraph *g;
 using namespace ChpOptimize;
@@ -44,18 +44,18 @@ typedef struct decomp_info {
     bool break_after;
 } decomp_info_t;
 
-static decomp_info_t *_deepcopy_decomp_info(decomp_info_t *di)
+static decomp_info_t _deepcopy_decomp_info(decomp_info_t di)
 {
-    decomp_info_t *di_new;
-    di_new = new decomp_info_t;
-    di_new->live_in_vars = di->live_in_vars;
-    di_new->live_in_vec = di->live_in_vec;
-    di_new->live_out_vars = di->live_out_vars;
-    di_new->live_out_vec = di->live_out_vec;
-    di_new->total_bitwidth_in = di->total_bitwidth_in;
-    di_new->total_bitwidth_out = di->total_bitwidth_out;
-    di_new->break_before = di->break_before;
-    di_new->break_after = di->break_after;
+    decomp_info_t di_new;
+    // di_new = new decomp_info_t;
+    di_new.live_in_vars = di.live_in_vars;
+    di_new.live_in_vec = di.live_in_vec;
+    di_new.live_out_vars = di.live_out_vars;
+    di_new.live_out_vec = di.live_out_vec;
+    di_new.total_bitwidth_in = di.total_bitwidth_in;
+    di_new.total_bitwidth_out = di.total_bitwidth_out;
+    di_new.break_before = di.break_before;
+    di_new.break_after = di.break_after;
     return di_new;
 }
 
@@ -68,13 +68,9 @@ static decomp_info_t *_deepcopy_decomp_info(decomp_info_t *di)
 class DecompAnalysis {
     public:
 
-        DecompAnalysis ( FILE *fp_out, GraphWithChanNames &g_in, Scope *s_in)
-            {   
-                fp = fp_out;
-                g = &g_in;
-                s = s_in;
-                decomp_info_map.clear();
-            } 
+        DecompAnalysis (GraphWithChanNames &g_in, Scope *s_in)
+        : fp (stdout), g(&g_in), s(s_in), decomp_info_map({})
+        {} 
 
         /*
             Call live-vars analysis in opt/
@@ -88,7 +84,7 @@ class DecompAnalysis {
         /*
             Returns map from block to info about block
         */
-        std::unordered_map<const Block *, decomp_info_t *> get_decomp_info_map ();
+        std::unordered_map<const Block *, decomp_info_t> get_decomp_info_map ();
     
     protected: 
 
@@ -99,7 +95,7 @@ class DecompAnalysis {
         /*
             Map from a block to info about that block
         */
-        std::unordered_map<const Block *, decomp_info_t *> decomp_info_map;
+        std::unordered_map<const Block *, decomp_info_t> decomp_info_map;
 
         /*
             Populate the map based on information from the 
@@ -114,60 +110,11 @@ class DecompAnalysis {
         */
         int _compute_total_bits (std::unordered_set<VarId> vars);
 
-        /*
-            NOTE: All those below are unused
-            TODO: Delete all this later
-        */
-        // running state of live variables
-        std::unordered_set<VarId> H_live;
-
-        // copy of running state
-        std::unordered_set<VarId> H_saved;
-
-        // stack of parent states - used when descending down into selections
-        std::vector<std::unordered_set<VarId>> H_parents;
-
-        unsigned int total_bits;
-
-        // traverse the graph and generate the live-in var map
-        void _generate_decomp_info (Sequence seq, int root);
-
-        void _map_block_to_live_vars (Block *, decomp_info_t *);
-
-        void _add_to_live_vars (VarId vid);
-        void _add_to_live_vars (std::unordered_set<VarId> vids);
-        void _remove_from_live_vars (VarId vid);
-
-        // return a decomp_info_t based on the current state of H_live
-        decomp_info_t *_generate_decomp_info ();
-        decomp_info_t *_generate_decomp_info (std::unordered_set<VarId> H);
-
         // print decomp_info_t's for the whole graph
         void _print_decomp_info (Sequence seq,  int root);
 
         // print a decomp_info_t object
-        void _print_decomp_info (decomp_info *di);
-
-        // save the state of H_live into H_saved
-        void _save_state_live_vars ();
-
-        // restore the state of H_live from H_saved
-        void _restore_state_live_vars ();
-
-        // push current H_live into H_parents stack
-        void _init_union ();
-        
-        // pop H_parents stack
-        void _free_union ();
-        
-        // compute union of top element of stack and current H_live
-        void _h_live_union_h_parent ();
-        std::unordered_set<VarId> _set_union (std::unordered_set<VarId>, std::unordered_set<VarId>);
-
-        std::unordered_set<VarId> _prune_T (std::unordered_set<VarId>, std::vector<std::unordered_set<VarId>>);
-
-        // add the vars from top element of stack to H_live
-        void _restore_live_vars_from_parent (); //_restore_live_vars_from_parent
+        void _print_decomp_info (const decomp_info &di);
 };
 
 #endif

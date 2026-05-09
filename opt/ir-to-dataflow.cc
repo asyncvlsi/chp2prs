@@ -124,7 +124,7 @@ struct DataflowChannelManager {
   // return current channel mapping for variable v; if there isn't a
   // mapping, create one and return it.
   ChanId mapvar (const VarId &v) {
-    if (!varmap.contains(v)) {
+    if (!varmap.count(v)) {
       varmap[v] = id_pool->makeUniqueChan (id_pool->getBitwidth (v));
     }
     return varmap[v];
@@ -419,7 +419,7 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm)
 	break;
       }
       case StatementType::Send: {
-	if (dm.chanmap.contains (curr->u_basic().stmt.u_send().chan)) {
+	if (dm.chanmap.count (curr->u_basic().stmt.u_send().chan)) {
 	  // we already have a map for this channel, so we need to
 	  // move it to the current outer scope
 	  dm.chanmap[curr->u_basic().stmt.u_send().chan] = seq.startseq;
@@ -430,7 +430,7 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm)
 	break;
       }
       case StatementType::Receive: {
-	if (dm.chanmap.contains (curr->u_basic().stmt.u_receive().chan)) {
+	if (dm.chanmap.count (curr->u_basic().stmt.u_receive().chan)) {
 	  // we already have a map for this channel, so we need to
 	  // move it to the current outer scope
 	  dm.chanmap[curr->u_basic().stmt.u_receive().chan] = seq.startseq;
@@ -457,7 +457,7 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm)
       // construct merged map
       for (auto &map : maps) {
          for (auto &[ch, blk] : map) {
-             if (dm.chanmap.contains (ch)) { 
+             if (dm.chanmap.count (ch)) { 
                   dm.chanmap[ch] = seq.startseq;
              } 
              else {
@@ -479,7 +479,7 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm)
       // construct merged map
       for (auto &map : maps) {
          for (auto &[ch, blk] : map) {
-             if (dm.chanmap.contains (ch)) { 
+             if (dm.chanmap.count (ch)) { 
                  dm.chanmap[ch] = curr;
              } 
              else {
@@ -488,7 +488,7 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm)
         }
       }
       for (auto &[ch, blk] : curmap) {
-        if (dm.chanmap.contains (ch)) {
+        if (dm.chanmap.count (ch)) {
            dm.chanmap[ch] = seq.startseq;
         }
         else {
@@ -502,7 +502,7 @@ void computeOutermostBlock (Sequence seq, DataflowChannelManager &dm)
       dm.chanmap.clear();
       computeOutermostBlock (curr->u_doloop().branch, dm);
       for (auto &[ch, blk] : curmap) {
-        if (dm.chanmap.contains (ch)) {
+        if (dm.chanmap.count (ch)) {
            dm.chanmap[ch] = seq.startseq;
         }
         else {
@@ -891,7 +891,7 @@ MultiChannelState reconcileMultiSel (Block *curr,
 
       // if the channel is variable token at this point, then it is
       // variable token for the entire block
-      if (msv[idx].ctrlmap.contains(ch)) {
+      if (msv[idx].ctrlmap.count(ch)) {
 	variable.insert (ch);
       }
     }
@@ -917,10 +917,10 @@ MultiChannelState reconcileMultiSel (Block *curr,
     // this is the selection control
     OptionalChanId ctrlguard;
 
-    if (idxvec.size() != msv.size() || variable.contains(ch)) {
+    if (idxvec.size() != msv.size() || variable.count(ch)) {
       std::vector<ChanId> ctrl_chans;
       for (auto idx : idxvec) {
-	if (!msv[idx].ctrlmap.contains (ch)) {
+	if (!msv[idx].ctrlmap.count (ch)) {
 	  msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
 	}
 	ctrl_chans.push_back(msv[idx].ctrlmap[ch]);
@@ -1045,7 +1045,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
       chan_idx[ch].push_back(idx);
       // if the channel is variable token at this point, then it is
       // variable token for the entire block
-      if (msv[idx].ctrlmap.contains(ch)) {
+      if (msv[idx].ctrlmap.count(ch)) {
 	variable.insert (ch);
       }
     }
@@ -1056,7 +1056,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
     dm.rr_noctrl.clear();
     dm.rr_ctrl.clear();
     
-    if (variable.contains (ch) || idxvec.size() > 1) {
+    if (variable.count (ch) || idxvec.size() > 1) {
       if (idxvec.size() == 1) {
 	// just propagate the single variable channel up
 	ret.datamap[ch] = msv[idxvec[0]].datamap[ch];
@@ -1069,7 +1069,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	ChanId selout = dm.fresh (guard_width (idxvec.size()));
 	bool special_case = true;
 	for (auto idx : idxvec) {
-	  if (msv[idx].ctrlmap.contains (ch)) {
+	  if (msv[idx].ctrlmap.count (ch)) {
 	    special_case = false;
 	  }
 	}
@@ -1077,7 +1077,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	std::vector<ChanId> chlist;
 	if (!special_case) {
 	  for (auto idx : idxvec) {
-	    if (!msv[idx].ctrlmap.contains (ch)) {
+	    if (!msv[idx].ctrlmap.count (ch)) {
 	      msv[idx].ctrlmap[ch] = dm.generateMultiBaseCase (d);
 	    }
 	    chlist.push_back(msv[idx].ctrlmap[ch]);
@@ -1102,7 +1102,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 								if (bw > 0) { return dm.fresh (bw); } else { return dm.fresh (ch); } };
 	  
 
-	  if (dm.rr_ctrl.contains(idxvec.size())) {
+	  if (dm.rr_ctrl.count(idxvec.size())) {
 	    auto &res = dm.rr_ctrl[idxvec.size()];
 	    dm.generateCopy (res.first, selout, d);
 	    if (cfresh) {
@@ -1118,7 +1118,7 @@ MultiChannelState reconcileMultiSeq (Block *curr,
 	    
 	    dm.rr_ctrl[idxvec.size()] = std::pair<ChanId,ChanId>(selout,*cfresh);
 	  }
-	  else if (dm.rr_noctrl.contains (idxvec.size())) {
+	  else if (dm.rr_noctrl.count (idxvec.size())) {
 	    ChanId res = dm.rr_noctrl[idxvec.size()];
 	    dm.generateCopy (res, selout, d);
 	  }
@@ -1227,7 +1227,7 @@ MultiChannelState reconcileMultiLoop (Block *curr,
       // channel has been fully reconciled!
     }
     else {
-      if (!msv.ctrlmap.contains (ch)) {
+      if (!msv.ctrlmap.count (ch)) {
 	msv.ctrlmap[ch] = dm.generateMultiBaseCase (d);
       }
 
@@ -1565,7 +1565,7 @@ void computeUses (int idx, Dataflow &d,
 
   auto updatedefs = [&] (const ChanId &ch)
     {
-     hassert (!defs.contains(ch));
+     hassert (!defs.count(ch));
      defs[ch] = idx;
     };
   
@@ -1846,6 +1846,8 @@ void elimDeadCycles (std::vector<Dataflow> &d, GraphWithChanNames &gr)
   delete a;
 }
 
+} /* private namespace */
+
 bool isProbeFree (const ChpExprDag &e)
 {
   bool retval = true;
@@ -1907,8 +1909,6 @@ bool isProbeFree (const Sequence &seq)
   return true;
 }
 
-
-} // namespace
 
 void printDataflowExpr (std::ostream &os, const DExpr &d)
 {
@@ -1973,7 +1973,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 
   // sink UNUSED channels that are part of the varmap!
   for (auto &[var, ch] : m.varmap) {
-    if (!dfuses.contains (ch)) {
+    if (!dfuses.count (ch)) {
       d.push_back (Dataflow::mkSink (ch));
     }
   }
@@ -1994,7 +1994,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   // check that any used variable is defined or an input
   // and any defined variable is used or an output
   for (auto &[x,l] : dfuses) {
-    if (!(dfdefs.contains(x) || gr.name_from_chan.contains (x))) {
+    if (!(dfdefs.count(x) || gr.name_from_chan.count (x))) {
       warning ("I-Internal channel C%d is used but not defined?",
 	       (int)x.m_id);
     }
@@ -2005,7 +2005,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   // because we don't know until we process the bodies if we need the
   // guard channels or not.
   for (auto &[x,l] : dfdefs) {
-    if (!(dfuses.contains(x) || gr.name_from_chan.contains (x))) {
+    if (!(dfuses.count(x) || gr.name_from_chan.count (x))) {
       warning ("I-Internal channel C%d is defined, but not used?",
 	       (int)x.m_id);
     }
@@ -2023,8 +2023,8 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
     dead_chans.clear();
 
     for (auto &[x,l] : dfdefs) {
-      if (processed.contains (x)) continue;
-      if (!(dfuses.contains(x) || gr.name_from_chan.contains (x))) {
+      if (processed.count (x)) continue;
+      if (!(dfuses.count(x) || gr.name_from_chan.count (x))) {
 	dead_chans.insert (x);
       }
     }
@@ -2137,7 +2137,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	dfuses[ud].remove (dead_idx);
 	if (dfuses[ud].empty()) {
 	  dfuses.erase (ud);
-	  if (gr.name_from_chan.contains (ud)) {
+	  if (gr.name_from_chan.count (ud)) {
 	    d.push_back (Dataflow::mkSink (ud));
 	  }
 	}
@@ -2150,7 +2150,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   //   the def has no uses
   //   the channel defined is not in the original chp
   for (auto &[ch, idx] : dfdefs) {
-    if (!(dfuses.contains (ch) || gr.name_from_chan.contains (ch))) {
+    if (!(dfuses.count (ch) || gr.name_from_chan.count (ch))) {
       // check this
       if (d[idx].u.type() == DataflowKind::Func) {
 	int subidx = 0;
@@ -2195,7 +2195,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	});
       if (count == 1 && lhs) {
 	// single LHS, variable
-	if (dfuses.contains(x.u_func().ids[0])) {
+	if (dfuses.count(x.u_func().ids[0])) {
 	  // there are uses for the rhs, so use simple forward
 	  // substitution, and mark this index deleted
 	  for (auto uses : dfuses[x.u_func().ids[0]]) {
@@ -2206,7 +2206,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	  }
 	  // this is going to be an internal channel, but check just
 	  // in case...
-	  if (!gr.name_from_chan.contains (x.u_func().ids[0])) {
+	  if (!gr.name_from_chan.count (x.u_func().ids[0])) {
 	    delidx.insert (std::pair(idx,-1));
 	  }
 	}
@@ -2215,13 +2215,13 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	  // uses.
 	  if (1 || dfuses[*lhs].front() == dfuses[*lhs].back()) {
 	    // no other uses of the lhs, replace the def
-	    if (dfdefs.contains (*lhs)) {
-              if (!gr.name_from_chan.contains (x.u_func().ids[0])) {
+	    if (dfdefs.count (*lhs)) {
+              if (!gr.name_from_chan.count (x.u_func().ids[0])) {
 	      // replace *lhs with the rhs in the def
 	      replaceChan (d[dfdefs[*lhs]], *lhs, x.u_func().ids[0]);
 
 	      // replace any uses of the LHS with the rhs
-	      if (dfuses.contains (*lhs)) {
+	      if (dfuses.count (*lhs)) {
 		for (auto uses : dfuses[*lhs]) {
 		  replaceChanUses (d[uses], *lhs, x.u_func().ids[0]);
 		}
@@ -2232,7 +2232,7 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
 	    }
 	    else {
 	      // no defs for the lhs; must be a primary input!
-	      Assert (gr.name_from_chan.contains(*lhs), "Not sure how this happeed!");
+	      Assert (gr.name_from_chan.count(*lhs), "Not sure how this happeed!");
 	    }
 	  }
 	}
@@ -2251,13 +2251,13 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   std::vector<Dataflow> dfinal;
   idx = 0;
   for (auto &elem : d) {
-    if (!delidx.contains (std::pair(idx,-1))) {
+    if (!delidx.count (std::pair(idx,-1))) {
       // check if there are sub-indices to be deleted
       if (elem.u.type() == DataflowKind::Func) {
 	std::vector<DExprDag::Node *> newroots;
 	std::vector<ChanId> newids;
 	for (int ii = 0; ii < elem.u_func().ids.size(); ii++) {
-	  if (!delidx.contains(std::pair(idx,ii))) {
+	  if (!delidx.count(std::pair(idx,ii))) {
 	    newids.push_back (elem.u_func().ids[ii]);
 	    newroots.push_back (elem.u_func().e.roots[ii]);
 	  }
@@ -2298,14 +2298,14 @@ std::vector<Dataflow> chp_to_dataflow(GraphWithChanNames &gr)
   // check that any used varaible is defined or an input
   // and any defined variable is used or an output
   for (auto &[x,l] : dfuses) {
-    if (!(dfdefs.contains(x) || gr.name_from_chan.contains (x))) {
+    if (!(dfdefs.count(x) || gr.name_from_chan.count (x))) {
       warning ("Internal channel C%d is used but not defined?",
 	       (int)x.m_id);
     }
   }
 
   for (auto &[x,l] : dfdefs) {
-    if (!(dfuses.contains(x) || gr.name_from_chan.contains (x))) {
+    if (!(dfuses.count(x) || gr.name_from_chan.count (x))) {
       warning ("Internal channel C%d is defined, but not used?",
 	       (int)x.m_id);
     }
@@ -2342,7 +2342,10 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
 	t = ActExprIntType::Int;
       }
       e->u.func.lhs =
-	template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId, varToId);
+      template_func_new_expr_from_irexpr (*d.u_func().e.roots[i], t, varToId, varToId, map);
+      if (map.isStruct(d.u_func().ids[i])) {
+        e->u.func.lhs = map.wrap_in_struct(e->u.func.lhs, d.u_func().ids[i]);
+      }
 
       if (d.keep) {
 	e->u.func.nbufs = const_expr (1);
@@ -2361,6 +2364,9 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
     e->u.func.lhs->type = E_VAR;
     e->u.func.lhs->u.e.l = (Expr *) map.chanMap (d.u_init().lhs);
     e->u.func.lhs->u.e.r = NULL;
+    if (map.isStruct(d.u_init().rhs)) {
+      e->u.func.lhs = map.wrap_in_struct(e->u.func.lhs, d.u_init().rhs);
+    }
     if (map.isBool (d.u_init().lhs)) {
       e->u.func.init = const_expr_bool (d.u_init().v.getVal (0));
     }
@@ -2424,6 +2430,54 @@ void toAct (list_t *l, Dataflow &d, var_to_actvar &map)
   }
 }
 
+void fix_struct (std::vector<Dataflow> &ds,
+  Dataflow &d, 
+  GraphWithChanNames &gr,
+  Scope *s)
+{
+  var_to_actvar map(s, gr.graph.id_pool());
+  switch (d.u.type()) {
+  case DataflowKind::Func:{
+  }
+  break;
+  case DataflowKind::Init: {
+  }
+  break;
+  case DataflowKind::Split: {
+    if (map.isStruct(d.u_split().in_id)) {
+      int bw = gr.graph.id_pool().getBitwidth(d.u_split().in_id);
+      auto newchan = gr.graph.id_pool().makeUniqueChan(bw, false);
+      ds.push_back(Dataflow::mkBuf(d.u_split().in_id, newchan, bw));
+      d.u_split().in_id = newchan;
+    }
+  }
+  break;
+  case DataflowKind::MergeMix: {
+    if (map.isStruct(d.u_mergemix().out_id)) {
+      int bw = gr.graph.id_pool().getBitwidth(d.u_mergemix().out_id);
+      auto newchan = gr.graph.id_pool().makeUniqueChan(bw, false);
+      ds.push_back(Dataflow::mkBuf(newchan, d.u_mergemix().out_id, bw));
+      d.u_mergemix().out_id = newchan;
+    }
+  }
+  break;
+  case DataflowKind::Arbiter:
+  hassert(false);
+  break;
+  case DataflowKind::Sink:
+  break;
+  }
+}
+
+void fix_structs (std::vector<Dataflow> &d,
+  GraphWithChanNames &gr,
+  Scope *s) 
+{
+  for (auto &x : d) {
+    fix_struct (d, x, gr, s);
+  }
+}
+
 }
 
 act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
@@ -2447,6 +2501,8 @@ act_dataflow *dataflow_to_act (std::vector<Dataflow> &d,
 
   ret->dflow = list_new ();
   ret->isexpanded = 1;
+
+  fix_structs (d, gr, s);
 
   for (auto &x : d) {
     if (x.dead) continue;

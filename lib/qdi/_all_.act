@@ -25,3 +25,14 @@ import "syn/syn.act";
 import "syn/qdi/dpath.act";
 import "syn/qdi/math.act";
 import "syn/qdi/stdcells.act";
+
+namespace syn {
+
+export defproc ram_builtin <: std::ram () 
+{
+  { 42=42 : "placeholder" };
+  // TODO: SDT QDI memory compiler circuit needs to go here
+  // TODO: correct port overrides as well
+}
+
+}

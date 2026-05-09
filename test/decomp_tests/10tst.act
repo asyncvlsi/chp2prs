@@ -1,0 +1,22 @@
+import "10decomp.act";
+
+defproc test ()
+{
+    chan(int) A, B, X, Y;
+    chan(int<1>) C;
+    decomp_dc10 m(A, B, X, Y, C);
+
+    int x1, x2, y1, y2;
+
+    chp {
+        (A!4 ; A!2 ; A!0 ; A!0), 
+        (B!0 ; B!0 ; B!7 ; B!8), 
+        (C!0 ; C!0 ; C!1 ; C!1), 
+        (X?x1 ; X?x2), 
+        (Y?y1 ; Y?y2);
+        [ x1=5 & x2=3 & y1=9 & y2=10 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+

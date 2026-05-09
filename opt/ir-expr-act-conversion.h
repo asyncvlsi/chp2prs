@@ -24,8 +24,11 @@
  */
 
 #include "ir-expr.h"
+#include "act-names.h"
 #include <act/act.h>
 #include <common/int.h>
+#include <iostream>
+using namespace std;
 
 
 namespace ChpOptimize {
@@ -83,7 +86,7 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
     // short-cut for the recursive call
     auto new_irexpr_from_expr = [&](const ActExprStruct *xo)
       -> std::unique_ptr<IRExpr<Tag, VarIdType, ChanIdType, manageMemory>> {
-      return template_func_new_irexpr_from_expr<Tag, VarIdType, ChanIdType, manageMemory>(										  xo, varid_from_actid, chanid_from_actid);
+      return template_func_new_irexpr_from_expr<Tag, VarIdType, ChanIdType, manageMemory>(xo, varid_from_actid, chanid_from_actid);
     };
 
    using IRExpr_t = IRExpr<Tag, VarIdType, ChanIdType, manageMemory>;
@@ -103,6 +106,10 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
        * tree with a binary concat operator (IRExpr v/s Expr
        * representation).
        */
+        // o->u.e.r can be null for concat!
+        if (!(o->u.e.r)) {
+            return new_irexpr_from_expr(o->u.e.l);
+        }
         hassert(o->u.e.r);
         hassert(o->u.e.r->type == E_CONCAT);
         if (o->u.e.r->u.e.r == nullptr) {
@@ -190,9 +197,11 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
     case E_BUILTIN_INT:
         if (o->u.e.r) {
             hassert(o->u.e.r->type == E_INT);
+            auto bw = detail::bigint_from_int_expr(o->u.e.r).first.getI32();
+            if (bw==0) 
+                return std::make_unique<IRExpr_t>(IRExpr_t::makeConstant(BigInt{0},0));
             return std::make_unique<IRExpr_t>(IRExpr_t::makeBitfield(
-                new_irexpr_from_expr(o->u.e.l),
-                detail::bigint_from_int_expr(o->u.e.r).first.getI32() - 1, 0));
+                new_irexpr_from_expr(o->u.e.l), bw - 1, 0));
         } else {
             // this is a conversion from a bool -> int, so the bitwidth is 1, so
             // it is a nop
@@ -253,8 +262,17 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
     case E_VAR: {
       // this could be a channel variable too!
         auto [id, bit_width] = varid_from_actid((ActId *)o->u.e.l);
-        return std::make_unique<IRExpr_t>(
+	if (bit_width == -2) {
+	  // special indicator says the variable was not found; so it
+	  // should be a channel expression
+	  auto [id, bit_width] = chanid_from_actid((ActId *)o->u.e.l);
+	  return std::make_unique<IRExpr_t>(
+	    IRExpr_t:: makeChanVariable(id, bit_width));
+	}
+	else {
+	  return std::make_unique<IRExpr_t>(
             IRExpr_t::makeVariableAccess(id, bit_width));
+	}
     }
       
     case E_PROBE: {
@@ -274,12 +292,23 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
         hassert(o->u.e.r->u.e.r->type == E_INT);
 
         auto [id, bit_width] = varid_from_actid((ActId *)o->u.e.l);
-
+	if (bit_width == -2) {
+	  // special indicator says the variable was not found; so it
+	  // should be a channel expression
+	  auto [id, bit_width] = chanid_from_actid((ActId *)o->u.e.l);
+        return std::make_unique<IRExpr_t>(IRExpr_t::makeBitfield(
+            std::make_unique<IRExpr_t>(
+                IRExpr_t::makeChanVariable(id, bit_width)),
+            detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32(),
+            o->u.e.r->u.e.l ?  detail::bigint_from_int_expr(o->u.e.r->u.e.l).first.getI32() : detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32()));
+	}
+	else {
         return std::make_unique<IRExpr_t>(IRExpr_t::makeBitfield(
             std::make_unique<IRExpr_t>(
                 IRExpr_t::makeVariableAccess(id, bit_width)),
             detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32(),
             o->u.e.r->u.e.l ?  detail::bigint_from_int_expr(o->u.e.r->u.e.l).first.getI32() : detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32()));
+	}
     }
     case E_RAWFREE:
     case E_NUMBER: {
@@ -309,14 +338,15 @@ template <typename Tag, typename VarIdType,
 ActExprStruct *template_func_new_expr_from_irexpr(
     const IRExpr<Tag, VarIdType, ChanIdType, manageMemory> &e, ActExprIntType expectedType,
     const ActIdFromVarIdFn &actid_from_varid,
-    const ActIdFromChanIdFn &actid_from_chanid) {
+    const ActIdFromChanIdFn &actid_from_chanid,
+    const var_to_actvar &map) {
     static_assert(
         std::is_same_v<std::invoke_result_t<ActIdFromVarIdFn, VarIdType>,
                        ActId *>);
     static_assert(
         std::is_same_v<std::invoke_result_t<ActIdFromChanIdFn, ChanIdType>,
                        ActId *>);
-    hassert(e.width > 0);
+    hassert(e.width >= 0);
     if (e.width > 1)
         hassert(expectedType == ActExprIntType::Int);
 
@@ -326,7 +356,7 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         [&](const IRExpr_t &xo,
             ActExprIntType expectedType) -> ActExprStruct * {
 	  return template_func_new_expr_from_irexpr<Tag, VarIdType, ChanIdType, manageMemory>(
-											      xo, expectedType, actid_from_varid, actid_from_chanid);
+											      xo, expectedType, actid_from_varid, actid_from_chanid, map);
     };
 
     //    ActExprStruct *r;
@@ -498,8 +528,15 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         // TODO normalize this into a VarId{} here
         ActId *id = actid_from_varid(e.u_var().id);
         result->u.e.l = (Expr *)(id); // this is really an (ActId*)
-        return typedFromInt(result,
-                            expectedType); // we only support "int" variables
+        if (map.ActIdIsPureStructChan(id)) { // should only trigger in DExpr mode
+            return map.wrap_in_int(id);
+        }
+        if (map.isBool(e.u_var().id)) 
+            return typedFromBool(result, 
+                                expectedType);
+        else
+            return typedFromInt(result,
+                                expectedType); 
     }
     case IRExprTypeKind::ChanVar: {
         Expr *result = newExprStruct();
@@ -507,17 +544,21 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         // TODO normalize this into a VarId{} here
         ActId *id = actid_from_chanid(e.u_chvar().id);
         result->u.e.l = (Expr *)(id); // this is really an (ActId*)
-        return typedFromInt(result,
-                            expectedType); // we only support "int" variables
+        if (map.isBool(e.u_chvar().id))
+            return typedFromBool(result,
+                                expectedType);
+        else 
+            return typedFromInt(result,
+                                expectedType); 
     }
     case IRExprTypeKind::ChanProbe: {
         Expr *result = newExprStruct();
         result->type = E_PROBE;
         // TODO normalize this into a VarId{} here
-        ActId *id = actid_from_chanid(e.u_chvar().id);
+        ActId *id = actid_from_chanid(e.u_probe().id);
         result->u.e.l = (Expr *)(id); // this is really an (ActId*)
-        return typedFromInt(result,
-                            expectedType); // we only support "int" variables
+        return typedFromBool(result,
+                            expectedType);
     }
     case IRExprTypeKind::Bitfield: {
         if (e.u_bitfield().slice.lo() == 0) {
@@ -532,23 +573,36 @@ ActExprStruct *template_func_new_expr_from_irexpr(
             return typedFromInt(result, expectedType);
         } else {
             Expr *result = newExprStruct();
-            result->type = E_BITFIELD;
-            // can only decode an ir tree if bitfields are only appled
-            // to variable expressions. Run the final pass first!
-            hassert(e.u_bitfield().e->type() == IRExprTypeKind::Var);
-            ActId *id = actid_from_varid(e.u_bitfield().e->u_var().id);
-            result->u.e.l = (Expr *)id;
-            NEW(result->u.e.r, ActExprStruct);
-            result->u.e.r->type = E_BITFIELD;
-            NEW(result->u.e.r->u.e.l, ActExprStruct);
-            result->u.e.r->u.e.l->type = E_INT;
-            result->u.e.r->u.e.l->u.ival.v = e.u_bitfield().lo();
-            result->u.e.r->u.e.l->u.ival.v_extra = nullptr;
-            NEW(result->u.e.r->u.e.r, ActExprStruct);
-            result->u.e.r->u.e.r->type = E_INT;
-            result->u.e.r->u.e.r->u.ival.v = e.u_bitfield().hi();
-            result->u.e.r->u.e.r->u.ival.v_extra = nullptr;
-            return typedFromInt(result, expectedType);
+            bool old_way = false;
+            if (old_way) {
+                result->type = E_BITFIELD;
+                // can only decode an ir tree if bitfields are only appled
+                // to variable expressions. Run the final pass first!
+                hassert(e.u_bitfield().e->type() == IRExprTypeKind::Var);
+                ActId *id = actid_from_varid(e.u_bitfield().e->u_var().id);
+                result->u.e.l = (Expr *)id;
+                NEW(result->u.e.r, ActExprStruct);
+                result->u.e.r->type = E_BITFIELD;
+                NEW(result->u.e.r->u.e.l, ActExprStruct);
+                result->u.e.r->u.e.l->type = E_INT;
+                result->u.e.r->u.e.l->u.ival.v = e.u_bitfield().lo();
+                result->u.e.r->u.e.l->u.ival.v_extra = nullptr;
+                NEW(result->u.e.r->u.e.r, ActExprStruct);
+                result->u.e.r->u.e.r->type = E_INT;
+                result->u.e.r->u.e.r->u.ival.v = e.u_bitfield().hi();
+                result->u.e.r->u.e.r->u.ival.v_extra = nullptr;
+                return typedFromInt(result, expectedType);
+            }
+            else { // int(e>>lo,ct)
+                result->type = E_BUILTIN_INT;
+                NEW (result->u.e.l, ActExprStruct);
+                result->u.e.l->type = E_LSR;
+                hassert(e.u_bitfield().e->type() == IRExprTypeKind::Var);
+                result->u.e.l->u.e.l = new_expr_from_irexpr(*e.u_bitfield().e, ActExprIntType::Int);
+                result->u.e.l->u.e.r = const_expr(e.u_bitfield().lo());
+                result->u.e.r = const_expr(e.u_bitfield().ct());
+                return typedFromInt(result, expectedType);
+            }
         }
         hassert(false);
     }

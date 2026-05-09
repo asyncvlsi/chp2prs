@@ -1,0 +1,23 @@
+import globals;
+import "14.act";
+import "runs/14_ring.act";
+
+defproc test()
+{
+  ring_testproc t;
+  bool at[1], af[1], aa;
+  at = t.Y.d.t;
+  af = t.Y.d.f;
+  aa = t.Y.a;
+  chp {
+      // a = 0
+      [
+      at[0]=true  & 
+      af[0]=false & 
+      // at[0]=false & 
+      // af[0]=true  & 
+
+      aa = true
+      -> log("SUCCESS")]
+  }
+}

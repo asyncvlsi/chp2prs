@@ -6,8 +6,8 @@ defproc test()
 {
   ring_testproc t;
   bool at[4], af[4], aa;
-  ( i : 4 : at[i] = t.Y.d.d[i].t; )
-  ( i : 4 : af[i] = t.Y.d.d[i].f; )
+  at = t.Y.d.t;
+  af = t.Y.d.f;
   aa = t.Y.a;
   chp {
       // a = ~(5) 

@@ -23,21 +23,38 @@
 // CMOS implementable versions of the pipeline elements
 // Bundled Data Datapath
 
-import globals;
-import std;
-open std::channel;
-open std::gates;
-
 namespace syn {
   
   export namespace ring_2phase {
     
 
+// Variables and Channels ---------------------------------
+
+export template <pint M>
+deftype ring_int <: int<M> (bool d[M]) {} 
+
+export deftype ring_bool <: bool (bool d[1]) {} 
+
+export defchan ring_chan <: bd () {}
+
+// --------------------------------------------------------
+
+export defproc ram_builtin <: std::ram () 
++{
+  ring_chan<std::ceil_log2(N)> addr;
+  ring_chan<2> rd;
+  ring_chan<W> dout;
+  ring_chan<W> din;
+}{
+  { 42=42 : "placeholder" };
+  // TODO: bundled data 2-phase memory compiler circuit needs to go here
+}
+
 // Basic Elements -----------------------------------------
 
 defproc inverter (bool? in; bool! out)
 {
-    prs{
+    prs *{
         in => out-
     }
     sizing { 
@@ -48,7 +65,7 @@ defproc inverter (bool? in; bool! out)
 export defproc sink_brs (a1of1 c)
 {
   bool x;
-  prs{
+  prs *{
       c.r => x-
       x   => c.a-
   }
@@ -57,7 +74,7 @@ export defproc sink_brs (a1of1 c)
 
 export defproc source_brs (a1of1 c)
 {
-  prs{
+  prs *{
         ~c.a => c.r+
   }
   sizing { c.r{-1} }
@@ -73,63 +90,58 @@ export defproc gp_connect (a1of1 m1; a1of1 p1)
   m1 = p1;
 }
 
+export template<pint VW, CW>
+defproc connect_chan_to_capture (bool v[VW]; bool c[CW])
+{
+  pint MW = (CW<VW) ? CW : VW;
+  ( i : MW : c[i] = v[i]; )
+}
+
 export template<pint W>
-defproc connect_inchan_to_ctrl (bd<W> ch; a1of1 ctrl)
+defproc connect_inchan_to_ctrl (ring_chan<W> ch; a1of1 ctrl)
 {
   ch.r = ctrl.r;
   ch.a = ctrl.a;
 }
 
 export template<pint W>
-defproc connect_outchan_to_ctrl (bd<W> ch; a1of1 ctrl; bool e[W])
+defproc connect_capture_din (ring_chan<W> ch; bool d[W])
 {
-  ch.r = ctrl.r;
-  ch.a = ctrl.a;
-  ch.d = e;
+  [ W > 0 -> ch.d = d; ]
 }
 
 export template<pint W>
-defproc connect_capture_din (bd<W> ch; bool d[W])
+defproc connect_outchan_to_ctrl (ring_chan<W> ch; a1of1 ctrl; bool e[W])
 {
-  ch.d = d;
+  ch.r = ctrl.r;
+  ch.a = ctrl.a;
+  [ W > 0 -> ch.d = e; ]
 }
 
 export template<pint W>
 defproc connect_capture_dout (bool fin[W]; bool d[W])
 {
-  fin = d;
+  [ W > 0 -> fin = d; ]
 }
 
 export template<pint W>
 defproc connect_exprblk_dout (bool d[W]; bool e[W])
 {
-  e = d;
+  [ W > 0 -> e = d; ]
+}
+
+export template<pint W>
+defproc connect_exprblk_assign (bool d[W]; bool e[W]; a1of1 tx)
+{
+  [ W > 0 -> e = d; ]
 }
 // --------------------------------------------------------
 
 
+// --------------------------------------------------------
+
 // Bundled Data Datapath Elements -------------------------
 // Some copied from dflowmap_netlist/dflow_std/qdigen.act
-
-export template <pint N>
-defproc delay_line(bool? in; bool! out)
-{
-  std::cells::INVX1 invs[2*N];
-  invs[0].A = in;
-  (i:2*N-1 : 
-    invs[i].Y = invs[i+1].A;
-  )
-  invs[2*N-1].Y = out;
-}
-
-export template <pint N>
-defproc delay_line_chan(a1of1 m1; a1of1 p1)
-{
-  delay_line<N> d;
-  m1.r = d.in;
-  p1.r = d.out;
-  m1.a = p1.a;
-}
 
 export template <pint PW>
 defproc pulse(bool? in; bool! out)
@@ -155,7 +167,7 @@ defproc pulse(bool? in; bool! out)
 
 
 export template <pint CD, PW, W>
-defproc capture(a1of1 go; bool? din[W]; bool! dout[W])
+defproc capture(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
 {
   delay_line<CD> capture_delay;
   go.r = capture_delay.in;
@@ -177,23 +189,72 @@ defproc capture(a1of1 go; bool? din[W]; bool! dout[W])
 
   spec {
     timing go.r+: dout < go.a+
+    timing go.r-: dout < go.a-
+    
+    timing go.a-: din < go.r+
+    timing go.a+: din* < go.r*-
   }
 }
 
-export template <pint W>
+export template <pint CD, PW, W>
+defproc capture_dummy(a1of1 go; bool din[W]; bool dout[W]; a1of1 tx)
+{
+  go.r = go.a;
+  [ W > 0 -> din = dout; ]
+}
+
+
+export template <pint W; pbool BUF=false>
 defproc var_access(bool din[W]; bool dout[W])
 {
-  din = dout;
+  [ W > 0 -> 
+    [ BUF  -> std::cells::BUFX2 buf[W]; (i:W: buf[i](.A=din[i],.Y=dout[i]); )
+    []else -> din = dout; 
+    ]
+  ]
 }
 
 export template<pint W>
-defproc chan_access(bd<W> C; bool dout[W])
+defproc chan_access(ring_chan<W> C; bool dout[W])
 {
-  C.d = dout;
+  [ W > 0 -> C.d = dout; ]
+}
+
+export
+defproc dummy_probe_clause(bool? g[1]; bool! out[1]) {
+  out = g;
+}
+
+export template<pint N; pint idx[N]; pint T>
+defproc probe_clause(bool? g[N]; bool? probe[T]; bool! out[1]) {
+  pint tstval, tmp;
+  pint lo_idx[N];
+  tstval = 0;
+  tmp = 0;
+  *[ tmp < N ->
+    lo_idx[tmp] = tstval;
+    tstval = tstval + idx[tmp];
+    tmp = tmp + 1; ]
+  { T = tstval : "Inconsistent template parameters" };
+  bool _out, _Reset;
+  prs * {
+    // inverted Reset to initialize correctly
+    Reset => _Reset-
+
+     _Reset & (| i: N: g[i] & (& j: idx[i]: probe[j + lo_idx[i]])) -> _out-
+    ~_Reset | (& i: N: ~g[i]) -> _out+
+    _out => out[0]-
+  }
+  sizing{
+    leak_adjust <- 1;
+    p_n_mode <- 1;
+    _out{- 1};
+    out[0]{- 1}
+  }
 }
 
 export template <pint CD, PW, W, INIT_VAL>
-defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])
+defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W]; a1of1 tx)
 {
   delay_line<CD> capture_delay;
   go.r = capture_delay.in;
@@ -228,11 +289,44 @@ defproc capture_init(a1of1 go; bool? din[W]; bool! dout[W])
   
   spec {
     timing go.r+: dout < go.a+
+    timing go.r-: dout < go.a-
+
+    timing go.a-: din* < go.r*+
+    timing go.a+: din* < go.r*-
   }
 }
 
 export template <pint CD, PW, W, INIT_VAL>
-defproc itb_wrapper (bd<W> R_out; bd<W> S_in)
+defproc capture_init_new(a1of1 go; a1of1 go2; bool? din[W]; bool! dout[W]; a1of1 tx)
+{
+  capture_init<CD, PW, W, INIT_VAL> c1, c2;
+  [ W > 0 -> 
+    // din = c1.din;
+    std::cells::BUFX2 lbuf[W];
+    ( i : W : lbuf[i](din[i], c1.din[i]); )
+    dout = c2.dout;
+    c1.dout = c2.din; ]
+  tx = c1.tx;
+  tx = c2.tx;
+  go = c1.go;
+  go2 = c2.go;
+      
+
+  spec {
+    timing go.r+ : go.a+ < go2.r+
+    timing go2.r+ : go2.a+ < go.r-
+    timing go.r- : go.a- < go2.r-
+    timing go2.r- : go2.a- < go.r+
+  }
+  // Cut the latch loop
+  ( i : W : spec {
+    timing din[i]+ #> c1.din[i]+
+    timing din[i]- #> c1.din[i]-
+  } )
+}
+
+export template <pint CD, PW, W, INIT_VAL>
+defproc itb_wrapper (ring_chan<W> R_out; ring_chan<W> S_in)
 {
   a1of1 m1, p1;
   capture_init<CD, PW, W, INIT_VAL> x_init;
@@ -262,14 +356,15 @@ defproc itb_wrapper (bd<W> R_out; bd<W> S_in)
 
 // The Two Main Pipe Elements ---------
 
-defproc asym_c_brs (bool? A, B, C; bool! Y)
+export defproc asym_c_brs (bool? A, B, C; bool! Y)
 {
-    prs {
+    prs * {
         ~Reset & ( ~A & ~B & ~C ) -> Y+
          Reset | (       B &  C ) -> Y- 
     }
 }
 
+/*
 export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
 {
     inverter im1r, izeroa;
@@ -284,13 +379,14 @@ export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
 
     m1.a = p1.r;
 
-    prs {
+    prs * {
         ~Reset & ( ~im1r.out & ~izeroa.out & ~p1.a ) -> m1.a+
          Reset | (  im1r.out &  izeroa.out &  p1.a ) -> m1.a-
     }
 }
+*/
 
-export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
+export defproc elem_c_paa_send (a1of1 m1; a1of1 zero; a1of1 p1)
 {
 
   bool _m1_r;
@@ -299,14 +395,101 @@ export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
   zero.a = p1.r;
   zero.r = m1.a;
 
-  prs {
+  prs * {
       ~Reset & (~_m1_r & ~zero.a & ~p1.a) -> zero.r+ 
         Reset | (_m1_r &  zero.a &  p1.a) -> zero.r-
   }
   sizing { 
       zero.r{-1} 
   }
+  spec {
+    timing _m1_r- -> zero.r+
+    timing zero.a- -> zero.r+
+    timing p1.a- -> zero.r+
+    timing _m1_r+ -> zero.r-
+    timing zero.a+ -> zero.r-
+    timing p1.a+ -> zero.r-
+  }
 }
+
+export defproc elem_c_paa (a1of1 m1; a1of1 zero; a1of1 p1)
+{
+  m1.r = zero.r;
+  zero.a = p1.r;
+  p1.a = m1.a;
+}
+
+export defproc elem_c_paa_c_t (a1of1 m1; a1of1 zero; a1of1 p1)
+{
+
+  bool _m1_r;
+  inverter m1_inv(m1.r,_m1_r);
+
+  zero.a = p1.r;
+  zero.r = m1.a;
+
+  prs * {
+      ~Reset & (~_m1_r & ~zero.a & ~p1.a) -> zero.r+ 
+        Reset | (_m1_r &  zero.a &  p1.a) -> zero.r-
+  }
+  sizing { 
+      zero.r{-1} 
+  }
+  spec {
+    timing _m1_r- -> zero.r+
+    timing zero.a- -> zero.r+
+    timing p1.a- -> zero.r+
+    timing _m1_r+ -> zero.r-
+    timing zero.a+ -> zero.r-
+    timing p1.a+ -> zero.r-
+  }
+}
+
+export template<pint N>
+defproc elem_c_paa_c (a1of1 m1; a1of1 zero[N]; a1of1 p1)
+{
+  elem_c_paa_c_t c_t;
+  c_t.m1 = m1;
+  c_t.p1 = p1;
+
+  std::gates::sigbuf<N> s;
+  std::gates::ctree<N, false> c;
+
+  s.in = c_t.zero.r;
+  ( i : N : s.out[i] = zero[i].r; )
+
+  c.out = c_t.zero.a;
+  ( i : N : c.in[i] = zero[i].a; )
+}
+
+/*
+export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
+{
+  bool _m1_r, _zero_r;
+  inverter m1_inv(m1.r,_m1_r);
+  inverter zr_inv(zero.r,_zero_r);
+
+  asym_c_brs ac;
+  ac.A = _m1_r;
+  ac.B = _zero_r;
+  ac.C = m1.a;
+  ac.Y = data.r;
+
+  bool _data_a;
+  inverter da_inv(data.a,_data_a);
+  data.a = zero.a;
+  
+  m1.a = p1.r;
+
+  prs * {
+      ~Reset & (~_m1_r &  ~_data_a & ~p1.a) -> p1.r+ 
+        Reset | (_m1_r &   _data_a &  p1.a) -> p1.r-
+  }
+  sizing { 
+      p1.r{-1} 
+  }
+}
+*/
 
 export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
 {
@@ -319,14 +502,25 @@ export defproc elem_c_ppa (a1of1 m1; a1of1 data; a1of1 zero; a1of1 p1)
   data.a = zero.a;
   data.r = m1.a;
 
-  prs {
+  prs * {
       ~Reset & (~_m1_r &  ~_zero_r & ~p1.a) -> data.r+ 
         Reset | (_m1_r &   _zero_r &  p1.a) -> data.r-
   }
   sizing { 
       data.r{-1} 
   }
+  spec {
+    timing _m1_r- -> data.r+
+    timing p1.a+ -> data.r-
+    // timing da_inv.in- -> da_inv.out+
+    // timing da_inv.in+ -> da_inv.out-
+    timing zero_inv.in- -> zero_inv.out+
+    timing zero_inv.in+ -> zero_inv.out-
+    timing m1_inv.in- -> m1_inv.out+
+    timing m1_inv.in+ -> m1_inv.out-
+  }
 }
+
 // ------------------------------------
 
 // Skip element -----------------------
@@ -351,7 +545,7 @@ export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
 
   std::cells::NOR2X1 and1(_m1_r, _u, pause.a);
 
-  prs {
+  prs * {
       ~Reset & (~_m1_r & ~p1.r & ~p1.a) -> m1.a+ 
         Reset | (_m1_r &  p1.r &  p1.a) -> m1.a-
   }
@@ -366,29 +560,13 @@ export defproc elem_c_pause (a1of1 m1; a1of1 pause; a1of1 p1)
 
 export defproc elem_c_itb (a1of1 m1; a1of1 p1)
 {
-    prs {
+    prs * {
         ~Reset & (~m1.r & ~p1.a) -> p1.r+
          Reset | ( m1.r &  p1.a) -> p1.r-
     }
 
     inverter m1_inv(p1.r,m1.a);
 }
-
-/*
-export defproc elem_c_itb (a1of1 m1; a1of1 p1)
-{
-  std::gates::ctree<2,false> c_itb;
-  std::cells::NOR2X1 nor_reset;
-
-  c_itb.in[0] = m1.r;
-  c_itb.in[1] = p1.a;
-  c_itb.out = m1.a;
-
-  nor_reset.A = Reset;
-  nor_reset.B = c_itb.out;
-  nor_reset.Y = p1.r;
-}
-*/
 
 // ------------------------------------
 
@@ -424,30 +602,398 @@ defproc parallel_merge(a1of1 ci[N]; a1of1! p1)
 export template<pint N>
 defproc selection_split(bool? gs[N]; a1of1? m1; a1of1 co[N]) 
 {
-    capture_init<5, 6, N, 0> capt;
+    capture_init<R2P_SEL_SPLIT_CD, R2P_SEL_SPLIT_PW, 1, 0> capt1[N], capt2[N];
     std::cells::XOR2X1 xors[N];
 
-    capt.go.r = m1.r;
+    ( i : N: capt1[i].go.r = m1.r; )
     ( i : N: xors[i].A = co[i].a; )
     ( i : N: xors[i].B = gs[i]; )
-    ( i : N: xors[i].Y = capt.din[i]; )
-    ( i : N: capt.dout[i] = co[i].r; )
+    ( i : N: xors[i].Y = capt1[i].din[0]; )
+    // ( i : N: capt1[i].dout[0] = co[i].r; )
+
+    ( i : N: capt2[i].dout[0] = co[i].r; )
+    ( i : N: capt2[i].din[0] = capt1[i].dout[0]; )
+    ( i : N: capt2[i].go.r = capt1[i].go.a; )
 
     std::gates::xortree<N, false> ort(, m1.a);
     ( i : N: ort.in[i] = co[i].a; )
+
+    ( i : N :
+    spec {
+       timing gs[i] : xors[i].Y < m1.r
+    } )
 }
 
 export template<pint N>
 defproc selection_merge(a1of1 ci[N]; a1of1! p1) 
 {
-    std::gates::xortree<N, false> ort(, p1.r);
-    ( i : N: ort.in[i] = ci[i].r; )
+    std::gates::xortree<N, false> xort;
+    ( i : N: xort.in[i] = ci[i].r; )
+    delay_line<R2P_SEL_MERGE_XOR_DELAY> delay_xor;
+    delay_xor.in = xort.out;
+    delay_xor.out = p1.r;
 
-    std::gates::sigbuf<N> s(p1.a);
-    ( i : N: s.out[i] = ci[i].a; )
+    // std::gates::sigbuf<N> s(p1.a);
+    // ( i : N: s.out[i] = ci[i].a; )
+
+    capture_init<R2P_SEL_MERGE_CD, R2P_SEL_MERGE_PW, 1, 0> capt1[N], capt2[N];
+
+    ( i : N: capt1[i].go.r = p1.a; )
+    ( i : N: capt1[i].din[0] = ci[i].r; )
+    ( i : N: capt2[i].din[0] = capt1[i].dout[0]; )
+    ( i : N: capt2[i].dout[0] = ci[i].a; )
+    ( i : N: capt2[i].go.r = capt1[i].go.a; )
+
+    // this is trivially true but i'll leave it in
+    ( i : N :
+    spec {
+       timing ci[i].r : capt1[i].din[0] < p1.r
+    } )
 }
 // ------------------------------------
 
+
+// N-way non-deterministic split ------
+
+defproc c1 (bool ctrl, ka, a, out)
+{
+    bool _out;
+    prs * {
+        [after=0] a & ctrl -> _out-
+        [after=0] ~ka & ~ctrl -> _out+
+        [after=0] _out => out-
+    }
+}
+
+defproc c2 (bool A, B, ack, out)
+{
+    bool _out;
+    prs * {
+        // ack -> _out-
+        // ~ack & ~A & ~B -> _out+
+        // _out => out-
+        [after=0] ack -> _out-
+        [after=0] ~ack & ~A & ~B -> _out+
+        [after=0] _out => out-
+    }
+}
+
+export defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka) 
+{
+  bool _u, _v;
+  bool _Reset;
+
+  /* force exclusive low signals for simulation */
+  spec {
+    mk_excllo(_u,_v)
+  }
+  
+  bool ka;
+
+  prs * {
+    // inverted Reset to initialize correctly
+    Reset => _Reset-
+    /* cross coupled nand gates, with kill tail NMOS */
+    [keeper=0] _ki & a & _v -> _u-
+    [keeper=0] ~_ki | ~a | ~_v | ~_Reset -> _u+
+    [keeper=0] _ki & b & _u -> _v-
+    [keeper=0] ~_ki | ~b | ~_u | ~_Reset -> _v+
+
+   /* output filter */
+    [keeper=0] _u<5> -> u-
+    [keeper=0] _v<5> -> v-
+    passp<10>(_u,_v,u)
+    passp<10>(_v,_u,v)
+
+    u | v => ka-
+    ka => _ka-
+
+  }
+  sizing {
+   leak_adjust <- 1;
+   _u{-1};
+   _v{-1}
+  }
+}
+
+/*
+defproc nds_two_way (bool gs[2]; a1of1 m1; a1of1 co[2])
+{
+  c1 ac1, bc1;
+  c2 c_ack;
+  killable_arbiter arb;
+  std::cells::OR2X1 or_ack;
+
+  bool _ka;
+  _ka = arb._ka;
+  m1.r = arb._ki;
+
+  ac1.ctrl = m1.r;
+  bc1.ctrl = m1.r;
+
+  ac1.a = gs[0];
+  bc1.a = gs[1];
+
+  ac1.ka = _ka;
+  bc1.ka = _ka;
+
+  ac1.out = arb.a;
+  bc1.out = arb.b;
+
+  ac1.out = c_ack.A;
+  bc1.out = c_ack.B;
+
+  co[0].a = or_ack.A;
+  co[1].a = or_ack.B;
+  c_ack.ack = or_ack.Y;
+  c_ack.out = m1.a;
+
+  arb.u = co[0].r;
+  arb.v = co[1].r;
+}
+*/
+
+defproc c3 (bool A, B, _ka, en)
+{
+  prs * {
+    [after=0] A & B -> en-
+    [after=0] (~A | ~B) & ~_ka -> en+
+  }
+}
+
+export template<pint W>
+defproc probe_access(ring_chan<W> C; bool dout[1])
+{
+  pint TYPE=2;
+  [ TYPE=1 ->
+    killable_arbiter arb;
+    arb.a = C.r;
+    arb.b = C.a;
+    c3 c_ack;
+    c_ack.A = arb.a;
+    c_ack.B = arb.b;
+    c_ack._ka = arb._ka;
+    c_ack.en = arb._ki;
+
+    std::cells::XOR2X1 x1(.A=arb.u, .B=arb.v, .Y=dout[0]);
+  []TYPE=2 ->
+    delay_line<2> delay; delay.in = C.r;
+    std::cells::XOR2X1 x1(.A=delay.out, .B=C.a, .Y=dout[0]);
+  ]
+  // C.r = dout[0];
+}
+
+export template<pint W>
+defproc probe_access_neg(ring_chan<W> C; bool dout[1])
+{
+  delay_line<2> delay; delay.in = C.r;
+  std::cells::XNOR2X1 x1(.A=delay.out, .B=C.a, .Y=dout[0]);
+  // std::cells::XNOR2X1 x1(.A=C.r, .B=C.a, .Y=dout[0]);
+  // prs * {
+  //   C.r => dout[0]-
+  // }
+}
+
+// defproc nds_two_way_old (bool gs[2]; a1of1 m1; a1of1 co[2])
+// {
+//   bool arb_out[2];
+//   killable_arbiter arb(.a=gs[0], .b=gs[1], .u=arb_out[0], .v=arb_out[1]);
+//   std::cells::INVX1 inv_arb_en(.A=Reset, .Y=arb._ki);
+//   bool go;
+//   std::cells::LATCHLO latch_lo(.D=m1.r,.Q=go, .CLK=arb._ka, .R=Reset);
+
+//   capture_init<R2P_SEL_SPLIT_CD, R2P_SEL_SPLIT_PW, 1, 0> capt1[2], capt2[2];
+//   std::cells::XOR2X1 xors[2];
+
+//   ( i : 2: capt1[i].go.r = go; )
+//   ( i : 2: xors[i].A = co[i].a; )
+//   ( i : 2: xors[i].B = arb_out[i]; )
+//   ( i : 2: xors[i].Y = capt1[i].din[0]; )
+
+//   ( i : 2: capt2[i].dout[0] = co[i].r; )
+//   ( i : 2: capt2[i].din[0] = capt1[i].dout[0]; )
+//   ( i : 2: capt2[i].go.r = capt1[i].go.a; )
+
+//   std::gates::xortree<2, false> ort(, m1.a);
+//   ( i : 2: ort.in[i] = co[i].a; )
+
+//   ( i : 2 :
+//   spec {
+//       timing gs[i] : xors[i].Y < m1.r
+//   } )
+// }
+
+defproc nds_two_way (bool gs[2]; a1of1 m1; a1of1 co[2])
+{
+  bool arb_out[2];
+  killable_arbiter arb(.a=gs[0], .b=gs[1], .u=arb_out[0], .v=arb_out[1]);
+  bool go;
+  std::cells::LATCHLO latch_lo(.D=m1.r,.Q=go, .CLK=arb._ka, .R=Reset);
+  delay_line<2> del_go(go);
+
+  capture_init<R2P_SEL_SPLIT_CD, R2P_SEL_SPLIT_PW, 1, 0> capt1[2];
+  std::cells::XOR2X1 xors[2];
+
+  ( i : 2 : capt1[i].go.r = del_go.out; )
+  ( i : 2 : xors[i].A = co[i].a; )
+  ( i : 2 : xors[i].B = arb_out[i]; )
+  ( i : 2 : xors[i].Y = capt1[i].din[0]; )
+  std::cells::INVX1 inv_arb_ka (.A=arb._ka);
+  std::cells::LATCHLO capt2[2];
+  ( i : 2 : capt2[i].D = capt1[i].dout[0]; 
+            capt2[i].Q = co[i].r; 
+            capt2[i].CLK = inv_arb_ka.Y;
+            capt2[i].R = Reset; )
+
+  std::gates::ctree<2, false> cc;
+  ( i : 2 : cc.in[i] = capt1[i].go.a; )
+  std::cells::XOR2X1 xor_ctrl(.A=m1.r, .B=cc.out, .Y=arb._ki);
+
+  std::gates::xortree<2, false> ort(, m1.a);
+  ( i : 2: ort.in[i] = co[i].a; )
+
+  ( i : 2 :
+  spec {
+      timing gs[i] : xors[i].Y < m1.r
+  } )
+}
+
+// Round-robin non-deterministic split
+export template <pint N>
+defproc nds_split (bool? gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+  [ N=1  -> 
+  
+  co[0].a = m1.a;
+  std::cells::LATCHLO latch_lo(.D=m1.r,.Q=co[0].r, .CLK=gs[0], .R=Reset);
+  
+  []else ->
+  // No. of NDS blocks
+  pint M = N;
+
+  nds_two_way nds[M];
+  // std::cells::INVX1 inv[M];
+  std::cells::NOR2X1 nors[M];
+  std::cells::XOR2X1 xor1;
+  std::cells::TIELOX1 tielo1;
+  std::cells::INVX1 inv_loop;
+  std::cells::NOR2X1 reset_nor;
+  inv_loop.Y = reset_nor.B;
+  Reset = reset_nor.A;
+
+  // connect guards and inverted guards
+  ( i : M : nds[i].gs[0] = gs[i]; 
+              // inv[i].A = gs[i];
+              nors[i].A = gs[i];
+              nors[i].B = Reset;
+              // inv[i].Y = nds[i].gs[1]; )
+              nors[i].Y = nds[i].gs[1]; )
+
+  // first one
+  xor1.B = m1.r;
+  xor1.Y = nds[0].m1.r;
+  m1.a = nds[0].m1.a;
+ 
+  ( i : M-1 : nds[i].co[0] = co[i]; 
+              nds[i].co[1] = nds[i+1].m1; )
+
+  // last one
+  nds[M-1].co[0] = co[M-1];
+  nds[M-1].co[1].a = tielo1.Y;
+  // nds[M-1].co[1].r = xor.A;
+  xor1.A = reset_nor.Y;
+  nds[M-1].co[1].r = inv_loop.A;
+  ]
+}
+
+// Non-deterministic split for stable guards
+export template <pint N>
+defproc nds_split_stable (bool? gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+  [ N=1  -> 
+  
+  co[0].a = m1.a;
+  std::cells::LATCHLO latch_lo(.D=m1.r,.Q=co[0].r, .CLK=gs[0], .R=Reset);
+  
+  []else ->
+  // No. of NDS blocks = (Selection_way - 1)
+  pint M = N-1;
+
+  bool _r0, r0;
+
+  nds_two_way nds[M];
+  std::cells::NOR2X1 nors[M];
+
+  // first one
+  nds[0].m1.a = m1.a;
+  nds[0].m1.r = r0;
+
+  // evaluation trigger
+  prs * {
+    ~m1.r -> _r0+
+    m1.r & (|i : N : gs[i] ) -> _r0- 
+    _r0 => r0-
+  }
+
+  // chain 'em
+  ( i : M-1 : nds[i].co[0] = co[i]; 
+              nds[i].co[1] = nds[i+1].m1; )
+
+  // connect guards and inverted guards for all except last
+  ( i : M-1 : nors[i].A = gs[i];
+              nors[i].B = Reset;
+              nors[i].Y = nds[i].gs[1];
+              nds[i].gs[0] = gs[i]; )
+
+  // last one
+  nds[M-1].gs[0] = gs[M-1];
+  nds[M-1].gs[1] = gs[M];
+  nds[M-1].co[0] = co[M-1];
+  nds[M-1].co[1] = co[M];
+  ]
+}
+
+export template<pint N>
+defproc probed_ds_split(bool? gs[N]; a1of1? m1; a1of1 co[N]) 
+{
+  [ N=1  -> 
+  
+  co[0].a = m1.a;
+  std::cells::LATCHLO latch_lo(.D=m1.r,.Q=co[0].r, .CLK=gs[0], .R=Reset);
+  
+  []else ->
+
+  bool _r0, r0;
+  // evaluation trigger
+  prs * {
+    ~m1.r -> _r0+
+    m1.r & (|i : N : gs[i] ) -> _r0- 
+    _r0 => r0-
+  }
+
+  capture_init<R2P_SEL_SPLIT_CD, R2P_SEL_SPLIT_PW, 1, 0> capt1[N], capt2[N];
+  std::cells::XOR2X1 xors[N];
+
+  ( i : N: capt1[i].go.r = r0; )
+  ( i : N: xors[i].A = co[i].a; )
+  ( i : N: xors[i].B = gs[i]; )
+  ( i : N: xors[i].Y = capt1[i].din[0]; )
+  // ( i : N: capt1[i].dout[0] = co[i].r; )
+
+  ( i : N: capt2[i].dout[0] = co[i].r; )
+  ( i : N: capt2[i].din[0] = capt1[i].dout[0]; )
+  ( i : N: capt2[i].go.r = capt1[i].go.a; )
+
+  std::gates::xortree<N, false> ort(, m1.a);
+  ( i : N: ort.in[i] = co[i].a; )
+
+  ( i : N :
+  spec {
+      timing gs[i] : xors[i].Y < m1.r
+  } )
+  ]
+}
+// ------------------------------------
 
 // N-way loop construct ---------------
 // Last (N-th) guard must be the 'else' 
@@ -522,61 +1068,205 @@ defproc doloop_wrapper (bool? g; a1of1? m1;
 }
 // ------------------------------------
 
+
 // N : No. of inputs, W : Width of each input
 export template<pint N,W>
-defproc merge_mux_ohc(bool? c[N]; bool? din[N][W]; bool! dout[W] )
+defproc merge_mux_old_1(bool? c[N]; bool? din[N][W]; bool! dout[W]; bool a)
 {
-  // ands
-  std::cells::AND2X1 stage_1[N][W];
+  { N>1 : "Size two or greater merge mux only"};
   
-  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
-  ( i : N : ( j : W : stage_1[i][j].B = c[i]; ) )
+  std::gates::xortree<N, false> xort(c);
+  delay_line<R2P_MERGE_MUX_DELAY> delay_xor;
+  delay_xor.in = xort.out;
+  
+  // last-changed detector (one-hot output) circuit ---
+  bool new_c[N];
+  std::cells::XOR2X1 xors[N];
+  
+  capture_init<R2P_MERGE_MUX_CD,R2P_MERGE_MUX_PW,1,0> capt1[N], capt2[N];
 
-  // ors
-  std::gates::ortree<N, false> stage_2[W]; 
+  ( i : N :
+    capt1[i].din[0] = c[i];
+    capt1[i].dout[0] = xors[i].A;
+    capt1[i].din[0]  = xors[i].B;
+    capt2[i].din[0]  = xors[i].Y;
+    capt2[i].dout[0] = new_c[i];
+    capt2[i].go.r = delay_xor.out;
+    capt2[i].go.a = capt1[i].go.r; 
+   )
+  // last-changed detector (one-hot output) circuit ---
 
-  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
-  ( j : W : stage_2[j].out = dout[j]; )
-
-}
-
-// N : No. of inputs, W : Width of each input
-export template<pint N,W>
-defproc merge_mux_ohc_opt(bool? c[N]; bool? din[N][W]; bool! dout[W] )
-{
-  // nands
-  std::cells::NAND2X1 stage_1[N][W];
+  // aoi's
+  std::cells::AOI22X1 stage_1[N/2][W];
+  [ (N%2)=1 -> std::cells::NAND2X1 last[W]; ]
   
   sigbuf<W> fanout_tree[N];
-  ( i : N : fanout_tree[i].in = c[i]; )
-  
-  ( i : N : ( j : W : stage_1[i][j].A = din[i][j]; ) ) 
-  ( i : N : ( j : W : stage_1[i][j].B = fanout_tree[i].out[j]; ) )
+  ( i : N : fanout_tree[i].in = new_c[i]; )
+
+  ( i : N/2 : ( j : W : stage_1[i][j].A = din[ 2*i   ][j];        
+                        stage_1[i][j].C = din[(2*i)+1][j]; ) ) 
+
+  ( i : N/2 : ( j : W : stage_1[i][j].B = fanout_tree[ 2*i   ].out[j];
+                        stage_1[i][j].D = fanout_tree[(2*i)+1].out[j]; ) )
+
+  [ (N%2)=1 -> ( j : W : last[j].A = din[N-1][j];
+                         last[j].B = fanout_tree[N-1].out[j]; ) 
+  ]
 
   // nands
-  std::gates::andtree<N, true> stage_2[W]; 
+  std::gates::andtree<(N+1)/2, true> stage_2[W]; 
 
-  ( i : N : ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
-  ( j : W : stage_2[j].out = dout[j]; )
+  ( i : N/2 :  ( j : W : stage_1[i][j].Y = stage_2[j].in[i]; ) )
+  [ (N%2)=1 -> ( j : W :       last[j].Y = stage_2[j].in[(N-1)/2]; ) 
+  ]
 
+  ( j : W : stage_2[j].out = dout[j]; ) 
 }
 
-export defproc capture_bool (bool i; bool dout[1])
+export template<pint N,W>
+defproc merge_mux_ohc_opt(bool? c[N]; bool din[N][W]; bool dout[W]; bool a)
+{
+  { N>0 : "Size one or greater merge mux only"};
+  [N=1 -> din[0][0..W-1] = dout[0..W-1];
+  []else ->
+  
+  std::gates::xortree<N, false> xort(c);
+  delay_line<R2P_MERGE_MUX_DELAY> delay_xor;
+  delay_xor.in = xort.out;
+  
+  // last-changed detector (one-hot output) circuit ---
+  bool new_c[N];
+  std::cells::XOR2X1 xors[N];
+  
+  capture_init<R2P_MERGE_MUX_CD,R2P_MERGE_MUX_PW,1,0> capt1[N], capt2[N];
+
+  ( i : N :
+    capt1[i].din[0] = c[i];
+    capt1[i].dout[0] = xors[i].A;
+    capt1[i].din[0]  = xors[i].B;
+    capt2[i].din[0]  = xors[i].Y;
+    capt2[i].dout[0] = new_c[i];
+    capt2[i].go.r = delay_xor.out;
+    capt2[i].go.a = capt1[i].go.r; 
+  )
+  // last-changed detector (one-hot output) circuit ---
+
+  std::cells::TBUF1 tb[N][W];
+  std::cells::INVX1 invs[W];
+
+  sigbuf<W> fanout_tree[N];
+  ( i : N : fanout_tree[i].in = new_c[i]; )
+
+  ( i : N : 
+    ( j : W : 
+      tb[i][j].EN = fanout_tree[i].out[j];
+      tb[i][j].A  = din[i][j];
+      tb[i][j].Y  = invs[j].A;
+      dout[j] = invs[j].Y;
+    )
+  )
+  ]
+}
+
+
+export defproc capture_bool_ext (bool i; bool dout[1])
 {
   i = dout[0];
 }
 
-// --------------------------------------------------------
+
+// Custom Circuit Implementations for Small Programs
 
 
-// Variables and Channels ---------------------------------
+/*
+ *    Implementation of *[ L?x; R!f(x) ]
+ *    LW : L-chan width
+ *    RW : R-chan width
+ *    CD : Capture delay
+ *    PW : Pulse width for latch
+ */
 
-export template <pint M>
-deftype ring_int <: int<M> (bool d[M]) {} 
+export template <pint LW, RW, CD, PW>
+defproc fblock_impl (ring_chan<LW> L; ring_chan<RW> R; bool ei[LW]; bool eo[RW]; a1of1 d_in; a1of1 d_out)
+{
+  elem_c_ppa block_1;
+  connect_inchan_to_ctrl<LW> conn_z_2;
+  conn_z_2.ctrl = block_1.zero;
+  conn_z_2.ch = L;
 
-export defchan ring_chan <: bd () {}
+  capture<CD,PW,LW> latch_x_0;
+  latch_x_0.go = block_1.data;
+  [ LW > 0 -> latch_x_0.din = L.d; ]
+  latch_x_0.tx.a = L.a;
 
-// --------------------------------------------------------
+  prs * {
+    block_1.m1.a => block_1.m1.r-
+  }
+
+  connect_outchan_to_ctrl<RW> conn_z_3;
+  conn_z_3.ch = R;
+
+  [ LW > 0 -> var_access<LW> va_blk_1(latch_x_0.dout,ei); ]
+  [ RW > 0 -> connect_exprblk_dout<RW> conn_out_2(eo,conn_z_3.e); ]
+
+  d_in = block_1.p1;
+  d_out = conn_z_3.ctrl;
+}
+
+/*
+ *    Implementation of *[ R!k ]
+ *    RW : R-chan width
+ *    K  : Constant-value
+ */
+export template <pint RW, K>
+defproc const_src_impl (ring_chan<RW> R)
+{
+
+  { K >= 0 : "Only non-negative values in const-source" };
+  { RW=0 | (K <= (1<<RW)-1) : "Const. value out of bounds" };
+
+  std::cells::NOR2X1 ctrl;
+  ctrl.A = Reset;
+  ctrl.B = R.a;
+  ctrl.Y = R.r;
+
+  pint ival = K;
+  pint j = 0;
+
+  *[ j < RW -> [ (ival%2) = 0 -> std::cells::TIELOX1 x_lo[j..j];                         
+                                x_lo[j].Y = R.d[j];
+
+             [] (ival%2) = 1 -> std::cells::TIEHIX1 x_hi[j..j];                         
+                                x_hi[j].Y = R.d[j];
+
+              ]; j = j + 1; ival = ival >> 1;
+  ]
+
+  spec {
+    timing ctrl.B- -> ctrl.Y+
+    timing ctrl.B+ -> ctrl.Y-
+  }
+}
+
+/*
+ *    Implementation of *[ L?x ]
+ *    LW : L-chan width
+ *    LATCH : Whether to latch value 
+ *            L?x -> true
+ *            L?  -> false
+ */
+export template <pint LW, CD, PW; pbool LATCH>
+defproc snk_impl (ring_chan<LW> L)
+{
+  [ LATCH & LW>0 ->  
+              capture<CD, PW, LW> capt;
+              capt.go.r = L.r;
+              capt.go.a = L.a;
+              capt.din = L.d;
+
+  [] else -> L.r = L.a;
+  ]
+}
 
   }
 

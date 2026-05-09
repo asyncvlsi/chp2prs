@@ -76,7 +76,7 @@ struct VarLivenessTable {
 
   public:
     [[nodiscard]] IsAlive at(VarId id) const {
-        return live_vars.contains(id) ? IsAlive::yes : IsAlive::no;
+        return live_vars.count(id) ? IsAlive::yes : IsAlive::no;
     }
 
     // return whether insert was actually needed
@@ -152,7 +152,7 @@ void flow(VarLivenessTable &table, const Sequence &seq, const IdPool &id_pool,
                 }
             }
 
-            if (changed || !run_once.contains(curr)) {
+            if (changed || !run_once.count(curr)) {
                 // then do all the flows
                 run_once.insert(curr);
 
@@ -184,7 +184,7 @@ void flow(VarLivenessTable &table, const Sequence &seq, const IdPool &id_pool,
                     changed |= update_cell_from(branch_id, merge.post_id);
             }
 
-            if (changed || !run_once.contains(curr)) {
+            if (changed || !run_once.count(curr)) {
                 // then do all the flows
                 run_once.insert(curr);
 
@@ -229,7 +229,7 @@ void flow(VarLivenessTable &table, const Sequence &seq, const IdPool &id_pool,
                     changed |= update_cell_from(phi.bodyout_id, *phi.post_id);
             }
 
-            if (changed || !run_once.contains(curr)) {
+            if (changed || !run_once.count(curr)) {
                 // then do all the flows
                 run_once.insert(curr);
 
@@ -430,7 +430,7 @@ bool eliminateCompletelyDeadPass(const std::vector<Block *> &blocks,
 void remapVarsInSeq(
     Sequence &seq, const std::unordered_map<VarId, VarId> &new_id_from_old_id) {
     auto remap = [&](VarId &id) {
-        if (new_id_from_old_id.contains(id))
+        if (new_id_from_old_id.count(id))
             id = new_id_from_old_id.at(id);
     };
     auto remap_opt = [&](OptionalVarId &oid) {
@@ -655,7 +655,7 @@ void remapVarsInSeq(
                     }
                     std::map<VarId, VarId> pre_id_from_post_id;
                     for (size_t j = 0; j < branch.phi_out_ids.size(); ++j) {
-                        hassert(pre_id_from_branch_id.contains(
+                        hassert(pre_id_from_branch_id.count(
                             branch.phi_out_ids[j]));
                         pre_id_from_post_id[phi_post_ids[j]] =
                             pre_id_from_branch_id.at(branch.phi_out_ids[j]);
@@ -679,7 +679,7 @@ void remapVarsInSeq(
                     // `branches` vector
                     std::vector<SelectBranchData *> target_branches;
                     for (auto &branch : branches) {
-                        if (seqstarts_set.contains(branch.seq.startseq))
+                        if (seqstarts_set.count(branch.seq.startseq))
                             target_branches.push_back(&branch);
                     }
 
@@ -720,7 +720,7 @@ void remapVarsInSeq(
                     target_branches[0]->g = std::move(new_guard);
 
                     Algo::remove_filter_if(branches, [&](const auto &branch) {
-                        return seqstarts_set.contains(branch.seq.startseq) &&
+                        return seqstarts_set.count(branch.seq.startseq) &&
                                branch.seq.startseq !=
                                    target_branches[0]->seq.startseq;
                     });

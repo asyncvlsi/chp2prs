@@ -17,7 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
 #ifndef REQS_H
@@ -34,8 +34,6 @@
 // #include <act/expropt.h>
 #include <act/expr_cache.h>
 
-#include "ring_name_handling.h"
-#include "ring_else_gen.h"
-#include "ring_synthesis_struct.h"
+#include <act/chp/ring_synthesis_struct.h>
 
 #endif

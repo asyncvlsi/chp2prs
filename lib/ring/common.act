@@ -22,5 +22,28 @@
 
 pint N_delay_line_types = 4;
 
-// Delay_Params will be populated during synthesis, from synth.conf
+// Delay_Params and Delay_Offsets will be populated during synthesis, from synth.conf
 pint Delay_Params[N_delay_line_types+1];
+pint Delay_Offsets[N_delay_line_types+1];
+
+// DFF-datapath parameters
+pint RDFF_SEL_SPLIT_CD = 2;
+pint RDFF_SEL_SPLIT_PW = 2;
+
+// Latch-datapath parameters
+pint RL_SEL_SPLIT_CD = 2;
+pint RL_SEL_SPLIT_PW = 2;
+
+// 2-phase parameters
+pint R2P_MUX_DELAY_MULT = 1;
+
+pint R2P_SEL_SPLIT_CD = 3;
+pint R2P_SEL_SPLIT_PW = 4;
+
+pint R2P_SEL_MERGE_XOR_DELAY = 1;
+pint R2P_MERGE_MUX_DELAY = 2;
+pint R2P_SEL_MERGE_CD = 3;
+pint R2P_SEL_MERGE_PW = 4;
+
+pint R2P_MERGE_MUX_CD = 3;
+pint R2P_MERGE_MUX_PW = 3;

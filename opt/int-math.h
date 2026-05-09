@@ -273,8 +273,20 @@ class IntLattice {
         return intersection(a, b);
     }
 
-    friend bool operator==(const IntLattice &a, const IntLattice &b) = default;
-    friend bool operator!=(const IntLattice &a, const IntLattice &b) = default;
+    // c++17 rollback
+    // friend bool operator==(const IntLattice &a, const IntLattice &b) = default;
+    // friend bool operator!=(const IntLattice &a, const IntLattice &b) = default;
+    friend bool operator==(const IntLattice &a, const IntLattice &b) {
+        return a.m_min == b.m_min &&
+               a.m_max == b.m_max &&
+               a.m_bitwidth == b.m_bitwidth &&
+               a.max_is_inf == b.max_is_inf &&
+               a.m_bit_states == b .m_bit_states;
+    }
+    friend bool operator!=(const IntLattice &a, const IntLattice &b) {
+        return !(a == b);
+    };
+    
 
      /* get ranges */
     [[nodiscard]] BigInt max() const { return m_max; }

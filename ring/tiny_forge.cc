@@ -17,39 +17,31 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
 #include "tiny_forge.h"
 
-// TODO: Handling last action selection
-
-#define TERM_SINK 0
-#define TERM_SRC 1
-
-// Name prefixes
-
-TinyForge::TinyForge ( FILE *fp, 
-            // Process *p, act_chp_lang_t *c,
-            // ActBooleanizePass *bp, 
-            int bdpath,
+TinyForge::TinyForge ( FILE *fp, int bdpath,
             int delay_margin, int dp_style, 
+            BD_MODE bdpath_mode, 
+            const char *externopt_toolname,
             const char *circuit_library,
             const char *exprfile )
-    : RingForge ( fp, bdpath, delay_margin, dp_style, circuit_library, exprfile )
+    : RingForge ( fp, bdpath, delay_margin, dp_style, bdpath_mode, 
+        externopt_toolname, circuit_library, exprfile )
 {
     term_inst_prefix = "term_inst_";
 }
 
 void TinyForge::run_tiny_forge ()
 {
-    LiveVarAnalysis *lva = new LiveVarAnalysis (_fp, _p, _c);
+    RingVarAnalysis *lva = new RingVarAnalysis (_fp, _p, _c);
     // yes, run twice :)
-    lva->generate_live_var_info();
-    lva->generate_live_var_info();
+    lva->generate_var_info();
+    lva->generate_var_info();
 
     construct_var_infos (_c);
-    // _run_forge (_c, 1);
     prog_signature.clear();
     _build_prog_signature (_c, 1);
     _run_forge_new (_c, prog_signature);
@@ -65,7 +57,7 @@ bool TinyForge::check_if_pipeable (act_chp_lang_t *c)
 {
     prog_signature.clear();
     if (_build_prog_signature (c, 1)) {
-        return valid_signatures.contains(prog_signature);
+        return valid_signatures.count(prog_signature);
     }
     return false;
 }
@@ -130,10 +122,8 @@ bool TinyForge::_build_prog_signature (act_chp_lang_t *c, int root)
         break;
         
     case ACT_CHP_SELECT:
-        return false; break;
-
     case ACT_CHP_SELECT_NONDET:
-        fatal_error ("Can't handle NDS"); break;
+        return false; break;
         
     // should only get here for single action programs..
     case ACT_CHP_SKIP:
@@ -162,6 +152,9 @@ bool TinyForge::_build_prog_signature (act_chp_lang_t *c, int root)
 void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature)
 {
     std::vector<Action> buf_s = {Action::Receive, Action::Send};
+    std::vector<Action> src_s = {Action::Send};
+    std::vector<Action> snk_s = {Action::Receive};
+
     if (signature == buf_s) {
         auto cc = (c->u.gc)->s;
         listitem_t *li = (list_first (cc->u.semi_comma.cmd));
@@ -176,12 +169,25 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
                         _compute_delay_line_param(pulse_width));
         char lchan_name[1024];
         char rchan_name[1024];
+
         get_true_name (lchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
+        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+            _p->CurScope()->localLookup(stmt1->u.comm.chan, NULL)))) {
+            strcat (lchan_name, ".");
+            strcat (lchan_name, struct_chan_name);
+        }
+
         get_true_name (rchan_name, stmt2->u.comm.chan, _p->CurScope(), false);
+        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+            _p->CurScope()->localLookup(stmt2->u.comm.chan, NULL)))) {
+            strcat (rchan_name, ".");
+            strcat (rchan_name, struct_chan_name);
+        }
+
         fprintf(_fp, "fb_impl.L = %s;\n", lchan_name);
         fprintf(_fp, "fb_impl.R = %s;\n", rchan_name);
 
-        if (stmt2->u.comm.e) {
+        if (stmt2->u.comm.e && rbw>0) {
             int expr_inst_id = _generate_expr_block(stmt2->u.comm.e,rbw,false);
             fprintf(_fp, "%s%d(fb_impl.ei);\n", 
                             expr_block_instance_prefix,
@@ -196,14 +202,63 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
             fprintf(_fp, "fb_impl.d_out = fb_impl.d_in;\n");
         }
     }
+    else if (signature == src_s) {
+        auto stmt1 = (c->u.gc)->s;
+        Assert (stmt1->type == ACT_CHP_SEND, "Const-source statement not a send?");
+        int rbw = _bitWidth(stmt1->u.comm.chan);
+        auto e = stmt1->u.comm.e;
+        long long ival;
+        if (e) {
+            Assert (e->type == E_INT, "Constants only as const-source send value");
+            ival = e->u.ival.v;
+        }
+        else {
+            ival = 0;
+        }
+        fprintf(_fp, "const_src_impl<%d,%lld> cs_impl;\n", 
+                        rbw, ival);
+        char rchan_name[1024];
+        get_true_name (rchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
+        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+            _p->CurScope()->localLookup(stmt1->u.comm.chan, NULL)))) {
+            strcat (rchan_name, ".");
+            strcat (rchan_name, struct_chan_name);
+        }
+        fprintf(_fp, "cs_impl.R = %s;\n", rchan_name);
+    }
+    else if (signature == snk_s) {
+        auto stmt1 = (c->u.gc)->s;
+        Assert (stmt1->type == ACT_CHP_RECV, "Sink stmt not a recv?");
+        int lbw = _bitWidth(stmt1->u.comm.chan);
+        if (stmt1->u.comm.var) {
+            fprintf(_fp, "snk_impl<%d,%d,%d,true> ss_impl;\n", lbw, 
+                            _compute_delay_line_param(capture_delay), 
+                            _compute_delay_line_param(pulse_width));
+        }
+        else {
+            fprintf(_fp, "snk_impl<%d,%d,%d,false> ss_impl;\n", lbw, 
+                            _compute_delay_line_param(capture_delay), 
+                            _compute_delay_line_param(pulse_width));
+        }
+        char lchan_name[1024];
+        get_true_name (lchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
+        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+            _p->CurScope()->localLookup(stmt1->u.comm.chan, NULL)))) {
+            strcat (lchan_name, ".");
+            strcat (lchan_name, struct_chan_name);
+        }
+        fprintf(_fp, "ss_impl.L = %s;\n", lchan_name);
+    }
 }
 
 /*
+    Deprecated.
     Optimized synthesis for small programs. Single pipe element which 
     sequences 3 actions. Currently only works for linear programs. 
     Can be extended to work with branched programs with the correct 
     (action signature on each branch is the same) structure.  
 */
+#if 0
 void TinyForge::_run_forge (act_chp_lang_t *c, int root)
 {   
     listitem_t *li;
@@ -240,7 +295,6 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
         var = stmt1->u.comm.var;
         chan = stmt1->u.comm.chan;
         chan2 = stmt2->u.comm.chan;
-        // chan = stmt2->u.comm.chan;
         get_true_name (chan_name, chan2, _p->CurScope());
         it = _p->CurScope()->Lookup(chan);
         bw = TypeFactory::bitWidth(it);
@@ -312,12 +366,15 @@ void TinyForge::_run_forge (act_chp_lang_t *c, int root)
     }
     return;
 }
+#endif
 
 /*
+    Deprecated.
     Given a pipeline element, port and mode (either source or sink), 
     terminate that port with the correct element. This is used for 
     tying off unused ports in the pipeline element. 
 */
+#if 0
 void TinyForge::_terminate_port (int block_id, Port port, Term mode)
 {   
     int term_inst;
@@ -348,3 +405,4 @@ void TinyForge::_terminate_port (int block_id, Port port, Term mode)
 
     return;
 }
+#endif

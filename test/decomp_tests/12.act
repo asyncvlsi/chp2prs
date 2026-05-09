@@ -1,0 +1,8 @@
+defproc dc12 (chan?(int) A; chan?(int<0>) B; chan!(int) C)
+{
+    int x;
+    int<0> y;
+    chp {
+        *[ A?x ; B?y; C!(x+y) ]
+    }
+}

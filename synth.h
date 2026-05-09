@@ -48,7 +48,7 @@ class ActSynthesize {
 		 char *outfile,
 		 char *exprfile = NULL);
   
-  ~ActSynthesize ();
+  virtual ~ActSynthesize ();
 
   /**
    * Override this function to include any imports that have to be
@@ -111,6 +111,7 @@ class ActSynthesize {
   virtual void typeBool (char *buf, int sz) { buf[0] = '\0'; }
   virtual void typeIntChan (char *buf, int sz, int bitwidth) { buf[0] = '\0'; }
   virtual void typeBoolChan (char *buf, int sz) { buf[0] = '\0'; }
+  virtual void typeStructChan (char *buf, int sz, InstType *t) { buf[0] = '\0'; }
 
   /**
    * If you need to do something special for structures, implement it
@@ -132,6 +133,11 @@ class ActSynthesize {
    * implementation.
    */
   const char *getPrefix () { return _prefix; }
+
+  /**
+   * Return list of new ports added to the process
+   */
+  list_t *getNewPorts() { return _new_ports; }
 
   /**
    * Return list of types freshly introduced by decomposition
@@ -184,6 +190,7 @@ protected:
   Process *_top;
 
   list_t *_decomp_vx; ///< for new instances introduced during decomposition
+  list_t *_new_ports; ///< for new ports introduced to enable scan points
 
   void Close (); ///< close output files
 };

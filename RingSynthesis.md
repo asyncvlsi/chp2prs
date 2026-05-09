@@ -2,7 +2,7 @@
 
 A quick summary of the state of ring synthesis.
 ```
-Typical usage: synth2 -F ring -E abc [-e <exprfile>] [-o <outfile>] -p <proc> <actfile>
+Typical usage: synth2 -F ring -C bdp -E abc [-e <exprfile>] [-o <outfile>] -p <proc> <actfile>
 ```
 
 
@@ -38,9 +38,21 @@ Some constraints on the input CHP in order for the synthesis to work correctly.
     }
 ``` 
 
-* Probes are currently unsupported. 
+## I have channel accesses in the initial conditions of the program
 
-Fixes for the internal loop constraint and the multiple channel access constraint have been implemented, but are yet to be tested extensively. 
+This is currently unsupported, but can be manually handled with a state variable.
+
+## I have internal loops and/or multiple channel accesses within the main loop
+
+You can get rewritten CHP that has internal loops extracted and multiple channel accesses handled automatically. Run decomposition on your input CHP as follows:
+```
+synth2 -F decomp -O -o <outfile> -p <proc> <actfile>
+```
+This will result in a process named `decomp_proc` where `proc` is your original process name. Now this can be synthesized as follows:
+```
+synth2 -ref=1 -F ring -C bcp -E abc [-e <exprfile>] [-o <outfile>] -p <proc> <actfile>
+```
+where `<proc>` is now `decomp_proc` and `<actfile>` is the output file of the previous step.
 
 # Synthesis Example
 

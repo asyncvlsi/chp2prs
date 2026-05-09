@@ -17,8 +17,11 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
+
+#ifndef __ACT_TINY_FORGE_H__
+#define __ACT_TINY_FORGE_H__
 
 #include "ring_forge.h"
 
@@ -31,19 +34,19 @@ enum class Term { Sink, Source };
 
 static const std::set<std::vector<Action>> valid_signatures = 
 {   
-    // {Action::Send},
-    // {Action::Receive},
-    {Action::Receive, Action::Send} // gotta figure out if need half/full buffer..
+    {Action::Send},
+    {Action::Receive},
+    {Action::Receive, Action::Send}
 };
 
 class TinyForge : public RingForge {
     public: 
 
     TinyForge ( FILE *fp, 
-            // Process *p, act_chp_lang_t *c,
-            // ActBooleanizePass *bp, 
             int bdpath,
             int delay_margin, int dp_style, 
+            BD_MODE bdpath_mode, 
+            const char *externopt_toolname,
             const char *circuit_library,
             const char *exprfile = "expr.act" );
 
@@ -51,8 +54,11 @@ class TinyForge : public RingForge {
         bool check_if_pipeable (act_chp_lang_t *);
 
     ~TinyForge () {
-        if (eeo) { eeo->~ExprCache(); eeo=NULL; }
-    }
+        if (eeo) { 
+            eeo->~ExprCache(); 
+            eeo=NULL; 
+        }
+}
 
     protected:
 
@@ -72,3 +78,4 @@ class TinyForge : public RingForge {
         void _run_forge_new (act_chp_lang_t *, std::vector<Action>);
 
 };
+#endif

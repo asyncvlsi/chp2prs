@@ -49,20 +49,28 @@ OptionalChanId NameParsingIdPool::chanIdFromActId(ActId *id) {
     Int *varInt = dynamic_cast<Int *>(chanType->BaseType());
     bool is_bool = dynamic_cast<Bool *>(chanType->BaseType());
     bool is_enum = TypeFactory::isUserEnum (chanType);
+    bool is_pure_struct = TypeFactory::isPureStruct (chanType->BaseType());
 
     /* XXX: will fail for data types and structures */
-    hassert(varInt || is_bool || is_enum);
+    hassert(varInt || is_bool || is_enum || is_pure_struct);
     
-    int bitwidth = varInt ? TypeFactory::bitWidth(varInt) :
+    int bitwidth = is_pure_struct ? TypeFactory::totBitWidth(chanType->BaseType()) :
+      varInt ? TypeFactory::bitWidth(varInt) :
       (is_enum ? TypeFactory::bitWidth (chanType) : 1);
 
     /* XXX: this will fail if the channel is a pure synchronization
        channel 
     */
-    hassert(bitwidth > 0);
+    hassert(bitwidth >= 0);
 
     // then create a variable to hold it
-    auto new_id = m_id_pool.makeUniqueChan(bitwidth, is_bool);
+    ChanId new_id;
+    if (is_pure_struct) {
+      new_id = m_id_pool.makeUniqueChan(bitwidth, is_bool, false, is_pure_struct);
+    } 
+    else {
+      new_id = m_id_pool.makeUniqueChan(bitwidth, is_bool);
+    }
 
     hassert(m_chanid_to_actid.find(new_id) == m_chanid_to_actid.end());
     m_chanid_to_actid[new_id] = id;
@@ -90,14 +98,20 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
     Int *varInt = dynamic_cast<Int *>(varType->BaseType());
     bool is_bool = TypeFactory::isBoolType(varType);
     bool is_enum = TypeFactory::isUserEnum (varType);
+    bool is_pure_struct = TypeFactory::isPureStruct (varType);
 
     /* XXX: will fail for data types and structures */
-    hassert(varInt || is_bool || is_enum);
+    if (!(varInt || is_bool || is_enum || is_pure_struct)) {
+      // this is not available; perhaps it is a channel?
+      return OptionalVarId::null_id();
+    }
+    hassert(varInt || is_bool || is_enum || is_pure_struct);
     
-    int bitwidth = varInt ? TypeFactory::bitWidth(varInt) :
+    int bitwidth = is_pure_struct ? TypeFactory::totBitWidth(varType->BaseType()) :
+      varInt ? TypeFactory::bitWidth(varInt) :
       (is_enum ? TypeFactory::bitWidth (varType) : 1);
     
-    hassert(bitwidth > 0);
+    hassert(bitwidth >= 0);
 
     // then create a variable to hold it
     auto new_id = m_id_pool.makeUniqueVar(bitwidth, is_bool);
@@ -106,7 +120,32 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
     m_varid_to_actid[new_id] = id;
     m_actid_to_varid[canonicalId] = new_id;
 
+    if (is_pure_struct) { // just to create the vars;
+      auto _ = getStructFields(id);
+    }
+
     return new_id;
+}
+
+[[nodiscard]] bool NameParsingIdPool::ActIdIsPureStruct (ActId *id) {
+    auto vt = m_scope->FullLookup(id, nullptr);
+    return TypeFactory::isPureStruct (vt);
+}
+
+[[nodiscard]] std::vector<VarId> NameParsingIdPool::getStructFields (ActId *id) {
+    InstType *varType = m_scope->FullLookup(id, nullptr);  
+    auto d = dynamic_cast<Data *>(varType->BaseType());
+    int nb, ni; int *types;
+    d->getStructCount (&nb, &ni);
+    ActId **res = d->getStructFields (&types);
+    ActId *tail = id->Tail ();
+    std::vector<VarId> ret{};
+    for (int i=0; i<nb+ni; i++) {
+      tail->Append(res[i]);
+      ret.push_back(*varIdFromActId(tail));
+      tail->prune();
+    }
+    return ret;
 }
 
 const char *NameParsingIdPool::getName(const VarId &id) {
@@ -126,6 +165,9 @@ NameParsingIdPool::name_from_var_map() const {
   return m_varid_to_actid;
 }
 
+bool IdPool::getIsStruct(const ChanId &id) const {
+    return m_chanid_infos[id.m_id].is_struct;
+}
 /*
  * Straightforward accessor functions for the ID pool
  */
@@ -151,7 +193,7 @@ VarId IdPool::makeUniqueVar(int bitwidth, bool is_bool) {
     VarId new_id = m_next_varid;
     hassert(new_id.m_id == m_varid_infos.size());
     m_next_varid = m_next_varid.next_id();
-    hassert(bitwidth > 0);
+    hassert(bitwidth >= 0);
     m_varid_infos.push_back(VarIdInfo{bitwidth, is_bool});
     return new_id;
 }
@@ -160,8 +202,17 @@ ChanId IdPool::makeUniqueChan(int bitwidth, bool is_bool) {
     ChanId new_id = m_next_chanid;
     hassert(new_id.m_id == m_chanid_infos.size());
     m_next_chanid = m_next_chanid.next_id();
-    hassert(bitwidth > 0);
+    hassert(bitwidth >= 0);
     m_chanid_infos.push_back(ChanIdInfo{bitwidth, is_bool});
+    return new_id;
+}
+
+ChanId IdPool::makeUniqueChan(int bitwidth, bool is_bool, bool is_inp, bool is_struct) {
+    ChanId new_id = m_next_chanid;
+    hassert(new_id.m_id == m_chanid_infos.size());
+    m_next_chanid = m_next_chanid.next_id();
+    hassert(bitwidth >= 0);
+    m_chanid_infos.push_back(ChanIdInfo{bitwidth, is_bool, is_inp, is_struct});
     return new_id;
 }
 

@@ -1,0 +1,37 @@
+
+defproc prober (chan?(int<8>) l1; chan!(int<8>) r)
+{
+	int<8> x;
+	chp{
+        *[
+            [|  #l1 -> l1?x
+            [] ~#l1 -> x:=0
+            |];
+            r!x
+        ]
+	}
+}
+
+defproc src5 (chan!(int<8>) r)
+{
+	chp{
+		*[r!5]
+	}
+}
+
+defproc snk (chan?(int<8>) l)
+{
+	int<8> x;
+	chp{
+		*[l?x; log("%d", x)]
+	}
+}
+
+defproc testproc (chan?(int<8>) X1; chan!(int<8>) Y)
+{
+  prober p(X1,Y);
+
+  src5  ix1(X1);
+
+  snk o(Y);
+}

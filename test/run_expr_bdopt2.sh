@@ -31,14 +31,14 @@ failed=0
 #  run_test name [option]
 #
 run_test () {
-    echo "Testing ${bold}$1 ${normal}(options: -F sdt -b -E $2 -e $1/run/expr.act)"
+    echo "Testing ${bold}$1 ${normal}(options: -F sdt -C bd -E $2 -e $1/run/expr.act)"
     # clear run directory
     if [ -d $1/run ];
     then
 	rm -rf $1/run
     fi
     mkdir $1/run
-    $ACTTOOL -F sdt -E $2 -b -e$1/run/expr.act -p "$1" -o $1/run/sdt.act $1/test.act
+    $ACTTOOL -F sdt -E $2 -C bd -e$1/run/expr.act -p "$1" -o $1/run/sdt.act $1/test.act
     cat > $1/run/tst.act <<EOF
 import "$1/run/sdt.act";
 sdt_$1 t;

@@ -22,16 +22,18 @@
 #include "synth.h"
 #include "engines.h"
 
-#include "decomp/breakpoint.h"
-#include "decomp/chopping_block.h"
-#include "decomp/projection.h"
-#include "decomp/pretty_print.h"
-#include "decomp/multichan.h"
+#include <act/chp/chopping_block.h>
+#include <act/chp/projection.h>
+#include <act/chp/pretty_print.h>
+#include <act/chp/multichan.h>
+#include <act/chp/chp_cost.h>
+#include <act/chp/expr_pipe.h>
 
-#include "ring/ring_else_gen.h"
+#include <act/chp/chp-opt.h>
+#include <act/chp/static-tokens.h>
 
-#include "opt/chp-opt.h"
-#include "opt/static-tokens.h"
+#include <chrono>
+using namespace std::chrono;
 
 class Decomp : public ActSynthesize {
  public:
@@ -49,13 +51,49 @@ class Decomp : public ActSynthesize {
     ActDynamicPass *dp = dynamic_cast <ActDynamicPass *> (ap);
     Assert (dp, "Hmm");
 
+    // for memories that might get instantiated
+    pp_printf_raw (_pp, "import syn;\n");
+    pp_printf_raw (_pp, "open syn;\n");
+    pp_printf_raw (_pp, "open syn::decomp;\n");
     /* print imports */
     fprintf (_expr, "namespace syn {\n\nexport namespace expr {\n\n");
     fclose (_expr);
     _expr = NULL;
+    // Header for decomp_sim.conf
+    int print_rt = dp->getIntParam ("run_time");
+    if (print_rt) {
+      FILE *ff = fopen("decomp_sim.conf", "w");
+      Assert (ff, "Could not open output file to write actsim configuration");
+      fprintf(ff, "begin sim\n");
+      fprintf(ff, "   begin chp\n");
+      fprintf(ff, "      int debug_metrics 0 # set to 1 to see delay association in actsim\n");
+      fprintf(ff, "      int detailed_delay_annotation 1\n");
+      fprintf(ff, "   end\n");
+      fprintf(ff, "end\n\n");
+      fclose(ff);
+    }
   }
 
-  bool overrideTypes() { return false; }
+  void processStruct (Data *d) { // some special stuff for templated pure structs
+    if (TypeFactory::isPureStruct(d)) {
+      int n_params = d->getRemainingParams();
+      std::string dfn = d->getFullName();
+      bool emit_decl = (dfn.size()>=2 && dfn.substr(dfn.size()-2,2)!="<>");
+      if (emit_decl) {
+        char buf[4096];
+        ActNamespace::Act()->msnprintfproc (buf, 4096, d);
+        pp_printf_raw (_pp, "\ndeftype %s <: %s () {}\n\n", buf, d->getFullName());
+      }
+    }
+  }
+
+  bool overrideTypes() { return true; }
+
+  bool skipOverride (ValueIdx *vx) {
+    if (TypeFactory::isProcessType(vx->t))
+      return false;
+    return true;
+  }
 
   void typeInt (char *buf, int sz, int bitwidth) {
     snprintf (buf, sz, "int<%d>", bitwidth);
@@ -77,19 +115,28 @@ class Decomp : public ActSynthesize {
     // fprintf (_pp->fp, "/* start decomp */\n");
     fflush (_pp->fp);
 
-    int chpopt, pll, project;
+    int chpopt, project;
+    double cycle_time_target;
     ActDynamicPass *dp;
 
     dp = dynamic_cast <ActDynamicPass *> (ap);
     Assert (dp, "What?");
 
     chpopt = dp->getIntParam ("chp_optimize");
-    pll = dp->getIntParam ("parallelism");
+    cycle_time_target = dp->getRealParam("cycle_time_target");
     project = dp->getIntParam ("project");
+    const char *externopt_toolname = (char *)dp->getPtrParam("externopt_toolname");
+    const char *fname = p->getFullName();
+    const char *memname = config_get_string("act.decomp.mem");
+    bool is_mem = !(strncmp(fname, memname, strlen(memname)));
 
-    if (p->getlang() && p->getlang()->getchp()) {
+    if (p->getlang() && p->getlang()->getchp() && !is_mem) {
 
-      fill_in_else_explicit (p->getlang()->getchp()->c, p, 1);
+      int print_rt = dp->getIntParam ("run_time");
+      fprintf(stdout, "\n// %s : ",p->getName());
+      fflush(stdout);
+
+      _fill_in_else_explicit (p->getlang()->getchp()->c, p->CurScope());
 
       auto g = ChpOptimize::chp_graph_from_act (p->getlang()->getchp()->c,
 						p->CurScope (), 1);
@@ -104,103 +151,75 @@ class Decomp : public ActSynthesize {
       }
       uninlineBitfieldExprsHack (g.graph);
 
-      std::vector<ActId *> tmp_names;
       std::unordered_set<ActId *> newnames;
-    
-      std::vector<Sequence> vs, vs1, vsx;
+      std::vector<ActId *> tmp_names;
 
-#if 1
-      // necessary decompositions for synthesis -------------------------------
-      MultiChan *mc = new MultiChan (_pp->fp, g, p->CurScope());
-      mc->process_multichans();
-      vs = mc->get_auxiliary_procs();
-
-      BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope(), 0);
-      ChoppingBlock *cb = new ChoppingBlock (_pp->fp, g, 
-                                bkp->get_decomp_info_map(), p->CurScope());
-      cb->excise_internal_loops();
-      vs1 = cb->get_chopped_seqs();
-
-      Projection *pr = new Projection (_pp->fp, g, 
-                          bkp->get_decomp_info_map(), p->CurScope());
-      if (project) {
-        pr->project();
-      }
-      auto vs3 = pr->get_procs();
-      // vsx = pr->get_seqs();
-
-      Block *top = g.graph.blockAllocator().newBlock(Block::makeParBlock());
-      top->u_par().branches.push_back(g.graph.m_seq);
-
-      chp_graph_to_act (g, tmp_names, p->CurScope());
-      for ( auto x : tmp_names ) { newnames.insert(x); }
-      act_chp_lang_t *top_chp;
-      NEW (top_chp, act_chp_lang_t);
-      top_chp->label = NULL;
-      top_chp->space = NULL;
-      top_chp->type = ACT_CHP_COMMA;
-      top_chp->u.semi_comma.cmd = list_new();
-
-      for ( auto vv : {vs, vs1} ) 
-      {
-        for (auto v : vv)
-        {
-          g.graph.m_seq = v;
-          act_chp_lang_t *tmp = chp_graph_to_act (g, tmp_names, p->CurScope());
-          for ( auto x : tmp_names ) { newnames.insert(x); }
-          list_append(top_chp->u.semi_comma.cmd, tmp);
-        }
-      }
-      std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
-      for ( auto v : vs3 )
-      {
-        auto _g = ChpOptimize::chp_graph_from_act (v, p->CurScope (), 1);
-        // ChpOptimize::optimize_chp_O2 (_g.graph, p->getName(), false);
-        ChpOptimize::optimize_chp_O0 (_g.graph, p->getName(), false);
-        std::vector<ActId *> tmp_names2;
-        v = chp_graph_to_act (_g, tmp_names2, p->CurScope());
-        for ( auto x : tmp_names2 ) { newnames.insert(x); }
-        // for ( auto id : _g.name_from_chan ) { g.name_from_chan.insert(id); }
-        nfc.push_back(_g.name_from_chan);
-        list_append(top_chp->u.semi_comma.cmd, v);
+      if (!project) {
+        // ExprPipe ep (g, p->CurScope());
+        // ep.set_n_cuts(pll);
+        // ep.run();
       }
 
-      // ----------------------------------------------------------------------
-
-      // concurrent decomposition for slack elastic programs ------------------
-      std::vector<Sequence> vs2;
-      Block *top2 = g.graph.blockAllocator().newBlock(Block::makeParBlock());
+      if (!ChpOptimize::isProbeFree(g.graph) && project) {
+        warning ("Probes in CHP - not running projection");
+        project = false;
+      }
       
-      // only decomposing main program for now
-      for ( auto d_seq : top->u_par().branches )
-      {
-        g.graph.m_seq = d_seq;
-
-#if 0
-        BreakPoints *bkp2 = new BreakPoints (_pp->fp, g, p->CurScope(), pll);
-        bkp2->mark_breakpoints();
-        ChoppingBlock *cb2 = new ChoppingBlock (_pp->fp, g, 
-                                  bkp2->get_decomp_info_map(), p->CurScope());
-        // cb2->chop_graph();
-        vs2 = cb2->get_chopped_seqs();
-
-        for (auto v : vs2)
-        {
-          g.graph.m_seq = v;
-          act_chp_lang_t *tmp2 = chp_graph_to_act (g, tmp_names, p->CurScope());
-          list_append(top_chp->u.semi_comma.cmd, tmp2);
-          for ( auto x : tmp_names ) { newnames.insert(x); }
+      auto t1 = high_resolution_clock::now();
+      // necessary rewrites for ring synthesis --------------------------------
+      MultiChan mc = MultiChan (g, p->CurScope());
+      mc.process_multichans();
+      auto vs = mc.get_auxiliary_procs();
+      
+      ChoppingBlock cb = ChoppingBlock (g, p->CurScope());
+      cb.excise_internal_loops();
+      auto vs1 = cb.get_chopped_seqs();
+        
+      auto btop = g.graph.newParBlock();
+      for ( auto vv : {{g.graph.m_seq}, vs, vs1} ) {
+        for (auto v : vv) {
+          btop->u_par().branches.push_back(v);
         }
-#else
-        act_chp_lang_t *tmp2 = chp_graph_to_act (g, tmp_names, p->CurScope());
-        if (!project) {
-          list_append(top_chp->u.semi_comma.cmd, tmp2);
+      }
+      g.graph.m_seq = g.graph.newSequence({btop});
+      ChpOptimize::fillInElseExplicit(g.graph);
+      act_chp_lang_t *top_chp = chp_graph_to_act (g, tmp_names, p->CurScope());
+      for ( auto x : tmp_names ) { newnames.insert(x); }
+      // ----------------------------------------------------------------------
+      auto t2 = high_resolution_clock::now();
+
+      // projection/decomposition for slack elastic programs ------------------
+      std::vector<std::unordered_map<ChpOptimize::ChanId, ActId *>> nfc = {};
+      if (project) {
+        Projection pr = Projection (g, p->CurScope());
+        pr.project(Strategy::Timing, cycle_time_target);
+        if (print_rt && ChpOptimize::isProbeFree(g.graph)) {
+          pr.export_ddg_and_tg(p->getName());
         }
-        for ( auto x : tmp_names ) { newnames.insert(x); }
-#endif
+        auto [names2, top_chp2, nfc2] = pr.get_final_result();
+        for ( auto x : names2 ) { newnames.insert(x); }
+        for ( auto x : nfc2 ) { nfc.push_back(x); }
+        top_chp = top_chp2;
       }
       // ----------------------------------------------------------------------
 
+      _trim_nested_same_int (top_chp, p->CurScope());
+      
+      auto t3 = high_resolution_clock::now();
+
+      auto d1 = duration_cast<microseconds>(t2 - t1);
+      auto d2 = duration_cast<microseconds>(t3 - t2);
+      if (print_rt) {
+        fprintf(stdout, "\n// ----------- Process Runtimes ----------- ");
+        fprintf(stdout, "\n// Multichan + Loop Exc. : %-8lld microseconds", d1.count());
+        fprintf(stdout, "\n// Projection            : %-8lld microseconds", d2.count());
+        fprintf(stdout, "\n");
+      }
+
+      if (print_rt) {
+        ChpCost cc(p->CurScope(), g, std::string(externopt_toolname));
+        cc.dump_actsim_conf("decomp_sim.conf", top_chp, p);
+      }
 
       act_chp_lang_t *l = top_chp;
       p->getlang()->getchp()->c = l;
@@ -213,26 +232,16 @@ class Decomp : public ActSynthesize {
         Assert (vx, "can't find ValueIdx in scope?");
         list_append(_decomp_vx, vx);
       }
+
       // to prevent internal chans from getting added twice
       std::unordered_set<std::string> chans = {};
+
       int ref = config_get_int("act.refine_steps");
       static char chan_prefix[20];
       snprintf (chan_prefix, 20, "_ch_%d_",ref);
       int len = strlen(chan_prefix);
 
-      for (auto id : g.name_from_chan) {
-        const char *channame = (id.second)->getName();
-        ValueIdx *vx = p->CurScope()->LookupVal (channame);
-        Assert (vx, "can't find ValueIdx in scope?");
-        // TODO: there may be a better way to check for new channels..
-        // Using first 3 chars for now
-        // if (strncmp(channame, "_ch", 3) == 0
-        if (strncmp(channame, chan_prefix, len) == 0
-        && !chans.contains(std::string(channame))) {
-          list_append(_decomp_vx, vx);
-          chans.insert(std::string(channame));
-        }
-      }
+      nfc.push_back(g.name_from_chan);
 
       for ( auto m : nfc ) {
         for ( auto id : m ) {
@@ -241,29 +250,13 @@ class Decomp : public ActSynthesize {
           Assert (vx, "can't find ValueIdx in scope?");
           // TODO: there may be a better way to check for new channels..
           // Using first 3 chars for now
-          // if (strncmp(channame, "_ch", 3) == 0
           if (strncmp(channame, chan_prefix, len) == 0
-            && !chans.contains(std::string(channame))) {
+            && !chans.count(std::string(channame))) {
             list_append(_decomp_vx, vx);
             chans.insert(std::string(channame));
           }
         }
       }
-#else
-    ChpOptimize::putIntoNewStaticTokenForm(g.graph);
-    fprintf (stdout, "\n\n");
-    print_chp(std::cout,g.graph);
-    fprintf (stdout, "\n\n");
-    ChpOptimize::takeOutOfStaticTokenForm(g.graph);
-
-    BreakPoints *bkp = new BreakPoints (_pp->fp, g, p->CurScope(), 0);
-    Projection *pr = new Projection (_pp->fp, g, 
-                          bkp->get_decomp_info_map(), p->CurScope());
-    pr->project();
-    pr->print_subgraphs(_pp->fp);
-
-    p->getlang()->getchp()->c = ChpOptimize::chp_graph_to_act (g, tmp_names, p->CurScope());
-#endif
       
     }
     pp_forced (_pp, 0);

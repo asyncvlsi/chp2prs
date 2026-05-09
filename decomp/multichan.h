@@ -24,15 +24,24 @@
 #ifndef __MULTICHAN_H__
 #define __MULTICHAN_H__
 
-#include "analysis.h"
+#include <act/chp/analysis.h>
+#include <act/chp/utils.h>
 
 using namespace ChpOptimize;
 
 /*
-    To hold a block* and the id of the channel (will become alias ids)
-    the unsigned int is the 'alias number' of the alias chan
+    State encoding:
+    0 - special state, program entry point
+    1..n - channel accessing states, where n is the number of accesses
+    n+1.. - other states, decision points but not channel accessing states
+    -1,-2,... - used temporarily internally for re-encoding
 */
-typedef std::unordered_map<Block *, std::pair<ChanId, unsigned int>> chan_blk_pair;
+typedef int State;
+/*
+    To hold a block* and the id of the channel (will become alias ids).
+    The State is the alias ID of the alias chan (see above).
+*/
+typedef std::unordered_map<Block *, std::pair<ChanId, State>> chan_blk_pair;
 
 /*
     Program-wide data structure to hold all chan ids
@@ -53,25 +62,25 @@ enum class Cond { Dead, True, Guard };
 */
 class StateRow {
     public:
-        int curr; // current state
+        State curr; // current state
         Cond c; // transition type
-        std::vector<int> nexts; // list of next states
+        std::vector<State> nexts; // list of next states
         Block *sel; // select or doloop - only if c is Cond::Guard
 
-        StateRow (int curr_st, int next_st)
+        StateRow (State xcurr, State next)
         {
-            curr = curr_st;
+            curr = xcurr;
             c = Cond::True;
             nexts.clear();
-            nexts.push_back(next_st);
+            nexts.push_back(next);
             sel = NULL;
         }
-        StateRow (int curr_st, std::vector<int> next_sts, Block *sel_blk)
+        StateRow (State xcurr, std::vector<State> xnexts, Block *sel_blk)
         {
             Assert ((sel_blk->type() == BlockType::Select || sel_blk->type() == BlockType::DoLoop), "hmm");
-            curr = curr_st;
+            curr = xcurr;
             c = Cond::Guard;
-            nexts = next_sts;
+            nexts = xnexts;
             sel = sel_blk;
         }
 };
@@ -87,9 +96,9 @@ typedef std::vector<StateRow> StateTable;
 class MultiChan : public DecompAnalysis {
     public:
 
-        MultiChan ( FILE *fp_out, GraphWithChanNames &g_in, 
+        MultiChan (GraphWithChanNames &g_in, 
                 Scope *s_in)
-            : DecompAnalysis (fp_out, g_in, s_in)
+            : DecompAnalysis (g_in, s_in)
             {
                 analyze();
             }
@@ -117,7 +126,7 @@ class MultiChan : public DecompAnalysis {
             no need to process it - just delete
             it from the list of ones to handle
         */
-        void _delete_singles();
+        void _delete_singles(multichan_alias_struct &);
 
         void _print_multichan_info();
 
@@ -126,9 +135,9 @@ class MultiChan : public DecompAnalysis {
             with IDs of freshly generated
             alias channels
         */
-        void _update_with_aliases(Sequence, ChanId);
+        void _update_with_aliases(Sequence, ChanId, multichan_alias_struct &);
 
-        void _add_chan_blk_pair (Block *, ChanId);
+        void _add_chan_blk_pair (Block *, ChanId, multichan_alias_struct &);
 
         /*
             Before a selection, insert channel communication
@@ -143,6 +152,10 @@ class MultiChan : public DecompAnalysis {
         */
         void _insert_guard_comm_loop (Block *, ChanId, int);
 
+        /*
+            [#C -> x:=C]
+        */
+        Block *_make_probed_assn (ChanId, VarId);
         /*
             Update channel accesses in the CHP with
             accesses on the new alias channels 
@@ -164,7 +177,8 @@ class MultiChan : public DecompAnalysis {
         /*
             Construct the auxiliary multi-channel handler process
         */
-        Sequence _build_aux_process_new (StateTable, ChanId);
+        Sequence _build_aux_process_send (StateTable, ChanId, multichan_alias_struct &);
+        Sequence _build_aux_process_recv (StateTable, ChanId, multichan_alias_struct &);
 
         /*
             Build a guard expression that encodes whether
@@ -184,14 +198,15 @@ class MultiChan : public DecompAnalysis {
             access of a given channel and alias number
             This is maybe inefficient 
         */
-        Block *_find_alias_block (ChanId, unsigned int);
+        Block *_find_alias_block (ChanId, unsigned int, multichan_alias_struct &);
 
         /*
             Wrap CHP in an infinite loop
         */
         Block *_wrap_in_do_loop (Sequence);
 
-        multichan_alias_struct mc_info;
+        multichan_alias_struct mc_info_send;
+        multichan_alias_struct mc_info_recv;
 
         StateTable _st;
 
@@ -200,7 +215,7 @@ class MultiChan : public DecompAnalysis {
             tracks the execution of the relevant 
             portions of the program
         */
-        int _build_state_table (Sequence, ChanId, int);
+        State _build_state_table (Sequence, ChanId, State, multichan_alias_struct &);
 
         /*
             For every staterow where the current state is a
@@ -228,7 +243,7 @@ class MultiChan : public DecompAnalysis {
             Replace all occurrences of old_state in the 
             next state column by new_state
         */
-        void _replace_next_states (int, int);
+        void _replace_next_states (State, State);
 
         /*
             Re-encode states so that they are the 
@@ -239,7 +254,7 @@ class MultiChan : public DecompAnalysis {
         /*
             Re-encode a single state
         */
-        void _re_encode_state (int, int);
+        void _re_encode_state (State, State);
 
         /*
             Checks this:

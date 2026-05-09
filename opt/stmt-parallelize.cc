@@ -59,35 +59,31 @@ void make_parallel(ChpGraph &g, Sequence &seq,
                    std::unordered_map<const Block *, UsesAndDefs> &udmap, 
                    bool &changed)
 {
+    auto intersect = [](const std::unordered_set<VarId> &a, 
+                        const std::unordered_set<VarId> &b) {
+        std::unordered_set<VarId> ret = {};
+        for ( const auto &x : a ) {
+            if (b.count(x)) ret.insert(x);
+        }
+        return ret;
+    };
     Block *curr1 = seq.startseq->child();
     while (curr1 != seq.endseq) 
     {
-        Assert (udmap.contains(curr1), "what1");
-        auto ud1 = udmap.at(curr1);
         Block *curr2 = curr1->child();
         while (curr2 != seq.endseq) 
         {
-            Assert (udmap.contains(curr2), "what2");
+            Assert (udmap.count(curr1), "what1");
+            auto ud1 = udmap.at(curr1);
+            Assert (udmap.count(curr2), "what2");
             auto ud2 = udmap.at(curr2);
-            std::unordered_set<VarId> ww = {};
-            std::unordered_set<VarId> wr = {};
-            std::unordered_set<VarId> rw = {};
-            std::set_intersection(ud1.var_writes.begin(), ud1.var_writes.end(),
-                                  ud2.var_writes.begin(), ud2.var_writes.end(),
-                                  std::inserter(ww, ww.begin()));
-
-            std::set_intersection(ud1.var_writes.begin(), ud1.var_writes.end(),
-                                  ud2.var_reads.begin() , ud2.var_reads.end(),
-                                  std::inserter(wr, wr.begin()));
-
-            std::set_intersection(ud2.var_writes.begin(), ud2.var_writes.end(),
-                                  ud1.var_reads.begin() , ud1.var_reads.end(),
-                                  std::inserter(rw, rw.begin()));
+            auto ww = intersect(ud1.var_writes, ud2.var_writes);
+            auto wr = intersect(ud1.var_writes, ud2.var_reads);
+            auto rw = intersect(ud1.var_reads , ud2.var_writes);
 
             if (ww.empty() && wr.empty() && rw.empty()) {
                 curr1 = make_parallel(g, curr1, curr2, udmap);
                 curr2 = curr1;
-                ud1 = udmap.at(curr1);
             }
             else {
                 break;
@@ -95,6 +91,88 @@ void make_parallel(ChpGraph &g, Sequence &seq,
             curr2 = curr2->child();
         }
         curr1 = curr1->child();
+    }
+}
+
+bool is_empty(Sequence seq) 
+{
+    bool ret = true;
+    Block *curr = seq.startseq->child();
+    while (curr->type() != BlockType::EndSequence) {
+    if (!ret) return false;
+    switch (curr->type()) {
+    case BlockType::Basic: {
+        return false;
+    }
+    break;
+    case BlockType::Par: {
+        for (auto &branch : curr->u_par().branches) {
+            ret &= is_empty (branch);
+        }
+    }
+    break;
+    case BlockType::Select: {
+        for (auto &branch : curr->u_select().branches) {
+            ret &= is_empty (branch.seq);
+        }
+    }
+    break;
+    case BlockType::DoLoop: {
+        ret &= is_empty(curr->u_doloop().branch);
+    }
+    break;
+    case BlockType::StartSequence:
+    case BlockType::EndSequence:
+        hassert(false);
+    break;
+    }
+    curr = curr->child();
+    }
+    return ret;
+}
+
+void eliminate_empty_code(ChpGraph &g, Sequence &seq) 
+{
+    Block *curr = seq.startseq->child();
+    while (curr != seq.endseq) {
+        switch (curr->type()) {
+        case BlockType::Basic:
+            break;
+        case BlockType::Par: {
+            std::list<Sequence> branches = {};
+            for ( auto branch : curr->u_par().branches ) {
+                eliminate_empty_code(g, branch);
+                if (!is_empty(branch)) branches.push_back(branch);
+            }
+            if (branches.empty()) 
+                curr->u_par().branches = {g.blockAllocator().newSequence({})};
+            else
+                curr->u_par().branches = branches;
+            break;
+        }
+        case BlockType::Select: {
+            bool all_empty = true;
+            for ( auto &branch : curr->u_select().branches ) {
+                eliminate_empty_code(g, branch.seq);
+                all_empty &= is_empty(branch.seq);
+            }
+            if (all_empty) {
+                curr->u_select().branches.clear();
+                auto tmp = curr->parent();
+                g.spliceOutEmptyControlBlock(curr, MarkDead::no);
+                curr = tmp;
+            }
+            break;
+        }
+        case BlockType::DoLoop: {
+            eliminate_empty_code(g, curr->u_doloop().branch);
+            break;
+        }
+        case BlockType::StartSequence:
+        case BlockType::EndSequence:
+            break;
+        }
+        curr = curr->child();
     }
 }
 
@@ -109,18 +187,66 @@ void parallelize_statememts(ChpGraph &g, Sequence &seq,
             break;
         case BlockType::Par: {
             for ( auto branch : curr->u_par().branches ) {
-                make_parallel(g, branch, ud, changed);
+                parallelize_statememts(g, branch, ud, changed);
+                // make_parallel(g, branch, ud, changed);
             }
             break;
         }
         case BlockType::Select: {
             for ( auto &branch : curr->u_select().branches ) {
+                parallelize_statememts(g, branch.seq, ud, changed);
                 make_parallel(g, branch.seq, ud, changed);
             }
             break;
         }
         case BlockType::DoLoop: {
+            parallelize_statememts(g, curr->u_doloop().branch, ud, changed);
             make_parallel(g, curr->u_doloop().branch, ud, changed);
+            break;
+        }
+        case BlockType::StartSequence:
+        case BlockType::EndSequence:
+            break;
+        }
+        curr = curr->child();
+    }
+}
+
+void fill_in_else_explicit (ChpGraph &g, Sequence seq)
+{
+    Block *curr = seq.startseq->child();
+    while (curr != seq.endseq) {
+        switch (curr->type()) {
+        case BlockType::Basic:
+            break;
+        case BlockType::Par: {
+            for ( auto branch : curr->u_par().branches ) {
+                fill_in_else_explicit(g, branch);
+            }
+            break;
+        }
+        case BlockType::Select: {
+            for ( auto &branch : curr->u_select().branches ) {
+                fill_in_else_explicit(g, branch.seq);
+            }
+            ChpExprSingleRootDag disj_gs = ChpExprSingleRootDag::makeConstant(BigInt(0),1);
+
+            for ( auto &branch : curr->u_select().branches ) {
+                if (branch.g.type()==IRGuardType::Expression) {
+                    disj_gs = ChpExprSingleRootDag::makeBinaryOp(IRBinaryOpType::Or,
+                        std::move(std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(disj_gs))), 
+                        std::move(std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(branch.g.u_e().e))));
+                }
+                else {
+                    disj_gs = ChpExprSingleRootDag::makeUnaryOp(IRUnaryOpType::Not,
+                        std::move(std::make_unique<ChpExprSingleRootDag>(ChpExprSingleRootDag::deep_copy(disj_gs))));
+                    branch.g = IRGuard::makeExpression(std::move(disj_gs));
+                }
+            }
+            break;
+        }
+        case BlockType::DoLoop: {
+            fill_in_else_explicit(g, curr->u_doloop().branch);
             break;
         }
         case BlockType::StartSequence:
@@ -140,6 +266,16 @@ bool parallelizeStatements(ChpGraph &graph) {
     graph.validateGraphInvariants();
 
     return changed;
+}
+
+bool fillInElseExplicit(ChpGraph &graph) {
+    fill_in_else_explicit(graph, graph.m_seq);
+    return true;
+}
+
+bool eliminateEmptyCode(ChpGraph &graph) {
+    eliminate_empty_code(graph, graph.m_seq);
+    return true;
 }
 
 } // namespace ChpOptimize

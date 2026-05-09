@@ -17,10 +17,13 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
-#include "reqs.h"
+#ifndef __ACT_RING_MISC_H__
+#define __ACT_RING_MISC_H__
+
+#include <act/chp/reqs.h>
 
 /* 
  * Recurses through the given chp tree.
@@ -43,12 +46,48 @@
  * ]
  * 
 */
-void fill_in_else_explicit (act_chp_lang_t *c, Process *p, int root);
+void fill_in_else_explicit (act_chp_lang_t *c, Scope *s);
 
-void expand_self_assignments (act_chp_lang_t *&c, Process *p);
+void expand_self_assignments (act_chp_lang_t *&c, Scope *s);
 
-void make_receives_unique (act_chp_lang_t *&c, Process *p);
+void make_receives_unique (act_chp_lang_t *&c, Scope *s);
 
-void flatten_lists (act_chp_lang_t *&c, Process *p);
+void flatten_lists (act_chp_lang_t *&c, Scope *s);
 
 bool _var_appears_in_expr (Expr *e, ActId *id);
+
+void place_skip_in_empty_branches (act_chp_lang_t *&c);
+
+/*
+  If P does not have a top-level loop, rewrite:
+  P ---> *[ P ; [false->skip] ]
+*/
+void rewrite_terminating_program (act_chp_lang_t *&c);
+
+/*
+    Revert the mangling settings back to 
+    the main Act object's defaults.
+*/
+void revert_mangle ();
+
+/*
+ * Initialize the Act object that is used for 
+ * string mangling functionality.
+ * Needs to be called only once in the entire
+ * program.
+*/
+void mangle_init ();
+
+/*
+ * Get the true name of a variable. This is 
+ * a consistent way to get a unique string
+ * name for every identifier. Indices in 
+ * arrayed identifiers are mangled as required.
+*/
+void get_true_name (char *buf, ActId *id, Scope *s, bool mangle = true);
+
+void mangle_it (char *, InstType *);
+
+void mangle_data (char *, Data *);
+
+#endif

@@ -20,6 +20,11 @@
 #-------------------------------------------------------------------------
 TARGETLIBS=libactchpopt_$(EXT).so
 
+TARGETINCS=chp-opt.h static-tokens.h ir-id.h hassert.h chp-cost-model.h act-names.h \
+		   chp-graph.h union-find.h utils.h ir-expr.h ir-expr-dag.h big-int.h \
+		   string_format.h typed-variants.h chp-print.h ir-expr-act-conversion.h
+TARGETINCSUBDIR=act/chp
+
 SHOBJS=algos.os big-int.os ir-id.os \
 	chp-act-conversions.os \
 	chp-graph.os chp-print.os \
@@ -33,11 +38,10 @@ SHOBJS=algos.os big-int.os ir-id.os \
 	deadcode.os \
 	livevars.os \
 	ir-to-dataflow.os \
-	opt-generic.os \
 	stmt-parallelize.os \
 	defuse.os 
 
-CPPSTD=c++20
+CPPSTD=c++17
 
 SRCS=$(SHOBJS:.os=.cc)
 

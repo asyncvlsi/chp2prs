@@ -1,0 +1,14 @@
+defproc mc9 (chan?(int<1>) C; chan?(int) L1; chan!(int) R) 
+{
+  int<1> z;
+	int x, y;
+  chp {
+    *[ C?z;
+      [z=0 -> L1?x
+      []z=1 -> skip
+      ];
+      L1?y;
+      R!(x+y)
+    ]
+  }
+}

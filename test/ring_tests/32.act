@@ -1,0 +1,34 @@
+defproc src (chan!(int<4>) C)
+{
+    chp {
+        *[ C!5 ]
+    }
+}
+
+defproc cond (chan?(int<4>) IN; chan!(int<4>) OUT) {
+    int<4> x; 
+    bool b2;
+    chp{
+        *[ IN?x; b2:=(x=5);
+            [ b2 -> OUT!x
+            []else -> skip
+            ]
+        ]
+    }
+}
+
+defproc snk (chan?(int<4>) C)
+{
+    int<4> x;
+    chp {
+        *[ C?x ]
+    }
+}
+
+defproc testproc(chan!(int<4>) Y)
+{
+    src s1;
+    snk s2;
+    cond m1(s1.C, s2.C);
+    Y = s2.C;
+}

@@ -1,0 +1,25 @@
+defproc dc11 (chan!(int) B)
+{
+    int x,y,z,w,v;
+    int a, b;
+    int y1, y2, y3;
+    chan(int) U0, U1, U2, U3, U4, D0, D1;
+    chan(int) B1;
+    chp {
+        a:=1;*[U0!a, D0!a; a:=a*2]
+        ||
+        *[U0?x;U1!x*x]
+        ||
+        *[U1?y;U2!y*y]
+        ||
+        *[U2?y1;U3!y1*y1]
+        ||
+        *[U3?y2;U4!y2]
+        ||
+        *[D0?z;D1!z]
+        ||
+        *[U4?w,D1?v; B1!(w*v)]
+        ||
+        *[B1?y3;B!y3]
+    }
+}

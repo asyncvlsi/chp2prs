@@ -1,0 +1,355 @@
+/*************************************************************************
+ *
+ *  Copyright (c) 2025 Karthi Srinivasan
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
+ *
+ **************************************************************************
+ */
+import std::delay_lines;
+
+namespace syn {
+  
+    export namespace ring {
+
+        export template <pint N>
+        defproc delay_line_0(bool? in; bool! out)
+        {
+            { N >= Delay_Params[0] : "Param out of range for this delay line" };
+            { N <  Delay_Params[1] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[0];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[0];
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        export template <pint N>
+        defproc delay_line_1(bool? in; bool! out)
+        {
+            { N >= Delay_Params[1] : "Param out of range for this delay line" };
+            { N <  Delay_Params[2] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[1];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[1];
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        export template <pint N>
+        defproc delay_line_2(bool? in; bool! out)
+        {
+            { N >= Delay_Params[2] : "Param out of range for this delay line" };
+            { N <  Delay_Params[3] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[2];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[2];
+            std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        export template <pint N>
+        defproc delay_line_3(bool? in; bool! out)
+        {
+            { N >= Delay_Params[3] : "Param out of range for this delay line" };
+            { N <  Delay_Params[4] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[3];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[3];
+            std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        // Selector and wrapper elements --------------
+
+        template <pint T, N>
+        defproc delay_selector(bool? in; bool! out)
+        {
+            [ T=0 -> delay_line_0<N> d0(in,out);
+            []T=1 -> delay_line_1<N> d1(in,out);
+            []T=2 -> delay_line_2<N> d2(in,out);
+            []T=3 -> delay_line_3<N> d3(in,out);
+            []else-> { false : "Delay line type out of range" };
+            ]
+        }
+
+        export template <pint N>
+        defproc delay_line(bool? in; bool! out)
+        {
+            [
+            ([]i:N_delay_line_types: N>=Delay_Params[i] & N<Delay_Params[i+1] -> delay_selector<i,N> dl(in,out); )
+            []N>=Delay_Params[N_delay_line_types] -> { false : "Delay line parameter out of range" };
+            ]
+        }
+
+        export template <pint N>
+        defproc delay_line_chan(a1of1 m1; a1of1 p1)
+        {
+            [ N=0  -> m1.r = p1.r;
+            []else ->
+                delay_line<N> d;
+                m1.r = d.in;
+                p1.r = d.out;
+            ]
+            m1.a = p1.a;
+        }
+
+        export template <pint N_d, N_mux>
+        defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
+        {
+            delay_line<N_d> d;
+            m1.r = d.in;
+            p1.r = d.out;
+            m1.a = p1.a;
+        }
+
+        // Selector and wrapper elements --------------
+
+    }
+
+    export namespace ring_pulsed {
+    
+        export template <pint N>
+        defproc delay_line_0(bool? in; bool! out)
+        {
+            { N >= Delay_Params[0] : "Param out of range for this delay line" };
+            { N <  Delay_Params[1] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[0];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[0];
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        export template <pint N>
+        defproc delay_line_1(bool? in; bool! out)
+        {
+            { N >= Delay_Params[1] : "Param out of range for this delay line" };
+            { N <  Delay_Params[2] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[1];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[1];
+            std::delay_lines::chain_recursive_fast0_slow1<my_N,1,2> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        export template <pint N>
+        defproc delay_line_2(bool? in; bool! out)
+        {
+            { N >= Delay_Params[2] : "Param out of range for this delay line" };
+            { N <  Delay_Params[3] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[2];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[2];
+            std::delay_lines::chain_reuse_1_delay_buffer<my_N,3> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        export template <pint N>
+        defproc delay_line_3(bool? in; bool! out)
+        {
+            { N >= Delay_Params[3] : "Param out of range for this delay line" };
+            { N <  Delay_Params[4] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[3];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[3];
+            std::delay_lines::chain_reuse_1_weak_delay_buffer<my_N,3> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        // Selector and wrapper elements --------------
+
+        template <pint T, N>
+        defproc delay_selector(bool? in; bool! out)
+        {
+            [ T=0 -> delay_line_0<N> d0(in,out);
+            []T=1 -> delay_line_1<N> d1(in,out);
+            []T=2 -> delay_line_2<N> d2(in,out);
+            []T=3 -> delay_line_3<N> d3(in,out);
+            []else-> { false : "Delay line type out of range" };
+            ]
+        }
+
+        export template <pint N>
+        defproc delay_line(bool? in; bool! out)
+        {
+            [
+            ([]i:N_delay_line_types: N>=Delay_Params[i] & N<Delay_Params[i+1] -> delay_selector<i,N> dl(in,out); )
+            []N>=Delay_Params[N_delay_line_types] -> { false : "Delay line parameter out of range" };
+            ]
+        }
+
+        export template <pint N>
+        defproc delay_line_chan(a1of1 m1; a1of1 p1)
+        {
+            [ N=0  -> m1.r = p1.r;
+            []else ->
+                delay_line<N> d;
+                m1.r = d.in;
+                p1.r = d.out;
+            ]
+            m1.a = p1.a;
+        }
+
+        export template <pint N_d, N_mux>
+        defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
+        {
+            delay_line<N_d> d;
+            m1.r = d.in;
+            p1.r = d.out;
+            m1.a = p1.a;
+        }
+    
+        // Selector and wrapper elements --------------
+    }
+
+    export namespace ring_2phase {
+    
+        export template <pint N>
+        defproc delay_line_0(bool? in; bool! out)
+        {
+            { N >= Delay_Params[0] : "Param out of range for this delay line" };
+            { N <  Delay_Params[1] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[0];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[0];
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        export template <pint N>
+        defproc delay_line_1(bool? in; bool! out)
+        {
+            { N >= Delay_Params[1] : "Param out of range for this delay line" };
+            { N <  Delay_Params[2] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[1];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[1];
+            std::delay_lines::chain_delay_buffer<my_N> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        export template <pint N>
+        defproc delay_line_2(bool? in; bool! out)
+        {
+            { N >= Delay_Params[2] : "Param out of range for this delay line" };
+            { N <  Delay_Params[3] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[2];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[2];
+            std::delay_lines::chain_weak_delay_buffer<my_N,3> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        export template <pint N>
+        defproc delay_line_3(bool? in; bool! out)
+        {
+            { N >= Delay_Params[3] : "Param out of range for this delay line" };
+            { N <  Delay_Params[4] : "Param out of range for this delay line" };
+            pint N_loc = N - Delay_Params[3];
+
+            // put your delay line here in terms of N_loc -------
+            pint my_N = N_loc+Delay_Offsets[3];
+            std::delay_lines::chain_weak_delay_buffer<my_N,5> ic(in, out);
+            // put your delay line here in terms of N_loc -------
+        }
+
+        // Selector and wrapper elements --------------
+
+        template <pint T, N>
+        defproc delay_selector(bool? in; bool! out)
+        {
+            [ T=0 -> delay_line_0<N> d0(in,out);
+            []T=1 -> delay_line_1<N> d1(in,out);
+            []T=2 -> delay_line_2<N> d2(in,out);
+            []T=3 -> delay_line_3<N> d3(in,out);
+            []else-> { false : "Delay line type out of range" };
+            ]
+        }
+
+        export template <pint N>
+        defproc delay_line(bool? in; bool! out)
+        {
+            [
+            ([]i:N_delay_line_types: N>=Delay_Params[i] & N<Delay_Params[i+1] -> delay_selector<i,N> dl(in,out); )
+            []N>=Delay_Params[N_delay_line_types] -> { false : "Delay line parameter out of range" };
+            ]
+        }
+
+        export template <pint N>
+        defproc delay_line_chan(a1of1 m1; a1of1 p1)
+        {
+            [ N=0  -> m1.r = p1.r;
+            []else ->
+                delay_line<N> d;
+                m1.r = d.in;
+                p1.r = d.out;
+            ]
+            m1.a = p1.a;
+        }
+
+        export template <pint N_d, N_mux>
+        defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
+        {
+            pint M = R2P_MUX_DELAY_MULT;
+            delay_line<M*N_d> d;
+            m1.r = d.in;
+            p1.r = d.out;
+            m1.a = p1.a;
+        }
+
+        // Selector and wrapper elements --------------
+    
+    }
+
+    export namespace ring_di_dpath {
+    
+        // Selector and wrapper elements --------------
+
+        export template <pint N>
+        defproc delay_line_chan(a1of1 m1; a1of1 p1)
+        {
+            m1 = p1;
+        }
+
+        export template <pint N_d, N_mux>
+        defproc delay_line_merge(a1of1 m1; bool mux_acks[N_mux]; a1of1 p1)
+        {
+            std::gates::ctree<N_mux+1,false> c;
+            ( i : N_mux : c.in[i] = mux_acks[i]; )
+
+            m1.r = c.in[N_mux];
+            p1.r = c.out;
+            m1.a = p1.a;
+        }
+
+        // Selector and wrapper elements --------------
+    
+    }
+
+
+}

@@ -22,6 +22,141 @@
 
 #include "chp_cost.h"
 
+void ChpCost::dump_actsim_conf(std::string conf_file, act_chp_lang_t *c, Process *p)
+{
+  Assert (!thread_mode, "limited functionality in multi-threaded mode!");
+  char buf[10240];
+  ActNamespace::Act()->msnprintfproc (buf, 10240, p);
+
+  fill_in_else_explicit(c);
+  FILE *ff = fopen(conf_file.c_str(), "a");
+  Assert (ff, "Could not open output file to write actsim configuration");
+  fprintf(ff, "begin sim\n");
+  fprintf(ff, "   begin chp\n");
+  fprintf(ff, "      begin decomp_%s<>\n", buf);
+  std::vector<int> delays{};
+  std::vector<int> energies{};
+  _gen_actsim_conf (c, delays, energies);
+  Assert (delays.size()==energies.size(), "what");
+  fprintf(ff, "      int_table delays ");
+  for (auto x : delays) { fprintf(ff, "%d ", x); }
+  fprintf(ff, "\n      int_table energies ");
+  for (auto x : energies) { fprintf(ff, "%d ", x); }
+  fprintf(ff, "\n      end");
+  fprintf(ff, "\n   end");
+  fprintf(ff, "\nend");
+  fprintf(ff, "\n");
+  fclose(ff);
+}
+
+bool ChpCost::_gen_actsim_conf(act_chp_lang_t *c, std::vector<int> &ds, std::vector<int> &es)
+{
+  Assert (!thread_mode, "limited functionality in multi-threaded mode!");
+  if (!c) return false;
+  switch (c->type) {
+  case ACT_CHP_SKIP:
+    return false;
+  break;
+  case ACT_CHP_ASSIGN: {
+    auto ebi = expr_metrics(c->u.assign.e,bitwidth(c->u.assign.id));
+    auto edel = (ebi && ebi->getDelay().exists()) ? (ebi->getDelay().typ_val)*1e12 : 0;
+    auto epow = (ebi && ebi->getDynamicPower().exists()) ? (ebi->getDynamicPower().typ_val)*1e9 : 0;
+    ds.push_back( int(assn_delay + edel) );
+    es.push_back( int(epow) );
+    return true;
+  }
+  break;
+  case ACT_CHP_SEND: {
+    auto ebi = expr_metrics(c->u.comm.e,bitwidth(c->u.comm.chan));
+    auto edel = (ebi && ebi->getDelay().exists()) ? (ebi->getDelay().typ_val)*1e12 : 0;
+    auto epow = (ebi && ebi->getDynamicPower().exists()) ? (ebi->getDynamicPower().typ_val)*1e9 : 0;
+    ds.push_back( int(send_delay + edel) );
+    es.push_back( int(epow) );
+    return true;
+  }
+  break;
+  case ACT_CHP_RECV: {
+    ds.push_back( int(recv_delay + capture_delay) );
+    es.push_back( int(0) );
+    return true;
+  }
+  break;
+
+  case ACT_CHP_COMMA: {
+    bool exists = false;
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {
+      exists |= _gen_actsim_conf ((act_chp_lang_t *) list_value (li), ds, es);
+    }
+    if (list_length(c->u.semi_comma.cmd)>1 && exists) {
+      ds.push_back(int(list_length(c->u.semi_comma.cmd)));
+      es.push_back(0);
+    }
+    return exists;
+  }
+  break;
+
+  case ACT_CHP_SEMI: {
+    bool exists = false;
+    for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
+    {
+      exists |= _gen_actsim_conf ((act_chp_lang_t *) list_value (li), ds, es);
+    }
+    return exists;
+  }
+  break;
+
+  case ACT_CHP_DOLOOP: {
+    _gen_actsim_conf (c->u.gc->s, ds, es);
+  } 
+  case ACT_CHP_LOOP: {
+    ds.push_back(1); // dummy val for now
+    es.push_back(0);
+    bool exists = _gen_actsim_conf (c->u.gc->s, ds, es);
+    return exists;
+  }
+  break;
+
+  case ACT_CHP_SELECT_NONDET:
+  case ACT_CHP_SELECT: {
+    bool exists = false;
+    // Assert (selection_way(c) < max_way, "Selection way beyond allowed range");
+    int way = selection_way(c);
+    if (way >= max_way) {
+      warning ("Selection way (%d) beyond allowed max way (%d)", way, max_way);
+    }
+    double max_del = 0;
+    double tot_energy = 0;
+    act_chp_gc_t *gc = c->u.gc;
+    while (gc) {
+      auto ebi = expr_metrics(gc->g, 1);
+      auto edel = (ebi && ebi->getDelay().exists()) ? (ebi->getDelay().typ_val)*1e12 : 0;
+      auto epow = (ebi && ebi->getDynamicPower().exists()) ? (ebi->getDynamicPower().typ_val)*1e9 : 0;
+      double br_del = edel + capture_delay;
+      if (br_del > max_del) max_del = br_del;
+      tot_energy += epow;
+      gc = gc->next;
+    }
+    ds.push_back(int(max_del));
+    es.push_back(int(tot_energy));
+    gc = c->u.gc;
+    while (gc) {
+      exists |= _gen_actsim_conf (gc->s, ds, es);
+      gc = gc->next;
+    }
+    return exists;
+  }
+  break;
+
+  case ACT_CHP_FUNC:
+  fatal_error ("function");
+  break;
+  default:
+  fatal_error ("What?");
+  break;
+  }
+  return false;
+}
 
 void ChpCost::add_procs (std::vector<act_chp_lang_t *> cs)
 {
@@ -35,12 +170,14 @@ void ChpCost::clear()
 
 double ChpCost::get_max_latency_cost ()
 {
+    Assert (!thread_mode, "limited functionality in multi-threaded mode!");
     auto costs = get_latency_costs();
     return *std::max_element(costs.begin(), costs.end());
 }
 
 std::vector<double> ChpCost::get_latency_costs ()
 {
+    Assert (!thread_mode, "limited functionality in multi-threaded mode!");
     std::vector<double> latency_costs = {};
     for ( auto c : procs ) {
         latency_costs.push_back(latency_cost(c));
@@ -54,6 +191,7 @@ std::vector<double> ChpCost::get_latency_costs ()
 */
 double ChpCost::latency_cost (act_chp_lang_t *c)
 {
+    Assert (!thread_mode, "limited functionality in multi-threaded mode!");
     double ret = 0;
     fill_in_else_explicit (c);
     return _latency_cost (c);
@@ -67,7 +205,7 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
         return 0;
     break;
     case ACT_CHP_ASSIGN:
-        return ( assn_delay + capture_delay + expr_delay (c->u.assign.e, bitwidth(c->u.assign.id)) );
+        return ( assn_delay + expr_delay (c->u.assign.e, bitwidth(c->u.assign.id)) );
     break;
     case ACT_CHP_SEND:
         return ( send_delay + expr_delay (c->u.comm.e, bitwidth(c->u.comm.chan)) );
@@ -106,7 +244,11 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
     case ACT_CHP_SELECT_NONDET:
     case ACT_CHP_SELECT: {
         int way = selection_way (c);
-        Assert (way<max_way, "Selection way beyond allowed range");
+        // Assert (way<max_way, "Selection way beyond allowed range");
+        if (way>=max_way) {
+          way=max_way-1;
+          warning ("Selection way (%d) beyond allowed max way (%d)", way, max_way);
+        }
         double max_del = 0;
         act_chp_gc_t *gc = c->u.gc;
         while (gc) 
@@ -135,12 +277,27 @@ double ChpCost::_latency_cost (act_chp_lang_t *c)
 */
 double ChpCost::expr_delay (Expr *e, int out_bw)
 {
+    if (out_bw == 0) {
+      return 0.0;
+    }
+    /*
+      This is needed coz act_chp <-> chp_graph conversion
+      can introduce int(struct) and struct(int)
+      Returning 0.0 is correct for this coz its just wires
+    */
+    if (!e || e->type==E_USERMACRO || e->type==E_FUNCTION) {
+      return 0.0;
+    }
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
+    _reset_expr_id();
 
-    e = expr_expand(e, ActNamespace::Global(), _s);
-    e = expr_dag(e);
+    if (!thread_mode) {
+      e = expr_dag(e);
+    }
 
+    // also does a primitive dag-ing in thread mode
+    canonical_expr.clear();
     _expr_collect_vars (e);
 
     // collect input vars in list
@@ -155,11 +312,9 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
         }
     }
 
-
     config_set_int("synth.expropt.verbose", 0);
     // run abc, then v2act to create the combinational-logic-for-math process
-    ExprBlockInfo *ebi = eeo->run_external_opt(0, out_bw, e, all_leaves, _inexprmap, _inwidthmap);
-    // ExprBlockInfo *ebi = eeo->synth_expr(0, out_bw, e, all_leaves, _inexprmap, _inwidthmap);
+    ExprBlockInfo *ebi = eeo->synth_expr(out_bw, e, all_leaves, _inexprmap, _inwidthmap);
 
     Assert (ebi->getDelay().exists(), "Delay not extracted by abc!");
     double typ_delay_ps = (ebi->getDelay().typ_val)*1e12;
@@ -174,14 +329,64 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
     _inwidthmap = NULL;
     list_free (all_leaves);
 
+    // lk.unlock();
     return typ_delay_ps;
+}
+
+ExprBlockInfo *ChpCost::expr_metrics (Expr *e, int out_bw)
+{
+  if (out_bw == 0) {
+    return nullptr;
+  }
+  /*
+    This is needed coz act_chp <-> chp_graph conversion
+    can introduce int(struct) and struct(int)
+    Returning 0.0 is correct for this coz its just wires
+  */
+  if (!e || e->type==E_USERMACRO || e->type==E_FUNCTION) {
+    return nullptr;
+  }
+  _inexprmap = ihash_new (0);
+  _inwidthmap = ihash_new (0);
+
+  if (!thread_mode) {
+    e = expr_dag(e);
+  }
+
+  // also does a primitive dag-ing in thread mode
+  canonical_expr.clear();
+  _expr_collect_vars (e);
+
+  // collect input vars in list
+  list_t *all_leaves = list_new();
+  {
+      ihash_iter_t iter;
+      ihash_bucket_t *ib;
+      ihash_iter_init (_inexprmap, &iter);
+      while ((ib = ihash_iter_next (_inexprmap, &iter))) {
+      Expr *e1 = (Expr *)ib->key;
+      list_append (all_leaves, e1);
+      }
+  }
+
+  config_set_int("synth.expropt.verbose", 0);
+  // run abc, then v2act to create the combinational-logic-for-math process
+  ExprBlockInfo *ebi = eeo->synth_expr(out_bw, e, all_leaves, _inexprmap, _inwidthmap);
+
+  // free all temporary data structures 
+  ihash_free (_inexprmap);
+  _inexprmap = NULL;
+  ihash_free (_inwidthmap);
+  _inwidthmap = NULL;
+  list_free (all_leaves);
+  return ebi;
 }
 
 /*
     Collect all the variables in a given expression and put them 
     in the exprmap and widthmap global variables.
 */
-void ChpCost::_expr_collect_vars (Expr *e)
+void ChpCost::_expr_collect_vars (Expr *&e)
 {
   Assert (e, "Hmm");
 
@@ -221,7 +426,16 @@ void ChpCost::_expr_collect_vars (Expr *e)
   case E_UMINUS:
   case E_NOT:
   case E_COMPLEMENT:
-  case E_BUILTIN_INT:
+  case E_BUILTIN_INT: {
+    if ((e->u.e.r)) {
+      int val;
+      Assert (act_expr_getconst_int(e->u.e.r, &val), "huh");
+      if (val==0) {
+        e = const_expr(0);
+        break;
+      }
+    }
+  }
   case E_BUILTIN_BOOL:
     UNARY_OP;
     break;
@@ -263,42 +477,51 @@ void ChpCost::_expr_collect_vars (Expr *e)
 
   case E_BITFIELD:
   case E_VAR: {
-        // fprintf(stdout, "\nle: %lu\n", long(e));
-        ActId *var = (ActId *)e->u.e.l;
-        ihash_bucket_t *ib;
-        ihash_bucket_t *b_width;
-        if (!ihash_lookup (_inexprmap, (long)e)) 
-        {
-            ib = ihash_add (_inexprmap, (long)e);
-            ib->i = _gen_expr_id();
-            b_width = ihash_add (_inwidthmap, (long) e);
-            b_width->i = TypeFactory::bitWidth(var->rootCanonical(_s)->getvx()->t);
+      ActId *var = (ActId *)e->u.e.l;
+      ihash_bucket_t *ib;
+      ihash_bucket_t *b_width;
+      int bw = bitwidth(var);
+      if (bw == 0) {
+        e = const_expr(0);
+        break;
+      }
+      if (thread_mode) {
+        if (!canonical_expr.count(var)) {
+          canonical_expr.insert({var,e->u.e.l});
         }
+        e->u.e.l = canonical_expr.at(var);
+      }
+      if (!ihash_lookup (_inexprmap, (long)e)) 
+      {
+        ib = ihash_add (_inexprmap, (long)e);
+        ib->i = _gen_expr_id();
+        b_width = ihash_add (_inwidthmap, (long) e);
+        b_width->i = bw;
+      }
     }
     break;
 
   case E_PROBE: {
-        fatal_error("no probes");
-
-        // make dummy variable to stand in for probe
-        InstType *it = TypeFactory::Factory()->NewInt (_s, Type::NONE, 0, const_expr(1));
-        static char buf[1024];
-        it = it->Expand(NULL, _s);
-
-        ActId *chan = (ActId *)e->u.e.l;
-
-        auto tst = _s->Lookup((ActId *)e->u.e.l);
-        Assert (tst, "hmm new id");
-
-        ihash_bucket_t *ib;
-        ihash_bucket_t *b_width;
-        if (!ihash_lookup (_inexprmap, (long)e)) 
-        {
-            ib = ihash_add (_inexprmap, (long)e);
-            ib->i = _gen_expr_id();
-            b_width = ihash_add (_inwidthmap, (long)e);
-            b_width->i = 1;
-        }
+      Assert (!thread_mode, "shouldn't have happened");
+      // make dummy variable to stand in for probe
+      InstType *it = TypeFactory::Factory()->NewInt (_s, Type::NONE, 0, const_expr(1));
+      static char buf[1024];
+      it = it->Expand(NULL, _s);
+      ActId *chan = (ActId *)e->u.e.l;
+      char tname[1024];
+      chan->sPrint(tname, 1024);
+      snprintf(buf, 1024, "probe_of_%s", tname);
+      // Replace the probe in the original expression with dummy var
+      e->type = E_VAR;
+      e->u.e.l = (Expr *)(new ActId (buf));
+      ihash_bucket_t *ib;
+      ihash_bucket_t *b_width;
+      if (!ihash_lookup (_inexprmap, (long)e)) {
+          ib = ihash_add (_inexprmap, (long)e);
+          ib->i = _gen_expr_id();
+          b_width = ihash_add (_inwidthmap, (long)e);
+          b_width->i = 1;
+      }
     }
     break;
     
@@ -316,26 +539,42 @@ void ChpCost::_expr_collect_vars (Expr *e)
 
 int ChpCost::_gen_expr_id()
 {
-    return _expr_id++;
+  return _expr_id++;
+}
+
+void ChpCost::_reset_expr_id()
+{
+  _expr_id = 0;
 }
 
 int ChpCost::bitwidth (ActId *id)
 {
+  if (thread_mode) {
+    // if (act_var_bw.count(id)) return act_var_bw.at(id);
+    for ( auto &[v, up] : varid_to_actid) {
+      if (id->isEqual(up)) return g->graph.id_pool().getBitwidth(v);
+    }
+    fprintf(stdout, "\ncould not find var : %p\n",id);
+    Assert (false, "unprovided id in threaded mode!");
+    return -1;
+  }
   if (!id) {
     return -1;
   }
+  Assert (_s, "Shouldn't have happened");
   InstType *it = _s->FullLookup (id, NULL);
   if (!it) {
     return -1;
   }
-  return TypeFactory::bitWidth (it);
+  return TypeFactory::totBitWidth (it);
 }
 
 int ChpCost::selection_way (act_chp_lang_t *c)
 {
   act_chp_gc_t *gc_itr;
   int counter = 0;
-  Assert (((c->type == ACT_CHP_SELECT)), "Called selection_way on a non-selection");
+  Assert (((c->type == ACT_CHP_SELECT) || (c->type == ACT_CHP_SELECT_NONDET)), 
+    "Called selection_way on a non-selection");
 
   for (gc_itr = c->u.gc; gc_itr; gc_itr = gc_itr->next)
   { counter++; }
@@ -380,7 +619,7 @@ void ChpCost::fill_in_else_explicit (act_chp_lang_t *c)
         expr_false->type = E_FALSE;
 
         gc = c->u.gc;
-        disj_gs->u.e.r = expr_expand(gc->g, ActNamespace::Global(), _s);
+        disj_gs->u.e.r = expr_dup(gc->g);
         itr = disj_gs;
 
         for (gc = gc->next ; gc ; gc = gc->next)
@@ -390,7 +629,7 @@ void ChpCost::fill_in_else_explicit (act_chp_lang_t *c)
                 itr->u.e.l = gc->g;
                 NEW (tmp, Expr);
                 tmp->type = E_OR;
-                tmp->u.e.r = expr_expand(itr, ActNamespace::Global(), _s);
+                tmp->u.e.r = expr_dup(itr);
                 NEW (itr, Expr);
                 itr = tmp;
             }
@@ -401,7 +640,7 @@ void ChpCost::fill_in_else_explicit (act_chp_lang_t *c)
                 NEW (inv_disj_gs, Expr);
                 inv_disj_gs->type = E_NOT;
                 inv_disj_gs->u.e.l = itr;
-                gc->g = expr_expand(inv_disj_gs, ActNamespace::Global(), _s);
+                gc->g = expr_dup(inv_disj_gs);
             }
         }
 

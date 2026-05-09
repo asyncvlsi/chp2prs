@@ -230,6 +230,7 @@ class Sequence {
     Block *endseq;   // a Block with type ScopeEnd
 
     [[nodiscard]] bool empty() const;
+    [[nodiscard]] bool dead() const;
 
     Sequence()
         : startseq{nullptr}
@@ -365,12 +366,14 @@ class Block {
         std::list<SelectBranch> branches;
         std::vector<PhiSplit> splits;
         std::vector<PhiMerge> merges;
+        bool is_nondet;
 
         Variant_Select(std::list<SelectBranch> branches, Block *child,
                        Block *parent)
             : child{child}
             , parent{parent}
-            , branches{std::move(branches)} {}
+            , branches{std::move(branches)}
+            , is_nondet(false) {}
 
         Variant_Select()
             : Variant_Select({}, nullptr, nullptr) {}
@@ -591,6 +594,17 @@ inline bool Sequence::empty() const {
     bool b = startseq->child() == endseq;
     hassert(b == (endseq->parent() == startseq));
     return b;
+}
+
+inline bool Sequence::dead() const {
+  hassert (startseq);
+  hassert (endseq);
+  Block *b = startseq;
+  while (b != endseq) {
+    if (b != startseq && (b->dead == false)) return false;
+    b = b->child();
+  }
+  return true;
 }
 
 class BlockAllocator {
@@ -814,6 +828,9 @@ act_chp_lang *chp_graph_to_act(const GraphWithChanNames &gr,
 			       std::vector<ActId *> &newnames,
 			       Scope *s);
 
+// @return true if there are no probes in guards/assignments
+bool isProbeFree (const ChpGraph &g);
+bool isProbeFree (const ChpExprDag &e);
 /*
     Requires:
     1. Input GraphWithChanNames
@@ -826,5 +843,11 @@ GraphWithChanNames deep_copy_graph (
         const GraphWithChanNames &g,
         std::unordered_map<ChanId, ChanId> &cc_in,
         std::unordered_map<VarId, VarId> &vv_in);
+
+/*
+    Returns a deep copy of the graph's m_seq.
+    Does not modify original m_seq.
+*/
+Sequence dup_m_seq (GraphWithChanNames &g);
 
 } // namespace ChpOptimize

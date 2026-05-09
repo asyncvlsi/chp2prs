@@ -17,29 +17,24 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
 #include "ring.h"
 
 RingEngine::RingEngine ( FILE *fp, 
-            // Process *p, act_chp_lang_t *c,
-            // ActBooleanizePass *bp, 
             const char *circuit_library,
             const char *exprfile )
             {
                 _fp = fp;
-                // _p = p;
-                // _c = c;
-                // _bp = bp;
                 _circuit_library = Strdup(circuit_library);
                 _exprfile = Strdup(exprfile);
 
-                var_infos = hash_new (4);
-                var_infos_copy = hash_new (4);
-                var_infos_read_ids = hash_new (4);
+                var_infos = {};
+                var_infos_copy = {};
+                var_infos_read_ids = {};
 
-                H_stk = list_new();
+                H_stk = {};
 
                 _inexprmap = ihash_new (0);
                 _inwidthmap = ihash_new (0);
@@ -58,6 +53,77 @@ RingEngine::RingEngine ( FILE *fp,
 #define NOT_FOUND -2
 #define NO_ASSIGN -1
 
+std::vector<int> RingEngine::_struct_latch_numbers(ActId *id, ActId *id_s, std::vector<int> lns_in)
+{
+  Assert (_check_ids_equal(id, id_s), "var not a member of struct?");
+  
+  InstType *it = _p->CurScope()->localLookup (id_s, NULL);
+  Data *d = dynamic_cast<Data *>(it->BaseType());
+  int nb, ni;
+  int *types;
+  d->getStructCount (&nb, &ni);
+  Assert (nb==0, "No bools in struct!");
+  ActId **res = d->getStructFields (&types);
+
+  std::vector<int> ret = {};
+  std::vector<int> ret_tmp (ni+nb, -1);
+  if (lns_in.size()==0)
+    ret = ret_tmp;
+  else
+    ret = lns_in;
+
+  Assert (ret.size()==ni+nb, "wth");
+  auto vi = _get_var_info(id);
+
+  ActId *tail = id_s->Tail ();
+  for (int i=0; i < ni + nb; i++) {
+      int sz;
+      InstType *xit;
+      Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+      tail->Append (res[i]);
+      if (_check_ids_equal(id, tail)) {
+        ret[i] = vi->nwrite;
+        vi->nwrite++;
+      }
+      tail->prune ();
+      delete res[i];
+      delete xit;
+  }
+  return ret;
+}
+
+int RingEngine::_get_latest_struct_latch(ActId *id, ActId *id_s, std::vector<int> lns_in)
+{
+  Assert (_check_ids_equal(id, id_s), "var not a member of struct?");
+  
+  InstType *it = _p->CurScope()->localLookup (id_s, NULL);
+  Data *d = dynamic_cast<Data *>(it->BaseType());
+  int nb, ni;
+  int *types;
+  d->getStructCount (&nb, &ni);
+  Assert (nb==0, "No bools in struct!");
+  ActId **res = d->getStructFields (&types);
+
+  Assert (lns_in.size()==ni+nb, "wth");
+
+  ActId *tail = id_s->Tail ();
+  for (int i=0; i < ni + nb; i++) {
+      int sz;
+      InstType *xit;
+      Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+      tail->Append (res[i]);
+      if (_check_ids_equal(id, tail)) {
+        tail->prune();
+        return lns_in[i];
+      }
+      tail->prune ();
+      delete res[i];
+      delete xit;
+  }
+  Assert (false, "should not have gotten here");
+  return -1;
+}
+
 void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
 {
   Scope *s = _p->CurScope();
@@ -68,30 +134,19 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     break;
 
   case ACT_CHP_ASSIGN:
-    // _chkdynamic (c->u.assign.id);
-    // if (_isdynamic_var) {
-    //   return;
-    // }
-    if (id->isEqual(c->u.assign.id))
+    if (_check_ids_equal(id, c->u.assign.id))
     { 
       if((latch_info_t *)(c->space))
       {
-        (((latch_info_t *)(c->space))->latch_number) = v->nwrite;
+        ((latch_info_t *)(c->space))->latch_numbers = {v->nwrite};
       }
       v->nwrite++;
     }
     if ( _var_appears_in_expr (c->u.assign.e, id) )
       v->nread++;
-    // if (x != v->nread) {
-    //   c->type = ACT_CHP_ASSIGNSELF;
-    // }
     break;
 
   case ACT_CHP_SEND:
-    // _chkdynamic (c->u.comm.chan);
-    // if (_isdynamic_var) {
-    //   return;
-    // }
     if (v->fischan==1) {
       if (id->isEqual(c->u.comm.chan))
         v->iwrite++;
@@ -103,16 +158,21 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     break;
 
   case ACT_CHP_RECV:
-    // v = _var_getinfo (c->u.comm.chan);
     if (v->fischan==1) {
-      if (id->isEqual(c->u.comm.chan))
+      if (_check_ids_equal(id, c->u.comm.chan))
         v->iread++;
     }
-    if ((c->u.comm.var) && id->isEqual(c->u.comm.var))
+    if ((c->u.comm.var) && _check_ids_equal(id, c->u.comm.var))
     { 
-      Assert ((latch_info_t *)(c->space), "hmm2");
-      (((latch_info_t *)(c->space))->latch_number) = v->nwrite;
-      v->nwrite++;
+      if (!TypeFactory::isStructure(_p->CurScope()->localLookup (c->u.comm.var, NULL))) {
+        Assert ((latch_info_t *)(c->space), "hmm2");
+        ((latch_info_t *)(c->space))->latch_numbers = {v->nwrite};
+        v->nwrite++;
+      }
+      else {
+        ((latch_info_t *)(c->space))->latch_numbers = 
+          _struct_latch_numbers(id, c->u.comm.var, ((latch_info_t *)(c->space))->latch_numbers);
+      }
     }
     break;
 
@@ -125,7 +185,6 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     break;
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_LOOP:
   case ACT_CHP_SELECT:
   case ACT_CHP_DOLOOP:
@@ -149,7 +208,6 @@ void RingEngine::_construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v)
     break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -202,20 +260,18 @@ void RingEngine::_construct_merge_latch_info (act_chp_lang_t *c, int root)
     }
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
     {
       int gc_len = length_of_guard_set (c);
       ((latch_info_t *)(c->space))->merge_mux_latch_number.clear();
-      list_t *ll = ((latch_info_t *)(c->space))->live_vars;
-      for (listitem_t *li = list_first(ll); li ; li = li->next)
+      auto ll = ((latch_info_t *)(c->space))->live_vars;
+      for ( auto li : ll )
       {
-        hash_bucket_t *b = hash_lookup(var_infos, (char *)list_value(li));
-        Assert (b, "variable not found");
-        if (_var_assigned_in_subtree (c, (char *)list_value(li))) {
+        auto vi = _get_var_info(li->toid());
+        if (_var_assigned_in_subtree (c, li->toid())) {
           // latch id for mux
-          ((latch_info_t *)(c->space))->merge_mux_latch_number.push_back(((var_info *)(b->v))->nwrite);
-          ((var_info *)(b->v))->nwrite++;
+          ((latch_info_t *)(c->space))->merge_mux_latch_number.push_back(vi->nwrite);
+          vi->nwrite++;
         }
         else {
           // mux not needed, insert -1
@@ -243,7 +299,7 @@ void RingEngine::_construct_merge_latch_info (act_chp_lang_t *c, int root)
   }
 }
 
-bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
+bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, ActId *var)
 {
   Scope *s = _p->CurScope();
   act_chp_lang_t *stmt;
@@ -252,27 +308,24 @@ bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
 
   switch (c->type) {
   case ACT_CHP_SKIP:
-  return false; break;
-
   case ACT_CHP_SEND:
-  return false; break;
+    return false; 
+    break;
   case ACT_CHP_ASSIGN:
-    get_true_name (tname, c->u.assign.id, s, true);
-    return (!strcmp(tname, name));
+    return _check_ids_equal(var, c->u.assign.id);
     break;
   case ACT_CHP_RECV:
     if (!c->u.comm.var) {
       return false;
     }
-    get_true_name (tname, c->u.comm.var, s, true);
-    return (!strcmp(tname, name));
+    return _check_ids_equal(var, c->u.comm.var);
     break;
 
   case ACT_CHP_COMMA:
   case ACT_CHP_SEMI:
     for (listitem_t *li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) 
     {   
-      ret = ret || _var_assigned_in_subtree ((act_chp_lang_t *)list_value(li), name);
+      ret = ret || _var_assigned_in_subtree ((act_chp_lang_t *)list_value(li), var);
     }
     break;
 
@@ -281,19 +334,17 @@ bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
     fatal_error ("shouldn't have gotten here"); break;
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
     {
       act_chp_gc_t *gc = c->u.gc;
       while (gc) {
-      ret = ret || _var_assigned_in_subtree (gc->s, name);
+      ret = ret || _var_assigned_in_subtree (gc->s, var);
       gc = gc->next;
       }
     }
     break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -305,14 +356,9 @@ bool RingEngine::_var_assigned_in_subtree (act_chp_lang_t *c, const char *name)
 
 void RingEngine::compute_mergemux_info (act_chp_lang_t *c)
 {
-  hash_iter_t it;
-  hash_bucket_t *b;
-  hash_iter_init (var_infos, &it);
-  // one pass per variable
-  while ((b = hash_iter_next (var_infos, &it))) 
-  {
-    _compute_mergemux_info (c, (var_info *)b->v, -1);
-  }	     
+  for ( auto v : var_infos ) {
+    _compute_mergemux_info (c, v.second, -1);
+  }
 }
 
 int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux_number)
@@ -344,7 +390,6 @@ int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux
   }
     break;
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
   {
     act_chp_gc_t *gc = c->u.gc;
@@ -354,10 +399,10 @@ int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux
       gc = gc->next;
     }
     gc = c->u.gc;
-    list_t *ll = ((latch_info_t *)(c->space))->live_vars;
+    auto ll = ((latch_info_t *)(c->space))->live_vars;
     std::vector<int> latches_in_branches;
     latches_in_branches.clear();
-    int vpos = _var_in_list (vi->name, ll);
+    int vpos = _var_in_list (vi->id, ll);
     std::vector<int> mln = ((latch_info_t *)(c->space))->merge_mux_latch_number;
     if ((vpos != NOT_FOUND) && (mln.at(vpos) != -1))
     {
@@ -373,7 +418,6 @@ int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -383,7 +427,44 @@ int RingEngine::_compute_mergemux_info (act_chp_lang_t *c, var_info *vi, int mux
   return mux_number;
 }
 
-int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *vi, int latch_number)
+bool RingEngine::_check_ids_equal (ActId *id, ActId *id_s)
+{
+  // id_s may be a struct
+  InstType *it = _p->CurScope()->localLookup (id_s, NULL);
+  auto c1 = id->Canonical(_p->CurScope());
+
+  if (!(TypeFactory::isStructure(it))) {
+    auto c2 = id_s->Canonical(_p->CurScope());
+    return (c1==c2);
+  }
+
+  Data *d = dynamic_cast<Data *>(it->BaseType());
+  int nb, ni;
+  int *types;
+  d->getStructCount (&nb, &ni);
+  Assert (nb==0, "No bools in struct!");
+  ActId **res = d->getStructFields (&types);
+  ActId *tail = id_s->Tail ();
+  for (int i=0; i < ni + nb; i++) {
+      int sz;
+      InstType *xit;
+      Assert (d->getStructOffset (res[i], &sz, &xit) != -1, "What?");
+      tail->Append (res[i]);
+
+      auto c2 = tail->Canonical(_p->CurScope());
+      if (c1==c2) {
+        tail->prune();
+        return true;
+      }
+
+      tail->prune();
+      delete res[i];
+      delete xit;
+  }
+  return false;
+}
+
+int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *vi, int latch_num)
 {
   Scope *s = _p->CurScope();
   act_chp_lang_t *stmt;
@@ -396,21 +477,28 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
   case ACT_CHP_ASSIGN:
   {
     ActId *id = branch->u.assign.id;
-    char tname[1024];
-    get_true_name (tname, id, s, true);
-    if (!strcmp(tname, vi->name)) {
-      return ((latch_info_t *)(branch->space))->latch_number;
+    // assigns to struct also count!!
+    if (_check_ids_equal(vi->id,id)) {
+      auto lns = ((latch_info_t *)(branch->space))->latch_numbers;
+      Assert (lns.size()==1, "struct assign unexpanded?");
+      return lns[0];
     }
   }
   break;
   case ACT_CHP_RECV:
   {
     ActId *id = branch->u.comm.var;
-    if (!id) return latch_number;
-    char tname[1024];
-    get_true_name (tname, id, s, true);
-    if (!strcmp(tname, vi->name)) {
-      return ((latch_info_t *)(branch->space))->latch_number;
+    if (!id) return latch_num;
+    if (_check_ids_equal(vi->id, id)) {
+      auto lns = ((latch_info_t *)(branch->space))->latch_numbers;
+
+      if (!TypeFactory::isStructure(_p->CurScope()->localLookup (id, NULL))) {
+        Assert (lns.size()==1, "pure var recv but longer latch_numbers?");
+        return lns[0];
+      }
+      else {
+        return _get_latest_struct_latch(vi->id, id, lns);
+      }
     }
   }
   break;
@@ -419,7 +507,7 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
   case ACT_CHP_SEMI:
     for (listitem_t *li = list_first (branch->u.semi_comma.cmd); li; li = list_next (li)) 
     {   
-      latch_number = _get_latest_assign_in_branch ((act_chp_lang_t *) list_value (li), vi, latch_number);
+      latch_num = _get_latest_assign_in_branch ((act_chp_lang_t *) list_value (li), vi, latch_num);
     }
     break;
 
@@ -427,28 +515,26 @@ int RingEngine::_get_latest_assign_in_branch (act_chp_lang_t *branch, var_info *
   case ACT_CHP_DOLOOP:
   {
     act_chp_gc_t *gc = branch->u.gc;
-    latch_number = _get_latest_assign_in_branch (gc->s, vi, latch_number);
+    latch_num = _get_latest_assign_in_branch (gc->s, vi, latch_num);
     Assert (!(gc->next), "more than one loop branch at top-level?");
   }
     break;
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
   {
-    latch_number = _compute_mergemux_info (branch, vi, latch_number);
+    latch_num = _compute_mergemux_info (branch, vi, latch_num);
   }
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
     fatal_error ("What?");
     break;
   }
-  return latch_number;
+  return latch_num;
 }
 
 void RingEngine::print_merge_mux_infos (FILE *fp, act_chp_lang_t *c)
@@ -498,7 +584,6 @@ void RingEngine::print_merge_mux_infos (FILE *fp, act_chp_lang_t *c)
     break;
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
   {
     act_chp_gc_t *gc = c->u.gc;
@@ -516,7 +601,6 @@ void RingEngine::print_merge_mux_infos (FILE *fp, act_chp_lang_t *c)
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -530,18 +614,24 @@ void RingEngine::_print_latch_info_struct (FILE *fp, latch_info_t *l)
   fprintf (fp, "\n --------- \n");
   switch (l->type) {
   case LatchType::Latch: 
+  case LatchType::Alias: 
   {
     fprintf (fp, "type: latch \n");
-    fprintf (fp, "latch ID: %d\n", l->latch_number);
+    if (l->latch_numbers.size()>0) {
+      fprintf (fp, "latch ID: %d\n", l->latch_numbers[0]);
+    }
+    else {
+      fprintf (fp, "latch ID: null\n");
+    }
     break;
   }
   case LatchType::Mux: 
   {
     fprintf (fp, "type: mux \n");
     int ctr = 0;
-    for (listitem_t *li = list_first (l->live_vars) ; li ; li = li->next) 
+    for ( auto li : l->live_vars ) 
     {
-      fprintf (fp, "variable: %s\n", (char *)(list_value(li)));
+      fprintf (fp, "variable: %s\n", li->toid()->getName());
       fprintf (fp, "mux ID: %d\n", l->merge_mux_latch_number.at(ctr));
       fprintf (fp, "inputs: ");
       for ( auto x : l->merge_mux_inputs.at(ctr) )
@@ -557,9 +647,9 @@ void RingEngine::_print_latch_info_struct (FILE *fp, latch_info_t *l)
   {
     fprintf (fp, "type: initial conditions / loop-carried dependencies \n");
     fprintf (fp, "variables: ");
-    for (listitem_t *li = list_first (l->live_vars) ; li ; li = li->next) 
+    for ( auto li : l->live_vars ) 
     {
-      fprintf (fp, "%s, ", (char *)(list_value(li)));
+      fprintf (fp, "%s, ", li->toid()->getName());
     }
     fprintf (fp, "\n\n");
     break;
@@ -575,14 +665,8 @@ void RingEngine::_print_latch_info_struct (FILE *fp, latch_info_t *l)
 */
 void RingEngine::flow_assignments (act_chp_lang_t *c)
 {
-  hash_iter_t it;
-  hash_bucket_t *b;
-  hash_iter_init (var_infos, &it);
-  // one pass per variable per assignment
-  while ((b = hash_iter_next (var_infos, &it))) 
-  {
-    var_info *vi = (var_info *)b->v;
-    _flow_assignments (c, (var_info *)b->v, -1);
+  for ( auto v : var_infos ) {
+    _flow_assignments (c, v.second, -1);
   }
 }
 
@@ -597,9 +681,10 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
     break;
   case ACT_CHP_ASSIGN:
     if (c->space) {
-      get_true_name (tname, c->u.assign.id, s, true);
-      if (!strcmp(tname, vi->name)) {
-        latest = ((latch_info_t *)(c->space))->latch_number;
+      if (_check_ids_equal(vi->id, c->u.assign.id)) {
+        auto lns = ((latch_info_t *)(c->space))->latch_numbers;
+        Assert (lns.size()==1, "struct assign unexpanded?");
+        latest = lns[0];
       }
     }
     else {
@@ -611,9 +696,16 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
   case ACT_CHP_RECV:
     if (c->space) {
       if (!(c->u.comm.var)) break;
-      get_true_name (tname, c->u.comm.var, s, true);
-      if (!strcmp(tname, vi->name)) {
-        latest = ((latch_info_t *)(c->space))->latch_number;
+      if (_check_ids_equal(vi->id, c->u.comm.var)) {
+        if (!TypeFactory::isStructure(_p->CurScope()->localLookup (c->u.comm.var, NULL))) {
+          auto lns = ((latch_info_t *)(c->space))->latch_numbers;
+          Assert (lns.size()==1, "struct recv but not?");
+          latest = lns[0];
+        }
+        else {
+          latest = _get_latest_struct_latch(vi->id, c->u.comm.var, 
+            ((latch_info_t *)(c->space))->latch_numbers);
+        }
       }
     }
     else {
@@ -639,8 +731,6 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
     break;
 
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); 
-    // break;
   case ACT_CHP_SELECT:
   {
     std::vector<int> latests;
@@ -653,7 +743,7 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
       gc = gc->next;
     }
     // actually fill in the info
-    int vpos = _var_in_list (vi->name, ((latch_info_t *)(c->space))->live_vars);
+    int vpos = _var_in_list (vi->id, ((latch_info_t *)(c->space))->live_vars);
     if (vpos != NOT_FOUND) {
       ((latch_info_t *)(c->space))->merge_mux_inputs.at(vpos) = latests;
       // latest is now the merge mux (if it is needed)
@@ -665,7 +755,6 @@ int RingEngine::_flow_assignments (act_chp_lang_t *c, var_info *vi, int latest)
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -703,8 +792,8 @@ bool RingEngine::_check_all_muxes_mapped (act_chp_lang_t *c, bool fail)
     Assert (!(gc->next), "more than one loop branch at top-level?");
   }
     break;
+
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
   {
     act_chp_gc_t *gc = c->u.gc;
@@ -715,11 +804,10 @@ bool RingEngine::_check_all_muxes_mapped (act_chp_lang_t *c, bool fail)
     Assert (c->space, "no mux info?");
     latch_info_t *linfo = ((latch_info_t *)(c->space));
     Assert ((linfo->type == LatchType::Mux), "hmm");
-    listitem_t *li = list_first(linfo->live_vars);
+    Assert ((linfo->live_vars).size() == (linfo->merge_mux_latch_number).size(), "hmm weird");
     int ctr = 0;
     for ( auto x : linfo->merge_mux_latch_number )
     {
-      Assert (li, "hmm weird");
       if (x != -1) 
       {
         for ( auto y : linfo->merge_mux_inputs.at(ctr) ) 
@@ -728,19 +816,18 @@ bool RingEngine::_check_all_muxes_mapped (act_chp_lang_t *c, bool fail)
           {
             fprintf (stderr, "Unmapped mux at selection:\n");
             chp_print (stderr, c);
-            fprintf (stderr, "\n\nUnmapped mux for variable: %s\n\n\n", (char *)(list_value(li)));
+            fprintf (stderr, "\n\nUnmapped mux for variable: %s\n\n\n", 
+                      (linfo->live_vars).at(ctr)->toid()->getName());
             fail = true;
           }
         }
       }
       ctr++;
-      li = li->next;
     }
   }
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -781,7 +868,6 @@ bool RingEngine::_check_no_self_assignments (act_chp_lang_t *c, bool fail)
   }
     break;
   case ACT_CHP_SELECT_NONDET:
-    // fatal_error ("NDS not supported yet"); break;
   case ACT_CHP_SELECT:
   {
     act_chp_gc_t *gc = c->u.gc;
@@ -793,7 +879,6 @@ bool RingEngine::_check_no_self_assignments (act_chp_lang_t *c, bool fail)
   break;
 
   case ACT_CHP_FUNC:
-    /* ignore this---not synthesized */
     break;
 
   default:
@@ -805,8 +890,7 @@ bool RingEngine::_check_no_self_assignments (act_chp_lang_t *c, bool fail)
 
 void RingEngine::construct_var_infos (act_chp_lang_t *c)
 {
-  var_infos = hash_new(4);
-  hash_bucket_t *b;
+  var_infos = {};
   var_info *v;
   ActId *id;
   char str[1024];
@@ -827,7 +911,8 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
     if (bv->usedchp) {
       conn = bv->id;
       id = conn->toid();
-      if (TypeFactory::isDataType (conn->getvx()->t)) 
+      if (TypeFactory::isDataType (conn->getvx()->t) 
+       || TypeFactory::isChanType (conn->getvx()->t)) 
       {
         v = new var_info;
         v->id = id;
@@ -836,62 +921,56 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         v->iread = 0;
         v->nwrite = 0;
         v->iwrite = 0;
-        v->fischan = 0;
+        v->fischan = TypeFactory::isChanType (conn->getvx()->t);
         v->fisbool = TypeFactory::isBoolType (conn->getvx()->t);
+        v->fisextbool = 0;
         v->latest_for_read = 0;
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
-        
-        _construct_var_info (c, id, v);
-        if (v->fisbool) {
+        if (v->fisbool && bv->ischpport) {
+          v->fisextbool = 1;
           if (warn_once_bools) {
-            fprintf(stdout, "\nWARNING: Bools in process, they must be read-only. Hope you know what you're doing.");
+            fprintf(stdout, "\nWARNING: Bool ports in process, they must be read-only. Hope you know what you're doing.\n");
             warn_once_bools = false;
           }
         }
-        b = hash_add (var_infos, v->name);
-        b->v = v;
+        var_infos.insert({conn,v});
+      }
+    }
+  }
+
+  ihash_iter_init (pht, &it);
+  while ((ib = ihash_iter_next (pht, &it))) {
+    bv = (act_booleanized_var_t *)ib->v;
+    if (bv->usedchp) {
+      conn = bv->id;
+      id = conn->toid();
+      if (TypeFactory::isDataType (conn->getvx()->t)) 
+      {
+        var_info *v1 = _get_var_info(id);
+        _construct_var_info (c, id, v1);
       }
       // for probes
       else if (TypeFactory::isChanType (conn->getvx()->t))
       {
-        v = new var_info;
-        v->id = id;
-        v->width = bv->width;
-        v->nread = 0;
-        v->iread = 0;
-        v->nwrite = 0;
-        v->iwrite = 0;
-        v->fischan = 1;
-        v->latest_for_read = 0;
-        get_true_name (str, id, _p->CurScope());
-        v->name = Strdup (str);
-        // fprintf(stdout, "found a chan\n");
-        _construct_var_info (c, id, v);
-        if (v->iwrite>1 || v->iread>1) {
-          fprintf(stderr, "\nChan name: %s\n", v->name);
+        var_info *v1 = _get_var_info(id);
+        _construct_var_info (c, id, v1);
+        if (v1->iwrite>1 || v1->iread>1) {
+          fprintf(stderr, "\nChannel name: %s\n", v1->name);
           fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
         }
-        v->iread = 0;
-        v->iwrite = 0;
-        b = hash_add (var_infos, v->name);
-        b->v = v;
       }
     }
+  }
 
-}
 }
 
 void RingEngine::print_var_infos (FILE *fp)
 {
   fprintf (fp, "\nvar_info hashtable: \n");
-  hash_iter_t it;
-  hash_bucket_t *b;
-  hash_iter_init (var_infos, &it);
-    while ((b = hash_iter_next (var_infos, &it))) 
-    {
-      _print_var_info (fp, (var_info *)b->v);
-    }	     
+  for ( auto v : var_infos ) {
+    _print_var_info (fp, v.second);
+  }
 }
 
 void RingEngine::_print_var_info (FILE *fp, var_info *v)
@@ -904,87 +983,55 @@ void RingEngine::_print_var_info (FILE *fp, var_info *v)
   fprintf(fp, "\n\n");
 }
 
-Hashtable *RingEngine::_deepcopy_var_info_hashtable (Hashtable *h_in, int only_read_id)
+var_info *RingEngine::_get_var_info (ActId *id)
 {
-  Hashtable *h_out = hash_new(4);
-  hash_bucket_t *b, *b_copy;
-  var_info *v_copy;
-  hash_iter_t itr;
-  hash_iter_init (h_in, &itr);
-  while ((b = hash_iter_next (h_in, &itr))) {
-    NEW (v_copy, var_info);
-    v_copy = _deepcopy_var_info((var_info *)b->v, only_read_id);
-    b_copy = hash_add (h_out, v_copy->name);
-    b_copy->v = v_copy;
+  Assert (var_infos.count(id->Canonical(_p->CurScope())), "variable not found");
+  auto v = var_infos.at(id->Canonical(_p->CurScope()));
+  return v;
+}
+
+VI_Table RingEngine::_deepcopy_var_info_hashtable (VI_Table h_in, int only_read_id)
+{
+  VI_Table ret = {};
+  for ( auto v : h_in ) {
+    ret.insert({v.first,_deepcopy_var_info(v.second, only_read_id)});
   }
-  return h_out;
+  return ret;
 }
 
 void RingEngine::save_var_infos ()
 {
-    var_infos_copy = hash_new (4);
-    var_infos_copy = _deepcopy_var_info_hashtable (var_infos, 0);
-}
-
-void RingEngine::_save_read_ids ()
-{
-    var_infos_read_ids = hash_new (4);
-    var_infos_read_ids = _deepcopy_var_info_hashtable (var_infos, 1);
+  var_infos_copy = var_infos;
 }
 
 void RingEngine::_push_read_ids()
 {
-  auto hi = _deepcopy_var_info_hashtable (var_infos, 1);
-  stack_push (H_stk, hi);
+  auto tmp_vis = _deepcopy_var_info_hashtable (var_infos, 1);
+  H_stk.push(tmp_vis);
 }
 
 void RingEngine::_pop_and_restore_read_ids()
 {
-  Assert (!(list_isempty(H_stk)), "Tried to pop from empty var_infos stack");
-  auto hi = (Hashtable *)stack_pop(H_stk);
+  Assert (!H_stk.empty(), "Tried to pop from empty var_infos stack");
+  auto hi = H_stk.top();
+  H_stk.pop();
 
-  hash_bucket_t *b, *b_saved;
-  var_info *vi, *vi_saved;
-  hash_iter_t itr;
-  hash_iter_init (var_infos, &itr);
-  while ((b = hash_iter_next (var_infos, &itr))) {
-    b_saved = hash_lookup(hi, b->key);
-    Assert (b_saved, "No var_info_read_id ??");
-    vi_saved = (var_info *)b_saved->v;
-    vi = (var_info *)b->v;
+  for ( auto v : var_infos ) {
+    auto vi = v.second;
+    auto vi_saved = hi.at(v.first);
     vi->latest_for_read = vi_saved->latest_for_read;
   }
 }
 
 void RingEngine::restore_var_infos ()
 {
-    var_infos = hash_new (4);
-    var_infos = _deepcopy_var_info_hashtable (var_infos_copy, 0);
-    hash_clear (var_infos_copy);
+    var_infos = var_infos_copy;
+    var_infos_copy.clear();
 }
-
-#if 0
-void RingEngine::_restore_read_ids ()
-{
-    hash_bucket_t *b, *b_saved;
-    var_info *vi, *vi_saved;
-    hash_iter_t itr;
-    hash_iter_init (var_infos, &itr);
-    while ((b = hash_iter_next (var_infos, &itr))) {
-      b_saved = hash_lookup(var_infos_read_ids, b->key);
-      Assert (b_saved, "No var_info_read_id ??");
-      vi_saved = (var_info *)b_saved->v;
-      vi = (var_info *)b->v;
-      vi->latest_for_read = vi_saved->latest_for_read;
-    }
-    hash_clear (var_infos_read_ids);
-}
-#endif
 
 var_info *RingEngine::_deepcopy_var_info (var_info *v, int only_read_id)
 {
-  var_info *v_copy;
-  NEW (v_copy, var_info);
+  var_info *v_copy = new var_info;
   v_copy->name = v->name;
   v_copy->latest_for_read = v->latest_for_read;
   if (!only_read_id) {
@@ -992,6 +1039,7 @@ var_info *RingEngine::_deepcopy_var_info (var_info *v, int only_read_id)
     v_copy->fischan = v->fischan;
     v_copy->fisinport = v->fisinport;
     v_copy->fisbool = v->fisbool;
+    v_copy->fisextbool = v->fisextbool;
     v_copy->width = v->width;
     v_copy->block_in = v->block_in;
     v_copy->block_out = v->block_out;
@@ -1085,9 +1133,6 @@ bool RingEngine::is_elementary_action(act_chp_lang_t *c)
     case ACT_CHP_SELECT_NONDET:
         return false;
         break;
-
-        // fatal_error ("Can't handle NDS");
-        // return false;
         
     case ACT_CHP_SKIP:
     case ACT_CHP_ASSIGN:
@@ -1178,8 +1223,6 @@ bool RingEngine::chp_has_branches (act_chp_lang_t *c, int root)
         }
         break;
 
-        // fatal_error ("Can't handle NDS");
-        
     case ACT_CHP_SKIP:
     case ACT_CHP_ASSIGN:
     case ACT_CHP_ASSIGNSELF:
@@ -1201,166 +1244,15 @@ bool RingEngine::chp_has_branches (act_chp_lang_t *c, int root)
     return has_branches;
 }
 
-int RingEngine::_var_in_list (const char *name, list_t *l)
+int RingEngine::_var_in_list (ActId *id, std::vector<act_connection *> l)
 {
   int ctr = 0;
-  for (listitem_t *li = list_first(l) ; li ; li = li->next)
+  for (auto v : l)
   {
-    if (!strcmp(name, (char *)list_value(li))) {
+    if (_check_ids_equal(id, v->toid())) {
       return ctr;
     }
     ctr++;
   }
   return NOT_FOUND;
-}
-
-int RingEngine::get_expr_width(Expr *ex)
-{
-  // recursively run through the expression and collect its width
-  switch ((ex)->type)
-  {
-  // for a var read the bitwidth of that var
-  case E_VAR:
-  {
-    ActId *var = (ActId *)ex->u.e.l;  
-    hash_bucket_t *b;
-    char tname[1024];
-    get_true_name(tname, var, _p->CurScope());
-    b = hash_lookup(var_infos, tname);
-    // b = hash_lookup(var_infos, var->rootVx(p->CurScope())->getName());
-    var_info *vi = (var_info *)b->v;
-    return vi->width;
-  }
-  // for true and false the bit width is one
-  case E_TRUE:
-  case E_FALSE:
-    return 1;
-  // for int look up the corresponding bitwidth
-  case E_INT:
-  {
-    return ihash_lookup(_inwidthmap, (long) ex)->i;
-  }
-  // step through
-  case E_QUERY:
-    ex = ex->u.e.r;
-  // get the max out of the right and the left expr part
-  case E_AND:
-  case E_OR:
-  case E_XOR:
-  {
-    int lw = get_expr_width(ex->u.e.l);
-    int rw = get_expr_width(ex->u.e.r);
-    return std::max(lw,rw);
-  }
-  // get the max out of the right and the left expr part and one for the overflow bit
-  case E_PLUS:
-  case E_MINUS:
-  {
-    int lw = get_expr_width(ex->u.e.l);
-    int rw = get_expr_width(ex->u.e.r);
-    return std::max(lw,rw);
-    // @TODO genus trys to tie the top bit and i dont know why
-    // return std::max(lw,rw)+1;
-  }
-  // comparisons result in a bool so 1, do not walk further
-  case E_LT:
-  case E_GT:
-  case E_LE:
-  case E_GE:
-  case E_EQ:
-  case E_NE:
-    // should be fine in ignoring the rest of the expr
-    return 1;
-  // for multiplication add both operand bitwidth
-  case E_MULT:
-  {
-    int lw = get_expr_width(ex->u.e.l);
-    int rw = get_expr_width(ex->u.e.r);
-    return lw+rw;
-  } 
-  // step through
-  case E_MOD:
-  {
-    int rw = get_expr_width(ex->u.e.r);
-    return rw;
-  } 
-  // use left bitwidth and add number of shifted right
-  case E_LSL:
-  {
-    int lw = get_expr_width(ex->u.e.l);
-    int rw = get_expr_width(ex->u.e.r);
-    return lw + (1 << rw);
-  }
-  // pass through
-  case E_DIV:
-  case E_LSR:
-  case E_ASR:
-  case E_UMINUS:
-  case E_NOT:
-  case E_COMPLEMENT:
-  {
-    int lw = get_expr_width(ex->u.e.l);
-    return lw;
-  }  
-
-  //get the value out of the datastructure
-  case E_BUILTIN_INT:
-    if (ex->u.e.r) {
-      Assert (ex->u.e.r->type == E_INT, "What?");
-      return ex->u.e.r->u.ival.v;
-    }
-    else {
-      return 1;
-    }
-
-  case E_BUILTIN_BOOL:
-    return 1;
-  // the following ones should give you errors because not handled
-  case E_COLON:
-  case E_COMMA:
-    fatal_error ("Should have been handled elsewhere");
-    break;
-
-    /* XXX: here */
-  case E_CONCAT:
-    {
-      int w = 0;
-      Expr *tmp = ex;
-      while (tmp) {
-	w += get_expr_width (tmp->u.e.l);
-	tmp = tmp->u.e.r;
-      }
-      return w;
-    }
-    break;
-
-  case E_BITFIELD:
-    // _var_getinfo ((ActId *)ex->u.e.l);
-    // if (ex->u.e.r->u.e.l) {
-    //   return (ex->u.e.r->u.e.r->u.ival.v - ex->u.e.r->u.e.l->u.ival.v + 1);
-    // }
-    // else {
-    //   return 1;
-    // }
-    fatal_error ("Not handling bitfields right now.");
-    break;
-
-  case E_REAL:
-    fatal_error ("No real expressions please.");
-    break;
-
-  case E_PROBE:
-    // fatal_error ("fix probes please");
-    return 1;
-    break;
-    
-  case E_FUNCTION:
-    fatal_error ("function!");
-    
-  case E_SELF:
-  default:
-    fatal_error ("Unknown expression type %d\n", ex->type);
-    break;
-  }
-  return 0;
 }

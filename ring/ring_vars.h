@@ -17,13 +17,13 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
-#ifndef __ACT_RING_LIVE_VARS_H__
-#define __ACT_RING_LIVE_VARS_H__
+#ifndef __ACT_RING_VARS_H__
+#define __ACT_RING_VARS_H__
 
-#include "reqs.h"
+#include <act/chp/reqs.h>
 
 /*
  *  Compute live variables at each point in a given CHP tree and 
@@ -32,7 +32,7 @@
  *  For selections, tagged variables are live-out and are used
  *  to compute the merging muxes.
 */
-class LiveVarAnalysis {
+class RingVarAnalysis {
     public:
         /**
          * Live Variable Analysis 
@@ -45,19 +45,19 @@ class LiveVarAnalysis {
          * @param c_in is the input chp tree for analysis
          *
          */
-        LiveVarAnalysis (FILE *fp_out, Process *p_in, act_chp_lang_t *c_in)
+        RingVarAnalysis (FILE *fp_out, Process *p_in, act_chp_lang_t *c_in)
         { 
             fp = fp_out; 
             p = p_in; 
             c = c_in; 
-            H_live = hash_new(0);
-            H_lcd = hash_new(0);
+            H_live = {};
+            H_lcd = {};
         }
 
         /*
         * Run the live-variable analysis algorithm
         */
-        void generate_live_var_info ();
+        void generate_var_info ();
 
         /*
         * Print the generated information. For actions,
@@ -65,7 +65,7 @@ class LiveVarAnalysis {
         * For selections, variables are the ones that
         * are live-out (of the merge).
         */
-        void print_live_var_info ();
+        void print_var_info ();
 
     protected:
 
@@ -79,29 +79,23 @@ class LiveVarAnalysis {
         act_chp_lang_t *c;
 
         // Internal running tracker of live variables
-        Hashtable *H_live;
+        std::set<act_connection *> H_live;
 
         // Internal tracker of loop carried dependencies
-        Hashtable *H_lcd;
+        std::set<act_connection *> H_lcd;
 
         void _generate_live_var_info (act_chp_lang_t *c_t, int root);
         void _print_live_var_info (act_chp_lang_t *c_t, int root);   
-        void _print_var_list (list_t *var_list);
+        void _print_var_list (std::vector<act_connection *>);
 
-        void _add_to_live_vars (ActId *id, bool);
-        void _add_to_live_vars (Expr *e, bool);
+        void _add_to_live_vars (ActId *id);
+        void _add_to_live_vars (Expr *e);
         void _remove_from_live_vars (ActId *id);
 
-        virtual void _tag_action_with_reqd_vars (act_chp_lang_t *action);
+        virtual void _tag_action_with_reqd_vars (act_chp_lang_t *action, int is_latch);
         
         void _add_to_live_vars_lcd (ActId *id);
         void _tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *action);
-
-        // Not used, this processing might be done in opt
-        // void _generate_live_var_bits (act_chp_lang_t *c, int root);
-        // int  _compute_total_bits (list_t *var_list);
-        // void _update_tx_bits(int bits);
-        // void _update_tx_bits(ActId *id, int mode);
         
 };
 

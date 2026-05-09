@@ -110,6 +110,39 @@ class SDTSynth : public ActSynthesize {
     return false;
   }
 
+  void processStruct (Data *d) {
+    int w = TypeFactory::totBitWidth (d);
+    Assert (w>=0, "What");
+    fprintf(_pp->fp, "\n// Total Bitwidth : %d\n", w);
+    char name[10240];
+    char mname[10240];
+    std::string ns = "";
+    if (d->getns() && d->getns() != ActNamespace::Global()) {
+      ns = d->getns()->Name(true);
+    }
+    d->snprintActName(name, 10240);
+    ns = ns + name;
+    ActNamespace::Act()->msnprintf(mname, 10240, ns.c_str());
+    const char *scn = config_get_string("synth.struct_chan_name");;
+    fprintf(_pp->fp, "defchan chan_%s <: chan(%s) (sdtchan<%d> %s) {}\n\n", 
+                      mname, ns.c_str(), w, scn);
+  }
+
+  void typeStructChan (char *buf, int sz, InstType *t) {
+    InstType *td = TypeFactory::getChanDataType(t);
+    Assert (td, "What");
+    char name[10240];
+    td->sPrint(name, 10240);
+    char mname[10240];
+    std::string ns = "";
+    if (td->getNamespace() && td->getNamespace() != ActNamespace::Global()) {
+      ns = td->getNamespace()->Name(true);
+    }
+    ns = ns + name;
+    ActNamespace::Act()->msnprintf(mname, 10240, ns.c_str());
+    snprintf (buf, sz, "chan_%s", mname);
+  }
+
   void runSynth (ActPass *ap, Process *p) {
     pp_printf (_pp, "/* synthesis output */");
     pp_forced (_pp, 0);

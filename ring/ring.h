@@ -17,19 +17,24 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301, USA.
  *
- **************************************************************************
+ *************************************************************************
  */
 
-#include "reqs.h"
+#ifndef __ACT_RING_H__
+#define __ACT_RING_H__
+
+#include <act/chp/reqs.h>
+#include <act/chp/ring_misc.h>
 
 /*
  * Base class for ring synthesis 
  */
+
+typedef std::unordered_map<act_connection *, var_info *> VI_Table;
+
 class RingEngine {
     public:
         RingEngine ( FILE *fp, 
-            // Process *p, act_chp_lang_t *c,
-            // ActBooleanizePass *bp, 
             const char *circuit_library,
             const char *exprfile);
     
@@ -48,31 +53,29 @@ class RingEngine {
 
         ActBooleanizePass *_bp; 
 
-        // virtual void _run_forge_helper ();
-
         // Info collection
         void construct_var_infos (act_chp_lang_t *c);
         void print_var_infos (FILE *fp);
         int length_of_guard_set (act_chp_lang_t *c);
         bool is_elementary_action(act_chp_lang_t *c);
         bool chp_has_branches (act_chp_lang_t *c, int root);
-        int get_expr_width(Expr *ex);
 
         // Internal functions
         void _construct_var_info (act_chp_lang_t *c, ActId *id, var_info *v);
         void _print_var_info (FILE *fp, var_info *v);
-        int _var_in_list (const char *name, list_t *l);
+        int _var_in_list (ActId *id, std::vector<act_connection *> l);
+        var_info *_get_var_info (ActId *);
 
+        std::vector<int> _struct_latch_numbers(ActId *, ActId *, std::vector<int>);
+        int _get_latest_struct_latch(ActId *, ActId *, std::vector<int>);
+        bool _check_ids_equal (ActId *, ActId *);
         // Save and restore state of var_infos 
         void save_var_infos ();
         void restore_var_infos ();
 
-        void _push_read_ids();
-        void _pop_and_restore_read_ids();
-
         // Merge mux info builder functions ---------
         void _construct_merge_latch_info (act_chp_lang_t *, int);
-        bool _var_assigned_in_subtree (act_chp_lang_t *, const char *);
+        bool _var_assigned_in_subtree (act_chp_lang_t *, ActId *);
 
         void compute_mergemux_info (act_chp_lang_t *c);
         int _compute_mergemux_info (act_chp_lang_t *, var_info *, int);
@@ -91,20 +94,25 @@ class RingEngine {
         bool _check_no_self_assignments (act_chp_lang_t *, bool);
 
         // Internal helper functions
-        void _save_read_ids ();
-        void _restore_read_ids ();
+        void _push_read_ids();
+        void _pop_and_restore_read_ids();
         var_info *_deepcopy_var_info (var_info *v, int only_read_id);
-        Hashtable *_deepcopy_var_info_hashtable (Hashtable *h_in, int only_read_id);
+        VI_Table _deepcopy_var_info_hashtable (VI_Table h_in, int only_read_id);
 
-        Hashtable *var_infos;
-        Hashtable *var_infos_copy;
-        Hashtable *var_infos_read_ids;
+        VI_Table var_infos;
+        VI_Table var_infos_copy;
+        VI_Table var_infos_read_ids;
 
-        list_t *H_stk;
+        std::stack<VI_Table> H_stk;
 
         // Expression handling for Expropt
         iHashtable *_inexprmap;
+        iHashtable *_inexprmap_str;
         iHashtable *_inwidthmap;
+        iHashtable *_outexprmap;
+        iHashtable *_outwidthmap;
+
+        std::unordered_map<act_connection *, int> ac;
 
         char *_exprfile;
         char *_circuit_library;
@@ -132,3 +140,4 @@ class RingEngine {
 
         unsigned int _branch_id;
 };
+#endif

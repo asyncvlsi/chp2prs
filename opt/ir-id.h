@@ -71,7 +71,27 @@ class VarId {
         return VarId{m_id + 1};
     }
 
-    auto operator<=>(const VarId &) const = default;
+    // c++17 rollback
+    // auto operator<=>(const VarId &) const = default;
+    bool operator==(const VarId& other) const {
+        return m_id == other.m_id;
+    }
+    bool operator!=(const VarId& other) const {
+        return !(*this == other);
+    }
+    bool operator<(const VarId& other) const {
+        return m_id < other.m_id;
+    }
+    bool operator>(const VarId& other) const {
+        return other < *this;
+    }
+    bool operator<=(const VarId& other) const {
+        return !(other < *this);
+    }
+    bool operator>=(const VarId& other) const {
+        return !(*this < other);
+    }
+
 };
 
 
@@ -116,7 +136,27 @@ class OptionalVarId {
     */
     uint64_t _getId() const { return m_idd; }
 
-    auto operator<=>(const OptionalVarId &) const = default;
+    // c++17 rollback
+    // auto operator<=>(const OptionalVarId &) const = default;
+    
+    bool operator==(const OptionalVarId& other) const {
+        return m_idd == other.m_idd;
+    }
+    bool operator!=(const OptionalVarId& other) const {
+        return !(*this == other);
+    }
+    bool operator<(const OptionalVarId& other) const {
+        return m_idd < other.m_idd;
+    }
+    bool operator>(const OptionalVarId& other) const {
+        return other < *this;
+    }
+    bool operator<=(const OptionalVarId& other) const {
+        return !(other < *this);
+    }
+    bool operator>=(const OptionalVarId& other) const {
+        return !(*this < other);
+    }
 };
 
 
@@ -139,8 +179,29 @@ class ChanId {
         hassert(m_id + 1 != 0);
         return ChanId{m_id + 1};
     }
+    
+    // c++17 rollback
+    // auto operator<=>(const ChanId &) const = default;
 
-    auto operator<=>(const ChanId &) const = default;
+    bool operator==(const ChanId& other) const {
+        return m_id == other.m_id;
+    }
+    bool operator!=(const ChanId& other) const {
+        return !(*this == other);
+    }
+    bool operator<(const ChanId& other) const {
+        return m_id < other.m_id;
+    }
+    bool operator>(const ChanId& other) const {
+        return other < *this;
+    }
+    bool operator<=(const ChanId& other) const {
+        return !(other < *this);
+    }
+    bool operator>=(const ChanId& other) const {
+        return !(*this < other);
+    }
+    
 };
 
 class OptionalChanId {
@@ -160,7 +221,27 @@ class OptionalChanId {
     }
     uint64_t _getId() const { return m_idd; }
 
-    auto operator<=>(const OptionalChanId &) const = default;
+    // c++17 rollback
+    // auto operator<=>(const OptionalChanId &) const = default;
+    
+    bool operator==(const OptionalChanId& other) const {
+        return m_idd == other.m_idd;
+    }
+    bool operator!=(const OptionalChanId& other) const {
+        return !(*this == other);
+    }
+    bool operator<(const OptionalChanId& other) const {
+        return m_idd < other.m_idd;
+    }
+    bool operator>(const OptionalChanId& other) const {
+        return other < *this;
+    }
+    bool operator<=(const OptionalChanId& other) const {
+        return !(other < *this);
+    }
+    bool operator>=(const OptionalChanId& other) const {
+        return !(*this < other);
+    }
 };
 
 } // namespace ChpOptimize
@@ -227,6 +308,7 @@ class IdPool {
         int bitwidth;
         bool is_bool;
         bool is_inp;
+        bool is_struct = false;
     };
     ChanId m_next_chanid = ChanId::first_id();
     std::vector<ChanIdInfo> m_chanid_infos = {
@@ -240,9 +322,11 @@ class IdPool {
         const ChanId &id) const; // returns 0 if the channel carries no data
     [[nodiscard]] bool getIsBool(const VarId &id) const;
     [[nodiscard]] bool getIsBool(const ChanId &id) const;
+    [[nodiscard]] bool getIsStruct(const ChanId &id) const;
 
     [[nodiscard]] VarId makeUniqueVar(int bitwidth, bool is_bool = false);
     [[nodiscard]] ChanId makeUniqueChan(int bitwidth, bool is_bool = false);
+    [[nodiscard]] ChanId makeUniqueChan(int bitwidth, bool is_bool, bool is_inp, bool is_struct);
     void setChanDir (const ChanId &id, bool is_inp);
     bool isChanInput (const ChanId &id);
     [[nodiscard]] VarId cloneVar (const VarId &id) {
@@ -305,7 +389,8 @@ class NameParsingIdPool {
     [[nodiscard]] const IdPool &id_pool() const { return m_id_pool; }
     [[nodiscard]] IdPool &id_pool() { return m_id_pool; }
 
-
+    [[nodiscard]] bool ActIdIsPureStruct (ActId *id);
+    [[nodiscard]] std::vector<VarId> getStructFields (ActId *id);
     /* XXX: fix this. this doesn't work for dotted identifiers,
        e.g. structures */
     [[nodiscard]] const char *getName(const VarId &id);
