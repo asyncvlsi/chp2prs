@@ -259,6 +259,7 @@ int main(int argc, char **argv)
 
   /* find the process specified on the command line */
   Process *p = a->findProcess(argv[optind+1], true);
+  config_read ("synth.conf");
 
   if (!p)
   {
