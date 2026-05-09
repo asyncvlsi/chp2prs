@@ -203,7 +203,8 @@ static void _struct_check (void *cookie, Data *d)
       FREE (nsname);
     }
     d->printActName (fp);
-    fprintf (fp, ") (syn::sdtchan<%d> x) { }\n", TypeFactory::totBitWidth (d));
+    const char *field = config_get_string ("synth.struct_chan_name");
+    fprintf (fp, ") (syn::sdtchan<%d> %s) { }\n", TypeFactory::totBitWidth (d), field);
   }
 }
 
