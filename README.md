@@ -133,5 +133,6 @@ in summer/fall 2020.
 Papers that correspond to some of the methods used by the tools
 for generating asynchronous circuits:
 
+   * Karthi Srinivasan and Rajit Manohar. Improved Logic Synthesis for Asynchronous Circuits. International Symposium on Asynchronous Circuits and Systems (ASYNC), June 2026.
    * Karthi Srinivasan and Rajit Manohar. Maelstrom: A Logic Synthesis Technique for Asynchronous Circuits. IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), May 2025. doi:10.1109/TCAD.2025.3572364
    * Xiayuan Wen, Rui Li, and Rajit Manohar. Translating General Slack Elastic Programs into Dataflow Circuits. IEEE International Symposium on Asynchronous Circuits and Systems (ASYNC), May 2025. doi:10.1109/ASYNC65240.2025.00020
