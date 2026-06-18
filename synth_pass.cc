@@ -141,7 +141,6 @@ static int emit_refinement_header (ActSynthesize *syn,
       list_append(special_vx, decomp_vx);
       decomp_vx = NULL;
     }
-
   }
   else {
     special_vx = NULL;
@@ -421,6 +420,9 @@ static int emit_refinement_header (ActSynthesize *syn,
 	   li = list_next (li)) {
 	ValueIdx *vx = (ValueIdx *) list_value (li);
 
+	vx->t->sPrint (buf, 10240);
+	pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+#if 0
 	if (TypeFactory::isChanType (vx->t)) {
 	  if (overrideTypes) {
 	    bw = TypeFactory::bitWidth(vx->t);
@@ -498,6 +500,7 @@ static int emit_refinement_header (ActSynthesize *syn,
 	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
 	  }
 	}
+#endif	
       }
     }
     pp_flush (pp);

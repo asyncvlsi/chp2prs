@@ -95,18 +95,6 @@ class Decomp : public ActSynthesize {
     return true;
   }
 
-  void typeInt (char *buf, int sz, int bitwidth) {
-    snprintf (buf, sz, "int<%d>", bitwidth);
-  }
-  void typeBool (char *buf, int sz) {
-    snprintf (buf, sz, "bool");
-  }
-  void typeIntChan (char *buf, int sz, int bitwidth) {
-    snprintf (buf, sz, "chan(int<%d>)", bitwidth);
-  }
-  void typeBoolChan (char *buf, int sz) {
-    fatal_error ("chan(bool)");
-  }
   void runPreSynth (ActPass *ap, Process *p) {
     pp_printf (_pp, "/* decomposition output - might have fresh instances */");
     pp_forced (_pp, 0);

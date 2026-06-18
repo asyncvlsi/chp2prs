@@ -38,6 +38,7 @@ struct var_to_actvar {
   Scope *sc;
   int sc_chan, sc_var;
 
+  /* this keeps track of any new names that have been created */
   std::vector<ActId *> newvars;
 
   var_to_actvar(Scope *s, const IdPool &id_)
@@ -161,6 +162,13 @@ struct var_to_actvar {
     return nullptr;
   }
 
+  /*
+    Returns a valid ActId from the ChanId. If the VarId does not have
+     an entry in the scope table,  the scope table is extended with
+     the right type and mapping.
+
+     New scope table entries are stored in the "newnames" table.
+  */
   ActId *chanMap (const ChanId &ch) {
     // const char *chan_prefix = "_ch";
     int ref = config_get_int("act.refine_steps");
@@ -193,6 +201,14 @@ struct var_to_actvar {
     return name_from_chan[ch];
   }
 
+
+  /*
+    Returns a valid ActId from the VarId. If the VarId does not have
+    an entry in the scope table,  the scope table is extended with
+    the right type and mapping.
+
+    New scope table entries are stored in the "newnames" table.
+  */
   ActId *varMap (const VarId &v) {
     const char *var_prefix = "_va";
     static char buf[100];
