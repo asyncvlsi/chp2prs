@@ -27,6 +27,7 @@
 #include <act/act.h>
 #include <act/iter.h>
 #include <act/passes.h>
+#include "engines.h"
 
 static void usage(char *name)
 {
@@ -291,8 +292,12 @@ int main(int argc, char **argv)
   ActCHPArbiter *arbp = new ActCHPArbiter (a);
   arbp->run (p);
 
+#if 0  
   ActDynamicPass *c2p = new ActDynamicPass (a, "chp2prs", "libactchp2prspass.so", "chp2prs");
-
+#endif
+  ActDynamicPass *c2p = new ActDynamicPass (a, "synth", "libactchp2prspass.so",
+					    "synthesis");
+  
   if (!c2p || (c2p->loaded() == false)) {
     fatal_error ("Could not load dynamic pass!");
   }
@@ -301,37 +306,18 @@ int main(int argc, char **argv)
     exprfile = Strdup ("expr.act");
   }
 
-  FILE *fpout, *efp;
-
-  begin_sdtout (argv[optind+2], exprfile, emit_import ? argv[optind] : NULL,
-		bundled, external_opt, &fpout);
-
-
-  /* now find all structures and channels with user-defined structs 
-
-     chan(struct) needs more stuff...
-       
-     defchan sdtchan_... <: chan(struct) (...)
-   */
-  app->setCookie (fpout);
-  app->setDataFn (_struct_check);
-  app->run_per_type (p);
-  app->setCookie (NULL);
-  app->setDataFn (NULL);
- 
-
-  c2p->setParam ("chp_optimize", chpopt);
+  c2p->setParam ("engine", (void *) gen_sdt_engine);
+  c2p->setParam ("prefix", (void *) Strdup ("sdt"));
+  c2p->setParam ("expr", (void *)exprfile);
   c2p->setParam ("externopt", external_opt);
   c2p->setParam ("bundled_dpath", bundled);
+  c2p->setParam ("in", (void *) argv[optind]);
+  c2p->setParam ("out", (void *) argv[optind+2]);
+  c2p->setParam ("chp_optimize", chpopt);
   if (external_opt) {
     c2p->setParam ("externopt_toolname", syntesistool);
   }
-  c2p->setParam ("expr_file", exprfile);
-  c2p->setParam ("output_fp", fpout);
-
   c2p->run (p);
 
-  end_sdtout (fpout, exprfile);
-  
   return 0;
 }

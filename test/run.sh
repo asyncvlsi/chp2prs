@@ -10,9 +10,14 @@ echo "*******************************"
 echo
 
 echo
+echo "${und}BASIC MODE${normal}"
+echo
+./_run_basic.sh || exit 1
+
+echo
 echo "${und}BASELINE MODE${normal}"
 echo
-./run_expr.sh || exit 1
+./_run_expr.sh || exit 1
 
 echo
 echo "${und}QDI external EXPRESSION syntesis MODE${normal}"
@@ -20,30 +25,30 @@ echo "${und}QDI external EXPRESSION syntesis MODE${normal}"
 if ! command -v yosys >/dev/null; then
   echo "yosys not found skipping yosys tests"
 else
-./run_expr_qdiopt.sh yosys || exit 1
+./_run_expr_qdiopt.sh yosys || exit 1
 fi
 
 if ! command -v genus >/dev/null; then
   echo "genus not found skipping genus tests"
 else
-./run_expr_qdiopt.sh genus || exit 1
+./_run_expr_qdiopt.sh genus || exit 1
 fi
 
 echo
 echo "${und}BD external EXPRESSION syntesis MODE${normal}"
 echo
 
-./run_expr_bdopt.sh abc || exit 1
+./_run_expr_bdopt.sh abc || exit 1
 
 if ! command -v yosys >/dev/null; then
   echo "yosys not found skipping yosys tests"
 else
-./run_expr_bdopt.sh yosys || exit 1
+./_run_expr_bdopt.sh yosys || exit 1
 fi
 
 if ! command -v genus >/dev/null; then
   echo "genus not found skipping genus tests"
 else
-./run_expr_bdopt.sh genus || exit 1
+./_run_expr_bdopt.sh genus || exit 1
 fi
 
