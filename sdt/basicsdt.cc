@@ -1043,214 +1043,6 @@ void _emit_var_aliases (FILE *fp, const char *nm, Data *d)
 
 
 
-/* Recursively called fn to handle different chp statement types */
-
-/* Print proc definition & override CHP variables */
-bool BasicSDT::write_process_definition(FILE *fp, Process * p)
-{
-  bool has_overrides = 0;
-  list_t *special_vx;
-
-  special_vx = ActNamespace::Act()->getDecomp (p);
-
-  fprintf(fp, "defproc sdt_");
-  ActNamespace::Act()->mfprintfproc (fp, p);
-  fprintf (fp, " <: ");
-  if (p->getns() != ActNamespace::Global()) {
-    char *nsname = p->getns()->Name();
-    fprintf (fp, "%s::", nsname);
-    FREE (nsname);
-  }
-  p->printActName (fp);
-  fprintf (fp, " ()\n");
-
-  int bw = 0;
-
-#define OVERRIDE_OPEN				\
-  do {						\
-    if (!has_overrides) {			\
-      fprintf(fp, "+{\n");			\
-      has_overrides = true;			\
-    }						\
-  } while (0)
-    
-  
-  /* iterate through Scope Hashtable to find all chp variables */
-  ActInstiter iter(p->CurScope());
-  list_t *alias_vx = list_new ();
-  for (iter = iter.begin(); iter != iter.end(); iter++) {
-    ValueIdx *vx = *iter;
-    if (special_vx) {
-      /* these are fresh instances introduced during decomposition;
-	 we need to declare them, not refine them!
-      */
-      int sp = 0;
-      for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
-	for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
-	     li = list_next (li)) {
-	  if (vx == (ValueIdx *) list_value (li)) {
-	    sp = 1;
-	    break;
-	  }
-	}
-	if (sp) {
-	  break;
-	}
-      }
-      if (sp) {
-	continue;
-      }
-    }
-
-    /* chan variable found */
-    if (TypeFactory::isChanType (vx->t)) {
-      bw = TypeFactory::bitWidth(vx->t);
-      OVERRIDE_OPEN;
-      if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
-	fprintf(fp, "  syn::sdtboolchan %s;\n", vx->getName());
-      }
-      else if (bw == -1) {
-	InstType *xit = TypeFactory::getChanDataType (vx->t);
-	Assert (TypeFactory::isStructure (xit), "What?!");
-	fprintf(fp, "  sdt_chan");
-	ActNamespace::Act()->mfprintfproc (fp, dynamic_cast<UserDef *>(xit->BaseType()));
-	fprintf(fp, " %s;\n", vx->getName());
-      }
-      else {
-	fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
-      }
-    }
-    else if (TypeFactory::isIntType (vx->t)) {
-      /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
-      bw = TypeFactory::bitWidth(vx->t);
-      OVERRIDE_OPEN;
-      fprintf(fp, "  syn::sdtvar<%d> %s;\n", bw, vx->getName());
-    }
-    else if (TypeFactory::isBoolType (vx->t)) {
-      OVERRIDE_OPEN;
-      fprintf (fp, " syn::sdtboolvar %s;\n", vx->getName());
-    }
-    else if (TypeFactory::isProcessType (vx->t)) {
-      OVERRIDE_OPEN;
-      fprintf (fp, "  sdt_");
-      Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
-      Assert (proc, "Why am I here?");
-      ActNamespace::Act()->mfprintfproc (fp, proc);
-      fprintf (fp, " %s;\n", vx->getName());
-    }
-    else if (TypeFactory::isStructure (vx->t)) {
-      OVERRIDE_OPEN;
-      fprintf (fp, "  sdt_");
-      Data *d = dynamic_cast <Data *> (vx->t->BaseType());
-      Assert (d, "Why am I here?");
-      ActNamespace::Act()->mfprintfproc (fp, d);
-      fprintf (fp, " %s;\n", vx->getName());
-      list_append (alias_vx, vx);
-    }
-  }
-  /* end param declaration */
-  if (has_overrides) {
-    fprintf(fp, "}\n{\n");
-  }
-  else {
-    fprintf(fp, "{\n");
-  }
-
-  if (p->getlang() && p->getlang()->getchp()) {
-    listitem_t *al;
-    fprintf (fp, " refine {\n");
-#if 0
-    for (al = list_first (alias_vx); al; al = list_next (al)) {
-      ValueIdx *vx = (ValueIdx *) list_value (al);
-      Data *d = dynamic_cast <Data *> (vx->t->BaseType());
-      Assert (d, "What?");
-      fprintf (fp, "   syn::sdtvar<%d> %s_alias;\n", TypeFactory::totBitWidth (d),
-	       vx->getName ());
-      _emit_var_aliases (fp, vx->getName(), d);
-    }
-#endif
-  }
-
-  list_free (alias_vx);
-
-  if (special_vx) {
-    /* these are fresh instances introduced during decomposition;
-       we need to declare them, not refine them!
-    */
-    for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
-      for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
-	   li = list_next (li)) {
-	ValueIdx *vx = (ValueIdx *) list_value (li);
-
-	if (TypeFactory::isChanType (vx->t)) {
-	  bw = TypeFactory::bitWidth(vx->t);
-	  if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
-	    fprintf(fp, "  syn::sdtboolchan %s;\n", vx->getName());
-	  }
-	  else {
-	    fprintf(fp, "  syn::sdtchan<%d> %s;\n", bw, vx->getName());
-	  }
-	}
-	else if (TypeFactory::isIntType (vx->t)) {
-	  bw = TypeFactory::bitWidth(vx->t);
-	  fprintf(fp, "  syn::sdtvar<%d> %s;\n", bw, vx->getName());
-	}
-	else if (TypeFactory::isBoolType (vx->t)) {
-	  fprintf (fp, " syn::sdtboolvar %s;\n", vx->getName());
-	}
-	else if (TypeFactory::isProcessType (vx->t)) {
-	  /*
-	    These are specially inserted processes during process
-	    decomposition, and hence they should have pre-defined
-	    translations in the library
-	  */
-	  Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
-	  Assert (proc, "Why am I here?");
-	  char buf[1024];
-	  int pos;
-	  int found = 0;
-	  ActNamespace::Act()->unmangle_string (proc->getName(), buf, 1024);
-	  for (pos=0; buf[pos]; pos++) {
-	    if (buf[pos] == '<') {
-	      buf[pos] = '\0';
-	      found = 1;
-	      break;
-	    }
-	  }
-	  fprintf (fp, "syn::%s_builtin", buf);
-	  if (found) {
-	    buf[pos] = '<';
-	    fprintf (fp, "%s", buf+pos);
-	  }
-	  fprintf (fp, " %s;\n", vx->getName());
-	}
-	else if (TypeFactory::isStructure (vx->t)) {
-	  fprintf (fp, " sdt_");
-	  Data *d = dynamic_cast <Data *> (vx->t->BaseType());
-	  Assert (d, "Why am I here?");
-	  ActNamespace::Act()->mfprintfproc (fp, d);
-	  fprintf (fp, " %s;\n", vx->getName());
-	}
-      }
-    }
-    for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
-      for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
-	   li = list_next (li)) {
-	ValueIdx *vx = (ValueIdx *) list_value (li);
-	if (vx->hasConnection()) {
-	  Scope::printConnections (fp, vx->connection(), true);
-	}
-      }
-    }
-  }
-
-  if (special_vx) {
-    list_free (special_vx);
-  }
-
-  return has_overrides;
-}
-
 /* Initialize var_init_false vars for each CHP int */
 void BasicSDT::initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
 {
@@ -1279,17 +1071,13 @@ void BasicSDT::initialize_chp_ints(FILE *fp, Process * p, bool has_overrides)
   fprintf(fp, "\n");
 }
 
-void BasicSDT::_emit_begin (int emit_header)
+void BasicSDT::_emit_begin ()
 {
   ihash_iter_t iter;
   ihash_bucket_t *b;
   struct act_chp *chp;
   
   /* Write process definition and variable declarations */
-  if (emit_header) {
-    int overrides = write_process_definition(output_stream, P);
-  }
-
   if (!P->getlang() || !P->getlang()->getchp()) {
     return;
   }
@@ -1345,7 +1133,7 @@ void BasicSDT::_emit_begin (int emit_header)
 }
 
 
-void BasicSDT::_emit_end (int id, int emit_end_braces)
+void BasicSDT::_emit_end (int id)
 {
   /* connect toplevel "go" signal and print wrapper process instantiation */
 
@@ -1359,12 +1147,6 @@ void BasicSDT::_emit_end (int id, int emit_end_braces)
       fprintf (output_stream, " { false : \"chp2prs error\" }; \n");
     }
     /* matches refine block start */
-    if (emit_end_braces) {
-      fprintf (output_stream, " }\n");
-    }
-  }
-  if (emit_end_braces) {
-    fprintf (output_stream, "}\n\n");
   }
   fclose (_efp);
   _efp = NULL;
