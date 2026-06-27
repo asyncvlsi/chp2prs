@@ -5,7 +5,7 @@ normal=$(tput sgr0)
 und=$(tput smul)
 echo
 echo "*******************************"
-echo "*   ${bold}Testing chp2prs library${normal}   *"
+echo "*       ${bold}Testing chp2prs${normal}       *"
 echo "*******************************"
 echo
 
