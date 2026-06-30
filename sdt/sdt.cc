@@ -642,7 +642,15 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
   case E_CONCAT:
     {
       int count;
-      list_t *l = list_new ();
+      list_t *l;
+
+      if (!e->u.e.r) {
+        // singleton concat
+        _emit_expr_helper (id, width, e->u.e.l);
+        return;
+      }
+
+      l = list_new ();
       *width = 0;
       do {
 	CHECK_EXPR (e->u.e.l, lid, lw);
