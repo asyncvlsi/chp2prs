@@ -467,8 +467,16 @@ static int emit_refinement_header (ActSynthesize *syn,
 	  }
 	  pp_printf_raw (pp, " %s;\n", vx->getName());
 	}
-	else if (TypeFactory::isPureStruct (vx->t)
-		 || TypeFactory::isStructure (vx->t)) {
+	else if (TypeFactory::isPureStruct (vx->t)) {
+	  if (overrideTypes) {
+	    pp_printf (pp, "%s_", prefix);
+	    Data *d = dynamic_cast <Data *> (vx->t->BaseType());
+	    Assert (d, "Why am I here?");
+	    ActNamespace::Act()->msnprintfproc (buf, 10240, d);
+	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+	  }
+	}
+	else if (TypeFactory::isStructure (vx->t)) {
 	  if (overrideTypes) {
 	    OVERRIDE_OPEN;
 	    pp_printf (pp, "%s_", prefix);

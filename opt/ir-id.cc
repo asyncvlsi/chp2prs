@@ -117,7 +117,7 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
     auto new_id = m_id_pool.makeUniqueVar(bitwidth, is_bool);
 
     hassert(m_varid_to_actid.find(new_id) == m_varid_to_actid.end());
-    m_varid_to_actid[new_id] = id;
+    m_varid_to_actid[new_id] = id->Clone();
     m_actid_to_varid[canonicalId] = new_id;
 
     if (is_pure_struct) { // just to create the vars;
