@@ -59,7 +59,7 @@ struct var_to_actvar {
   bool ActIdIsPureStructChan (ActId *chanid) const {
     Assert (chanid, "what");
     if (!sc) return false; 
-    auto cit = sc->Lookup(chanid);
+    auto cit = sc->FullLookup(chanid, NULL);
     if (!TypeFactory::isChanType(cit)) {
       return false;
     }
@@ -73,7 +73,7 @@ struct var_to_actvar {
     NEW (e1, Expr);
     e1->type = E_FUNCTION;
     auto cid = chanMap(chan);
-    auto cit = sc->Lookup(cid);
+    auto cit = sc->FullLookup(cid, NULL);
     auto it = TypeFactory::getChanDataType(cit);
     auto dx = dynamic_cast<Data *>(it->BaseType());
     hassert (dx);
@@ -123,7 +123,7 @@ struct var_to_actvar {
 
   ActId *intOfStructVar (const VarId &v, const ChanId &ch) {
     auto cid = chanMap(ch);
-    auto cit = sc->Lookup(cid);
+    auto cit = sc->FullLookup(cid, NULL);
     static char buf[100], buf1[100];
     const char *var_prefix = "_va";
     const char *svar_prefix = "_sva";
