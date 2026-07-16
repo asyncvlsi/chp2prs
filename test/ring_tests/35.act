@@ -1,0 +1,47 @@
+deftype ss (
+    int<3> a;
+    bool b;
+    int<4> c;
+    bool d
+) {}
+
+defproc src (chan!(ss) C)
+{
+    ss s;
+    chp {
+        s.a:=2; 
+        s.b:=false; 
+        s.c:=4; 
+        s.d:=true; 
+        *[ C!s ]
+    }
+}
+
+defproc proc (chan?(ss) I; chan!(int<4>) O) {
+    ss s;
+    int<4> o;
+    chp {
+        *[ 
+            I?s;
+            [  s.b  -> skip
+            [] else -> O!( s.c + int(s.d) )
+            ]
+        ]
+    }
+}
+
+defproc snk (chan?(int<4>) C)
+{
+    int<4> x;
+    chp {
+        *[ C?x ]
+    }
+}
+
+defproc testproc(chan!(int<4>) Y)
+{
+    src s1;
+    snk sn;
+    proc m1(s1.C, sn.C);
+    Y = sn.C;
+}

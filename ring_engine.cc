@@ -124,7 +124,7 @@ class RingSynth : public ActSynthesize {
     snprintf (buf, sz, "ring_int<%d>", bitwidth);
   }
   void typeBool (char *buf, int sz) {
-    fatal_error ("shouldn't have overridden bools");
+    snprintf (buf, sz, "ring_bool");
   }
   void typeIntChan (char *buf, int sz, int bitwidth) {
     snprintf (buf, sz, "ring_chan<%d>", bitwidth);

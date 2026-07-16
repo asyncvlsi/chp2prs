@@ -62,7 +62,6 @@ std::vector<int> RingEngine::_struct_latch_numbers(ActId *id, ActId *id_s, std::
   int nb, ni;
   int *types;
   d->getStructCount (&nb, &ni);
-  Assert (nb==0, "No bools in struct!");
   ActId **res = d->getStructFields (&types);
 
   std::vector<int> ret = {};
@@ -101,7 +100,6 @@ int RingEngine::_get_latest_struct_latch(ActId *id, ActId *id_s, std::vector<int
   int nb, ni;
   int *types;
   d->getStructCount (&nb, &ni);
-  Assert (nb==0, "No bools in struct!");
   ActId **res = d->getStructFields (&types);
 
   Assert (lns_in.size()==ni+nb, "wth");
@@ -442,7 +440,6 @@ bool RingEngine::_check_ids_equal (ActId *id, ActId *id_s)
   int nb, ni;
   int *types;
   d->getStructCount (&nb, &ni);
-  Assert (nb==0, "No bools in struct!");
   ActId **res = d->getStructFields (&types);
   ActId *tail = id_s->Tail ();
   for (int i=0; i < ni + nb; i++) {

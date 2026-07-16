@@ -33,7 +33,6 @@ void RingVarAnalysis::_add_to_live_vars (ActId *id)
         int nb, ni;
         int *types;
         d->getStructCount(&nb, &ni);
-        Assert (nb==0, "No bools in struct!");
         ActId **res = d->getStructFields(&types);
         ActId *tail = id->Tail();
         for (int i=0; i < ni + nb; i++) {
@@ -165,7 +164,6 @@ void RingVarAnalysis::_remove_from_live_vars (ActId *id)
         int nb, ni;
         int *types;
         d->getStructCount(&nb, &ni);
-        Assert (nb==0, "No bools in struct!");
         ActId **res = d->getStructFields(&types);
         ActId *tail = id->Tail();
         for (int i=0; i < ni + nb; i++) {

@@ -646,7 +646,6 @@ int RingForge::handle_struct_recv (ActId *var, ActId *chan, latch_info_t *l, int
     Assert (TypeFactory::isStructure (it), "Hmm");
     d = dynamic_cast<Data *>(it->BaseType());
     d->getStructCount (&nb, &ni);
-    Assert (nb==0, "No bools in struct!");
     res = d->getStructFields (&types);
     FREE (types);
 
@@ -723,7 +722,6 @@ Expr *RingForge::struct_to_int_concat(Expr *e_in)
     Assert (d, "What?");
     int nb, ni;
     d->getStructCount (&nb, &ni);
-    Assert (nb==0, "No bools in struct!");
     Assert (nb+ni>0, "Empty struct?!");
     
     int *typecodes;
@@ -2331,7 +2329,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;
                     vi = _get_var_info(id);
-                    if (vi->fisbool==0) {
+                    if (vi->fisextbool==0) {
                         n_lcd++;
                     }
                 }
@@ -2352,7 +2350,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                         Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                         id = stmt1->u.assign.id;
                         vi = _get_var_info(id);
-                        if (vi->fisbool==0) {
+                        if (vi->fisextbool==0) {
                             block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id, ii, pulser_id, lcd_itr);
                             lcd_itr++;
                             list_iappend(lcd_blks, block_id);
