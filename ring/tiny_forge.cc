@@ -171,15 +171,13 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
         char rchan_name[1024];
 
         get_true_name (lchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
-        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
-            _p->CurScope()->localLookup(stmt1->u.comm.chan, NULL)))) {
+        if (need_nesting(stmt1->u.comm.chan)) {
             strcat (lchan_name, ".");
             strcat (lchan_name, struct_chan_name);
         }
 
         get_true_name (rchan_name, stmt2->u.comm.chan, _p->CurScope(), false);
-        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
-            _p->CurScope()->localLookup(stmt2->u.comm.chan, NULL)))) {
+        if (need_nesting(stmt2->u.comm.chan)) {
             strcat (rchan_name, ".");
             strcat (rchan_name, struct_chan_name);
         }
@@ -219,8 +217,7 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
                         rbw, ival);
         char rchan_name[1024];
         get_true_name (rchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
-        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
-            _p->CurScope()->localLookup(stmt1->u.comm.chan, NULL)))) {
+        if (need_nesting(stmt1->u.comm.chan)) {
             strcat (rchan_name, ".");
             strcat (rchan_name, struct_chan_name);
         }
@@ -242,8 +239,7 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
         }
         char lchan_name[1024];
         get_true_name (lchan_name, stmt1->u.comm.chan, _p->CurScope(), false);
-        if (TypeFactory::isStructure(TypeFactory::getChanDataType(
-            _p->CurScope()->localLookup(stmt1->u.comm.chan, NULL)))) {
+        if (need_nesting(stmt1->u.comm.chan)) {
             strcat (lchan_name, ".");
             strcat (lchan_name, struct_chan_name);
         }

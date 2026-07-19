@@ -1,0 +1,12 @@
+defproc mc11(chan?(int<1>) a, b; chan!(int) out)
+{
+   int i, x;
+   chp {
+      i := 0;
+     *[ i < 5 -> i := i + 1];
+     *[ [| #a -> a?x; out!x
+        [] #b -> b?x; out!x
+        |]
+      ]
+    }
+}

@@ -1,0 +1,18 @@
+import "11decomp.act";
+
+defproc test ()
+{
+    chan(int<1>) X1, X2;
+    chan(int) Y;
+    decomp_mc11 m(X1,X2,Y);
+
+    int y;
+
+    chp {
+        (X1!1) , (Y?y) ;
+        [ y=1 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+

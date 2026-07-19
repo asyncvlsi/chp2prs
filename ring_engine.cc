@@ -110,6 +110,11 @@ class RingSynth : public ActSynthesize {
       pp_printf_raw (_pp, "Delay_Offsets[%d]=%d;\n",i,dparams[i]);
     }
     pp_printf_raw (_pp, "// Delay Line Parameters ----\n");
+    
+    const char *scn = config_get_string("synth.struct_chan_name");
+    pp_printf_raw (_pp, 
+      "\nexport defchan ring_chan_bool <: chan(bool) (ring_chan<1> %s) { }\n",scn);
+
     // ------------------------------------------
 
     pp_forced (_pp, 0);
@@ -130,7 +135,7 @@ class RingSynth : public ActSynthesize {
     snprintf (buf, sz, "ring_chan<%d>", bitwidth);
   }
   void typeBoolChan (char *buf, int sz) {
-    fatal_error ("bool chans not supported, use chan(int<1>) instead");
+    snprintf (buf, sz, "ring_chan_bool");
   }
 
   bool skipOverride (ValueIdx *vx) {

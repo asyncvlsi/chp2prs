@@ -657,7 +657,6 @@ void _lift_probes (GraphWithChanNames &g, Sequence seq)
     
   case BlockType::DoLoop: {
     _lift_probes (g, curr->u_doloop().branch);
-    return;
   }
   break;
   

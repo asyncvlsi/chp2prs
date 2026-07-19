@@ -1,0 +1,51 @@
+
+defproc receiver (chan?(bool) A, B; chan!(bool) C)
+{
+    bool x, y, z;
+    chp {
+        *[ A?x ; B?y; 
+			z := (~x & y);
+			C!z
+		 ]
+    }
+}
+
+defproc sender (chan!(bool) A, B)
+{
+    bool x;
+    bool x1;
+    chp {
+        x:=false;
+        *[
+            [ ~x   -> A!x
+            []else -> B!x
+            ];
+            x := ~x
+        ]
+    }
+}
+
+defproc buf (chan?(bool) l; chan!(bool) r)
+{
+	bool x;
+	chp{
+		*[l?x; r!x]
+	}
+}
+
+defproc snk (chan?(bool) l)
+{
+	bool x;
+	chp{
+		*[l?x]
+	}
+}
+
+defproc testproc (chan?(bool) X1, X2; chan!(bool) Y)
+{
+  chan(bool) C;
+  sender s(X1,X2);
+  receiver r(X1,X2,C);
+  buf b(C,Y);
+  snk ss(Y);
+}

@@ -831,12 +831,13 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         if (e && bw>0) {
             if (TypeFactory::isStructure(TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL)))) {
                 Assert (e->type==E_VAR, "Structure send must be pure var, not a function");
-                is_struct = true;
-                strcat (chan_name, ".");
-                strcat (chan_name, struct_chan_name);
-                // compute explicit form of int() of struct
                 e = struct_to_int_concat(e);
             }
+            if (need_nesting(chan)) {
+                strcat (chan_name, ".");
+                strcat (chan_name, struct_chan_name);
+            }
+                // compute explicit form of int() of struct
             fprintf(_fp,"connect_outchan_to_ctrl<%d> %s%d;\n",bw, conn_block_prefix,block_id);
             fprintf(_fp,"%s%d.ch = %s;\n\n",conn_block_prefix,block_id,chan_name);
 
@@ -868,8 +869,8 @@ int RingForge::_generate_pipe_element(act_chp_lang_t *c, int init_latch)
         fprintf(_fp,"\n");
         fprintf(_fp,"elem_c_ppa %s%d;\n",ring_block_prefix,block_id);
         bw = _bitWidth(chan);
-        if (TypeFactory::isStructure(TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL)))) {
-            is_struct = true;
+        is_struct = (TypeFactory::isStructure(TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL))));
+        if (need_nesting(chan)) {
             strcat (chan_name, ".");
             strcat (chan_name, struct_chan_name);
         }
@@ -1563,12 +1564,11 @@ int RingForge::_generate_probe_access (ActId *chan)
     var_info *vi = _get_var_info(chan);
     int w = vi->width;
     int pid = _gen_var_access_id();
-    bool is_struct = (TypeFactory::isStructure(
-        TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL))));
-    if (is_struct) w = _bitWidth(chan);
+    bool need_nest = need_nesting(chan);
+    if (need_nest) w = _bitWidth(chan);
     fprintf (_fp, "probe_access<%d> probe_%d(",w,pid);
     chan->Print(_fp);
-    if (is_struct) fprintf(_fp, ".%s", struct_chan_name);
+    if (need_nest) fprintf(_fp, ".%s", struct_chan_name);
     fprintf (_fp, ");\n");
     return pid;
 }
@@ -1578,12 +1578,11 @@ int RingForge::_generate_probe_access_neg (ActId *chan)
     var_info *vi = _get_var_info(chan);
     int w = vi->width;
     int pid = _gen_var_access_id();
-    bool is_struct = (TypeFactory::isStructure(
-        TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL))));
-    if (is_struct) w = _bitWidth(chan);
+    bool need_nest = need_nesting(chan);
+    if (need_nest) w = _bitWidth(chan);
     fprintf (_fp, "probe_access_neg<%d> probe_%d(",w,pid);
     chan->Print(_fp);
-    if (is_struct) fprintf(_fp, ".%s", struct_chan_name);
+    if (need_nest) fprintf(_fp, ".%s", struct_chan_name);
     fprintf (_fp, ");\n");
     return pid;
 }
@@ -2785,3 +2784,11 @@ int RingForge::_bitWidth (ActId *id)
   return TypeFactory::totBitWidth (it);
 }
 
+bool RingForge::need_nesting (ActId *chan)
+{
+    bool is_struct = (TypeFactory::isStructure(
+        TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL))));
+    bool is_bool = (TypeFactory::isBoolType(
+        TypeFactory::getChanDataType(_p->CurScope()->localLookup(chan, NULL))));
+    return (is_bool || is_struct);
+}

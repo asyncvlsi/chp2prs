@@ -115,6 +115,7 @@ class RingForge : public RingEngine {
 
         int handle_struct_recv (ActId *, ActId *, latch_info_t *, int);
         int struct_bw (ActId *);
+        bool need_nesting (ActId *);
         Expr *struct_to_int_concat(Expr *);
 
         // Datapath generation functions
