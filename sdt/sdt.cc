@@ -692,14 +692,9 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
 
   case E_BITFIELD:
     {
-      ihash_bucket_t *b;
+      UNARY_OP;
       int lsb, msb;
       
-      b = ihash_lookup (_exprmap, (long)(e));
-      Assert (b, "What?");
-      lid = b->i < 0 ? -b->i : b->i;
-      lw = bitWidth ((ActId *)e->u.e.l);
-
       if (e->u.e.r->u.e.l) {
 	/* r = msb, l = lsb */
 	Assert (e->u.e.r->u.e.r->type == E_INT, "What?");
@@ -786,6 +781,7 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
   case E_NOT:
   case E_COMPLEMENT:
   case E_BUILTIN_INT:
+  case E_BITFIELD:
     UNARY_OP;
     break;
 
@@ -825,24 +821,6 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
       _expr_collect_vars (e->u.e.l, collect_phase);
       e = e->u.e.r;
     } while (e);
-    break;
-
-  case E_BITFIELD:
-    if (collect_phase) {
-      ihash_bucket_t *b;
-      if (!ihash_lookup (_exprmap, (long)e)) {
-	b = ihash_add (_exprmap, (long)e);
-	b->i = _gen_expr_id ();
-      }
-    }
-    else {
-      ihash_bucket_t *b;
-      b = ihash_lookup (_exprmap, (long)e);
-      if (b->i >= 0) {
-	_emit_var_read (b->i, (ActId *)e->u.e.l);
-	b->i = -b->i;
-      }
-    }
     break;
 
   case E_REAL:

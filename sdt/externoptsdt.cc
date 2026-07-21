@@ -378,12 +378,14 @@ int ExternOptSDT::get_expr_width(Expr *ex) {
     break;
 
   case E_BITFIELD:
-    _var_getinfo ((ActId *)ex->u.e.l);
-    if (ex->u.e.r->u.e.l) {
-      return (ex->u.e.r->u.e.r->u.ival.v - ex->u.e.r->u.e.l->u.ival.v + 1);
-    }
-    else {
-      return 1;
+    {
+      int lw = get_expr_width(ex->u.e.l);
+      if (ex->u.e.r->u.e.l) {
+	return (ex->u.e.r->u.e.r->u.ival.v - ex->u.e.r->u.e.l->u.ival.v + 1);
+      }
+      else {
+	return 1;
+      }
     }
     break;
 
@@ -523,6 +525,7 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
   case E_COMPLEMENT:
   case E_BUILTIN_INT:
   case E_BUILTIN_BOOL:
+  case E_BITFIELD:
     UNARY_OP;
     break;
 
@@ -561,7 +564,6 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
   case E_INT:
     break;
 
-  case E_BITFIELD:
   case E_VAR:
     if (collect_phase) {
       varmap_info *v;

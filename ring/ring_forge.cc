@@ -1383,7 +1383,7 @@ void RingForge::_instantiate_expr_block (std::string expr_id, int block_id, list
         ib = ihash_lookup (_inexprmap, (long)e_var);
 
         // connect variables to math block inputs 
-        if ( e_var->type == E_VAR || e_var->type == E_BITFIELD )
+        if ( e_var->type == E_VAR )
         {
             ActId *var = (ActId *)e_var->u.e.l;
             char tname[1024];
@@ -1634,6 +1634,7 @@ void RingForge::_expr_collect_vars (Expr *&e, int collect_phase)
   case E_COMPLEMENT:
   case E_BUILTIN_INT:
   case E_BUILTIN_BOOL:
+  case E_BITFIELD:
     UNARY_OP;
     break;
 
@@ -1672,7 +1673,6 @@ void RingForge::_expr_collect_vars (Expr *&e, int collect_phase)
   case E_INT:
     break;
 
-  case E_BITFIELD:
   case E_VAR:
     if (collect_phase) {
         ActId *var = (ActId *)e->u.e.l;

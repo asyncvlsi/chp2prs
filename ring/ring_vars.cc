@@ -95,6 +95,7 @@ void RingVarAnalysis::_add_to_live_vars (Expr *e)
   case E_COMPLEMENT:
   case E_BUILTIN_INT:
   case E_BUILTIN_BOOL:
+  case E_BITFIELD:
     UNARY_OP;
     break;
 
@@ -132,7 +133,6 @@ void RingVarAnalysis::_add_to_live_vars (Expr *e)
   case E_INT:
     break;
 
-  case E_BITFIELD:
   case E_VAR:
     _add_to_live_vars ((ActId *)e->u.e.l);
     break;

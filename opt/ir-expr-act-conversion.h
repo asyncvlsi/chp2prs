@@ -290,7 +290,7 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
         }
         hassert(o->u.e.r->u.e.r);
         hassert(o->u.e.r->u.e.r->type == E_INT);
-
+#if 0
         auto [id, bit_width] = varid_from_actid((ActId *)o->u.e.l);
 	if (bit_width == -2) {
 	  // special indicator says the variable was not found; so it
@@ -309,6 +309,11 @@ template_func_new_irexpr_from_expr(const ActExprStruct *o,
             detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32(),
             o->u.e.r->u.e.l ?  detail::bigint_from_int_expr(o->u.e.r->u.e.l).first.getI32() : detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32()));
 	}
+#endif
+	return std::make_unique<IRExpr_t>(IRExpr_t::makeBitfield(
+	    new_irexpr_from_expr(o->u.e.l),
+            detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32(),
+            o->u.e.r->u.e.l ?  detail::bigint_from_int_expr(o->u.e.r->u.e.l).first.getI32() : detail::bigint_from_int_expr(o->u.e.r->u.e.r).first.getI32()));
     }
     case E_RAWFREE:
     case E_NUMBER: {
@@ -573,6 +578,21 @@ ActExprStruct *template_func_new_expr_from_irexpr(
             return typedFromInt(result, expectedType);
         } else {
             Expr *result = newExprStruct();
+	    result->type = E_BITFIELD;
+	    result->u.e.l = new_expr_from_irexpr (*e.u_bitfield().e,
+						  ActExprIntType::Int);
+	    NEW(result->u.e.r, ActExprStruct);
+	    result->u.e.r->type = E_BITFIELD;
+	    NEW(result->u.e.r->u.e.l, ActExprStruct);
+	    result->u.e.r->u.e.l->type = E_INT;
+	    result->u.e.r->u.e.l->u.ival.v = e.u_bitfield().lo();
+	    result->u.e.r->u.e.l->u.ival.v_extra = nullptr;
+	    NEW(result->u.e.r->u.e.r, ActExprStruct);
+	    result->u.e.r->u.e.r->type = E_INT;
+	    result->u.e.r->u.e.r->u.ival.v = e.u_bitfield().hi();
+	    result->u.e.r->u.e.r->u.ival.v_extra = nullptr;
+	    return typedFromInt(result, expectedType);
+#if 0
             bool old_way = false;
             if (old_way) {
                 result->type = E_BITFIELD;
@@ -603,6 +623,7 @@ ActExprStruct *template_func_new_expr_from_irexpr(
                 result->u.e.r = const_expr(e.u_bitfield().ct());
                 return typedFromInt(result, expectedType);
             }
+#endif	    
         }
         hassert(false);
     }

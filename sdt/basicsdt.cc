@@ -1428,6 +1428,7 @@ void BasicSDT::_construct_varmap_expr (Expr *e)
   case E_NOT:
   case E_UMINUS:
   case E_COMPLEMENT:
+  case E_BITFIELD:
     _construct_varmap_expr (e->u.e.l);
     break;
 
@@ -1447,15 +1448,6 @@ void BasicSDT::_construct_varmap_expr (Expr *e)
       _construct_varmap_expr (e->u.e.l);
       e = e->u.e.r;
     } while (e);
-    break;
-
-  case E_BITFIELD:
-    /* l is an Id */
-    v = _var_getinfo ((ActId *)e->u.e.l);
-    if ((!_shared_expr_var || !v->fcurexpr) && !v->fischan) {
-      v->nread++;
-      v->fcurexpr = 1;
-    }
     break;
 
   case E_TRUE:

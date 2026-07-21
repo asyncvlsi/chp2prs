@@ -445,6 +445,7 @@ void ChpCost::_expr_collect_vars (Expr *&e)
     }
   }
   case E_BUILTIN_BOOL:
+  case E_BITFIELD:
     UNARY_OP;
     break;
 
@@ -483,7 +484,6 @@ void ChpCost::_expr_collect_vars (Expr *&e)
   case E_INT:
     break;
 
-  case E_BITFIELD:
   case E_VAR: {
       ActId *var = (ActId *)e->u.e.l;
       ihash_bucket_t *ib;

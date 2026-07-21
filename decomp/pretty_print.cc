@@ -515,34 +515,36 @@ void _trim_nested_same_int (Expr *&e, Scope *s)
     BINARY_OP;
     break;
     
+  case E_BITFIELD:
   case E_UMINUS:
   case E_NOT:
   case E_COMPLEMENT:
   case E_BUILTIN_BOOL:
-  UNARY_OP;
-  break;
+    UNARY_OP;
+    break;
+    
   case E_BUILTIN_INT: 
-  UNARY_OP;
-  if (e->u.e.r) {
-    /* int (x,w1) */
-    int y;
-    Assert (expr_is_a_const(e->u.e.r), "e what!");
-    Assert (act_expr_getconst_int (e->u.e.r, &y), "int val y extract failure");
-    if (e->u.e.l->type == E_BUILTIN_INT) {
-      /* int(int(.),w1) */
-      Expr *ne = e->u.e.l;
-      if (ne && ne->u.e.r) {
-	/* int(int(y,w2),w1) */
-        int x;
-        Assert (expr_is_a_const(ne->u.e.r), "ne what!");
-        Assert (act_expr_getconst_int (ne->u.e.r, &x), "int val x extract failure");
-        if (x==y) {
-          e = ne;
-        }
+    UNARY_OP;
+    if (e->u.e.r) {
+      /* int (x,w1) */
+      int y;
+      Assert (expr_is_a_const(e->u.e.r), "e what!");
+      Assert (act_expr_getconst_int (e->u.e.r, &y), "int val y extract failure");
+      if (e->u.e.l->type == E_BUILTIN_INT) {
+	/* int(int(.),w1) */
+	Expr *ne = e->u.e.l;
+	if (ne && ne->u.e.r) {
+	  /* int(int(y,w2),w1) */
+	  int x;
+	  Assert (expr_is_a_const(ne->u.e.r), "ne what!");
+	  Assert (act_expr_getconst_int (ne->u.e.r, &x), "int val x extract failure");
+	  if (x==y) {
+	    e = ne;
+	  }
+	}
       }
     }
-  }
-  break;
+    break;
 
   case E_QUERY:
     _trim_nested_same_int (e->u.e.l, s);
@@ -571,7 +573,6 @@ void _trim_nested_same_int (Expr *&e, Scope *s)
   case E_TRUE:
   case E_FALSE:
   case E_INT:
-  case E_BITFIELD:
   case E_VAR:
   case E_PROBE:
   case E_FUNCTION:
@@ -586,7 +587,6 @@ void _trim_nested_same_int (Expr *&e, Scope *s)
   return;
 #undef BINARY_OP
 #undef UNARY_OP
-
 }
 
 void _lift_probes (GraphWithChanNames &g) 

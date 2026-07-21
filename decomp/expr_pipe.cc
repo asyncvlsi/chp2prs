@@ -603,6 +603,9 @@ void ExprPipe::_expr_collect_vars (Expr *&e, Bimap<ActId *, int> &m)
   case E_BUILTIN_BOOL:
     UNARY_OP;
     break;
+    
+  case E_BITFIELD:
+    UNARY_OP;
 
   case E_QUERY:
     _expr_collect_vars (e->u.e.l, m);
@@ -639,7 +642,6 @@ void ExprPipe::_expr_collect_vars (Expr *&e, Bimap<ActId *, int> &m)
   case E_INT:
     break;
 
-  case E_BITFIELD:
   case E_VAR: {
     ActId *var = (ActId *)e->u.e.l;
     int bw = bitwidth(var);

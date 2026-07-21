@@ -383,6 +383,7 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
   case E_NOT:
   case E_UMINUS:
   case E_COMPLEMENT:
+  case E_BITFIELD:
     a1 = _var_appears_in_expr (e->u.e.l, id);
     return a1;
     break;
@@ -406,10 +407,6 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
       e = e->u.e.r;
     } while (e && !a1);
     return a1;
-    break;
-
-  case E_BITFIELD:
-    return id->isEqual((ActId *)(e->u.e.l));
     break;
 
   case E_TRUE:
