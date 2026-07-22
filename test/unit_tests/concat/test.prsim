@@ -1,0 +1,14 @@
+set t.r.a 0
+cycle
+
+status X
+
+set Reset 0
+mode run
+
+cycle
+
+assert-channel-valid "t.r" 4 3
+set t.r.a 1
+cycle
+assert-channel-neutral "t.r" 4

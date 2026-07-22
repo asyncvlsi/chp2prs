@@ -37,6 +37,7 @@ static void usage(char *name)
   fprintf (stderr, " -h : help; display this message\n");
   fprintf (stderr, " -p <proc> : name of the ACT process to be translated (the top-level process).");
   fprintf (stderr, " -O : optimize CHP\n");
+  fprintf (stderr, " -F checkchp : this can be used to check CHP synthesis support\n");
   fprintf (stderr, " -F dataflow|sdt|ring|decomp : synthesis output format\n");
   fprintf (stderr, "        * dataflow : dataflow output\n");
   fprintf (stderr, "        * sdt : syntax-directed translation prs output\n");
@@ -94,6 +95,7 @@ int main(int argc, char **argv)
   bool arb = true;
   bool project = false;
   bool run_time = false;
+  bool check_chp = false;
 
   int ch;
   while ((ch = getopt (argc, argv, "htOXde:E:o:p:F:C:m:P:")) != -1) {
@@ -104,7 +106,7 @@ int main(int argc, char **argv)
       }
       else if (!strcmp (optarg, "ring")) {
 	use_ring = true;
-  arb = false;
+	arb = false;
       }
       else if (!strcmp (optarg, "sdt")) {
 	use_ring = false;
@@ -112,7 +114,10 @@ int main(int argc, char **argv)
       }
       else if (!strcmp (optarg, "decomp")) {
 	decompose = true;
-  arb = false;
+	arb = false;
+      }
+      else if (!strcmp (optarg, "checkchp")) {
+	check_chp = true;
       }
       else {
 	fprintf (stderr, "Unknown synthesis output format: %s\n", optarg);
@@ -221,20 +226,22 @@ int main(int argc, char **argv)
     usage (argv[0]);
   }
 
-  if (dflow && use_ring) {
-    fprintf (stderr, "Please select either dataflow or ring output, not both!");
-    usage (argv[0]);
-  }
-
-  if (use_ring && non_ssa && bundled && !(dpath_bd_pulsed)) {
-    fprintf (stderr, "Non-SSA style bundled datapath not supported with DFFs");
-    usage (argv[0]);
-  }
-
-  if (dflow) {
-    if (external_opt || exprfile || bundled) {
-      fprintf (stderr, "Cannot specify dataflow generation + expression optimizations\n");
+  if (!check_chp) {
+    if (dflow && use_ring) {
+      fprintf (stderr, "Please select either dataflow or ring output, not both!");
       usage (argv[0]);
+    }
+
+    if (use_ring && non_ssa && bundled && !(dpath_bd_pulsed)) {
+      fprintf (stderr, "Non-SSA style bundled datapath not supported with DFFs");
+      usage (argv[0]);
+    }
+
+    if (dflow) {
+      if (external_opt || exprfile || bundled) {
+	fprintf (stderr, "Cannot specify dataflow generation + expression optimizations\n");
+	usage (argv[0]);
+      }
     }
   }
 
@@ -268,6 +275,26 @@ int main(int argc, char **argv)
 
   if (!exprfile && !dflow) {
     exprfile = Strdup ("expr.act");
+  }
+
+  if (check_chp) {
+    // pretend ring
+    syntesistool = Strdup("abc");
+    c2p->setParam ("engine", (void *) gen_checker_engine);
+    c2p->setParam ("prefix", (void *) Strdup ("checker"));
+    c2p->setParam ("expr", (void *) "/dev/null");
+
+    /* input/output options */
+    c2p->setParam ("in", (void *) argv[optind]);
+    c2p->setParam ("out", (void *) "/dev/null");
+
+    /* optimization options */
+    c2p->setParam ("chp_optimize", false);
+
+    /* arbiter pass switch */
+    c2p->setParam ("run_arb_pass", true);
+    c2p->run (p);
+    return 0;
   }
 
   if (dflow) {

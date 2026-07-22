@@ -1,0 +1,12 @@
+import globals;
+import "38.act";
+import "38_ring.act";
+
+defproc test()
+{
+  ring_testproc t;
+  bool id = t.r.CS.d[0];
+  chp {
+    [ id = true -> log("SUCCESS") ]
+  }
+}

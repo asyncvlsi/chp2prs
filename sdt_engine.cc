@@ -111,6 +111,10 @@ class SDTSynth : public ActSynthesize {
   }
 
   void processStruct (Data *d) {
+    if (!TypeFactory::isValidChannelDataType (d)) {
+      return;
+    }
+    
     int w = TypeFactory::totBitWidth (d);
     Assert (w>=0, "What");
     fprintf(_pp->fp, "\n// Total Bitwidth : %d\n", w);

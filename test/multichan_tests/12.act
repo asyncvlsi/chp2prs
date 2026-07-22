@@ -1,0 +1,5 @@
+/* test case provided by Ruiqi "Richard" Niu <rniu5@jh.edu> */
+
+defproc mc12 (chan!(int<0>) r) {
+  chp { *[ r!1 ] }
+}

@@ -36,7 +36,8 @@ OBJS=$(OBJS1) $(OBJS2)
 TARGETCONF=synth.conf
 
 SHOBJS=chp2prs_pass.os synth.os synth_pass.os \
-    sdt_engine.os df_engine.os ring_engine.os decomp_engine.os
+    sdt_engine.os df_engine.os ring_engine.os decomp_engine.os \
+	checker_engine.os
 
 SRCS=$(OBJS:.o=.cc) $(SHOBJS:.os=.cc)
 

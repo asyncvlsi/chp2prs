@@ -26,6 +26,11 @@
 #include <common/pp.h>
 #include <act/act.h>
 
+#define NO_SYNTHESIS 0
+#define DUMMY_SYNTHESIS 1
+#define ACTUAL_SYNTHESIS 2
+#define TRIVIAL_SYNTHESIS 3
+
 /*
  *  Logic synthesis engine and helper methods.
  */
@@ -73,6 +78,11 @@ class ActSynthesize {
     _expr = NULL;
   }
 
+  /**
+   * Check if this should be synthesized. It returns one of the
+   * _SYNTHESIS options defined above.
+   */
+  int shouldSynthesize (Process *p);
 
   /**
    * Run the pre-synthesis steps needed for the entire design. This
@@ -178,6 +188,32 @@ class ActSynthesize {
    * @param p is the expanded process to be synthesized.
    */
   virtual void runPreSynth (ActPass *ap, Process *p) { }
+
+
+  /**
+   * Select which languages are allowed for synthesis. Default is CHP
+   * only.
+   */
+  virtual bool allowCHP () { return true; }
+  virtual bool allowHSE () { return false; }
+  virtual bool allowDFLOW() { return false; }
+
+  /**
+   * Check for constructs that cannot be synthesized by any
+   * engine. Currently those are exchange channels and split
+   * communication.
+   */
+  bool checkSynth (ActPass *ap, Process *p);
+
+  /**
+   * Override this for custom checking
+   */
+  virtual bool customCheck (act_chp_lang_t *c) { return true; }
+
+  /**
+   * Print error message about non-synthesizable constructs
+   */
+  void printSynthError (FILE *fp);
   
 protected:
   FILE *_out;			///< output stream
@@ -193,6 +229,11 @@ protected:
   list_t *_new_ports; ///< for new ports introduced to enable scan points
 
   void Close (); ///< close output files
+
+  bool _check (struct pHashtable *H, Scope *sc, act_chp_lang_t *c);
+
+  char *_errmsg;		//< set to an error message by checkSynth()
+  act_chp_lang_t *_echp;	//< used for CHP statement
 };
 
 

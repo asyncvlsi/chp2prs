@@ -1,7 +1,6 @@
-#pragma once
 /*************************************************************************
  *
- *  Copyright (c) 2024 Rajit Manohar
+ *  Copyright (c) 2026 Rajit Manohar
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -20,35 +19,37 @@
  *
  **************************************************************************
  */
-class ActSynthesize;
+#include "synth.h"
+#include "engines.h"
 
 /**
- * SDT engine generator
+ * Checker Engine
  */
-ActSynthesize *gen_sdt_engine (const char *prefix,  char *infile,
-			       char *outfile, char *exprfile);
 
-/**
- * Ring synthesis engine generator
- */
-ActSynthesize *gen_ring_engine (const char *prefix,  char *infile,
-				char *outfile, char *exprfile);
+class CheckerSynth : public ActSynthesize {
+ public:
+  CheckerSynth (const char *prefix,
+		char *infile,
+		char *outfile,
+		char *exprfile)
+    : ActSynthesize (prefix, NULL, Strdup ("/dev/null"), Strdup ("/dev/null")) {
+  }
+  
+  void emitTopImports(ActPass *ap) { }
 
-/**
- * CHP decomposition engine generator
- */
-ActSynthesize *gen_decomp_engine (const char *prefix,  char *infile,
-				char *outfile, char *exprfile);
+  void typeInt (char *buf, int sz, int bitwidth) { buf[0] = '\0'; }
+  void typeBool (char *buf, int sz) { buf[0] = '\0'; }
+  void typeIntChan (char *buf, int sz, int bitwidth) { buf[0] = '\0'; }
+  void typeBoolChan (char *buf, int sz) { buf[0] = '\0'; }
+  void runPreSynth (ActPass *ap, Process *p) { }
+  bool skipOverride (ValueIdx *vx) { return true; }
+  void processStruct (Data *d) { }
+  void typeStructChan (char *buf, int sz, InstType *t) { }
+  void runSynth (ActPass *ap, Process *p) { }
+};
 
-/**
- * Dataflow synthesis engine generator
- */
-ActSynthesize *gen_df_engine (const char *prefix,  char *infile,
-			      char *outfile, char *exprfile);
-
-
-/**
- * CHP checker
- */
 ActSynthesize *gen_checker_engine (const char *prefix,  char *infile,
-				   char *outfile, char *exprfile);
+				   char *outfile, char *exprfile)
+{
+  return new CheckerSynth (prefix, infile, outfile, exprfile);
+}

@@ -1,0 +1,10 @@
+/* test case provided by Ruiqi "Richard" Niu <rniu5@jh.edu> */
+
+defproc p (chan!(int<8>) r) {
+  int<8> x;
+  chp { x := 5; r!x }
+}
+
+defproc testproc(chan!(int<8>) Y) {
+  p s(Y);
+}

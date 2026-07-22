@@ -94,6 +94,8 @@ ActSynthesize::ActSynthesize (const char *prefix,
   _decomp_vx = NULL;
   _new_ports = NULL;
   _prefix = prefix;
+  _errmsg = NULL;
+  _echp = NULL;
 }
 
 
@@ -116,6 +118,10 @@ void ActSynthesize::Close ()
   if (_ename) {
     FREE (_ename);
     _ename = NULL;
+  }
+  if (_errmsg) {
+    FREE (_errmsg);
+    _errmsg = NULL;
   }
 }
 
@@ -199,4 +205,229 @@ void ActSynthesize::finalSynthesis (Process *p)
   }
   emitFinal ();
 }
-  
+
+
+bool ActSynthesize::checkSynth (ActPass *ap, Process *p)
+{
+  if (p->getlang() && p->getlang()->getchp()) {
+    struct pHashtable *H;
+    bool ret;
+    H = phash_new (4);
+    ret = _check (H, p->CurScope(), p->getlang()->getchp()->c);
+    phash_free (H);
+    return ret;
+  }
+  else {
+    return true;
+  }
+}
+
+bool ActSynthesize::_check (struct pHashtable *H, Scope *sc, act_chp_lang_t *c)
+{
+  listitem_t *li;
+  act_chp_gc_t *gc;
+  act_connection *conn;
+  phash_bucket_t *b;
+  static int nest = 0;
+
+  if (!c) return true;
+
+  nest++; // used to filter top-level concurrency
+
+  if (!customCheck (c)) {
+    return false;
+  }
+
+  switch (c->type) {
+  case ACT_CHP_COMMA:
+    if (nest == 1) {
+      // outer parallel
+      for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
+	act_chp_lang_t *ch = (act_chp_lang_t *) list_value (li);
+	phash_clear (H);
+	if (!_check (H, sc, ch)) {
+	  nest--;
+	  return false;
+	}
+      }
+      return true;
+    }
+    // fall-through: standard check
+  case ACT_CHP_SEMI:
+    for (li = list_first (c->u.semi_comma.cmd); li; li = list_next (li)) {
+      act_chp_lang_t *ch = (act_chp_lang_t *) list_value (li);
+      if (!_check (H, sc, ch)) {
+	nest--;
+	return false;
+      }
+    }
+    break;
+
+  case ACT_CHP_ASSIGN:
+  case ACT_CHP_SKIP:
+    break;
+
+  case ACT_CHP_SELECT:
+  case ACT_CHP_SELECT_NONDET:
+  case ACT_CHP_LOOP:
+  case ACT_CHP_DOLOOP:
+    for (gc = c->u.gc; gc; gc = gc->next) {
+      Assert (!gc->id, "Guard loops still present during synthesis check!");
+      if (gc->s) {
+	if (!_check (H, sc, gc->s)) {
+	  nest--;
+	  return false;
+	}
+      }
+    }
+    break;
+
+  case ACT_CHP_SEND:
+  case ACT_CHP_RECV:
+    if (c->u.comm.var && c->u.comm.e) {
+      std::string emsg;
+      emsg = "Exchange channels are currently not synthesizable.";
+      _echp = c;
+      _errmsg = Strdup (emsg.c_str());
+      return false;
+    }
+    if (c->u.comm.flavor != 0) {
+      std::string emsg;
+      emsg = "Split communication channels are not synthesizable\n\tvia the automated flow.";
+      _echp = c;
+      _errmsg = Strdup (emsg.c_str());
+      return false;
+    }
+    conn = c->u.comm.chan->Canonical (sc);
+    Assert (conn, "Hmm");
+    b = phash_lookup (H, conn);
+    if (!b) {
+      b = phash_add (H, conn);
+      b->i = 0;
+    }
+    if (c->type == ACT_CHP_SEND) {
+      if (b->i == 0 || b->i == 1) {
+	b->i = 1;
+      }
+      else {
+	std::string emsg;
+	emsg = "Internal self-synchronization is not supported\n\tvia the automated synthesis flow.";
+	_echp = c;
+	_errmsg = Strdup (emsg.c_str());
+	return false;
+      }
+    }
+    else {
+      if (b->i == 0 || b->i == 2) {
+	b->i = 2;
+      }
+      else {
+	std::string emsg;
+	emsg = "Internal self-synchronization is not supported\n\tvia the automated synthesis flow.";
+	_echp = c;
+	_errmsg = Strdup (emsg.c_str());
+	return false;
+      }
+    }
+    break;
+
+  case ACT_CHP_SEMILOOP:
+  case ACT_CHP_COMMALOOP:
+  case ACT_CHP_HOLE:
+  case ACT_CHP_ASSIGNSELF:
+  case ACT_CHP_MACRO:
+  case ACT_HSE_FRAGMENTS:
+    fatal_error("Unexpected CHP type (%d); should have been filtered out.\n", c->type);
+    break;
+
+  case ACT_CHP_FUNC:
+    // filtered and replaced with skip for synthesis
+    break;
+
+  default:
+    fatal_error ("Unknown CHP type (%d)\n", c->type);
+    break;
+  }
+  nest--;
+  return true;
+}
+
+
+void ActSynthesize::printSynthError (FILE *fp)
+{
+  if (!_errmsg) {
+    fprintf (fp, "no error!");
+    return;
+  }
+  fprintf (fp, "%s\n", _errmsg);
+  if (_echp) {
+    fprintf (fp, "  CHP statement: ");
+    chp_print (fp, _echp);
+  }
+}
+
+
+int ActSynthesize::shouldSynthesize (Process *p)
+{
+  ExternMacro *macro = new ExternMacro (p);
+
+  if (macro->isValid()) {
+    /*-- we already have an external definition --*/
+    delete macro;
+    return NO_SYNTHESIS;
+  }
+  delete macro;
+
+  if (!p->getlang()) {
+    // no languages, just a dummy process or instances
+    return TRIVIAL_SYNTHESIS;
+  }
+
+  // if there are production rules, we are done with synthesis already
+  if (p->getlang()->getprs()) {
+    return TRIVIAL_SYNTHESIS;
+  }
+
+  if ((p->getlang()->getchp() && allowCHP() ||
+       (p->getlang()->getdflow() && allowDFLOW()) ||
+       (p->getlang()->gethse() && allowHSE()))) {
+    // we have work to do
+  }
+  else {
+    return TRIVIAL_SYNTHESIS;
+  }
+
+  if (p->getns() && p->getns() != ActNamespace::Global()) {
+    if (strcmp (p->getns()->getName(), "std") == 0) {
+      list_t *l = ActNamespace::Act()->getDecompTypes ();
+      if (l) {
+	for (listitem_t *li = list_first (l); li; li = list_next (li)) {
+	  Process *tmp = (Process *) list_value (li);
+	  if ((tmp->isExpanded()) && p == tmp ||
+	      (tmp == dynamic_cast<Process *>(p->getUnexpanded()))) {
+	    list_free (l);
+	    return NO_SYNTHESIS;
+	  }
+	}
+	list_free (l);
+      }
+    }
+    else {
+      ActNamespace *ns = p->getns();
+      while (ns->Parent() != ActNamespace::Global()) {
+	ns = ns->Parent ();
+      }
+      if (strcmp (ns->getName(), "syn") == 0) {
+	/* check for built-in synthesis */
+	const char *nm = p->getUnexpanded()->getName();
+	int len = strlen (nm);
+	if (len > 9 && (strcmp (nm + len - 8, "_builtin") == 0)) {
+	  // dummy!
+	  return DUMMY_SYNTHESIS;
+	}
+      }
+    }
+  }
+  return ACTUAL_SYNTHESIS;
+}
+

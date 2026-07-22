@@ -513,59 +513,33 @@ static int emit_refinement_header (ActSynthesize *syn,
 #undef OVERRIDE_OPEN
 }
 
-
-
 void *synthesis_proc (ActPass *ap, Process *p, int mode)
 {
   ActSynthesize *syn = _init (ap);
+  int res;
   if (!syn) return NULL;
   
   if (mode == 0) {
     pp_t *pp = syn->getPP ();
-    
-    if (p->getlang() && p->getlang()->getchp()) {
-      /* check if we should synthesize this at all! */
-      ExternMacro *macro = new ExternMacro (p);
-      if (macro->isValid()) {
-	/*-- we already have an external definition --*/
-	delete macro;
-	return NULL;
-      }
-      delete macro;
 
-      if (p->getns() && p->getns() != ActNamespace::Global()) {
-	if (strcmp (p->getns()->getName(), "std") == 0) {
-	  list_t *l = ActNamespace::Act()->getDecompTypes ();
-	  if (l) {
-	    for (listitem_t *li = list_first (l); li; li = list_next (li)) {
-	      Process *tmp = (Process *) list_value (li);
-	      if ((tmp->isExpanded()) && p == tmp ||
-		  (tmp == dynamic_cast<Process *>(p->getUnexpanded()))) {
-		list_free (l);
-		return NULL;
-	      }
-	    }
-	    list_free (l);
-	  }
-	}
-	else {
-	  ActNamespace *ns = p->getns();
-	  while (ns->Parent() != ActNamespace::Global()) {
-	    ns = ns->Parent ();
-	  }
-	  if (strcmp (ns->getName(), "syn") == 0) {
-	    /* check for built-in synthesis */
-	    const char *nm = p->getUnexpanded()->getName();
-	    int len = strlen (nm);
-	    if (len > 9 && (strcmp (nm + len - 8, "_builtin") == 0)) {
-	      // dummy!
-	      emit_refinement_header (syn, p, true, true);
-	      return NULL;
-	    }
-	  }
-	}
+    res = syn->shouldSynthesize (p);
+
+    if (res == NO_SYNTHESIS) {
+      return NULL;
+    }
+    if (res == DUMMY_SYNTHESIS) {
+      emit_refinement_header (syn, p, true, true);
+      return NULL;
+    }
+
+    if (res == ACTUAL_SYNTHESIS) {
+      if (!syn->checkSynth (ap, p)) {
+	act_error_ctxt (stderr);
+	fprintf (stderr, "Process [ %s ]: ", p->getFullName());
+	syn->printSynthError (stderr);
+	fprintf (stderr, "\n");
+	exit (1);
       }
-    
       syn->runPreSynth (ap, p);
       int v = emit_refinement_header (syn, p);
       syn->runSynth (ap, p);
@@ -577,6 +551,8 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
       pp_forced (pp, 0);
     }
     else {
+      Assert (res == TRIVIAL_SYNTHESIS, "What?");
+
       // syn->runPreSynth (ap, p);
       int v = emit_refinement_header (syn, p, true);
       // TODO: fix this hack maybe

@@ -645,8 +645,8 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
       list_t *l;
 
       if (!e->u.e.r) {
-        // singleton concat
-        _emit_expr_helper (id, width, e->u.e.l);
+	Assert (0, "singleton concat; should not happen");
+	CHECK_EXPR (e->u.e.l, lid, lw);
         return;
       }
 
@@ -684,8 +684,9 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
       rid = list_delete_ihead (l);
       rw = list_delete_ihead (l);
 
-      *width = lw + rw;
-      _emit_expr_concat2 (id, *width, lid, lw, rid, rw);
+      //*width = lw + rw;
+      _emit_expr_concat2 (id, lw+rw, lid, lw, rid, rw);
+      Assert (*width == lw + rw, "What?");
       list_free (l);
     }
     break;
@@ -717,7 +718,8 @@ void SDTEngine::_emit_expr_helper (int id, int *width, Expr *e)
     break;
 
   case E_PROBE:
-    fatal_error ("fix probes please");
+    act_error_ctxt (stderr);
+    fatal_error ("General probed expressions are not currently supported by sdt.");
     break;
     
   case E_FUNCTION:
@@ -744,14 +746,24 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
 
   Assert (e, "Hmm");
 
+#define CHECK_CONCAT(f)						\
+  do {								\
+    while ((f)->type == E_CONCAT && ((f)->u.e.r == NULL)) {	\
+      (f) = (f)->u.e.l;						\
+    }								\
+  } while (0)
+  
 #define BINARY_OP					\
   do {							\
+    CHECK_CONCAT (e->u.e.l);				\
+    CHECK_CONCAT (e->u.e.r);				\
     _expr_collect_vars (e->u.e.l, collect_phase);	\
     _expr_collect_vars (e->u.e.r, collect_phase);	\
   } while (0)
 
 #define UNARY_OP					\
   do {							\
+    CHECK_CONCAT (e->u.e.l);				\
     _expr_collect_vars (e->u.e.l, collect_phase);	\
   } while (0)
   
@@ -907,7 +919,8 @@ void SDTEngine::_expr_collect_vars (Expr *e, int collect_phase)
     break;
 
   case E_PROBE:
-    fatal_error ("fix probes please");
+    act_error_ctxt (stderr);
+    fatal_error ("General probed expressions are not currently supported by sdt.");
     break;
     
   case E_FUNCTION:
@@ -943,7 +956,8 @@ void SDTEngine::_emit_expr (int *id, int tgt_width, Expr *e)
   _exprmap = ihash_new (4);
   _intconst = list_new ();
   _boolconst = list_new ();
-  
+
+  CHECK_CONCAT(e);
   _expr_collect_vars (e, 1);
 
   all_leaves = list_new ();

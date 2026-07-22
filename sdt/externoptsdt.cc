@@ -394,7 +394,8 @@ int ExternOptSDT::get_expr_width(Expr *ex) {
     break;
 
   case E_PROBE:
-    fatal_error ("fix probes please");
+    act_error_ctxt (stderr);
+    fatal_error ("General probed expressions are not currently supported by sdt.");
     break;
     
   case E_FUNCTION:
@@ -588,7 +589,8 @@ void ExternOptSDT::_expr_collect_vars (Expr *e, int collect_phase)
     break;
 
   case E_PROBE:
-    fatal_error ("fix probes please");
+    act_error_ctxt (stderr);
+    fatal_error ("General probed expressions are not currently supported by sdt.");
     break;
     
   case E_FUNCTION:

@@ -207,8 +207,17 @@ void TinyForge::_run_forge_new (act_chp_lang_t *c, std::vector<Action> signature
         auto e = stmt1->u.comm.e;
         long long ival;
         if (e) {
-            Assert (e->type == E_INT, "Constants only as const-source send value");
-            ival = e->u.ival.v;
+	  Assert (e->type == E_INT || e->type == E_TRUE || e->type == E_FALSE,
+		  "Constants only as const-source send value");
+	  if (e->type == E_INT) {
+	    ival = e->u.ival.v;
+	  }
+	  else if (e->type == E_TRUE) {
+	    ival = 1;
+	  }
+	  else {
+	    ival = 0;
+	  }
         }
         else {
             ival = 0;

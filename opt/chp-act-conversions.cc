@@ -302,9 +302,14 @@ Sequence parse_into_ir(const act_chp_lang *c, BlockAllocator &blockAllocator,
                 std::make_unique<ChpExpr>(ChpExpr::makeConstant(BigInt{0}, 1));
         auto expr = ChpExprSingleRootDag::of_expr(std::move(expr_ptr));
         if (width != expr.width()) {
+	  if (width == 0) {
+	    expr = ChpExprSingleRootDag::makeConstant(BigInt{0},0);
+	  }
+	  else {
             expr = ChpExprSingleRootDag::makeResize(
                 std::make_unique<ChpExprSingleRootDag>(std::move(expr)), width);
-        }
+	  }
+	}
 
         if (expr.root()->type() == IRExprTypeKind::Var || (mode==1)) {
           std::vector<Block *> vb{};

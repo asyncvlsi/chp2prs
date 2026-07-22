@@ -145,6 +145,11 @@ class RingSynth : public ActSynthesize {
   }
 
   void processStruct (Data *d) {
+    if (!TypeFactory::isValidChannelDataType (d)) {
+      // nothing to do here
+      return;
+    }
+    
     int w = TypeFactory::totBitWidth (d);
     Assert (w>=0, "What");
     fprintf(_pp->fp, "\n// Total Bitwidth : %d\n", w);
@@ -238,9 +243,8 @@ class RingSynth : public ActSynthesize {
       flatten_lists (c, p->CurScope());
 
       ActBooleanizePass *b = (ActBooleanizePass *) dp->getPass("booleanize");
-      b->run(p);
+      //b->run(p);
       Assert (b, "hmm b");
-
 #if 1
       tf->set_p(p);
       tf->set_c(c);
@@ -278,6 +282,19 @@ class RingSynth : public ActSynthesize {
     fprintf (_pp->fp, "/* end rsyn */\n");
     
     pp_forced (_pp, 0);
+  }
+
+  bool customCheck (act_chp_lang_t *c) {
+    if (c->type == ACT_CHP_LOOP) {
+      if (c->u.gc->next) {
+	std::string emsg;
+	emsg = "Ring synthesis requires only one guard in loops.\n\tUse decomp first to rewrite the CHP.";
+	_echp = c;
+	_errmsg = Strdup (emsg.c_str());
+	return false;
+      }
+    }
+    return true;
   }
 };
 

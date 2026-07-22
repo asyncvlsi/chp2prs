@@ -1,0 +1,5 @@
+/* test case provided by Ruiqi "Richard" Niu <rniu5@jh.edu> */
+
+defproc testproc (chan!(bool) r) {
+  chp { *[ r!true ] }
+}

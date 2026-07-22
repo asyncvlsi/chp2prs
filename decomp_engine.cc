@@ -74,7 +74,8 @@ class Decomp : public ActSynthesize {
     }
   }
 
-  void processStruct (Data *d) { // some special stuff for templated pure structs
+  void processStruct (Data *d) {
+    // some special stuff for templated pure structs
     if (TypeFactory::isPureStruct(d)) {
       int n_params = d->getRemainingParams();
       std::string dfn = d->getFullName();

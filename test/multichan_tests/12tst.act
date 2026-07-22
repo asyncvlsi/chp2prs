@@ -1,0 +1,17 @@
+import "12decomp.act";
+
+defproc test ()
+{
+    chan(int<0>) X;
+    decomp_mc12 m(X);
+
+    int y;
+
+    chp {
+        X?y;
+        [ y=0 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+
