@@ -117,9 +117,13 @@ void synthesis_run (ActPass *ap, Process *p)
 }
 
 
+#define HEADER_NORMAL 0
+#define HEADER_EMPTY  1
+#define HEADER_DECL   2
+
 static int emit_refinement_header (ActSynthesize *syn,
 				   UserDef *u, bool is_empty = false,
-				   bool is_dummy = false)
+				   int header_type = HEADER_NORMAL)
 {
   int has_overrides = 0;
   char buf[10240];
@@ -188,7 +192,7 @@ static int emit_refinement_header (ActSynthesize *syn,
   pp_forced (pp, 0);
 
 
-  if (is_dummy) {
+  if (header_type == HEADER_EMPTY) {
     pp_printf (pp, "{}");
     pp_forced (pp, 0);
     pp_forced (pp, 0);
@@ -289,6 +293,18 @@ static int emit_refinement_header (ActSynthesize *syn,
   }
   
   /* end param declaration */
+
+  if (header_type == HEADER_DECL) {
+    if (has_overrides) {
+      pp_endb (pp);
+      pp_printf_raw (pp, "};\n");
+    }
+    else {
+      pp_printf_raw (pp, ";\n");
+    }
+    return has_overrides;
+  }
+  
   if (has_overrides) {
     pp_endb (pp);
     pp_printf_raw (pp, "}\n{");
@@ -528,7 +544,14 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
       return NULL;
     }
     if (res == DUMMY_SYNTHESIS) {
-      emit_refinement_header (syn, p, true, true);
+      emit_refinement_header (syn, p, true, HEADER_NORMAL);
+      return NULL;
+    }
+
+    if (p->hasNonStrict()) {
+      emit_refinement_header (syn, p, false, HEADER_DECL);
+      pp_printf (pp, "/* need to emit the body! */");
+      pp_forced (pp, 0);
       return NULL;
     }
 
