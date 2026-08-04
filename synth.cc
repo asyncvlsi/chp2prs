@@ -96,6 +96,7 @@ ActSynthesize::ActSynthesize (const char *prefix,
   _prefix = prefix;
   _errmsg = NULL;
   _echp = NULL;
+  _variants = NULL;
 }
 
 
@@ -122,6 +123,17 @@ void ActSynthesize::Close ()
   if (_errmsg) {
     FREE (_errmsg);
     _errmsg = NULL;
+  }
+  if (_variants) {
+    hash_iter_t it;
+    hash_bucket_t *b;
+    hash_iter_init (_variants, &it);
+    while ((b = hash_iter_next (_variants, &it))) {
+      list_t *l = (list_t *) b->v;
+      list_free (l);
+    }
+    hash_free (_variants);
+    _variants = NULL;
   }
 }
 
@@ -431,3 +443,16 @@ int ActSynthesize::shouldSynthesize (Process *p)
   return ACTUAL_SYNTHESIS;
 }
 
+
+void ActSynthesize::applyVariants (ActPass *ap,
+				   void (*f) (ActPass *, const char *, list_t *))
+{
+  hash_bucket_t *b;
+  hash_iter_t it;
+  if (!_variants) return;
+
+  hash_iter_init (_variants, &it);
+  while ((b = hash_iter_next (_variants, &it))) {
+    (*f) (ap, b->key, (list_t *)b->v);
+  }
+}

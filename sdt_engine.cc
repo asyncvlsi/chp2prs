@@ -212,7 +212,7 @@ class SDTSynth : public ActSynthesize {
     }
 
     atexit (kill_mapper_on_exit);
-    sdt->run_sdt (p, 0);
+    sdt->run_sdt (p);
     kill_mapper_on_exit ();
 
     fprintf (_pp->fp, "/* end sdt */\n");
