@@ -52,10 +52,13 @@ class SDTSynth : public ActSynthesize {
     }
   }
   
+  bool chpopt_option;
+
   void emitTopImports(ActPass *ap) {
     ActDynamicPass *dp = dynamic_cast <ActDynamicPass *> (ap);
     Assert (dp, "Hmm");
     int bundled_data = dp->getIntParam ("bundled_dpath");
+    chpopt_option = dp->getIntParam ("chp_optimize");
 
     /* print imports */
     if (bundled_data) {
@@ -88,12 +91,9 @@ class SDTSynth : public ActSynthesize {
     snprintf (buf, sz, "syn::sdtboolchan");
   }
 
-  bool chpopt_option;
-
   void runPreSynth (ActPass *ap, Process *p) {
     ActDynamicPass *dp = dynamic_cast <ActDynamicPass *> (ap);
     Assert (dp, "What?");
-    chpopt_option = dp->getIntParam ("chp_optimize");
   }
 
 

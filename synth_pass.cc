@@ -206,15 +206,20 @@ static int emit_refinement_header (ActSynthesize *syn,
     decomp_vx = NULL;
   }
 
+  if (TypeFactory::isProcessType (u)) {
+    is_process = true;
+  }
+  else {
+    is_process = false;
+  }
+
   if (header_type != HEADER_DECLII) {
 
-    if (TypeFactory::isProcessType (u)) {
+    if (is_process) {
       pp_printf (pp, "defproc ");
-      is_process = true;
     }
     else {
       pp_printf (pp, "deftype ");
-      is_process = false;
     }
 
     pp_printf (pp, "%s_", prefix);
@@ -541,6 +546,7 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
 	pp_forced (pp, 0);
 	pp_forced (pp, 0);
       }
+      FREE (s);
       return NULL;
     }
 
