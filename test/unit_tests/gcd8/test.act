@@ -1,0 +1,23 @@
+function gcd (int a, b) : int
+{
+  chp {
+    *[ a > b -> a := a - b
+    [] b > a -> b := b - a
+     ];
+     self := a
+  }
+}
+
+defproc gcd8(chan?(int) X, Y; chan!(int) O) {
+  int x;
+  int y;
+
+  chp {
+    *[
+      X?x,
+      Y?y;
+      x := gcd (x, y);
+      O!x
+    ]
+  }
+}

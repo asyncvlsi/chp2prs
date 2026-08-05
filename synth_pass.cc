@@ -105,21 +105,79 @@ void synthesis_init (ActPass *ap)
   dp->addDependency ("booleanize");
 }
 
-void synthesis_run (ActPass *ap, Process *p)
+static char *_extract_strict_name (UserDef *ud)
 {
-  ActSynthesize *syn = _init (ap);
-  if (syn) {
-    syn->finalSynthesis (p);
-    delete syn;
-    ActDynamicPass *dp = dynamic_cast<ActDynamicPass *>(ap);
-    dp->setParam ("raw", (void *)NULL);
+  char buf2[10240];
+  int pos, idx;
+
+  Assert (ud->isExpanded(), "What?");
+
+  // walk through buf2 and trim non-strict parameters
+  ActNamespace::Act()->unmangle_string (ud->getName(), buf2, 10240);
+  pos = ud->getNumParams() - ud->getRemainingParams();
+  // pos = # inherited
+
+  idx = 0;
+  while (buf2[idx] && buf2[idx] != '<') {
+    idx++;
   }
+
+  while (buf2[idx] && pos < ud->numStrict()) {
+    bool skip_array = false;
+    int skip_pstruct = 0;
+    while (buf2[idx] &&
+	   (skip_array || (skip_pstruct > 0) ||
+	    buf2[idx] != ',' && buf2[idx] != '>')) {
+      if (skip_pstruct > 0) {
+	if (buf2[idx] == ')') {
+	  skip_pstruct--;
+	}
+      }
+      else {
+	if (buf2[idx] == '{') {
+	  skip_array = true;
+	}
+	else if (buf2[idx] == '}') {
+	  skip_array = false;
+	}
+	else if (buf2[idx] == '(') {
+	  skip_pstruct++;
+	}
+      }
+      if (!skip_array && (skip_pstruct == 0)) {
+	if (buf2[idx] == ',') {
+	  break;
+	}
+      }
+      idx++;
+    }
+    pos++;
+    if (buf2[idx] == ',' || buf2[idx] == '>') {
+      idx++;
+    }
+  }
+  if (buf2[idx] == ',') {
+    buf2[idx] = '>';
+    buf2[idx+1] = '\0';
+  }
+  else if (buf2[idx] == '<') {
+    buf2[idx+1] = '>';
+    buf2[idx+2] = '\0';
+  }
+  return Strdup (buf2);
 }
 
 
+
+#define HEADER_NORMAL 0
+#define HEADER_EMPTY  1
+#define HEADER_DECL   2
+#define HEADER_DECLII 3
+#define HEADER_DECL_VARIANT 4
+
 static int emit_refinement_header (ActSynthesize *syn,
 				   UserDef *u, bool is_empty = false,
-				   bool is_dummy = false)
+				   int header_type = HEADER_NORMAL)
 {
   int has_overrides = 0;
   char buf[10240];
@@ -142,57 +200,78 @@ static int emit_refinement_header (ActSynthesize *syn,
       list_append(special_vx, decomp_vx);
       decomp_vx = NULL;
     }
-
   }
   else {
     special_vx = NULL;
     decomp_vx = NULL;
   }
 
-  if (TypeFactory::isProcessType (u)) {
-    pp_printf (pp, "defproc ");
-    is_process = true;
-  }
-  else {
-    pp_printf (pp, "deftype ");
-    is_process = false;
-  }
+  if (header_type != HEADER_DECLII) {
 
-  pp_printf (pp, "%s_", prefix);
-
-  ActNamespace::Act()->msnprintfproc (buf, 10240, u);
-  
-  pp_printf (pp, "%s <: ", buf);
-  pp_lazy (pp, 4);
-  if (u->getns() && u->getns() != ActNamespace::Global()) {
-    char *tmp = u->getns()->Name(true);
-    pp_printf (pp, "%s", tmp);
-    FREE (tmp);
-  }
-  u->snprintActName (buf, 10240);
-  pp_printf (pp, "%s(", buf);
-  list_t *newp = syn->getNewPorts();
-  if (newp && is_process) {
-    pp_forced (pp, 0);
-    for (listitem_t *li = list_first(newp); li; li = li->next) {
-      char buf1[1024];
-      int pos = list_ivalue(li);
-      auto it = u->getPortType(pos);
-      auto nm = u->getPortName(pos);
-      it->sPrint(buf1, 1024);
-      fprintf(pp->fp, "%s %s", buf1, nm);
-      if (li->next) fprintf(pp->fp,";\n");
+    if (TypeFactory::isProcessType (u)) {
+      pp_printf (pp, "defproc ");
+      is_process = true;
     }
-  }
-  pp_printf (pp, ")");
-  pp_forced (pp, 0);
+    else {
+      pp_printf (pp, "deftype ");
+      is_process = false;
+    }
 
+    pp_printf (pp, "%s_", prefix);
+    ActNamespace::Act()->msnprintfproc (buf, 10240, u);
 
-  if (is_dummy) {
-    pp_printf (pp, "{}");
+    char *strict_name;
+    if (u->hasNonStrict()) {
+      strict_name = _extract_strict_name (u);
+      ActNamespace::Act()->mangle_string (strict_name, buf, 10240);
+    }
+    pp_printf (pp, "%s <: ", buf);
+    pp_lazy (pp, 4);
+    
+    if (u->getns() && u->getns() != ActNamespace::Global()) {
+      char *tmp = u->getns()->Name(true);
+      pp_printf (pp, "%s", tmp);
+      FREE (tmp);
+    }
+
+    if (u->hasNonStrict()) {
+      Assert (strict_name, "Hmm...");
+      int len = strlen (strict_name);
+      if (strict_name[len-1] == '>' && strict_name[len-2] == '<') {
+	strict_name[len-2] = '\0';
+      }
+      snprintf (buf, 10240, "%s", strict_name);
+      FREE (strict_name);
+    }
+    else {
+      u->snprintActName (buf, 10240);
+    }
+    pp_printf (pp, "%s(", buf);
+  
+    /* add any new ports here */
+    list_t *newp = syn->getNewPorts();
+    if (newp && is_process) {
+      pp_forced (pp, 0);
+      for (listitem_t *li = list_first(newp); li; li = list_next (li)) {
+	char buf1[1024];
+	int pos = list_ivalue(li);
+	auto it = u->getPortType(pos);
+	auto nm = u->getPortName(pos);
+	it->sPrint(buf1, 1024);
+	fprintf(pp->fp, "%s %s", buf1, nm);
+	if (list_next (li)) fprintf(pp->fp,";\n");
+      }
+    }
+    pp_printf (pp, ")");
     pp_forced (pp, 0);
-    pp_forced (pp, 0);
-    return 0;
+
+    if (header_type == HEADER_EMPTY) {
+      pp_printf (pp, "{}");
+      pp_forced (pp, 0);
+      pp_forced (pp, 0);
+      return 0;
+    }
+
   }
   
   int bw = 0;
@@ -208,102 +287,103 @@ static int emit_refinement_header (ActSynthesize *syn,
     }						\
   } while (0)
 
-  /* iterate through Scope Hashtable to find all chp variables */
-  ActInstiter iter(u->CurScope());
-  for (iter = iter.begin(); iter != iter.end(); iter++) {
-    ValueIdx *vx = *iter;
-
-    if (special_vx) {
-      /* these are fresh instances introduced during decomposition;
-	 we need to declare them, not refine them!
-      */
-      int sp = 0;
-      for (listitem_t *si = list_first (special_vx); si; si = list_next (si)) {
-	for (listitem_t *li = list_first ((list_t *) list_value (si)); li;
-	     li = list_next (li)) {
-	  if (vx == (ValueIdx *) list_value (li)) {
-	    sp = 1;
-	    break;
-	  }
-	}
-	if (sp) {
-	  break;
-	}
+  /* function to actually emit the override */
+  auto emit_override = [&] (ValueIdx *vx) {
+    int bw;
+    if (TypeFactory::isChanType (vx->t)) {
+      bw = TypeFactory::bitWidth(vx->t);
+      OVERRIDE_OPEN;
+      if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
+	syn->typeBoolChan (buf, 10240);
       }
-      if (sp) {
-	continue;
-      }
-    }
-
-    if (syn->skipOverride (vx)) {
-      continue;
-    }
-    
-    /* chan variable found */
-    if (!TypeFactory::isParamType(vx->t)) {
-      if (u->isPort(vx->getName())) {
-	if (TypeFactory::isChanType (vx->t)) {
-	  if (overrideTypes) {
-	    bw = TypeFactory::bitWidth(vx->t);
-	    OVERRIDE_OPEN;
-	    if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
-	      syn->typeBoolChan (buf, 10240);
-	    }
       else if (TypeFactory::isPureStruct (TypeFactory::getChanDataType (vx->t))) {
-        syn->typeStructChan (buf, 10240, vx->t);
+	syn->typeStructChan (buf, 10240, vx->t);
       }
-	    else {
-	      syn->typeIntChan (buf, 10240, bw);
-	    }
-	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	  }
-	}
-	else if (TypeFactory::isIntType (vx->t)) {
-	  /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
-	  if (overrideTypes) {
-	    bw = TypeFactory::bitWidth(vx->t);
-	    OVERRIDE_OPEN;
-	    syn->typeInt (buf, 10240, bw);
-	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	  }
-	}
-	else if (TypeFactory::isBoolType (vx->t)) {
-	  if (overrideTypes) {
-	    OVERRIDE_OPEN;
-	    syn->typeBool (buf, 10240);
-	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	  }
-	}
-	else if (TypeFactory::isProcessType (vx->t) || TypeFactory::isStructure (vx->t)) {
-	  if (overrideTypes || TypeFactory::isProcessType (vx->t)) {
-	    OVERRIDE_OPEN;
-	    pp_printf (pp, "%s_", prefix);
-	    UserDef *ud = dynamic_cast <UserDef *> (vx->t->BaseType());
-	    Assert (ud, "Why am I here?");
-	    ActNamespace::Act()->msnprintfproc (buf, 10240, ud);
-	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	  }
-	}
+      else {
+	syn->typeIntChan (buf, 10240, bw);
       }
+      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
     }
-  }
-  
-  /* end param declaration */
-  if (has_overrides) {
-    pp_endb (pp);
-    pp_printf_raw (pp, "}\n{");
-  }
-  else {
-    pp_printf_raw (pp, "{");
-  }
-  
-  pp_forced (pp, 2);
-  pp_setb (pp);
+    else if (TypeFactory::isIntType (vx->t)) {
+      /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
+      bw = TypeFactory::bitWidth(vx->t);
+      OVERRIDE_OPEN;
+      syn->typeInt (buf, 10240, bw);
+      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+    }
+    else if (TypeFactory::isBoolType (vx->t)) {
+      OVERRIDE_OPEN;
+      syn->typeBool (buf, 10240);
+      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+    }
+    else if (TypeFactory::isProcessType (vx->t)
+	     || TypeFactory::isStructure (vx->t)) {
+      OVERRIDE_OPEN;
+      pp_printf (pp, "%s_", prefix);
+      UserDef *ud = dynamic_cast <UserDef *> (vx->t->BaseType());
+      Assert (ud, "Why am I here?");
+      ActNamespace::Act()->msnprintfproc (buf, 10240, ud);
 
-  has_overrides = 0; // reset
+      if (ud->hasNonStrict()) {
+	char *news = _extract_strict_name (ud);
+	ActNamespace::Act()->mangle_string (news, buf, 10240);
+	FREE (news);
+      }
+      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
+    }
+  };
+
+  if (header_type != HEADER_DECLII) {
+    /* 1. Override ports */
+    
+    if (header_type == HEADER_DECL) {
+      if (has_overrides) {
+	pp_endb (pp);
+	pp_printf_raw (pp, "}");
+      }
+      return has_overrides;
+    }
+
+      if (overrideTypes) {
+	for (int i=0; i < u->getNumPorts(); i++) {
+	  ValueIdx *vx = u->CurScope()->LookupVal (u->getPortName (i));
+	  if (!vx) continue;
+
+	  if (syn->skipOverride (vx)) {
+	    continue;
+	  }
+	  emit_override (vx);
+	}
+      }
+
+    if (header_type == HEADER_DECL_VARIANT) {
+      if (has_overrides) {
+	pp_endb (pp);
+	pp_printf_raw (pp, "}");
+      }
+      return has_overrides;
+    }
+      
+
+  /* end param declaration */
+
+  
+    if (has_overrides) {
+      pp_endb (pp);
+      pp_printf_raw (pp, "}\n{");
+    }
+    else {
+      pp_printf_raw (pp, "{");
+    }
+  
+    pp_forced (pp, 2);
+    pp_setb (pp);
+
+    has_overrides = 0; // reset
+  }
 
   if (is_process) {
-
+    /* emit refinement header */
     pp_setb (pp);
     if (config_get_int ("act.refine_steps")  > 0) {
       pp_printf (pp, "refine <%d> ", config_get_int("act.refine_steps") + 1);
@@ -312,9 +392,14 @@ static int emit_refinement_header (ActSynthesize *syn,
       pp_printf (pp, "refine ");
     }
 
-    // once more
+    // go through all the instances
+    ActInstiter iter(u->CurScope ());
     for (iter = iter.begin(); iter != iter.end(); iter++) {
       ValueIdx *vx = *iter;
+      
+      if (TypeFactory::isParamType (vx->t)) continue; // meta parameters
+      if (syn->skipOverride (vx)) continue; // user-defined skip
+      if (u->isPort (vx->getName())) continue; // handled already
 
       if (special_vx) {
 	/* these are fresh instances introduced during decomposition;
@@ -338,58 +423,11 @@ static int emit_refinement_header (ActSynthesize *syn,
 	}
       }
 
-      if (syn->skipOverride (vx)) {
-	continue;
-      }
-    
-      /* chan variable found */
-      if (!TypeFactory::isParamType(vx->t)) {
-	if (!u->isPort(vx->getName())) {
-	  if (TypeFactory::isChanType (vx->t)) {
-	    if (overrideTypes) {
-	      bw = TypeFactory::bitWidth(vx->t);
-	      OVERRIDE_OPEN;
-	      if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
-		syn->typeBoolChan (buf, 10240);
-	      }
-        else if (TypeFactory::isPureStruct (TypeFactory::getChanDataType (vx->t))) {
-          syn->typeStructChan (buf, 10240, vx->t);
-        }
-	      else {
-		syn->typeIntChan (buf, 10240, bw);
-	      }
-	      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	    }
-	  }
-	  else if (TypeFactory::isIntType (vx->t)) {
-	    /* chp-optimize creates sel0, sel1,... & loop0, loop1, ... which do not have dualrail overrides */
-	    if (overrideTypes) {
-	      bw = TypeFactory::bitWidth(vx->t);
-	      OVERRIDE_OPEN;
-	      syn->typeInt (buf, 10240, bw);
-	      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	    }
-	  }
-	  else if (TypeFactory::isBoolType (vx->t)) {
-	    if (overrideTypes) {
-	      OVERRIDE_OPEN;
-	      syn->typeBool (buf, 10240);
-	      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	    }
-	  }
-	  else if (TypeFactory::isProcessType (vx->t) || TypeFactory::isStructure (vx->t)) {
-	    if (overrideTypes || TypeFactory::isProcessType (vx->t)) {
-	      OVERRIDE_OPEN;
-	      UserDef *ud = dynamic_cast <UserDef *> (vx->t->BaseType());
-	      Assert (ud, "Why am I here?");
-	      pp_printf (pp, "%s_", prefix);
-	      ActNamespace::Act()->msnprintfproc (buf, 10240, ud);
-	      pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	    }
-	  }
-	}
+      if (overrideTypes || TypeFactory::isProcessType (vx->t)) {
+	emit_override (vx);
       }
     }
+    
     if (has_overrides) {
       pp_endb (pp);
       pp_printf_raw (pp, "}\n{");
@@ -409,40 +447,9 @@ static int emit_refinement_header (ActSynthesize *syn,
 	   li = list_next (li)) {
 	ValueIdx *vx = (ValueIdx *) list_value (li);
 
-	if (TypeFactory::isChanType (vx->t)) {
-	  if (overrideTypes) {
-	    bw = TypeFactory::bitWidth(vx->t);
-	    if (TypeFactory::isBoolType (TypeFactory::getChanDataType (vx->t))) {
-	      syn->typeBoolChan (buf, 10240);
-	    }
-	    else if (TypeFactory::isPureStruct (TypeFactory::getChanDataType (vx->t))) {
-	      syn->typeStructChan (buf, 10240, vx->t);
-	    }
-	    else {
-	      syn->typeIntChan (buf, 10240, bw);
-	    }
-	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	  }
-	}
-	else if (TypeFactory::isIntType (vx->t)) {
-	  if (overrideTypes) {
-	    bw = TypeFactory::bitWidth(vx->t);
-	    syn->typeInt (buf, 10240, bw);
-	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	  }
-	}
-	else if (TypeFactory::isBoolType (vx->t)) {
-	  if (overrideTypes) {
-	    syn->typeBool (buf, 10240);
-	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	  }
-	}
-	else if (TypeFactory::isProcessType (vx->t)) {
-	  /*
-	    These are specially inserted processes during process
-	    decomposition, and hence they should have pre-defined
-	    translations in the library
-	  */
+	if (TypeFactory::isProcessType (vx->t)) {
+	  /* special inserted processes; need to map to builtin
+	     compilation */
 	  Process *proc = dynamic_cast <Process *> (vx->t->BaseType());
 	  Assert (proc, "Why am I here?");
 	  char buf[1024];
@@ -461,30 +468,24 @@ static int emit_refinement_header (ActSynthesize *syn,
 	    up to the synthesis to open the correct namespace.
 	  */
 	  pp_printf (pp, "%s_builtin", buf);
+	  //pp_printf (pp, "syn::%s_builtin", buf);
 	  if (found) {
 	    buf[pos] = '<';
 	    pp_printf (pp, "%s", buf+pos);
 	  }
 	  pp_printf_raw (pp, " %s;\n", vx->getName());
+	  continue;
 	}
-	else if (TypeFactory::isPureStruct (vx->t)) {
-	  if (overrideTypes) {
-	    pp_printf (pp, "%s_", prefix);
-	    Data *d = dynamic_cast <Data *> (vx->t->BaseType());
-	    Assert (d, "Why am I here?");
-	    ActNamespace::Act()->msnprintfproc (buf, 10240, d);
-	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	  }
+
+	if (syn->skipOverride (vx)) {
+	  /* just emit the special vx */
+	  vx->t->sPrint (buf, 10240);
+	  pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
 	}
-	else if (TypeFactory::isStructure (vx->t)) {
-	  if (overrideTypes) {
-	    OVERRIDE_OPEN;
-	    pp_printf (pp, "%s_", prefix);
-	    Data *d = dynamic_cast <Data *> (vx->t->BaseType());
-	    Assert (d, "Why am I here?");
-	    ActNamespace::Act()->msnprintfproc (buf, 10240, d);
-	    pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
-	  }
+	else {
+	  /* emit the override */
+	  has_overrides = 1;
+	  emit_override (vx);
 	}
       }
     }
@@ -528,7 +529,18 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
       return NULL;
     }
     if (res == DUMMY_SYNTHESIS) {
-      emit_refinement_header (syn, p, true, true);
+      emit_refinement_header (syn, p, true, HEADER_NORMAL);
+      return NULL;
+    }
+
+    if (p->hasNonStrict()) {
+      char *s = _extract_strict_name (p);
+      if (syn->recordProcessVariant (s, p)) {
+	emit_refinement_header (syn, p, false, HEADER_DECL);
+	pp_printf (pp, ";");
+	pp_forced (pp, 0);
+	pp_forced (pp, 0);
+      }
       return NULL;
     }
 
@@ -577,6 +589,82 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
   return NULL;
 }
 
+void _synth_emit_variant (ActPass *ap, const char *name, list_t *lprocs)
+{
+  ActSynthesize *syn = _init (ap);
+  if (!syn) return;
+  
+  pp_t *pp = syn->getPP ();
+
+  pp_forced (pp, 0);
+  pp_printf (pp, "/* emit variant: %s */", name);
+  pp_forced (pp, 0);
+
+  int res = TRIVIAL_SYNTHESIS;
+
+  for (listitem_t *li = list_first (lprocs); li; li = list_next (li)) {
+    Process *p = (Process *) list_value (li);
+    int tmp = syn->shouldSynthesize (p);
+    if (tmp == ACTUAL_SYNTHESIS) {
+      res = ACTUAL_SYNTHESIS;
+
+      if (!syn->checkSynth (ap, p)) {
+	act_error_ctxt (stderr);
+	fprintf (stderr, "Process [ %s ]: ", p->getFullName());
+	syn->printSynthError (stderr);
+	fprintf (stderr, "\n");
+	exit (1);
+      }
+      syn->runPreSynth (ap, p);
+    }
+    else {
+      Assert (tmp == TRIVIAL_SYNTHESIS, "What?");
+    }
+  }
+  
+  if (res == ACTUAL_SYNTHESIS) {
+    Process *p = (Process *) list_value (list_first (lprocs));
+    int v = emit_refinement_header (syn, p, false, HEADER_DECL_VARIANT);
+    pp_forced (pp, 0);
+    pp_printf (pp, "{ { false : \"Default override used, missing variant!\" }; }");
+    pp_forced (pp, 0);
+    char *ns = NULL;
+    if (p->getns() && p->getns() != ActNamespace::Global()) {
+      ns = p->getns()->Name (true);
+    }
+    for (listitem_t *li = list_first (lprocs); li; li = list_next (li)) {
+      char buf[10240];
+      p = (Process *) list_value (li);
+      pp_printf (pp, "| ");
+      pp_setb (pp);
+      if (ns) {
+	pp_printf (pp, "%s", ns);
+      }
+      p->snprintActName (buf, 10240);
+      pp_printf (pp, "%s => {", buf);
+      pp_forced (pp, 0);
+      emit_refinement_header (syn, p, true, HEADER_DECLII);
+      syn->runSynth (ap, p);
+      pp_endb (pp);
+      pp_printf (pp, "/* end refine */");
+      pp_forced (pp, 0);
+      pp_printf (pp, "}");
+      pp_forced (pp, 0);
+
+      syn->resetDecompVx();
+      pp_endb (pp);
+      pp_printf (pp, "/* end process variant */");
+      pp_forced (pp, 0);
+      pp_printf (pp, "}");
+      pp_forced (pp, 0);
+    }
+  }
+  else {
+    Assert (res == TRIVIAL_SYNTHESIS, "What?");
+    Assert (0, "FiXME!");
+  }
+}
+
 /*
  * Emit structure refinement, if needed
  */
@@ -603,4 +691,19 @@ void *synthesis_data (ActPass *ap, Data *d, int mode)
     }
   }
   return NULL;
+}
+
+
+void synthesis_run (ActPass *ap, Process *p)
+{
+  ActSynthesize *syn = _init (ap);
+  if (syn) {
+    if (syn->hasVariants ()) {
+      syn->applyVariants (ap, _synth_emit_variant);
+    }
+    syn->finalSynthesis (p);
+    delete syn;
+    ActDynamicPass *dp = dynamic_cast<ActDynamicPass *>(ap);
+    dp->setParam ("raw", (void *)NULL);
+  }
 }

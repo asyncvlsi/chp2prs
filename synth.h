@@ -214,6 +214,40 @@ class ActSynthesize {
    * Print error message about non-synthesizable constructs
    */
   void printSynthError (FILE *fp);
+
+  /**
+   * Record variant types for re-processing later
+   * @param s is the common name for the variant
+   * @param p is the actual variant
+   * @return true the first time s is encountered, false otherwise.
+   */
+  bool recordProcessVariant (char *s, Process *p)  {
+    hash_bucket_t *b;
+    bool ret = false;
+    if (!_variants) {
+      _variants = hash_new (4);
+    }
+    b = hash_lookup (_variants, s);
+    if (!b) {
+      b = hash_add (_variants, s);
+      b->v = list_new ();
+      ret = true;
+    }
+    list_t *l = (list_t *) b->v;
+    list_append (l, p);
+    return ret;
+  }
+
+  bool hasVariants () {
+    return (_variants != NULL) ? true : false;
+  }
+
+  void applyVariants (ActPass *ap, void (*f)(ActPass *, const char *, list_t *));
+
+  /**
+   * In variant processing mode!
+   */
+  bool inVariantMode ();
   
 protected:
   FILE *_out;			///< output stream
@@ -234,6 +268,8 @@ protected:
 
   char *_errmsg;		//< set to an error message by checkSynth()
   act_chp_lang_t *_echp;	//< used for CHP statement
+
+  struct Hashtable *_variants;
 };
 
 

@@ -183,10 +183,9 @@ class BasicSDT : public SDTEngine {
   int _emit_probed_clause (list_t *guards, list_t *probe_list);
 
 
-  void _emit_begin (int emit_header);
-  void _emit_end (int toplev, int emit_end_braces);
+  void _emit_begin ();
+  void _emit_end (int toplev);
 
-  bool write_process_definition(FILE *fp, Process * p);
   void initialize_chp_ints(FILE *fp, Process * p, bool has_overrides);
 
 };  

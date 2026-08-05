@@ -35,9 +35,9 @@ OBJS=$(OBJS1) $(OBJS2)
 
 TARGETCONF=synth.conf
 
-SHOBJS=chp2prs_pass.os synth.os synth_pass.os \
+SHOBJS=synth.os synth_pass.os \
     sdt_engine.os df_engine.os ring_engine.os decomp_engine.os \
-	checker_engine.os
+	checker_engine.os opt_pass.os
 
 SRCS=$(OBJS:.o=.cc) $(SHOBJS:.os=.cc)
 
@@ -50,7 +50,7 @@ EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
 SYNTHLIB=-lactchpopt -lactchpsdt -lactchpring -lactchpdecomp
 
 $(BINARY): $(LIB) $(OBJS1) $(ACTDEPEND)
-	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(SHLIBACTPASS)
+	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS1) -o $(BINARY) $(SHLIBACTPASS) -lactchpsdt -lactchp2prspass $(EXPRLIB)
 
 synth2.$(EXT): $(LIB) $(OBJS2) $(ACTDEPEND) $(ACT_HOME)/lib/libactchpopt.so
 	$(CXX) $(SH_EXE_OPTIONS) $(CFLAGS) $(OBJS2) -o synth2.$(EXT) $(SHLIBACTPASS) $(SYNTHLIB) -lactchp2prspass $(EXPRLIB)
