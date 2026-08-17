@@ -169,14 +169,18 @@ static char *_extract_strict_name (UserDef *ud)
 
 
 
-#define HEADER_NORMAL 0
-#define HEADER_EMPTY  1
-#define HEADER_DECL   2
-#define HEADER_DECLII 3
-#define HEADER_DECL_VARIANT 4
+#define HEADER_NORMAL 0   /* normal header for refinement + overrides */
+
+#define HEADER_DECL_VARIANT 1  /* used for variant header */
+
+#define HEADER_DECL   2   /* declaration, used for variants */
+
+#define HEADER_DECLII 3  /* used for refinement overrides in variants */
+
 
 static int emit_refinement_header (ActSynthesize *syn,
-				   UserDef *u, bool is_empty = false,
+				   UserDef *u,
+				   int *braces,
 				   int header_type = HEADER_NORMAL)
 {
   int has_overrides = 0;
@@ -186,6 +190,8 @@ static int emit_refinement_header (ActSynthesize *syn,
   const char *prefix = syn->getPrefix ();
   Process *p = dynamic_cast <Process *> (u);
   bool is_process;
+
+  *braces = 0;
 
   if (p) {
     special_vx = ActNamespace::Act()->getDecomp (p);
@@ -214,16 +220,20 @@ static int emit_refinement_header (ActSynthesize *syn,
   }
 
   if (header_type != HEADER_DECLII) {
-
+    /*
+      HEADER_DECLII, we've already emitted the defproc, so we just
+      need to handle the overrides for the variant.
+    */
+    
+    int count = syn->emitNamespace (u);
     if (is_process) {
-      pp_printf (pp, "defproc ");
+      pp_printf (pp, "export defproc ");
     }
     else {
-      pp_printf (pp, "deftype ");
+      pp_printf (pp, "export deftype ");
     }
-
     pp_printf (pp, "%s_", prefix);
-    ActNamespace::Act()->msnprintfproc (buf, 10240, u);
+    ActNamespace::Act()->msnprintfproc (buf, 10240, u, 1);
 
     char *strict_name;
     if (u->hasNonStrict()) {
@@ -232,12 +242,6 @@ static int emit_refinement_header (ActSynthesize *syn,
     }
     pp_printf (pp, "%s <: ", buf);
     pp_lazy (pp, 4);
-    
-    if (u->getns() && u->getns() != ActNamespace::Global()) {
-      char *tmp = u->getns()->Name(true);
-      pp_printf (pp, "%s", tmp);
-      FREE (tmp);
-    }
 
     if (u->hasNonStrict()) {
       Assert (strict_name, "Hmm...");
@@ -269,14 +273,7 @@ static int emit_refinement_header (ActSynthesize *syn,
     }
     pp_printf (pp, ")");
     pp_forced (pp, 0);
-
-    if (header_type == HEADER_EMPTY) {
-      pp_printf (pp, "{}");
-      pp_forced (pp, 0);
-      pp_forced (pp, 0);
-      return 0;
-    }
-
+    *braces = count;
   }
   
   int bw = 0;
@@ -324,10 +321,15 @@ static int emit_refinement_header (ActSynthesize *syn,
     else if (TypeFactory::isProcessType (vx->t)
 	     || TypeFactory::isStructure (vx->t)) {
       OVERRIDE_OPEN;
-      pp_printf (pp, "%s_", prefix);
       UserDef *ud = dynamic_cast <UserDef *> (vx->t->BaseType());
       Assert (ud, "Why am I here?");
-      ActNamespace::Act()->msnprintfproc (buf, 10240, ud);
+      if (ud->getns() && ud->getns() != ActNamespace::Global()) {
+	char *tmp = ud->getns()->Name (true);
+	pp_printf (pp, "%s", tmp);
+	FREE (tmp);
+      }
+      ActNamespace::Act()->msnprintfproc (buf, 10240, ud, 1);
+      pp_printf (pp, "%s_", prefix);
 
       if (ud->hasNonStrict()) {
 	char *news = _extract_strict_name (ud);
@@ -338,9 +340,11 @@ static int emit_refinement_header (ActSynthesize *syn,
     }
   };
 
+  /* -- end override function -- */
+
+  
   if (header_type != HEADER_DECLII) {
     /* 1. Override ports */
-    
     if (header_type == HEADER_DECL) {
       if (has_overrides) {
 	pp_endb (pp);
@@ -349,17 +353,17 @@ static int emit_refinement_header (ActSynthesize *syn,
       return has_overrides;
     }
 
-      if (overrideTypes) {
-	for (int i=0; i < u->getNumPorts(); i++) {
-	  ValueIdx *vx = u->CurScope()->LookupVal (u->getPortName (i));
-	  if (!vx) continue;
+    if (overrideTypes) {
+      for (int i=0; i < u->getNumPorts(); i++) {
+	ValueIdx *vx = u->CurScope()->LookupVal (u->getPortName (i));
+	if (!vx) continue;
 
-	  if (syn->skipOverride (vx)) {
-	    continue;
-	  }
-	  emit_override (vx);
+	if (syn->skipOverride (vx)) {
+	  continue;
 	}
+	emit_override (vx);
       }
+    }
 
     if (header_type == HEADER_DECL_VARIANT) {
       if (has_overrides) {
@@ -368,11 +372,9 @@ static int emit_refinement_header (ActSynthesize *syn,
       }
       return has_overrides;
     }
-      
 
-  /* end param declaration */
+    /* end param declaration */
 
-  
     if (has_overrides) {
       pp_endb (pp);
       pp_printf_raw (pp, "}\n{");
@@ -484,6 +486,14 @@ static int emit_refinement_header (ActSynthesize *syn,
 
 	if (syn->skipOverride (vx)) {
 	  /* just emit the special vx */
+	  if (TypeFactory::isUserType (vx->t)) {
+	    UserDef *u = dynamic_cast<UserDef *> (vx->t->BaseType());
+	    if (u->getns() && u->getns() != ActNamespace::Global()) {
+	      char *tmp = u->getns()->Name (true);
+	      pp_printf (pp, "%s", tmp);
+	      FREE (tmp);
+	    }
+	  }
 	  vx->t->sPrint (buf, 10240);
 	  pp_printf_raw (pp, "%s %s;\n", buf, vx->getName());
 	}
@@ -523,6 +533,7 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
 {
   ActSynthesize *syn = _init (ap);
   int res;
+  int braces = -1;
   if (!syn) return NULL;
   
   if (mode == 0) {
@@ -534,17 +545,18 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
       return NULL;
     }
     if (res == DUMMY_SYNTHESIS) {
-      emit_refinement_header (syn, p, true, HEADER_NORMAL);
+      emit_refinement_header (syn, p, &braces, HEADER_NORMAL);
+      syn->emitCloseNamespace (braces);
       return NULL;
     }
 
     if (p->hasNonStrict()) {
       char *s = _extract_strict_name (p);
       if (syn->recordProcessVariant (s, p)) {
-	emit_refinement_header (syn, p, false, HEADER_DECL);
+	emit_refinement_header (syn, p, &braces, HEADER_DECL);
 	pp_printf (pp, ";");
 	pp_forced (pp, 0);
-	pp_forced (pp, 0);
+	syn->emitCloseNamespace (braces);
       }
       FREE (s);
       return NULL;
@@ -559,20 +571,20 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
 	exit (1);
       }
       syn->runPreSynth (ap, p);
-      int v = emit_refinement_header (syn, p);
+      int v = emit_refinement_header (syn, p, &braces);
       syn->runSynth (ap, p);
-      
+
       pp_endb (pp);
       pp_printf (pp, "/* end refine */");
       pp_forced (pp, 0);
       pp_printf (pp, "}");
-      pp_forced (pp, 0);
+      syn->emitCloseNamespace (braces);
     }
     else {
       Assert (res == TRIVIAL_SYNTHESIS, "What?");
 
       // syn->runPreSynth (ap, p);
-      int v = emit_refinement_header (syn, p, true);
+      int v = emit_refinement_header (syn, p, &braces);
       // TODO: fix this hack maybe
       pp_printf (pp, "{ 42=42 : \"placeholder\" };");
       // print any of the existing language bodies that are here!
@@ -590,7 +602,7 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
     pp_printf (pp, "/* end process */");
     pp_forced (pp, 0);
     pp_printf (pp, "}");
-    pp_forced (pp, 0);
+    syn->emitCloseNamespace (braces);
   }
   return NULL;
 }
@@ -629,27 +641,33 @@ void _synth_emit_variant (ActPass *ap, const char *name, list_t *lprocs)
   }
   
   if (res == ACTUAL_SYNTHESIS) {
+    int braces = -1;
     Process *p = (Process *) list_value (list_first (lprocs));
-    int v = emit_refinement_header (syn, p, false, HEADER_DECL_VARIANT);
+    int v = emit_refinement_header (syn, p, &braces, HEADER_DECL_VARIANT);
     pp_forced (pp, 0);
     pp_printf (pp, "{ { false : \"Default override used, missing variant!\" }; }");
     pp_forced (pp, 0);
+#if 0
     char *ns = NULL;
     if (p->getns() && p->getns() != ActNamespace::Global()) {
       ns = p->getns()->Name (true);
     }
+#endif
     for (listitem_t *li = list_first (lprocs); li; li = list_next (li)) {
       char buf[10240];
       p = (Process *) list_value (li);
       pp_printf (pp, "| ");
       pp_setb (pp);
+#if 0
       if (ns) {
 	pp_printf (pp, "%s", ns);
       }
+#endif
       p->snprintActName (buf, 10240);
       pp_printf (pp, "%s => {", buf);
       pp_forced (pp, 0);
-      emit_refinement_header (syn, p, true, HEADER_DECLII);
+      int tmp;
+      emit_refinement_header (syn, p, &tmp, HEADER_DECLII);
       syn->runSynth (ap, p);
       pp_endb (pp);
       pp_printf (pp, "/* end refine */");
@@ -664,6 +682,7 @@ void _synth_emit_variant (ActPass *ap, const char *name, list_t *lprocs)
       pp_printf (pp, "}");
       pp_forced (pp, 0);
     }
+    syn->emitCloseNamespace (braces);
   }
   else {
     Assert (res == TRIVIAL_SYNTHESIS, "What?");
@@ -688,12 +707,13 @@ void *synthesis_data (ActPass *ap, Data *d, int mode)
 
       /* do something! */
       pp_t *pp = syn->getPP ();
-      int v = emit_refinement_header (syn, d);
+      int braces = -1;
+      int v = emit_refinement_header (syn, d, &braces);
 
       pp_endb (pp);
       pp_forced (pp, 0);
       pp_printf (pp, "}");
-      pp_forced (pp, 0);
+      syn->emitCloseNamespace (braces);
     }
   }
   return NULL;

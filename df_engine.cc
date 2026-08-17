@@ -62,8 +62,10 @@ class DFSynth : public ActSynthesize {
       bool emit_decl = (dfn.size()>=2 && dfn.substr(dfn.size()-2,2)!="<>");
       if (emit_decl) {
         char buf[4096];
-        ActNamespace::Act()->msnprintfproc (buf, 4096, d);
-        pp_printf_raw (_pp, "\ndeftype %s <: %s () {}\n\n", buf, d->getFullName());
+	int braces = emitNamespace (d);
+        ActNamespace::Act()->msnprintfproc (buf, 4096, d, 1);
+        pp_printf_raw (_pp, "export deftype %s <: %s () {}\n", buf, d->getName());
+	emitCloseNamespace (braces);
       }
     }
   }

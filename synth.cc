@@ -456,3 +456,40 @@ void ActSynthesize::applyVariants (ActPass *ap,
     (*f) (ap, b->key, (list_t *)b->v);
   }
 }
+
+
+int ActSynthesize::emitNamespace (UserDef *u)
+{
+  if (u->getns() && u->getns() != ActNamespace::Global()) {
+    list_t *l;
+    ActNamespace *ns = u->getns();
+    l = list_new ();
+    while (ns != ActNamespace::Global()) {
+      stack_push (l, ns);
+      ns = ns->Parent();
+    }
+    int count = 0;
+    while (!list_isempty (l)) {
+      ns = (ActNamespace *) stack_pop (l);
+      count++;
+      if (count > 1) {
+	pp_forced (_pp, 0);
+	pp_printf (_pp, "export ");
+      }
+      pp_printf (_pp, "namespace %s { ", ns->getName());
+    }
+    list_free (l);
+    pp_forced (_pp, 0);
+    return count;
+  }
+  return 0;
+}
+
+void ActSynthesize::emitCloseNamespace (int count)
+{
+  while (count > 0) {
+    pp_puts (_pp, "} ");
+    count--;
+  }
+  pp_forced (_pp, 0);
+}
