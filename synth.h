@@ -248,6 +248,12 @@ class ActSynthesize {
    * In variant processing mode!
    */
   bool inVariantMode ();
+
+  /**
+   * Generate namespace declarations
+   */
+  int emitNamespace (UserDef *u);
+  void emitCloseNamespace (int count);
   
 protected:
   FILE *_out;			///< output stream
