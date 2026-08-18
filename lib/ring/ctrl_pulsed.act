@@ -27,6 +27,9 @@ namespace syn {
   
   export namespace ring_pulsed {
     
+// Latch-datapath parameters
+pint RL_SEL_SPLIT_CD = 2;
+pint RL_SEL_SPLIT_PW = 2;
 
 // Variables and Channels ---------------------------------
 
