@@ -31,7 +31,10 @@
 namespace syn {
   
   export namespace ring {
-    
+
+// DFF-datapath parameters
+pint RDFF_SEL_SPLIT_CD = 2;
+pint RDFF_SEL_SPLIT_PW = 2;
 
 // Variables and Channels ---------------------------------
 

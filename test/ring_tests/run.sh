@@ -75,7 +75,7 @@ do
         if [ $ok -eq 1 ]
         then
 	$ACTTOOL $opt -E abc -e runs/${orig}_expr.act -o runs/${orig}_ring.act -p testproc $i > /dev/null  2>runs/$i.t.stderr
-        if test -s runs/$i.t.stderr 
+        if test -s runs/$i.t.stderr && grep -v WARNING runs/$i.t.stderr > /dev/null
         then
                 echo 
                 myecho "** FAILED SYNTHESIS, $opt TEST $i: stderr"

@@ -348,14 +348,19 @@ void make_receives_unique (act_chp_lang_t *&c, Scope *s)
   }
 }
 
-bool _var_appears_in_expr (Expr *e, ActId *id)
+static ExprDagVisit *_E = NULL;
+bool _var_appears_in_expr_int (Expr *e, ActId *id)
 {
   act_connection *uid;
   ActId *i;
-  bool a1, a2, a3;
   char str[1024], t[1024];
+  bool a;
   
   if (!e) return false;
+  if (_E->visited (e)) {
+    return false;
+  }
+  
   switch (e->type) {
     /* binary */
   case E_AND:
@@ -375,24 +380,24 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
   case E_GE:
   case E_EQ:
   case E_NE:
-    a1 = _var_appears_in_expr (e->u.e.l, id);
-    a2 = _var_appears_in_expr (e->u.e.r, id);
-    return a1 | a2;
+    a = _var_appears_in_expr_int (e->u.e.l, id);
+    if (a) return true;
+    return _var_appears_in_expr_int (e->u.e.r, id);
     break;
     
   case E_NOT:
   case E_UMINUS:
   case E_COMPLEMENT:
   case E_BITFIELD:
-    a1 = _var_appears_in_expr (e->u.e.l, id);
-    return a1;
+    return _var_appears_in_expr_int (e->u.e.l, id);
     break;
 
   case E_QUERY:
-    a1 = _var_appears_in_expr (e->u.e.l, id);
-    a2 = _var_appears_in_expr (e->u.e.r->u.e.l, id);
-    a3 = _var_appears_in_expr (e->u.e.r->u.e.r, id);
-    return a1 | a2 | a3;
+    a = _var_appears_in_expr_int (e->u.e.l, id);
+    if (a) return true;
+    a = _var_appears_in_expr_int (e->u.e.r->u.e.l, id);
+    if (a) return true;
+    return _var_appears_in_expr_int (e->u.e.r->u.e.r, id);
     break;
 
   case E_COLON:
@@ -403,10 +408,10 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
 
   case E_CONCAT:
     do {
-      a1 = _var_appears_in_expr (e->u.e.l, id);
+      a = _var_appears_in_expr_int (e->u.e.l, id);
       e = e->u.e.r;
-    } while (e && !a1);
-    return a1;
+    } while (e && !a);
+    return a;
     break;
 
   case E_TRUE:
@@ -423,8 +428,8 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
 
   case E_BUILTIN_BOOL:
   case E_BUILTIN_INT:
-    a1 = _var_appears_in_expr (e->u.e.l, id);
-    return a1;
+    a = _var_appears_in_expr_int (e->u.e.l, id);
+    return a;
     break;
     
   case E_FUNCTION:
@@ -432,9 +437,13 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
     return false;
     e = e->u.fn.r;
     while (e) {
-      _var_appears_in_expr (e->u.e.l, id);
+      a = _var_appears_in_expr_int (e->u.e.l, id);
+      if (a) {
+	return a;
+      }
       e = e->u.e.r;
     }
+    return false;
     break;
 
   case E_SELF:
@@ -443,6 +452,17 @@ bool _var_appears_in_expr (Expr *e, ActId *id)
     return false;
     break;
   }
+}
+
+bool _var_appears_in_expr (Expr *e, ActId *id)
+{
+  bool x;
+  _E = new ExprDagVisit;
+  _E->entry ();
+  x = _var_appears_in_expr_int (e, id);
+  _E->exit ();
+  delete _E;
+  return x;
 }
 
 void place_skip_in_empty_branches (act_chp_lang_t *&c)
