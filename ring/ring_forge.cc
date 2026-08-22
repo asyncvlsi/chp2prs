@@ -1103,7 +1103,6 @@ int RingForge::_generate_expr_block(Expr *e, int out_bw, bool connect_inputs)
     _inwidthmap = ihash_new (0);
 
     auto ss1 = high_resolution_clock::now();
-    e = expr_dup(e);
     e = expr_dag(e);
 
     _reset_expr_id();
@@ -1197,7 +1196,6 @@ int RingForge::_generate_expr_block_for_sel(Expr *e, int xid, bool connect_input
     ac.clear();
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
-    e = expr_dup(e);
     e = expr_dag(e);
     
     _reset_expr_id();
@@ -1273,7 +1271,6 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
     _inexprmap = ihash_new (0);
     _inwidthmap = ihash_new (0);
     for (auto &e : e_list) {
-        e = expr_dup(e);
         e = expr_dag(e);
         _expr_collect_vars (e, 1);
     }
@@ -1593,18 +1590,34 @@ int RingForge::_generate_probe_access_neg (ActId *chan)
 */
 void RingForge::_expr_collect_vars (Expr *&e, int collect_phase)
 {
+  _ehash = phash_new (4);
+  _expr_collect_vars_int (e, collect_phase);
+  phash_free (_ehash);
+  _ehash = NULL;
+}
+
+
+void RingForge::_expr_collect_vars_int (Expr *&e, int collect_phase)
+{
   int id;
+  phash_bucket_t *b;
   Assert (e, "Hmm");
+
+  b = phash_lookup (_ehash, e);
+  if (b) {
+    return;
+  }
+  phash_add (_ehash, e);
 
 #define BINARY_OP					\
   do {							\
-    _expr_collect_vars (e->u.e.l, collect_phase);	\
-    _expr_collect_vars (e->u.e.r, collect_phase);	\
+    _expr_collect_vars_int (e->u.e.l, collect_phase);	\
+    _expr_collect_vars_int (e->u.e.r, collect_phase);	\
   } while (0)
 
 #define UNARY_OP					\
   do {							\
-    _expr_collect_vars (e->u.e.l, collect_phase);	\
+    _expr_collect_vars_int (e->u.e.l, collect_phase);	\
   } while (0)
   
   switch (e->type) {
@@ -1639,9 +1652,9 @@ void RingForge::_expr_collect_vars (Expr *&e, int collect_phase)
     break;
 
   case E_QUERY:
-    _expr_collect_vars (e->u.e.l, collect_phase);
-    _expr_collect_vars (e->u.e.r->u.e.l, collect_phase);
-    _expr_collect_vars (e->u.e.r->u.e.r, collect_phase);
+    _expr_collect_vars_int (e->u.e.l, collect_phase);
+    _expr_collect_vars_int (e->u.e.r->u.e.l, collect_phase);
+    _expr_collect_vars_int (e->u.e.r->u.e.r, collect_phase);
     break;
 
   case E_COLON:
@@ -1654,7 +1667,7 @@ void RingForge::_expr_collect_vars (Expr *&e, int collect_phase)
     {
       Expr *tmp = e;
       while (tmp) {
-	_expr_collect_vars (tmp->u.e.l, collect_phase);
+	_expr_collect_vars_int (tmp->u.e.l, collect_phase);
 	tmp = tmp->u.e.r;
       }
     }

@@ -52,20 +52,23 @@ void RingVarAnalysis::_add_to_live_vars (ActId *id)
     }
 }
 
-void RingVarAnalysis::_add_to_live_vars (Expr *e)
+void RingVarAnalysis::_add_to_live_vars_internal (Expr *e)
 {
   ActId *var;
   if (!e) return;
+  if (_E->visited (e)) {
+    return;
+  }
 
-#define BINARY_OP					\
-  do {							    \
-    _add_to_live_vars (e->u.e.l);	\
-    _add_to_live_vars (e->u.e.r);	\
+#define BINARY_OP				\
+  do {						\
+    _add_to_live_vars_internal (e->u.e.l);	\
+    _add_to_live_vars_internal (e->u.e.r);	\
   } while (0)
 
-#define UNARY_OP					\
-  do {							    \
-    _add_to_live_vars (e->u.e.l);	\
+#define UNARY_OP				\
+  do {						\
+    _add_to_live_vars_internal (e->u.e.l);	\
   } while (0)
   
   switch (e->type) {
@@ -100,9 +103,9 @@ void RingVarAnalysis::_add_to_live_vars (Expr *e)
     break;
 
   case E_QUERY:
-    _add_to_live_vars (e->u.e.l);
-    _add_to_live_vars (e->u.e.r->u.e.l);
-    _add_to_live_vars (e->u.e.r->u.e.r);
+    _add_to_live_vars_internal (e->u.e.l);
+    _add_to_live_vars_internal (e->u.e.r->u.e.l);
+    _add_to_live_vars_internal (e->u.e.r->u.e.r);
     break;
 
   case E_COLON:
@@ -114,7 +117,7 @@ void RingVarAnalysis::_add_to_live_vars (Expr *e)
     {
       Expr *tmp = e;
       while (tmp) {
-        _add_to_live_vars (tmp->u.e.l);
+        _add_to_live_vars_internal (tmp->u.e.l);
         tmp = tmp->u.e.r;
       }
     }
@@ -150,6 +153,13 @@ void RingVarAnalysis::_add_to_live_vars (Expr *e)
   return;
 #undef BINARY_OP
 #undef UNARY_OP
+}
+
+void RingVarAnalysis::_add_to_live_vars (Expr *e)
+{
+  _E->entry();
+  _add_to_live_vars_internal (e);
+  _E->exit ();
 }
 
 void RingVarAnalysis::_remove_from_live_vars (ActId *id)

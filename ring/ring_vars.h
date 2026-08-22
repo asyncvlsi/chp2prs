@@ -52,6 +52,7 @@ class RingVarAnalysis {
             c = c_in; 
             H_live = {};
             H_lcd = {};
+	    _E = new ExprDagVisit;
         }
 
         /*
@@ -90,12 +91,15 @@ class RingVarAnalysis {
 
         void _add_to_live_vars (ActId *id);
         void _add_to_live_vars (Expr *e);
+        void _add_to_live_vars_internal (Expr *e);
         void _remove_from_live_vars (ActId *id);
 
         virtual void _tag_action_with_reqd_vars (act_chp_lang_t *action, int is_latch);
         
         void _add_to_live_vars_lcd (ActId *id);
         void _tag_action_with_reqd_vars_union_lcd (act_chp_lang_t *action);
+
+        ExprDagVisit *_E;
         
 };
 
