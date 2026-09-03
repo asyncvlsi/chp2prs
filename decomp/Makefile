@@ -40,7 +40,7 @@ SRCS=$(SHOBJS:.os=.cc)
 
 OPTLIB=-lactchpopt
 
-EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
+EXPRLIB=-lexpropt_sh -l:libabc.so
 
 include $(ACT_HOME)/scripts/Makefile.std
 

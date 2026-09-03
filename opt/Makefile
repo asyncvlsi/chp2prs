@@ -47,7 +47,7 @@ SRCS=$(SHOBJS:.os=.cc)
 
 include $(ACT_HOME)/scripts/Makefile.std
 
-EXPRLIB=-lexpropt_sh $(ACT_HOME)/lib/libabc.so
+EXPRLIB=-lexpropt_sh -l:libabc.so
 
 $(TARGETLIBS): $(SHOBJS)
 	$(ACT_HOME)/scripts/linkso $(TARGETLIBS) $(SHOBJS) $(SHLIBACTPASS) $(EXPRLIB)
