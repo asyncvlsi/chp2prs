@@ -23,6 +23,7 @@
 #include <common/config.h>
 #include <common/misc.h>
 #include <act/passes.h>
+#include <string>
 
 
 /*
