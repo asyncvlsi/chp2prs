@@ -609,7 +609,6 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
       pp_printf (pp, "/* end refine */");
       pp_forced (pp, 0);
       pp_printf (pp, "}");
-      syn->emitCloseNamespace (braces);
     }
     else {
       Assert (res == TRIVIAL_SYNTHESIS, "What?");

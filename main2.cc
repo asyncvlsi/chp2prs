@@ -28,6 +28,7 @@
 #include "engines.h"
 #include "synth.h"
 #include <chrono>
+#include <cstdlib>
 using namespace std::chrono;
 
 static void usage(char *name)

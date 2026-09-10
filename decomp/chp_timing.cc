@@ -22,6 +22,7 @@
 
 #include "chp_timing.h"
 #include "math.h"
+#include <cmath>
 
 static constexpr double EPS = 1e-12;
 

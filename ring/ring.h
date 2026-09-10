@@ -25,6 +25,7 @@
 
 #include <act/chp/reqs.h>
 #include <act/chp/ring_misc.h>
+#include <stack>
 
 /*
  * Base class for ring synthesis 
