@@ -54,7 +54,7 @@ class Decomp : public ActSynthesize {
     // for memories that might get instantiated
     pp_printf_raw (_pp, "import syn;\n");
     pp_printf_raw (_pp, "open syn;\n");
-    pp_printf_raw (_pp, "open syn::decomp;\n");
+    pp_printf_raw (_pp, "open syn::decomp;\n\n");
     /* print imports */
     fprintf (_expr, "namespace syn {\n\nexport namespace expr {\n\n");
     fclose (_expr);
@@ -93,7 +93,7 @@ class Decomp : public ActSynthesize {
   bool overrideTypes() { return true; }
 
   bool skipOverride (Type *t) {
-    if (TypeFactory::isProcessType (t)) {
+    if (TypeFactory::isProcessType (t) || TypeFactory::isStructure (t)) {
       return false;
     }
     return true;
