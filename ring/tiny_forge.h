@@ -39,6 +39,9 @@ static const std::set<std::vector<Action>> valid_signatures =
     {Action::Receive, Action::Send}
 };
 
+
+void tf_kill_mapper_on_exit (void);
+
 class TinyForge : public RingForge {
     public: 
 
@@ -52,6 +55,8 @@ class TinyForge : public RingForge {
 
         void run_tiny_forge ();
         bool check_if_pipeable (act_chp_lang_t *);
+        void register_exit ();
+        void unregister_exit ();
 
     ~TinyForge () {
         if (eeo) { 

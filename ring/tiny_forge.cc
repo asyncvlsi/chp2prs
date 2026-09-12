@@ -417,3 +417,27 @@ void TinyForge::_terminate_port (int block_id, Port port, Term mode)
     return;
 }
 #endif
+
+#if USE_CACHE
+static ExprCache *_current_eeo;
+#else
+static ExternalExprOpt *_current_eeo;
+#endif
+
+void tf_kill_mapper_on_exit (void)
+{
+  if (_current_eeo) {
+    delete _current_eeo;
+  }
+  _current_eeo = NULL;
+}
+
+void TinyForge::register_exit ()
+{
+  _current_eeo = eeo;
+}
+
+void TinyForge::unregister_exit ()
+{
+  _current_eeo = NULL;
+}
