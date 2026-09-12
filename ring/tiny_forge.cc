@@ -98,8 +98,14 @@ bool TinyForge::_build_prog_signature (act_chp_lang_t *c, int root)
             stmt = (act_chp_lang_t *) list_value(li);
             switch (stmt->type) {
             case ACT_CHP_SEND:
+                if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+                    _p->CurScope()->localLookup(stmt->u.comm.chan, NULL)))) 
+                    return false;
                 prog_signature.push_back(Action::Send); break;
             case ACT_CHP_RECV:
+                if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+                    _p->CurScope()->localLookup(stmt->u.comm.chan, NULL))))
+                    return false;
                 prog_signature.push_back(Action::Receive); break;
             case ACT_CHP_ASSIGN:
                 prog_signature.push_back(Action::Assign); break;
