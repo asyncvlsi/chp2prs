@@ -98,8 +98,14 @@ bool TinyForge::_build_prog_signature (act_chp_lang_t *c, int root)
             stmt = (act_chp_lang_t *) list_value(li);
             switch (stmt->type) {
             case ACT_CHP_SEND:
+                if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+                    _p->CurScope()->localLookup(stmt->u.comm.chan, NULL)))) 
+                    return false;
                 prog_signature.push_back(Action::Send); break;
             case ACT_CHP_RECV:
+                if (TypeFactory::isStructure(TypeFactory::getChanDataType(
+                    _p->CurScope()->localLookup(stmt->u.comm.chan, NULL))))
+                    return false;
                 prog_signature.push_back(Action::Receive); break;
             case ACT_CHP_ASSIGN:
                 prog_signature.push_back(Action::Assign); break;
@@ -411,3 +417,27 @@ void TinyForge::_terminate_port (int block_id, Port port, Term mode)
     return;
 }
 #endif
+
+#if USE_CACHE
+static ExprCache *_current_eeo;
+#else
+static ExternalExprOpt *_current_eeo;
+#endif
+
+void tf_kill_mapper_on_exit (void)
+{
+  if (_current_eeo) {
+    delete _current_eeo;
+  }
+  _current_eeo = NULL;
+}
+
+void TinyForge::register_exit ()
+{
+  _current_eeo = eeo;
+}
+
+void TinyForge::unregister_exit ()
+{
+  _current_eeo = NULL;
+}

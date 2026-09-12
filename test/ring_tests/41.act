@@ -1,0 +1,41 @@
+deftype ss (
+    int<1> a;
+    bool b;
+    int<1> c;
+    bool d
+) {}
+
+defproc src (chan!(ss) C)
+{
+    ss s;
+    chp {
+        s.a:=1; 
+        s.b:=false; 
+        s.c:=1; 
+        s.d:=true; 
+        *[ C!s ]
+    }
+}
+
+defproc proc (chan?(ss) I; chan!(ss) O) {
+    ss s;
+    chp {
+        *[ I?s; O!s ]
+    }
+}
+
+defproc snk (chan?(ss) C)
+{
+    ss x;
+    chp {
+        *[ C?x ]
+    }
+}
+
+defproc testproc(chan!(ss) Y)
+{
+    src s1;
+    snk sn;
+    proc m1(s1.C, sn.C);
+    Y = sn.C;
+}

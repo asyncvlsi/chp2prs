@@ -424,6 +424,14 @@ int ActSynthesize::shouldSynthesize (Process *p)
 	}
 	list_free (l);
       }
+      /* memory block should pass through untouched */
+      const char *memname = config_get_string("act.decomp.mem");
+      char *tmp = p->getUnexpanded()->getFullName();
+      if (strcmp (tmp, memname) == 0) {
+	FREE (tmp);
+	return NO_SYNTHESIS;
+      }
+      FREE (tmp);
     }
     else {
       ActNamespace *ns = p->getns();

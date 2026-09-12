@@ -45,6 +45,7 @@ class RingSynth : public ActSynthesize {
     }
       config_set_string("synth.bundled.cell_lib_namespace","std::cells");
       config_set_string("synth.bundled.cell_lib","${ACT_HOME}/act/std/cells.act");
+      atexit (tf_kill_mapper_on_exit);
     }
   
   void emitTopImports(ActPass *ap) {
@@ -199,6 +200,7 @@ class RingSynth : public ActSynthesize {
     fclose (_expr);
     _expr = NULL;
 
+    tf->unregister_exit ();
     tf->~TinyForge();
   }
 
@@ -256,6 +258,8 @@ class RingSynth : public ActSynthesize {
       tf->set_c(c);
       tf->set_bp(b);
 
+      tf->register_exit ();
+
       fprintf(stdout, "// %s : ",p->getName());
       fflush(stdout);
       auto ss1 = high_resolution_clock::now();
@@ -263,6 +267,7 @@ class RingSynth : public ActSynthesize {
         tf->run_tiny_forge();
       else
         tf->run_forge();
+
       auto st1 = high_resolution_clock::now();
       auto d2 = duration_cast<microseconds>(st1 - ss1);
 
