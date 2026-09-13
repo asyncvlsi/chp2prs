@@ -24,6 +24,7 @@
  */
 
 #include "hassert.h"
+#include <iterator>
 #include <algorithm>
 #include <concepts>
 #include <functional>
