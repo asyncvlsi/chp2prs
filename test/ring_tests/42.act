@@ -1,0 +1,58 @@
+
+defproc buf (chan?(int<8>) L1, L2; chan!(int<8>) R; chan?(int<1>) GO; int?<8> ic)
+{
+    int<8> x, y, z;
+    chp {
+        *[
+            GO?; L1?x; L2?y; 
+            z:=x+y;
+            R!(z+ic)
+        ]
+    }
+}
+
+defproc src_cfg (chan!(int<8>) CI) {
+    chp {
+        *[ CI!2 ; [false -> skip] ]
+    }
+}
+
+defproc snk_cfg (chan?(int<8>) CI; chan!(int<1>) GO; int!<8> ic) {
+    chp {
+        *[ CI?ic; GO!0; [false -> skip] ]
+    }
+}
+
+template<pint V>
+defproc src (chan!(int<8>) C) {
+    chp {
+        *[ C!V ]
+    }
+}
+
+defproc snk (chan?(int<8>) C) {
+    int<8> x;
+    chp {
+        *[ C?x ]
+    }
+}
+
+
+defproc testproc (chan!(int<8>) Y)
+{
+    src_cfg sr_c;
+    snk_cfg sn_c(sr_c.CI);
+
+    src<2> sr1;
+    src<2> sr2;
+    snk sn;
+
+    buf b(
+        .L1=sr1.C, 
+        .L2=sr2.C, 
+        .R=sn.C, 
+        .GO=sn_c.GO,
+        .ic=sn_c.ic);
+
+    Y = sn.C;
+}

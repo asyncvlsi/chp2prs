@@ -222,6 +222,12 @@ defproc capture_dummy(a1of1 go; bool din[W]; bool dout[W]; a1of1 tx)
   [ W > 0 -> din = dout; ]
 }
 
+export template <pint CD1, PW1> 
+defproc capture_bool <: capture<CD1,PW1,1> () {}
+
+export template <pint CD1, PW1> 
+defproc capture_bool_dummy <: capture_dummy<CD1,PW1,1> () {}
+
 
 export template <pint W; pbool BUF=false>
 defproc var_access(bool din[W]; bool dout[W])
@@ -1186,13 +1192,6 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool din[N][W]; bool dout[W]; bool a)
   )
   ]
 }
-
-
-export defproc capture_bool_ext (bool i; bool dout[1])
-{
-  i = dout[0];
-}
-
 
 // Custom Circuit Implementations for Small Programs
 
