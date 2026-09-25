@@ -43,7 +43,7 @@ namespace syn {
  */
   template<pbool I>
   defcell var_one_bit(bool? wt, wf; bool! dt, df; bool? Reset) {
-    prs * {
+    prs {
       /* write port */
       wf<8> -> dt-
       wt<8> -> df-

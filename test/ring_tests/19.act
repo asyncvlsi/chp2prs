@@ -1,5 +1,5 @@
 
-defproc buf (chan?(int<8>) L1, L2; chan!(int<8>) R; bool b)
+defproc buf (chan?(int<8>) L1, L2; chan!(int<8>) R; bool? b)
 {
     int<8> x, y, z;
     chp {
@@ -37,7 +37,7 @@ defproc snk (chan?(int<8>) l)
 	}
 }
 
-defproc testproc (chan?(int<8>) X1, X2; chan!(int<8>) Y; bool e)
+defproc testproc (chan?(int<8>) X1, X2; chan!(int<8>) Y; bool? e)
 {
   buf b(X1,X2,Y,e);
   src1 i1(X1);

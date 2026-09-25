@@ -895,7 +895,7 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
   act_boolean_netlist_t *bnl = _bp->getBNL(_p);
   Assert (bnl, "hmm BNL");
   pHashtable *pht = bnl->cH;
-  bool warn_once_bools = true;
+  bool warn_once_exts = true;
 
   act_booleanized_var_t *bv;
   act_connection *conn;
@@ -920,15 +920,17 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
         v->iwrite = 0;
         v->fischan = TypeFactory::isChanType (conn->getvx()->t);
         v->fisbool = TypeFactory::isBoolType (conn->getvx()->t);
-        v->fisextbool = 0;
+        v->fisextvar = 0;
+        v->fisinport = ((conn->getvx()->t->getDir() == Type::direction::OUT) ? 0 : 
+                        ((conn->getvx()->t->getDir() == Type::direction::IN) ? 1 : 2));
         v->latest_for_read = 0;
         get_true_name (str, id, _p->CurScope());
         v->name = Strdup (str);
-        if (v->fisbool && bv->ischpport) {
-          v->fisextbool = 1;
-          if (warn_once_bools) {
-            fprintf(stdout, "\nWARNING: Bool ports in process, they must be read-only. Hope you know what you're doing.\n");
-            warn_once_bools = false;
+        if (bv->ischpport && !v->fischan) {
+          v->fisextvar = 1;
+          if (warn_once_exts) {
+            fprintf(stdout, "\nWARNING: Non-channel config ports in process. Hope you know what you're doing.\n");
+            warn_once_exts = false;
           }
         }
         var_infos.insert({conn,v});
@@ -942,20 +944,23 @@ void RingEngine::construct_var_infos (act_chp_lang_t *c)
     if (bv->usedchp) {
       conn = bv->id;
       id = conn->toid();
+      var_info *v1 = _get_var_info(id);
       if (TypeFactory::isDataType (conn->getvx()->t)) 
       {
-        var_info *v1 = _get_var_info(id);
         _construct_var_info (c, id, v1);
       }
       // for probes
       else if (TypeFactory::isChanType (conn->getvx()->t))
       {
-        var_info *v1 = _get_var_info(id);
         _construct_var_info (c, id, v1);
         if (v1->iwrite>1 || v1->iread>1) {
           fprintf(stderr, "\nChannel name: %s\n", v1->name);
           fatal_error ("Multiple channel access detected. Cannot synthesize. Run decomp first.");
         }
+      }
+      // config vars single write check
+      if (v1->fisextvar && v1->nwrite>1) {
+        fatal_error ("Multiple writes to config port variable (%s). This is not allowed.", v1->name);
       }
     }
   }
@@ -1036,7 +1041,7 @@ var_info *RingEngine::_deepcopy_var_info (var_info *v, int only_read_id)
     v_copy->fischan = v->fischan;
     v_copy->fisinport = v->fisinport;
     v_copy->fisbool = v->fisbool;
-    v_copy->fisextbool = v->fisextbool;
+    v_copy->fisextvar = v->fisextvar;
     v_copy->width = v->width;
     v_copy->block_in = v->block_in;
     v_copy->block_out = v->block_out;

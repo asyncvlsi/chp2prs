@@ -562,9 +562,37 @@ int RingForge::_generate_single_latch (var_info *v, latch_info *l, long long ini
     bool is_latch = (l->type == LatchType::Latch);
     static char buf[1024];
     Assert (v->iwrite < v->nwrite, "Something went wrong in latch info tracking!");
-    if (v->fisextbool) {
+    if (v->fisextvar) {
         get_true_name(buf, v->id, _p->CurScope(), false);
-        fprintf(_fp, "capture_bool_ext %s%s_%d(%s);\n", capture_block_prefix, v->name, latch_id, buf);
+        if (v->fisinport == 1) {
+            if (v->fisbool) {
+                fprintf(_fp, "capture_bool_dummy<%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+                                                        _compute_delay_line_param(pulse_width), 
+                                                        capture_block_prefix, v->name, latch_id);
+                fprintf(_fp, "%s%s_%d.din[0] = %s;\n", capture_block_prefix, v->name, latch_id, buf);
+            }
+            else {
+                fprintf(_fp, "capture_dummy<%d,%d,%d> %s%s_%d(.din=%s.d);\n", _compute_delay_line_param(capture_delay), 
+                                                        _compute_delay_line_param(pulse_width), 
+                                                        v->width, capture_block_prefix, v->name, latch_id, buf);
+            }
+        }
+        else if (v->fisinport==0) {
+            if (v->fisbool) {
+                fprintf(_fp, "capture_bool<%d,%d> %s%s_%d;\n", _compute_delay_line_param(capture_delay), 
+                                                        _compute_delay_line_param(pulse_width), 
+                                                        capture_block_prefix, v->name, latch_id);
+                fprintf(_fp, "%s%s_%d.dout[0] = %s;\n", capture_block_prefix, v->name, latch_id, buf);
+            }
+            else {
+                fprintf(_fp, "capture<%d,%d,%d> %s%s_%d(.dout=%s.d);\n", _compute_delay_line_param(capture_delay), 
+                                                        _compute_delay_line_param(pulse_width), 
+                                                        v->width, capture_block_prefix, v->name, latch_id, buf);
+            }
+        }
+        else {
+            fatal_error("Config variable (%s) requires direction specification !/?", buf);
+        }
     }
     else if (init_val == -1)
     {
@@ -2341,7 +2369,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                     id = stmt1->u.assign.id;
                     vi = _get_var_info(id);
-                    if (vi->fisextbool==0) {
+                    if (vi->fisextvar==0) {
                         n_lcd++;
                     }
                 }
@@ -2362,7 +2390,7 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                         Assert (stmt1->type == ACT_CHP_ASSIGN, "Only assignments in initial conditions");
                         id = stmt1->u.assign.id;
                         vi = _get_var_info(id);
-                        if (vi->fisextbool==0) {
+                        if (vi->fisextvar==0) {
                             block_id = _generate_pipe_element_lcd (ACT_CHP_ASSIGN, id, ii, pulser_id, lcd_itr);
                             lcd_itr++;
                             list_iappend(lcd_blks, block_id);
