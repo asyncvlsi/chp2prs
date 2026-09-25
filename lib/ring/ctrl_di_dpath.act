@@ -83,7 +83,7 @@ defproc exprchan_match (sdtexprchan<W> s[N]; ring_expr_chan<W> r[N])
 
 template<pbool I>
 defcell reg_one_bit(bool? wt, wf; bool! dt, df; bool? Reset) {
-  prs * {
+  prs {
     /* write port */
     wf<8> -> dt-
     wt<8> -> df-
