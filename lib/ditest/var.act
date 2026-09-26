@@ -109,7 +109,6 @@ namespace syn {
         ( i : W:
           sizing{
             p_n_mode <- 1;
-            leak_adjust <- 1;
             _wack[i]{- 1}
           }
         )
@@ -119,7 +118,6 @@ namespace syn {
         }
         sizing{
           p_n_mode <- 1;
-          leak_adjust <- 1;
           in.a{- 1};
           (; i : W:
             _invt[i]{- 1};

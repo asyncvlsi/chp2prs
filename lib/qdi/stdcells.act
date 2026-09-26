@@ -26,7 +26,6 @@ namespace syn {
     out.d.d[0].t = GND;
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       _f{- 1};
       out.d.d[0].f{- 1}
     }
@@ -42,7 +41,6 @@ namespace syn {
     out.d.d[0].f = GND;
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       _t{- 1};
       out.d.d[0].t{- 1}
     }
@@ -120,7 +118,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -144,7 +141,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -167,7 +163,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -190,7 +185,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 2};
       Y.d.d[0].f{- 2};
       _t{- 1};
@@ -213,7 +207,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 2};
       Y.d.d[0].f{- 2};
       _t{- 1};
@@ -237,7 +230,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -260,7 +252,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -283,7 +274,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 2};
       Y.d.d[0].f{- 2};
       _t{- 1};
@@ -306,7 +296,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -329,7 +318,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -354,7 +342,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -378,7 +365,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -402,7 +388,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -427,7 +412,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -452,7 +436,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       Y.d.d[0].t{- 1};
       Y.d.d[0].f{- 1};
       _t{- 1};
@@ -485,7 +468,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       YS.d.d[0].t{- 1};
       YS.d.d[0].f{- 1};
       _tc{- 1};
@@ -524,7 +506,6 @@ namespace syn {
     }
     sizing{
       p_n_mode <- 1;
-      leak_adjust <- 1;
       YC.d.d[0].t{- 1};
       YC.d.d[0].f{- 1};
       YS.d.d[0].t{- 1};
