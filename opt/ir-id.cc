@@ -129,6 +129,7 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
 
 [[nodiscard]] bool NameParsingIdPool::ActIdIsPureStruct (ActId *id) {
     auto vt = m_scope->FullLookup(id, nullptr);
+    Assert (vt, "what");
     return TypeFactory::isPureStruct (vt);
 }
 
@@ -138,11 +139,12 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
     int nb, ni; int *types;
     d->getStructCount (&nb, &ni);
     ActId **res = d->getStructFields (&types);
-    ActId *tail = id->Tail ();
+    ActId *full = id;
     std::vector<VarId> ret{};
     for (int i=0; i<nb+ni; i++) {
+      auto tail = full->Tail();
       tail->Append(res[i]);
-      ret.push_back(*varIdFromActId(tail));
+      ret.push_back(*varIdFromActId(full));
       tail->prune();
     }
     return ret;
