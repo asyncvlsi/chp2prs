@@ -65,7 +65,6 @@ namespace syn {
       ~_final_sig -> final_sig+
     }
     sizing{
-      leak_adjust <- 1;
       p_n_mode <- 1;
       c.r{- 1};
       _final_sig{- 1};
@@ -105,7 +104,6 @@ namespace syn {
     }
 
     sizing{
-      leak_adjust <- 1;
       p_n_mode <- 1;
       _r{- 1};
       g[0].r{- 1}
@@ -155,7 +153,6 @@ namespace syn {
       ct.out & ot.out #> c.a-
     }
     sizing{
-      leak_adjust <- 1;
       p_n_mode <- 1;
       c.a{- 1};
       (; j : N:
@@ -206,7 +203,6 @@ namespace syn {
       ct.out & ot.out #> c.a-
     }
     sizing{
-      leak_adjust <- 1;
       p_n_mode <- 1;
       c.a{- 1};
       _ca{- 1};
@@ -232,7 +228,6 @@ namespace syn {
       _r | g.t => s.r-
     }
     sizing{
-      leak_adjust <- 1;
       p_n_mode <- 1;
       _r{- 1};
       s.r{- 1}
@@ -281,7 +276,6 @@ namespace syn {
       r.a => _ra-
     }
     sizing{
-      leak_adjust <- 1;
       p_n_mode <- 1;
       r.r{- 1};
       x{- 1};
@@ -328,7 +322,6 @@ namespace syn {
         _ack[i] => c[i].a- )
     }
     sizing{
-      leak_adjust <- 1;
       p_n_mode <- 1;
 
       (; i : N:

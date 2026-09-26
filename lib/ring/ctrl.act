@@ -281,7 +281,6 @@ defproc probe_clause(bool? g[N]; bool? probe[T]; bool! out[1]) {
     _out => out[0]-
   }
   sizing{
-    leak_adjust <- 1;
     p_n_mode <- 1;
     _out{- 1};
     out[0]{- 1}
@@ -715,7 +714,6 @@ export defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka)
 
   }
   sizing {
-   leak_adjust <- 1;
    _u{-1};
    _v{-1}
   }

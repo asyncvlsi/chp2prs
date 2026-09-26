@@ -42,7 +42,6 @@ namespace syn {
       }
       sizing{
         p_n_mode <- 1;
-        leak_adjust <- 1;
         Y.d[0].t{- 1};
         Y.d[0].f{- 1};
         _t{- 1};
@@ -465,7 +464,6 @@ namespace syn {
       }
       sizing{
         p_n_mode <- 1;
-        leak_adjust <- 1;
         Y.t{- 1};
         Y.f{- 1};
         _t{- 1};
@@ -1238,13 +1236,11 @@ namespace syn {
         ( i : W1..W2 - 1:
           sizing{
             p_n_mode <- 1;
-            leak_adjust <- 1;
             out.d.d[i].f{- 1}
           }
         )
         sizing{
           p_n_mode <- 1;
-          leak_adjust <- 1;
           _xv{- 1}
         }
         ( i : W1..W2 - 1:
@@ -1285,14 +1281,12 @@ namespace syn {
       ( i : W:
         sizing {
           p_n_mode <- 1;
-          leak_adjust <- 1;
           out.d.d[i].d[0]{- 1};
           out.d.d[i].d[1]{- 1}
         }
       )
       sizing{
         p_n_mode <- 1;
-        leak_adjust <- 1;
         _req{- 1}
       }
     }
@@ -1318,7 +1312,6 @@ namespace syn {
       ( i : W:
         sizing{
           p_n_mode <- 1;
-          leak_adjust <- 1;
           _wack[i]{- 1}
         }
       )
@@ -1328,7 +1321,6 @@ namespace syn {
       }
       sizing{
         p_n_mode <- 1;
-        leak_adjust <- 1;
         in.a{- 1};
         (; i : W:
           _invt[i]{- 1};
@@ -1357,14 +1349,12 @@ namespace syn {
       ( i : W:
         sizing{
           p_n_mode <- 1;
-          leak_adjust <- 1;
           out.d.d[i].f{- 1};
           out.d.d[i].t{- 1}
         }
       )
       sizing{
         p_n_mode <- 1;
-        leak_adjust <- 1;
         xout{- 1}
       }
     }

@@ -556,7 +556,6 @@ defproc probe_clause(sdtexprchan<1> g[N]; ring_expr_chan<1> probe[T]; sdtexprcha
   }
   
   sizing{
-    leak_adjust <- 1;
     p_n_mode <- 1;
     _out_t{ -1 };
     _out_f{ -1 };
@@ -622,7 +621,6 @@ defcell killable_arbiter(bool? a, b, _ki; bool! u, v, _ka)
 
   }
   sizing {
-   leak_adjust <- 1;
    _u{-1};
    _v{-1}
   }
