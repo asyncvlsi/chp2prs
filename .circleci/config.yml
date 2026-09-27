@@ -43,6 +43,16 @@ jobs:
               make install
               cd ..
        - run: 
+          name: Install act sqlite3
+          command: |
+              git clone https://github.com/asyncvlsi/sqlite --depth 1
+              export ACT_HOME=`pwd`/install
+              export PATH=$ACT_HOME/bin:$PATH
+              cd sqlite
+              ./configure --prefix=$ACT_HOME
+              make && make install
+              cd ..
+       - run:
           name: Install act expropt
           command: |
               git clone https://github.com/asyncvlsi/expropt --depth 1
