@@ -1,0 +1,23 @@
+import "15decomp.act";
+
+defproc test ()
+{
+    chan(ss2) X;
+    chan(ss) Y;
+    decomp_dc15 d(X,Y);
+
+    ss xd;
+    ss2 x;
+    ss y;
+
+    chp {
+        xd := ss(2);
+        x.d := xd;
+        x.c := 1;
+        X!x; Y?y;
+        [ y.a=0 & y.b=2 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+
