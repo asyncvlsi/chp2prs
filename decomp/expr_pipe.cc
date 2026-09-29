@@ -529,7 +529,12 @@ std::string ExprPipe::_expr_to_verilog (Expr *e, int width, Bimap<ActId *, int> 
     e = expr_dag(e);
 
     // also does a primitive dag-ing in thread mode
+    _E = new ExprDagVisit;
+    _E->entry ();
     _expr_collect_vars (e, m);
+    _E->exit ();
+    delete _E;
+    _E = NULL;
 
     // collect input vars in list
     list_t *all_leaves = list_new();
@@ -562,6 +567,10 @@ std::string ExprPipe::_expr_to_verilog (Expr *e, int width, Bimap<ActId *, int> 
 void ExprPipe::_expr_collect_vars (Expr *&e, Bimap<ActId *, int> &m)
 {
   Assert (e, "Hmm");
+
+  if (_E->visited (e)) {
+    return;
+  }
 
 #define BINARY_OP					\
   do {							\

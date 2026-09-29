@@ -63,6 +63,7 @@ class ExprPipe : public ExprCache {
             n_cuts(0), delay_threshold(1000000.0)
         {
             config_set_int("synth.expropt.vectorize_all_ports", 1);
+	    _E = NULL;
         }
 
         ~ExprPipe () {
@@ -130,6 +131,7 @@ class ExprPipe : public ExprCache {
         // Expression handling for Expropt
         iHashtable *_inexprmap;
         iHashtable *_inwidthmap;
+        ExprDagVisit *_E;
 
 };
 
