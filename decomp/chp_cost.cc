@@ -306,7 +306,13 @@ double ChpCost::expr_delay (Expr *e, int out_bw)
 
     // also does a primitive dag-ing in thread mode
     canonical_expr.clear();
+    _E = new ExprDagVisit;
+    _E->entry();
     _expr_collect_vars (e);
+    _E->exit ();
+    delete _E;
+    _E = NULL;
+    
 
     // collect input vars in list
     list_t *all_leaves = list_new();
@@ -397,6 +403,10 @@ ExprBlockInfo *ChpCost::expr_metrics (Expr *e, int out_bw)
 void ChpCost::_expr_collect_vars (Expr *&e)
 {
   Assert (e, "Hmm");
+
+  if (_E->visited (e)) {
+    return;
+  }
 
 #define BINARY_OP					\
   do {							\

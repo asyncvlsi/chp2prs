@@ -25,6 +25,7 @@
 
 #include <act/chp/chopping_block.h>
 #include <act/expr_cache.h>
+#include <act/expr_api.h>
 #include <memory>
 
 class ChpCost {
@@ -82,6 +83,8 @@ class ChpCost {
             double *tmp2 = config_get_table_real("synth.ring.bundled.or_delays");
             sel_delays = std::vector<double> (tmp,tmp+sel_sz);
             or_delays = std::vector<double> (tmp2,tmp2+sel_sz);
+
+	    _E = NULL;
         }
 
         void dump_actsim_conf(std::string, act_chp_lang_t *, Process *);
@@ -136,6 +139,8 @@ class ChpCost {
         int max_way;
         std::vector<double> or_delays;
         std::vector<double> sel_delays;
+
+        ExprDagVisit *_E;
 
 };
 
