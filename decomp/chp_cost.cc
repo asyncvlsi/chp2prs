@@ -369,7 +369,12 @@ ExprBlockInfo *ChpCost::expr_metrics (Expr *e, int out_bw)
 
   // also does a primitive dag-ing in thread mode
   canonical_expr.clear();
+  _E = new ExprDagVisit;
+  _E->entry();
   _expr_collect_vars (e);
+  _E->exit ();
+  delete _E;
+  _E = NULL;
 
   // collect input vars in list
   list_t *all_leaves = list_new();
