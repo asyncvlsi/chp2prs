@@ -517,10 +517,28 @@ ActExprStruct *template_func_new_expr_from_irexpr(
         result->type = E_BUILTIN_INT;
         NEW(result->u.e.l, ActExprStruct);
         result->u.e.l->type = E_INT;
-        hassert(e.u_cons().v <= BigInt{0xffffffffffffffff});
-        result->u.e.l->u.ival.v =
-            e.u_cons().v.getUI64(); // TODO implement e.u.v_extra
-        result->u.e.l->u.ival.v_extra = nullptr;
+
+	//Originally, we could only process 64-bit constants
+        //hassert(e.u_cons().v <= BigInt{0xffffffffffffffff});
+	//result->u.e.l->u.ival.v
+	// = e.u_cons().v.getUI64(); // TODO implement e.u.v_extra
+        //result->u.e.l->u.ival.v_extra = nullptr;
+	// the actual constant value may be small, so may not have the
+        // bitwidth?
+
+	//fprintf (stderr, "const width = %d, wdct = %d\n", e.u_cons().v_width,
+	//e.u_cons().v.getWdCt());
+
+	/*
+	  XXX: this relies on the size of int.h and big-int.h being
+	  the same (64-bit integer)
+	*/
+	ActBigInt *abi = new ActBigInt(e.u_cons().v.getWdCt()*64, 0, 0);
+	for (ssize_t i = 0; i < (ssize_t)abi->getLen(); i++) {
+	  abi->setVal(i, e.u_cons().v.getVal (i));
+	}
+        result->u.e.l->u.ival.v = abi->getVal (0);
+	result->u.e.l->u.ival.v_extra = abi;
         NEW(result->u.e.r, ActExprStruct);
         result->u.e.r->type = E_INT;
         result->u.e.r->u.ival.v = e.u_cons().v_width;
