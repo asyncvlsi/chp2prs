@@ -362,6 +362,7 @@ ExprBlockInfo *ChpCost::expr_metrics (Expr *e, int out_bw)
   }
   _inexprmap = ihash_new (0);
   _inwidthmap = ihash_new (0);
+  _reset_expr_id ();
 
   if (!thread_mode) {
     e = expr_dag(e);
