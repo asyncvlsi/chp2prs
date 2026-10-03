@@ -1322,25 +1322,21 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
     // run abc, then v2act to create the combinational-logic-for-math process
     _outexprmap = ihash_new(0);
     _outwidthmap = ihash_new(0);
-    _inexprmap_str = ihash_new(0);
 
-    for (listitem_t *li = list_first (all_leaves); li; li = list_next (li)) { 
-        Expr *tmp = (Expr *) list_value(li);
-        // change from int to C string
-        ihash_bucket_t *b_map,*b_new;
-        b_map = ihash_lookup(_inexprmap, (long) tmp);
-        char *charbuf = (char *) malloc( sizeof(char) * ( 100 + 1 ) );
-        snprintf(charbuf, 100, "%s%u",expr_block_input_prefix,b_map->i);
-        b_new = ihash_add(_inexprmap_str, (long) tmp);
-        b_new->v = charbuf;
-    }
     list_t *_outlist = list_new();
     int i=0;
     for ( auto e : e_list ) {
         list_append (_outlist, e);
         ihash_bucket_t *b_map;
         char *cb = (char *) malloc( sizeof(char) * ( 100 + 1 ) );
-        snprintf(cb, 100, "out_%u",i);
+
+	if (e_list.size() == 1) {
+	  snprintf(cb, 100, "out");
+	}
+	else {
+	  snprintf(cb, 100, "out_%u",i);
+	}
+	
         b_map = ihash_add(_outexprmap,(long) e);
         b_map->v = strdup(cb);
         ihash_bucket_t *b_width;
@@ -1349,12 +1345,9 @@ int RingForge::_generate_expr_block_for_sel_all(act_chp_gc_t *gc, int xid, bool 
         i++;
     }
 
-    std::string sname = std::string(expr_block_prefix) + std::to_string(xid);
-
-    eeo->set_expr_outfile(_exprfile);
-    ExprBlockInfo *ebi = eeo->run_external_opt(sname, all_leaves, _inexprmap_str, _inwidthmap, _outlist, _outexprmap, _outwidthmap, NULL, true);
-    ebi->setID(std::to_string(xid));
-    eeo->set_expr_outfile("");
+    ExprBlockInfo *ebi =
+      eeo->synth_expr_multi (all_leaves, _inexprmap, _inwidthmap,
+			     _outlist, _outexprmap, _outwidthmap);
 
     ihash_free (_outexprmap);
     _outexprmap = NULL;
@@ -2492,7 +2485,12 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
             gc = c->u.gc;
 
             for (int i = 0; gc; gc = gc->next) {
+	      if (c->u.gc->next) {
                 _connect_guards_to_sel_split_input_multi (sel_split_block_id, expr_block_id, i);
+	      }
+	      else {
+                _connect_guards_to_sel_split_input (sel_split_block_id, expr_block_id, i);
+	      }
                 block_id = _generate_gp_connect ();
                 _connect_sel_split_outputs_to_pipe (sel_split_block_id, block_id, i);
                 list_iappend(gp_connect_ids, block_id);

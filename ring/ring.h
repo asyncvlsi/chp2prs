@@ -108,7 +108,6 @@ class RingEngine {
 
         // Expression handling for Expropt
         iHashtable *_inexprmap;
-        iHashtable *_inexprmap_str;
         iHashtable *_inwidthmap;
         iHashtable *_outexprmap;
         iHashtable *_outwidthmap;
