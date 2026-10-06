@@ -481,7 +481,7 @@ int ActSynthesize::emitNamespace (UserDef *u)
     while (!list_isempty (l)) {
       ns = (ActNamespace *) stack_pop (l);
       count++;
-      if (count > 1 || (count==1 && ns->isExported())) {
+      if (ns->isExported()) {
 	pp_forced (_pp, 0);
 	pp_printf (_pp, "export ");
       }
