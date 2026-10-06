@@ -730,6 +730,13 @@ void *synthesis_data (ActPass *ap, Data *d, int mode)
 
   if (mode == 0) {
     if (syn->skipOverride (d)) {
+      if (TypeFactory::isUserEnum (d)) {
+	pp_t *pp = syn->getPP ();
+	int count = syn->emitNamespace (d);
+	pp_printf (pp, "defenum %s : int;", d->getUnexpanded()->getName());
+	pp_forced (pp, 0);
+	syn->emitCloseNamespace (count);
+      }
       return NULL;
     }
     if (TypeFactory::isStructure (d) ||	TypeFactory::isEnum (d)) {
