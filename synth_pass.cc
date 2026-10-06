@@ -355,9 +355,11 @@ static int emit_refinement_header (ActSynthesize *syn,
       UserDef *ud = dynamic_cast <UserDef *> (vx->t->BaseType());
       Assert (ud, "Why am I here?");
       if (ud->getns() && ud->getns() != ActNamespace::Global()) {
-	char *tmp = ud->getns()->Name (true);
-	pp_printf (pp, "%s", tmp);
-	FREE (tmp);
+	char *tmp = ud->getns()->NameSuffix (u->getns(), true);
+	if (tmp != NULL) {
+	  pp_printf (pp, "%s", tmp);
+	  FREE (tmp);
+	}
       }
       ActNamespace::Act()->msnprintfproc (buf, 10240, ud, 1);
       pp_printf (pp, "%s_", prefix);
