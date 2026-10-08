@@ -1,0 +1,18 @@
+deftype pair (
+	int<32> b;
+	int<32> a
+) {}
+
+defproc le7 (chan?(pair) A, C; chan!(pair) B, D)
+{
+	pair x;
+	chp {
+		*[
+			A?x; 
+			*[x.a=0 -> 
+                *[ x.a<1 -> C?x;D!x ]
+            ];
+			B!x
+		 ] 
+	}
+}
