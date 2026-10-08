@@ -1,0 +1,17 @@
+deftype pair (
+    int<32> a;
+    int<32> b
+) {}
+
+
+defproc mc13 (chan?(pair) A; chan!(pair) B)
+{
+    pair p1, p2, p3;
+    chp {
+        *[ A?p1 ; A?p2 ; 
+            p3.a := p1.a+p2.a; 
+            p3.b := p1.b+p2.b; 
+            B!p3 
+        ]
+    }
+}

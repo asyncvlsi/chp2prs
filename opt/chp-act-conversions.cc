@@ -732,7 +732,7 @@ act_chp_lang *chp_graph_to_act(const GraphWithChanNames &gr,
   for (auto &[x, v] : gr.name_from_chan) {
     table.name_from_chan[x] = v;
   }
-#if 1
+#if 0
   for (auto &[x, v] : gr.name_from_var) {
     table.name_from_var[x] = v;
   }

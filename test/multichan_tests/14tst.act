@@ -1,0 +1,17 @@
+import "14decomp.act";
+
+defproc test ()
+{
+    chan(pair) X, Y;
+    decomp_mc14 m(X,Y);
+
+    pair x, y1, y2;
+
+    chp {
+        (x.a:=14 ; x.b:=28 ; X!x) , (Y?y1 ; Y?y2) ;
+        [ y1.a=14 & y1.b=28 & y2.a=14 & y2.b=28 -> log ("SUCCESS") 
+        [] else -> log ("FAILURE") 
+        ]
+    }
+}
+
