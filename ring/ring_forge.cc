@@ -2338,6 +2338,9 @@ int RingForge::generate_branched_ring(act_chp_lang_t *c, int root, int prev_bloc
                     }
                     vi =  _get_var_info(id);
                     Assert ((stmt1->space), "No latch info? (_generate_branched_ring, initial condition handling)");
+                    if (vi->nwrite==1) {
+                        warning("Initial condition %s is never modified in CHP, consider making this a parametric type.", vi->name);
+                    }
                     int latch_id = _generate_single_latch (vi, (latch_info_t *)(stmt1->space), ival);
                     Assert (latch_id == 0, "Same variable has more than one initial condition?");
 
