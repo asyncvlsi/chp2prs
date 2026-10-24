@@ -18,7 +18,9 @@
  *  Boston, MA  02110-1301, USA.
  *
  **************************************************************************
- */
+*/
+import std::cells;
+import std::gates;
 
 pint N_delay_line_types = 4;
 
@@ -26,3 +28,93 @@ pint N_delay_line_types = 4;
 pint Delay_Params[N_delay_line_types+1];
 pint Delay_Offsets[N_delay_line_types+1];
 
+namespace syn {
+
+export
+defcell MUX21H (bool? A, AD, B, BD; bool! Y)
+{
+  bool _a, _b;
+  spec {
+    exclhi(A,B)
+  }
+  prs {
+    A => _a-
+    B => _b-
+    ~AD & ~_a | ~BD & ~_b -> Y+
+    AD & A | BD & B -> Y-
+  }
+  sizing { _a{-0.5}; _b{-0.5}; Y{-1} }
+}
+
+export
+defcell MUX31H (bool? A, AD, B, BD, C, CD; bool! Y)
+{
+  bool _a, _b, _c;
+  spec {
+    exclhi(A,B,C)
+  }
+  prs {
+    A => _a-
+    B => _b-
+    C => _c-
+    ~AD & ~_a | ~BD & ~_b | ~CD & ~_c -> Y+
+    AD & A | BD & B | CD & C -> Y-
+  }
+  sizing { _a{-0.5}; _b{-0.5}; _c{-0.5}; Y{-1} }
+}
+
+export
+defcell MUX41H (bool? A, AD, B, BD, C, CD, D, DD; bool! Y)
+{
+  bool _a, _b, _c, _d;
+  spec {
+    exclhi(A,B,C,D)
+  }
+  prs {
+    A => _a-
+    B => _b-
+    C => _c-
+    D => _d-
+    ~AD & ~_a | ~BD & ~_b | ~CD & ~_c | ~DD & ~_d -> Y+
+    AD & A | BD & B | CD & C | DD & D -> Y-
+  }
+  sizing { _a{-0.5}; _b{-0.5}; _c{-0.5}; _d{-0.5}; Y{-1} }
+}
+
+export template<pint N; pbool invert=false>
+defproc mux1h (bool? C[N], D[N]; bool! Y)
+{
+  [ N = 1 -> std::cells::TBUF1 m1(C[0],D[0]);
+      [ ~invert -> std::cells::INVX1 i1(m1.Y,Y); [] else -> m1.Y = Y; ]
+  [] N = 2 -> MUX21H m2(C[0],D[0],C[1],D[1]);
+      [ ~invert -> std::cells::INVX1 i2(m2.Y,Y); [] else -> m2.Y = Y; ]
+  [] N = 3 -> MUX31H m3(C[0],D[0],C[1],D[1],C[2],D[2]);
+      [ ~invert -> std::cells::INVX1 i3(m3.Y,Y); [] else -> m3.Y = Y; ]
+  [] N = 4 -> MUX41H m4(C[0],D[0],C[1],D[1],C[2],D[2],C[3],D[3]);
+      [ ~invert -> std::cells::INVX1 i4(m4.Y,Y); [] else -> m4.Y = Y; ]
+  [] else ->
+    mux1h<N/2,~invert> mbot(C[0..N/2-1],D[0..N/2-1]);
+    mux1h<N-N/2,~invert> mtop(C[N/2..N-1],D[N/2..N-1]);
+    std::gates::ortree<N/2,false> o1(C[0..N/2-1]);
+    std::gates::ortree<N-N/2,false> o2(C[N/2..N-1]);
+    MUX21H mnext(o1.out,mbot.Y,o2.out,mtop.Y,Y);
+  ]  
+}
+
+export template<pint N, W>
+defproc datamux1h (bool? C[N], D[N][W]; bool! Y[W])
+{
+  mux1h<N> mx[W];
+  std::gates::sigbuf<W> fanout_tree[N];
+    
+  ( i : N : fanout_tree[i].in = C[i];
+    ( j : W :
+      mx[j].C[i] = fanout_tree[i].out[j];
+      mx[j].D[i] = D[i][j];
+    )
+  )
+  ( j : W : mx[j].Y = Y[j]; )
+}
+  
+
+}
