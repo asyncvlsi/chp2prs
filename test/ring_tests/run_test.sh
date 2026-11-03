@@ -9,7 +9,7 @@ fail=0
 
 export ACT_PATH=runs
 
-actsim $REF ${file}tst.act test <<EOF > runs/${file}_sim.out 2>&1
+actsim -m $REF ${file}tst.act test <<EOF > runs/${file}_sim.out 2>&1
 mode reset
 set Reset 1
 set Vdd 1

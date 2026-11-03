@@ -65,29 +65,11 @@ void place_skip_in_empty_branches (act_chp_lang_t *&c);
 void rewrite_terminating_program (act_chp_lang_t *&c);
 
 /*
-    Revert the mangling settings back to 
-    the main Act object's defaults.
-*/
-void revert_mangle ();
-
-/*
- * Initialize the Act object that is used for 
- * string mangling functionality.
- * Needs to be called only once in the entire
- * program.
-*/
-void mangle_init ();
-
-/*
  * Get the true name of a variable. This is 
  * a consistent way to get a unique string
  * name for every identifier. Indices in 
  * arrayed identifiers are mangled as required.
 */
 void get_true_name (char *buf, ActId *id, Scope *s, bool mangle = true);
-
-void mangle_it (char *, InstType *);
-
-void mangle_data (char *, Data *);
 
 #endif

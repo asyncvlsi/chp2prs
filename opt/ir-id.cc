@@ -114,7 +114,7 @@ OptionalVarId NameParsingIdPool::varIdFromActId(ActId *id) {
     hassert(bitwidth >= 0);
 
     // then create a variable to hold it
-    auto new_id = m_id_pool.makeUniqueVar(bitwidth, is_bool);
+    auto new_id = m_id_pool.makeUniqueVar(bitwidth, is_bool, is_pure_struct);
 
     hassert(m_varid_to_actid.find(new_id) == m_varid_to_actid.end());
     m_varid_to_actid[new_id] = id->Clone();
@@ -167,6 +167,9 @@ NameParsingIdPool::name_from_var_map() const {
   return m_varid_to_actid;
 }
 
+bool IdPool::getIsStruct(const VarId &id) const {
+    return m_varid_infos[id.m_id].is_struct;
+}
 bool IdPool::getIsStruct(const ChanId &id) const {
     return m_chanid_infos[id.m_id].is_struct;
 }
@@ -191,12 +194,12 @@ int IdPool::getBitwidth(const ChanId &chan_id) const {
     return m_chanid_infos[chan_id.m_id].bitwidth;
 }
 
-VarId IdPool::makeUniqueVar(int bitwidth, bool is_bool) {
+VarId IdPool::makeUniqueVar(int bitwidth, bool is_bool, bool is_struct) {
     VarId new_id = m_next_varid;
     hassert(new_id.m_id == m_varid_infos.size());
     m_next_varid = m_next_varid.next_id();
     hassert(bitwidth >= 0);
-    m_varid_infos.push_back(VarIdInfo{bitwidth, is_bool});
+    m_varid_infos.push_back(VarIdInfo{bitwidth, is_bool, is_struct});
     return new_id;
 }
 

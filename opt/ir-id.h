@@ -293,6 +293,7 @@ class IdPool {
     struct VarIdInfo {
         int bitwidth;
         bool is_bool;
+        bool is_struct;
     };
     VarId m_next_varid = VarId::first_id();
 
@@ -303,7 +304,7 @@ class IdPool {
      * is numbered i.
      */
     std::vector<VarIdInfo> m_varid_infos = {
-        VarIdInfo{0, false}}; // 1 element of padding for the "null" id
+        VarIdInfo{0, false, false}}; // 1 element of padding for the "null" id
 
     struct ChanIdInfo {
         int bitwidth;
@@ -323,9 +324,10 @@ class IdPool {
         const ChanId &id) const; // returns 0 if the channel carries no data
     [[nodiscard]] bool getIsBool(const VarId &id) const;
     [[nodiscard]] bool getIsBool(const ChanId &id) const;
+    [[nodiscard]] bool getIsStruct(const VarId &id) const;
     [[nodiscard]] bool getIsStruct(const ChanId &id) const;
 
-    [[nodiscard]] VarId makeUniqueVar(int bitwidth, bool is_bool = false);
+    [[nodiscard]] VarId makeUniqueVar(int bitwidth, bool is_bool = false, bool is_struct = false);
     [[nodiscard]] ChanId makeUniqueChan(int bitwidth, bool is_bool = false);
     [[nodiscard]] ChanId makeUniqueChan(int bitwidth, bool is_bool, bool is_inp, bool is_struct);
     void setChanDir (const ChanId &id, bool is_inp);
@@ -333,7 +335,7 @@ class IdPool {
     [[nodiscard]] VarId cloneVar (const VarId &id) {
       hassert(id.m_id < m_varid_infos.size());
       VarIdInfo idi = m_varid_infos[id.m_id];
-      return makeUniqueVar (idi.bitwidth, idi.is_bool);
+      return makeUniqueVar (idi.bitwidth, idi.is_bool, idi.is_struct);
     }
 
     [[nodiscard]] size_t varNum() const {

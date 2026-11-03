@@ -579,64 +579,15 @@ void rewrite_terminating_program (act_chp_lang_t *&c)
   c->u.gc->next = NULL;
 }
 
-static Act *a_mangle = NULL;
-
 static const int style_global = 0;
-
-void mangle_init ()
-{ 
-  char u[8];
-  a_mangle = new Act;
-  snprintf(u,8,"[],.<>"); /// characters to mangle
-  a_mangle->mangle(u);
-}
-
-void revert_mangle ()
-{
-  if (config_exists ("act.mangle_letter")) {
-  const char *tmp = config_get_string ("act.mangle_letter");
-  if (!a_mangle->mangle_set_char (*tmp)) {
-    fatal_error ("act.mangle_letter: could not be used as a character!");
-  }
-  }
-  else {
-    a_mangle->mangle_set_char ('_');
-  }
-  if (config_exists ("act.mangle_chars")) {
-    a_mangle->mangle (config_get_string ("act.mangle_chars"));
-  }
-} 
 
 void get_true_name (char *buf, ActId *id, Scope *s, bool mangle)
 {
   char str[1024];
   id->sPrint(str,1024,NULL,style_global);
   if (mangle && !(TypeFactory::isChanType(s->FullLookup((id->getName()))))) {
-    a_mangle->mangle_string(str,buf,1024);
+    ActNamespace::Act()->mangle_string (str, buf, 1024);
   }
   else  
     snprintf (buf, 1024, "%s", str);
-}
-
-void mangle_it (char *buf, InstType *it)
-{
-  char name[10240];
-  it->sPrint(name, 10240);
-  if (!a_mangle) mangle_init();
-  a_mangle->mangle_string(name, buf, 10240);
-}
-
-void mangle_data (char *buf, Data *d)
-{
-  char name[10240];
-  d->snprintActName(name, 10240);
-  if (!a_mangle) mangle_init();
-  a_mangle->mangle_string(name, buf, 10240);
-}
-
-void generate_array_suffix (char *buf, Array *a)
-{
-  char s[1024];
-  a->sPrint(s,1024,style_global);
-  a_mangle->mangle_string(s,buf,1024);
 }

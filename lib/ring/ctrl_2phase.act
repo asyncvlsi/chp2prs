@@ -1174,20 +1174,8 @@ defproc merge_mux_ohc_opt(bool? c[N]; bool din[N][W]; bool dout[W]; bool a)
   )
   // last-changed detector (one-hot output) circuit ---
 
-  std::cells::TBUF1 tb[N][W];
-  std::cells::INVX1 invs[W];
+    syn::datamux1h<N,W> mx(new_c,din,dout);
 
-  sigbuf<W> fanout_tree[N];
-  ( i : N : fanout_tree[i].in = new_c[i]; )
-
-  ( i : N : 
-    ( j : W : 
-      tb[i][j].EN = fanout_tree[i].out[j];
-      tb[i][j].A  = din[i][j];
-      tb[i][j].Y  = invs[j].A;
-      dout[j] = invs[j].Y;
-    )
-  )
   ]
 }
 
