@@ -244,7 +244,7 @@ class RingSynth : public ActSynthesize {
     if (synthesize)
     {
       Assert (c, "hmm no chp lol - something went wrong");
-      mangle_init();
+      
       rewrite_terminating_program (c);
       place_skip_in_empty_branches (c);
       fill_in_else_explicit (c, p->CurScope());
@@ -286,7 +286,6 @@ class RingSynth : public ActSynthesize {
       fprintf(stdout, "\n\n");
 
 #endif
-      revert_mangle();
     }
     
     fprintf (_pp->fp, "\n\n");
