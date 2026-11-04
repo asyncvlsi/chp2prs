@@ -579,7 +579,16 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
     }
     if (res == DUMMY_SYNTHESIS) {
       emit_refinement_header (syn, p, &braces, HEADER_NORMAL);
+      pp_printf (pp, "} /* end refine */");
+      pp_forced (pp, 0);
+      pp_endb (pp);
+      pp_printf (pp, "/* end process */");
+      pp_endb (pp);
+      pp_forced (pp, 0);
+      pp_printf (pp, "}");
+      pp_forced (pp, 0);
       syn->emitCloseNamespace (braces);
+      pp_forced (pp, 0);
       return NULL;
     }
 
@@ -590,6 +599,7 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
 	pp_printf (pp, ";");
 	pp_forced (pp, 0);
 	syn->emitCloseNamespace (braces);
+        pp_forced (pp, 0);
       }
       FREE (s);
       return NULL;
@@ -635,6 +645,7 @@ void *synthesis_proc (ActPass *ap, Process *p, int mode)
     pp_forced (pp, 0);
     pp_printf (pp, "}");
     syn->emitCloseNamespace (braces);
+    pp_forced (pp, 0);
   }
   return NULL;
 }
