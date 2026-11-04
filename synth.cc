@@ -248,6 +248,7 @@ bool ActSynthesize::_check (struct pHashtable *H, Scope *sc, act_chp_lang_t *c)
   nest++; // used to filter top-level concurrency
 
   if (!customCheck (c)) {
+    nest--;
     return false;
   }
 
@@ -263,6 +264,7 @@ bool ActSynthesize::_check (struct pHashtable *H, Scope *sc, act_chp_lang_t *c)
 	  return false;
 	}
       }
+      nest--;
       return true;
     }
     // fall-through: standard check
@@ -302,6 +304,7 @@ bool ActSynthesize::_check (struct pHashtable *H, Scope *sc, act_chp_lang_t *c)
       emsg = "Exchange channels are currently not synthesizable.";
       _echp = c;
       _errmsg = Strdup (emsg.c_str());
+      nest--;
       return false;
     }
     if (c->u.comm.flavor != 0) {
@@ -309,6 +312,7 @@ bool ActSynthesize::_check (struct pHashtable *H, Scope *sc, act_chp_lang_t *c)
       emsg = "Split communication channels are not synthesizable\n\tvia the automated flow.";
       _echp = c;
       _errmsg = Strdup (emsg.c_str());
+      nest--;
       return false;
     }
     conn = c->u.comm.chan->Canonical (sc);
@@ -327,6 +331,7 @@ bool ActSynthesize::_check (struct pHashtable *H, Scope *sc, act_chp_lang_t *c)
 	emsg = "Internal self-synchronization is not supported\n\tvia the automated synthesis flow.";
 	_echp = c;
 	_errmsg = Strdup (emsg.c_str());
+	nest--;
 	return false;
       }
     }
@@ -339,6 +344,7 @@ bool ActSynthesize::_check (struct pHashtable *H, Scope *sc, act_chp_lang_t *c)
 	emsg = "Internal self-synchronization is not supported\n\tvia the automated synthesis flow.";
 	_echp = c;
 	_errmsg = Strdup (emsg.c_str());
+	nest--;
 	return false;
       }
     }
