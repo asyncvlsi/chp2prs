@@ -31,6 +31,19 @@ pint Delay_Offsets[N_delay_line_types+1];
 namespace syn {
 
 export
+defcell MUX11H (bool? A, AD; bool! Y)
+{
+  bool _a;
+  prs {
+    A => _a-
+    ~AD & ~_a -> Y+
+    AD & A -> Y-
+  }
+  sizing { _a{-0.5}; Y{-1} }
+}
+  
+
+export
 defcell MUX21H (bool? A, AD, B, BD; bool! Y)
 {
   bool _a, _b;
@@ -81,10 +94,17 @@ defcell MUX41H (bool? A, AD, B, BD, C, CD, D, DD; bool! Y)
   sizing { _a{-0.5}; _b{-0.5}; _c{-0.5}; _d{-0.5}; Y{-1} }
 }
 
+/*
+ *   N = # of one-hot control inputs
+ *   C[i] = one-hot control input
+ *   D[i] = data input
+ *
+ *   Y = output
+ */
 export template<pint N; pbool invert=false>
 defproc mux1h (bool? C[N], D[N]; bool! Y)
 {
-  [ N = 1 -> std::cells::TBUF1 m1(C[0],D[0]);
+  [ N = 1 -> MUX11H m1(C[0],D[0]);
       [ ~invert -> std::cells::INVX1 i1(m1.Y,Y); [] else -> m1.Y = Y; ]
   [] N = 2 -> MUX21H m2(C[0],D[0],C[1],D[1]);
       [ ~invert -> std::cells::INVX1 i2(m2.Y,Y); [] else -> m2.Y = Y; ]
