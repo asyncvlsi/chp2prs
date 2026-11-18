@@ -258,9 +258,9 @@ int main(int argc, char **argv)
   
   if (profile) {
     const char *engine = syntesistool ? syntesistool : "abc";
-    if (strcmp (engine, "yosys") != 0) {
+    if (strcmp (engine, "yosys") != 0 && strcmp (engine, "genus") !=0) {
       fatal_error ("-S %s: synthesis profiles are only supported with -E yosys"
-           " (engine: %s)", profile, engine);
+           " or -E genus (engine: %s)", profile, engine);
     }
   }
 
