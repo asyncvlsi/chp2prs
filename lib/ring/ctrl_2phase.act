@@ -178,7 +178,7 @@ defproc pulse(bool? in; bool! out)
   out = xor1.Y;
 
   spec {
-    timing in+: out+ <[1] xor1.B-
+    timing in+: out+ <[1] xor1.B+
     // this delay margin is a placeholder, 
     // its actual value depends on the delay of LATCH
   }
