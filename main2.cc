@@ -33,7 +33,7 @@ using namespace std::chrono;
 
 static void usage(char *name)
 {
-  fprintf (stderr, "Usage: %s [-OXh] [-C <circuit family>] [-e <file>] [-o <file>] [-E abc|yosys|genus] -p <proc> <actfile>\n", name);
+  fprintf (stderr, "Usage: %s [-OXh] [-C <circuit family>] [-e <file>] [-o <file>] [-E abc|yosys|genus] [-S <profile>] -p <proc> <actfile>\n", name);
   fprintf (stderr, "Options:\n");
   fprintf (stderr, " -h : help; display this message\n");
   fprintf (stderr, " -p <proc> : name of the ACT process to be translated (the top-level process).");
@@ -58,6 +58,8 @@ static void usage(char *name)
   fprintf (stderr, " -e <file> : save expressions synthesized into <file> [default: expr.act]\n");
   fprintf (stderr, " -o <file> : save output to <file> [default: print to screen]\n");
   fprintf (stderr, " -E abc|yosys|genus : select external logic optimization engine for datapath generation\n");
+  fprintf (stderr, " -S <profile> : synthesis profile for datapath generation (e.g. performance, area);\n");
+  fprintf (stderr, "        uses <engine>_<profile>.tcl/.sdc from $ACT_HOME/conf/<tech>/expropt_profiles\n");
   fprintf (stderr, " -t : print tool runtime breakdown (for decomp: also produce delay annotation file and dot graphs of DDG and TG)\n");
   fprintf (stderr, " -cnf=<custom.conf> : load your custom config file\n");
   fprintf (stderr, " -T<tech> : load your tech config\n");
@@ -80,6 +82,7 @@ int main(int argc, char **argv)
   char *exprfile = NULL;
   FILE *dfile;
   char *syntesistool = NULL;
+  char *profile = NULL;
   int external_opt = 0;
   int delay_margin = 100;
   double cycle_time_target = 1000000.0;
@@ -99,7 +102,7 @@ int main(int argc, char **argv)
   bool check_chp = false;
 
   int ch;
-  while ((ch = getopt (argc, argv, "htOXde:E:o:p:F:C:m:P:")) != -1) {
+  while ((ch = getopt (argc, argv, "htOXde:E:o:p:F:C:m:P:S:")) != -1) {
     switch (ch) {
     case 'F':
       if (!strcmp (optarg, "dataflow")) {
@@ -199,6 +202,13 @@ int main(int argc, char **argv)
       syntesistool = Strdup (optarg);
       break;
 
+    case 'S':
+      /* Synthesis profile for expression blocks; set from the command line
+       * it takes precedence over any expropt.conf setting*/
+      profile = Strdup (optarg);
+      config_set_string("synth.expropt.profile",optarg);
+      break;
+
     case 'm':
       delay_margin = std::atoi(Strdup (optarg));
       if (delay_margin < 100) {
@@ -243,6 +253,14 @@ int main(int argc, char **argv)
 	fprintf (stderr, "Cannot specify dataflow generation + expression optimizations\n");
 	usage (argv[0]);
       }
+    }
+  }
+  
+  if (profile) {
+    const char *engine = syntesistool ? syntesistool : "abc";
+    if (strcmp (engine, "yosys") != 0 && strcmp (engine, "genus") !=0) {
+      fatal_error ("-S %s: synthesis profiles are only supported with -E yosys"
+           " or -E genus (engine: %s)", profile, engine);
     }
   }
 
